@@ -1,0 +1,50 @@
+const commitlintConfig = {
+  extends: ["@commitlint/config-conventional"],
+  rules: {
+    "body-leading-blank": [2, "always"],
+    "body-max-line-length": [1, "always", 100],
+    "footer-leading-blank": [2, "always"],
+    "header-max-length": [2, "always", 100],
+    "scope-case": [2, "always", "lower-case"],
+    "scope-empty": [2, "never"],
+    "scope-enum": [
+      2,
+      "always",
+      [
+        "app",
+        "config",
+        "db",
+        "deps",
+        "discovery",
+        "docs",
+        "profiles",
+        "repo",
+        "search",
+        "sources",
+        "tests",
+        "tooling",
+        "ui",
+      ],
+    ],
+    "subject-full-stop": [2, "never", "."],
+    "type-enum": [
+      2,
+      "always",
+      [
+        "build",
+        "chore",
+        "ci",
+        "docs",
+        "feat",
+        "fix",
+        "perf",
+        "refactor",
+        "revert",
+        "style",
+        "test",
+      ],
+    ],
+  },
+};
+
+export default commitlintConfig;

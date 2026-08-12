@@ -1,0 +1,1 @@
+ALTER TABLE `search_profiles` ADD `include_unverified` integer DEFAULT false NOT NULL;
