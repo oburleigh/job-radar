@@ -1,7 +1,6 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { performance } from "node:perf_hooks";
 
 import { eq } from "drizzle-orm";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
@@ -58,9 +57,12 @@ describe("discovery concurrency", () => {
         }));
       },
     };
+    let discoveryFinished = false;
     const discovery = runDiscovery(profileId, provider, {
       source: "ashby",
       syncBoards: false,
+    }).finally(() => {
+      discoveryFinished = true;
     });
     await searchStarted.promise;
 
@@ -73,9 +75,8 @@ describe("discovery concurrency", () => {
       revalidatePath: () => undefined,
       redirect: () => undefined,
     });
-    const scheduledAt = performance.now();
     const saveCompleted = new Promise<{
-      readonly elapsedMilliseconds: number;
+      readonly discoveryFinished: boolean;
       readonly result: Awaited<ReturnType<typeof saveProfile>>;
     }>((resolve) => {
       setImmediate(async () => {
@@ -84,7 +85,7 @@ describe("discovery concurrency", () => {
           profileForm(profileId, { minScore: "82" }),
         );
         resolve({
-          elapsedMilliseconds: performance.now() - scheduledAt,
+          discoveryFinished,
           result,
         });
       });
@@ -95,7 +96,7 @@ describe("discovery concurrency", () => {
     await discovery;
 
     expect(saved.result).toEqual({ ok: true, message: "Profile saved." });
-    expect(saved.elapsedMilliseconds).toBeLessThan(250);
+    expect(saved.discoveryFinished).toBe(false);
     expect(
       db
         .select({ minScore: searchProfiles.minScore })
