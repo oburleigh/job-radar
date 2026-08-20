@@ -169,6 +169,13 @@
       "when": 1787212800000,
       "tag": "0023_configure_integration_policy",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1787220000000,
+      "tag": "0024_configure_profile_defaults",
+      "breakpoints": true
     }
   ]
 }

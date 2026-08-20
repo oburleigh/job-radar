@@ -4,6 +4,8 @@
     "includes": [
       "**",
       "!**/.next",
+      "!**/.react-router",
+      "!**/build",
       "!**/coverage",
       "!**/data",
       "!**/node_modules",

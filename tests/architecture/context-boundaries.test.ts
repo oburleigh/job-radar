@@ -8,9 +8,11 @@ const contextsRoot = path.join(sourceRoot, "contexts");
 const providerModules = ["next", "zod", "drizzle-orm", "better-sqlite3", "node:"];
 
 describe("context boundaries", () => {
-  it("keeps business ownership out of repository-wide layer buckets", () => {
-    for (const legacyRoot of ["application", "domain", "infrastructure", "presentation"]) {
-      expect(existsSync(path.join(sourceRoot, legacyRoot)), legacyRoot).toBe(false);
+  it("keeps business ownership inside bounded contexts", () => {
+    for (const repositoryWideLayer of ["application", "domain", "infrastructure", "presentation"]) {
+      expect(existsSync(path.join(sourceRoot, repositoryWideLayer)), repositoryWideLayer).toBe(
+        false,
+      );
     }
   });
 
@@ -23,13 +25,18 @@ describe("context boundaries", () => {
     for (const context of contexts) {
       const contextRoot = path.join(contextsRoot, context.name);
       expect(existsSync(path.join(contextRoot, "CONTEXT.md")), context.name).toBe(true);
-      expect(sourceFiles(path.join(contextRoot, "hexagon")), context.name).not.toEqual([]);
-      expect(sourceFiles(path.join(contextRoot, "adapters")), context.name).not.toEqual([]);
+      for (const role of ["domain", "application", "infrastructure", "presentation"]) {
+        expect(sourceFiles(path.join(contextRoot, role)), `${context.name}/${role}`).not.toEqual(
+          [],
+        );
+      }
+      expect(existsSync(path.join(contextRoot, "hexagon")), context.name).toBe(false);
+      expect(existsSync(path.join(contextRoot, "adapters")), context.name).toBe(false);
     }
   });
 
   it("keeps domain code inside its provider-free boundary", () => {
-    for (const domainRoot of roleDirectories("hexagon/domain")) {
+    for (const domainRoot of roleDirectories("domain")) {
       for (const file of sourceFiles(domainRoot)) {
         for (const specifier of importSpecifiers(file)) {
           expect(isProviderModule(specifier), `${relativePath(file)} imports ${specifier}`).toBe(
@@ -44,31 +51,58 @@ describe("context boundaries", () => {
     }
   });
 
-  it("keeps application code dependent only on its own hexagon", () => {
-    for (const applicationRoot of roleDirectories("hexagon/application")) {
-      const hexagonRoot = path.dirname(applicationRoot);
+  it("keeps application code dependent only on its own application and domain", () => {
+    for (const applicationRoot of roleDirectories("application")) {
+      const contextRoot = path.dirname(applicationRoot);
       for (const file of sourceFiles(applicationRoot)) {
         for (const specifier of importSpecifiers(file)) {
           expect(isProviderModule(specifier), `${relativePath(file)} imports ${specifier}`).toBe(
             false,
           );
           expect(
-            isRelativeImportInside(file, specifier, hexagonRoot),
-            `${relativePath(file)} crosses the hexagon through ${specifier}`,
+            isRelativeImportInside(file, specifier, applicationRoot) ||
+              isRelativeImportInside(file, specifier, path.join(contextRoot, "domain")),
+            `${relativePath(file)} crosses the application boundary through ${specifier}`,
           ).toBe(true);
         }
       }
     }
   });
 
-  it("keeps test interactors out of production source", () => {
+  it("keeps infrastructure independent from presentation", () => {
+    for (const infrastructureRoot of roleDirectories("infrastructure")) {
+      for (const file of sourceFiles(infrastructureRoot)) {
+        for (const specifier of importSpecifiers(file)) {
+          expect(
+            specifier.includes("/presentation/"),
+            `${relativePath(file)} imports an outward layer through ${specifier}`,
+          ).toBe(false);
+        }
+      }
+    }
+  });
+
+  it("keeps presentation independent from concrete context infrastructure", () => {
+    for (const presentationRoot of roleDirectories("presentation")) {
+      for (const file of sourceFiles(presentationRoot)) {
+        for (const specifier of importSpecifiers(file)) {
+          expect(
+            specifier.includes("/infrastructure/"),
+            `${relativePath(file)} imports a concrete adapter through ${specifier}`,
+          ).toBe(false);
+        }
+      }
+    }
+  });
+
+  it("keeps test support out of production source", () => {
     for (const file of sourceFiles(sourceRoot)) {
-      if (file.includes(`${path.sep}testing${path.sep}`)) {
+      if (file.includes(`${path.sep}test-support${path.sep}`)) {
         continue;
       }
       for (const specifier of importSpecifiers(file)) {
         expect(
-          specifier.includes("/testing/") || specifier.endsWith("/testing"),
+          specifier.includes("/test-support/") || specifier.endsWith("/test-support"),
           `${relativePath(file)} imports test support ${specifier}`,
         ).toBe(false);
       }

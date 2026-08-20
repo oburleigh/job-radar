@@ -53,9 +53,9 @@ rule-based and does not call an LLM.
 - One supported web search API key
 - Network access to the selected search provider and public ATS endpoints
 
-The app is built with Next.js 16, React 19, TypeScript, SQLite, Drizzle ORM,
-Tailwind CSS, Zod, and Vitest. Zod validates form input, runtime settings, and
-ATS registry changes at the web and configuration boundaries.
+The app is built with React Router 8, Vite 8, React 19, TypeScript, SQLite,
+Drizzle ORM, Zod, and Vitest. Zod validates form input, runtime settings, and ATS registry
+changes at the web and configuration boundaries.
 
 ## Start with a clean database
 
@@ -130,7 +130,6 @@ stored in the selected database, so they do not carry across automatically.
 | `SERPAPI_KEY`                       |   One    | Enables SerpAPI                                                                                 |
 | `SERPER_API_KEY`                    |   One    | Enables Serper.dev                                                                              |
 | `ALLOW_REMOTE_UI`                   |    No    | Set to `1` only when another access-control layer protects the app; the default is local only    |
-| `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` |    No    | Stable Server Action key for a multi-instance self-hosted deployment; unnecessary for local use |
 
 Set at least one of the three provider keys. Keep every secret in `.env`, not
 in SQLite or the Settings page.
@@ -551,7 +550,7 @@ from the normal active list.
 
 ### A provider is marked "key missing"
 
-Add its key to `.env` and restart the Next.js process. Environment variables are
+Add its key to `.env` and restart the Job Radar process. Environment variables are
 read when the server starts.
 
 ### A run returns zero results for some titles
@@ -617,7 +616,7 @@ Also confirm that the app and CLI use the same `DB_PATH`.
 
 ### Port 3000 is busy
 
-Next.js prints the selected port when it starts. You can choose one explicitly:
+Vite prints the selected development port when it starts. You can choose one explicitly:
 
 ```bash
 pnpm dev --port 3001
@@ -661,30 +660,38 @@ Keep the Node.js process alive while background discovery is running.
 
 ## Architecture
 
-Job Radar is one deployable Next.js package. Business ownership comes first in
-the source tree, and the provider boundary is visible inside each context.
+Job Radar is one deployable package. Business code is grouped by bounded
+context. The dependency direction, rather than a folder named `hexagon`, marks
+the ports-and-adapters boundary.
 
 ```text
 src/
-├── app/                              Next.js routes, layout, and composition
 ├── contexts/
 │   └── discovery/
 │       ├── CONTEXT.md                Discovery language and ownership
-│       ├── hexagon/
-│       │   ├── domain/               deterministic matching and salary policy
-│       │   └── application/          query planning, run orchestration, and owned ports
-│       ├── adapters/
-│       │   ├── driving/web/          forms, Server Actions, and route adapters
-│       │   └── driven/               SQLite, search, ATS, and scheduler adapters
-│       └── testing/                  reusable test interactors
+│       ├── domain/                   matching, salary, and job-state policy
+│       ├── application/              commands, results, use cases, and owned ports
+│       ├── infrastructure/           SQLite, search, ATS, and scheduler adapters
+│       ├── presentation/web/         routes, HTTP adapters, schemas, and React views
+│       ├── composition/              concrete context wiring
+│       └── test-support/             reusable fakes used only by tests
 └── platform/                         context-independent SQLite and HTTP mechanisms
 ```
 
 Dependencies point inward. Domain code imports only its own domain modules.
-Application code may import the Discovery domain, but it cannot import Next.js,
-Zod, Drizzle, Node APIs, or an adapter. Adapters implement the contracts owned
-by the hexagon. `src/app` chooses the concrete adapters and exposes the Next.js
-entrypoints.
+Application code may import the Discovery domain, but it cannot import React Router,
+Zod, Drizzle, Node APIs, or an adapter. Infrastructure implements the ports
+owned by the application. Presentation does not import infrastructure.
+Context composition modules select concrete adapters and inject them into use
+cases. React Router's configured application directory is
+`src/contexts/discovery/presentation/web`; there is no framework-owned
+`src/app` layer.
+
+Each use case owns its command, result, and port DTOs. Zod request schemas live
+under `presentation/web/requests` and map untrusted HTTP input into application
+commands. Infrastructure validates and maps vendor, configuration, and
+persistence shapes beside the adapter that owns them. The repository does not
+use global `dto`, `types`, or `schemas` buckets.
 
 The architecture test in `tests/architecture/context-boundaries.test.ts`
 enforces those dependency rules. Shared platform code cannot import a bounded
@@ -693,7 +700,7 @@ not belong in `src/platform`.
 
 See [`CONTEXT-MAP.md`](CONTEXT-MAP.md), the
 [Discovery context glossary](src/contexts/discovery/CONTEXT.md), and the
-[architecture decision](docs/adr/0001-context-first-hexagonal-modular-monolith.md)
+[architecture decision](docs/adr/0001-context-first-ddd-and-ports-adapters.md)
 for the maintained boundaries.
 
 ## Development
@@ -715,6 +722,10 @@ Vitest and Playwright migrate their own SQLite databases under the operating
 system temporary directory and remove them after the run. The test suites do
 not read or modify the database named by your normal `DB_PATH`.
 
+Module behavior tests live beside their owner as `*.test.ts`. Repository-wide
+dependency tests live in `tests/architecture`, runner setup is in
+`tests/support`, and browser journeys live in `e2e`.
+
 Lefthook installs the repository hooks during `pnpm install`. The pre-commit
 hook runs Biome against staged files. The commit-message hook enforces scoped
 Conventional Commits through Commitlint, and the pre-push hook runs type
@@ -722,7 +733,7 @@ checking and unit tests. See
 [`CONTRIBUTING.md`](CONTRIBUTING.md) for the accepted scopes and examples.
 
 After changing
-`src/contexts/discovery/adapters/driven/sqlite/schema.ts`, create a migration
+`src/contexts/discovery/infrastructure/sqlite/schema.ts`, create a migration
 and apply it:
 
 ```bash
@@ -730,8 +741,8 @@ pnpm db:generate
 pnpm db:migrate
 ```
 
-This repository uses Next.js 16 conventions. Before changing framework code,
-read the relevant guide in `node_modules/next/dist/docs/` and follow
+Before changing React Router route modules, loaders, actions, or Vite build
+configuration, read the current official framework documentation and follow
 [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 The visual rules and light and dark theme tokens are recorded in

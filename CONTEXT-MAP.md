@@ -6,7 +6,7 @@
 
 ## Candidate context
 
-Opportunity Tracking may become a separate context when saved, hidden, applied, and interview states gain a lifecycle or language independent from Discovery. Job state is owned by Discovery's web and SQLite adapters until that boundary is earned. No empty context package is created in advance.
+Opportunity Tracking may become a separate context when saved, hidden, applied, and interview states gain a lifecycle or language independent from Discovery. Discovery owns the current job-listing state policy, use case, and persistence adapter until that boundary is earned. No empty context package is created in advance.
 
 ## Relationship
 

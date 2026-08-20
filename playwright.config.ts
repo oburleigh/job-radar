@@ -13,7 +13,7 @@ process.env.JOB_RADAR_E2E_DIRECTORY = databaseDirectory;
 
 export default defineConfig({
   testDir: "e2e",
-  globalTeardown: "./tests/teardown-playwright-database.ts",
+  globalTeardown: "./tests/support/teardown-playwright-database.ts",
   fullyParallel: true,
   forbidOnly: isCi,
   retries: isCi ? 2 : 0,
@@ -32,8 +32,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "pnpm db:setup && pnpm build && pnpm start --port 3100",
-    env: { DB_PATH: databasePath },
+    command: "pnpm db:setup && pnpm build && pnpm start",
+    env: { DB_PATH: databasePath, HOST: "127.0.0.1", PORT: "3100" },
     url: BASE_URL,
     reuseExistingServer: false,
     timeout: 120_000,

@@ -22,7 +22,7 @@ Job Radar combines broad web discovery with direct public ATS board imports. It 
 
 ## Operating Context
 
-The app runs as a local Next.js web application backed by SQLite. The user supplies a supported web search API key, creates one or more profiles, starts discovery from the Jobs page, and reviews query-level results in Run history. Known company boards can be refreshed directly without another paid web search.
+The app runs as a local React Router web application backed by SQLite. The user supplies a supported web search API key, creates one or more profiles, starts discovery from the Jobs page, and reviews query-level results in Run history. Known company boards can be refreshed directly without another paid web search.
 
 Profiles define target titles, locations, remote eligibility, required and excluded terms, age limits, score thresholds, unverified-lead handling, and an optional salary range. Jobs with missing salary data remain eligible. Salary comparison only excludes a known annual range when it uses the same currency and does not overlap the profile range.
 

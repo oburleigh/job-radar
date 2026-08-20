@@ -3,6 +3,8 @@ allowBuilds:
   esbuild: true
   lefthook: true
   sharp: true
+minimumReleaseAgeExclude:
+  - vite@8.2.2
 overrides:
   esbuild: 0.28.2
   postcss: 8.5.26

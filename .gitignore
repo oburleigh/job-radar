@@ -15,12 +15,9 @@
 /playwright-report/
 /test-results/
 
-# next.js
-/.next/
-/out/
-
-# production
+# generated web build and route types
 /build
+/.react-router/
 
 # misc
 .DS_Store
@@ -41,7 +38,6 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
 
 # local workspace data: SQLite, profiles, sources, runs, and exports
 /data/

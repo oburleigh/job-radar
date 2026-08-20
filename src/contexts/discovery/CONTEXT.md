@@ -46,14 +46,14 @@ _Avoid_: Search result, saved job
 
 ## Current boundary
 
-The hexagon owns search profiles, search-query planning, Discovery Run lifecycle, annual salary interpretation, and deterministic job matching. SQLite, web search, ATS protocols, background scheduling, Server Actions, and React components connect through adapters.
+The domain owns search-profile vocabulary, annual salary interpretation, job-listing state, and deterministic matching. The application owns search-query planning, the Discovery Run lifecycle, use-case orchestration, and the ports consumed by those use cases.
 
 Starting a Discovery Run has two stages:
 
 1. Reserve one active run for the selected search profile.
-2. Ask Next.js to execute that run after the HTTP response has been sent.
+2. Schedule execution on the next Node.js event-loop turn so the HTTP action can return immediately.
 
-The application owns both decisions. SQLite decides how a reservation is stored, and Next.js decides how deferred work is kept alive. A failed execution is written back only while the run is still active, so a late failure cannot overwrite a terminal state.
+The application owns both decisions. SQLite decides how a reservation is stored, and the background adapter decides how deferred work is scheduled. A failed execution is written back only while the run is still active, so a late failure cannot overwrite a terminal state.
 
 The job discovery use case owns the run sequence: load configured inputs, plan queries, call the selected search provider, record progress, refresh discovered boards, and evaluate matches. It depends on five application-owned contracts:
 
@@ -63,4 +63,4 @@ The job discovery use case owns the run sequence: load configured inputs, plan q
 - `JobDiscoveryCatalog` records results, verifies listings, and refreshes boards.
 - `JobMatchEvaluator` evaluates the latest saved profile against active listings.
 
-SQLite, ATS parsing, listing verification, and provider clients implement those contracts outside the hexagon. The Next.js route and the command-line script are composition roots. They choose the concrete adapters and supply the clock and cooperative event-loop yield function.
+Infrastructure implements those contracts with SQLite, ATS parsing, listing verification, provider clients, and background scheduling. Presentation owns React components, React Router route modules, request schemas, response DTOs, and HTTP translation. Modules in `composition` choose concrete infrastructure and supply clocks and cooperative event-loop yielding. Command-line scripts are separate executable composition roots. Reusable fakes live in `test-support` and cannot be imported by production code.

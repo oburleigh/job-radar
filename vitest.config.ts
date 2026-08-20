@@ -10,7 +10,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    globalSetup: ["./tests/setup-vitest-database.ts"],
+    globalSetup: ["./tests/support/setup-vitest-database.ts"],
     include: ["src/**/*.test.ts", "tests/architecture/**/*.test.ts"],
     coverage: {
       reporter: ["text", "html"],

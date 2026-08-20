@@ -3,10 +3,7 @@ import path from "node:path";
 
 import Database from "better-sqlite3";
 
-const databasePath = path.resolve(
-  /* turbopackIgnore: true */ process.cwd(),
-  process.env.DB_PATH ?? "data/job-radar.sqlite",
-);
+const databasePath = path.resolve(process.cwd(), process.env.DB_PATH ?? "data/job-radar.sqlite");
 
 fs.mkdirSync(path.dirname(databasePath), { recursive: true });
 
