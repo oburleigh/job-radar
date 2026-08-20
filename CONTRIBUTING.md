@@ -6,9 +6,10 @@ way for every contributor.
 ## Set up the repository
 
 ```bash
-npm ci
+corepack enable
+pnpm install --frozen-lockfile
 cp .env.example .env
-npm run db:setup
+pnpm db:setup
 ```
 
 Add one supported search provider key to `.env` before running a real
@@ -17,15 +18,15 @@ discovery. The database and credentials stay local and are not committed.
 ## Work locally
 
 ```bash
-npm run dev
-npm run check
-npm run build
+pnpm dev
+pnpm check
+pnpm build
 ```
 
-Use `npm run format` for Prettier and `npm run lint:fix` for ESLint fixes. Zod is
-the runtime boundary for form data and configurable provider or ATS settings.
-New input paths should be parsed before values enter the domain or database
-layers.
+Use `pnpm format` or `pnpm lint:fix` to apply Biome fixes. Zod is the runtime
+boundary for form data and configurable provider or ATS settings. New input
+paths should be parsed before values enter a context's hexagon or database
+adapter.
 
 ## Commit changes
 
@@ -50,6 +51,6 @@ docs(repo): explain clean database setup
 chore(tooling): update lint dependencies
 ```
 
-Husky runs lint-staged before a commit and Commitlint against the message. Run
-`npm run check` before handing work off; run `npm run build` when a change can
-affect the production bundle.
+Lefthook runs Biome against staged files and Commitlint against the message. It
+runs type checking and unit tests before a push. Run `pnpm check` before handing
+work off; run `pnpm build` when a change can affect the production bundle.

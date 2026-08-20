@@ -29,8 +29,8 @@ rule-based and does not call an LLM.
 
 ## Requirements
 
-- Node.js 20.9 or newer
-- npm
+- Node.js 24
+- pnpm 11 through Corepack
 - One supported web search API key
 - Network access to the selected search provider and public ATS endpoints
 
@@ -43,7 +43,8 @@ ATS registry changes at the application boundary.
 1. Install the locked dependencies.
 
    ```bash
-   npm ci
+   corepack enable
+   pnpm install --frozen-lockfile
    ```
 
 2. Copy the environment template.
@@ -65,13 +66,13 @@ ATS registry changes at the application boundary.
 4. Create the SQLite database and apply every migration.
 
    ```bash
-   npm run db:setup
+   pnpm db:setup
    ```
 
 5. Start the development server.
 
    ```bash
-   npm run dev
+   pnpm dev
    ```
 
 6. Open `http://localhost:3000`.
@@ -94,8 +95,8 @@ DB_PATH=./data/job-radar-fresh.sqlite
 ```
 
 ```bash
-npm run db:setup
-npm run dev
+pnpm db:setup
+pnpm dev
 ```
 
 Changing `DB_PATH` switches the whole workspace. Profiles and settings are
@@ -375,41 +376,41 @@ profile.
 Preview all generated queries without spending provider requests:
 
 ```bash
-npm run discover -- --profile 1 --dry-run
+pnpm discover --profile 1 --dry-run
 ```
 
 Preview one ATS:
 
 ```bash
-npm run discover -- --profile 1 --source ashby --dry-run
+pnpm discover --profile 1 --source ashby --dry-run
 ```
 
 Run discovery:
 
 ```bash
-npm run discover -- --profile 1 --provider serper
-npm run discover -- --profile 1 --provider brave
-npm run discover -- --profile 1 --provider serpapi
+pnpm discover --profile 1 --provider serper
+pnpm discover --profile 1 --provider brave
+pnpm discover --profile 1 --provider serpapi
 ```
 
 Run one ATS only:
 
 ```bash
-npm run discover -- --profile 1 --provider serper --source workday
+pnpm discover --profile 1 --provider serper --source workday
 ```
 
 Refresh all enabled known boards, or one ATS:
 
 ```bash
-npm run sync
-npm run sync -- --source greenhouse
+pnpm sync
+pnpm sync --source greenhouse
 ```
 
 Reprocess saved discovery hits and evaluate every profile without calling a
 search provider:
 
 ```bash
-npm run reindex
+pnpm reindex
 ```
 
 Reindex is useful after changing URL classification, search-result
@@ -419,8 +420,8 @@ data.
 Recheck saved LinkedIn jobs and deactivate closed or removed listings:
 
 ```bash
-npm run verify:linkedin
-npm run verify:linkedin -- --profile 1
+pnpm verify:linkedin
+pnpm verify:linkedin --profile 1
 ```
 
 The profile flag limits the second command to that profile's current LinkedIn
@@ -523,7 +524,7 @@ or returned zero hits.
 
 Then check:
 
-- the exact generated query with `npm run discover -- --profile ID --dry-run`
+- the exact generated query with `pnpm discover --profile ID --dry-run`
 - whether the ATS source pattern is enabled
 - title spelling and variants
 - location synonyms
@@ -548,7 +549,7 @@ public URL on Sources and refresh the board.
 Run the targeted verifier:
 
 ```bash
-npm run verify:linkedin -- --profile ID
+pnpm verify:linkedin --profile ID
 ```
 
 Future discovery runs also check each LinkedIn result before matching it. A
@@ -572,7 +573,7 @@ Review the ATS hostname and endpoint template on Settings before changing code.
 Run:
 
 ```bash
-npm run db:setup
+pnpm db:setup
 ```
 
 Also confirm that the app and CLI use the same `DB_PATH`.
@@ -582,7 +583,7 @@ Also confirm that the app and CLI use the same `DB_PATH`.
 Next.js prints the selected port when it starts. You can choose one explicitly:
 
 ```bash
-npm run dev -- --port 3001
+pnpm dev --port 3001
 ```
 
 ## Data and security
@@ -611,11 +612,12 @@ should only be used behind access controls you operate.
 ## Production-style local run
 
 ```bash
-npm ci
+corepack enable
+pnpm install --frozen-lockfile
 cp .env.example .env
-npm run db:setup
-npm run build
-npm start
+pnpm db:setup
+pnpm build
+pnpm start
 ```
 
 Keep the Node.js process alive while background discovery is running.
@@ -625,25 +627,26 @@ Keep the Node.js process alive while background discovery is running.
 Run the complete local check suite:
 
 ```bash
-npm run check
-npm run build
-npm audit
+pnpm check
+pnpm build
+pnpm audit
 ```
 
-`npm run check` runs Prettier in check mode, ESLint with the Next.js Core Web
-Vitals and TypeScript rules, the strict TypeScript compiler, and Vitest. Use
-`npm run format` and `npm run lint:fix` to apply safe local fixes.
+`pnpm check` runs Biome formatting and lint checks, the strict TypeScript
+compiler, and Vitest. Use `pnpm format` and `pnpm lint:fix` to apply safe local
+fixes.
 
-Husky installs the repository hooks during `npm ci`. The pre-commit hook runs
-ESLint and Prettier against staged files through lint-staged. The commit-message
-hook enforces scoped Conventional Commits through Commitlint. See
+Lefthook installs the repository hooks during `pnpm install`. The pre-commit
+hook runs Biome against staged files. The commit-message hook enforces scoped
+Conventional Commits through Commitlint, and the pre-push hook runs type
+checking and unit tests. See
 [`CONTRIBUTING.md`](CONTRIBUTING.md) for the accepted scopes and examples.
 
 After changing `src/db/schema.ts`, create a migration and apply it:
 
 ```bash
-npm run db:generate
-npm run db:migrate
+pnpm db:generate
+pnpm db:migrate
 ```
 
 This repository uses Next.js 16 conventions. Before changing application code,

@@ -10,8 +10,10 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
-/coverage
+# generated test and browser state
+/coverage/
+/playwright-report/
+/test-results/
 
 # next.js
 /.next/
@@ -41,20 +43,19 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# local database
-/data/*.sqlite
-/data/*.sqlite-shm
-/data/*.sqlite-wal
-
-# local discovery exports
-/data/exports/
+# local workspace data: SQLite, profiles, sources, runs, and exports
+/data/
 
 # local agent and design-tool state
-/.agents/skills/
-/.claude/skills/
-/.codex/skills/
+/AGENTS.md
+/CLAUDE.md
+/.agents/
+/.claude/
+/.codex/
 /.claude/settings.local.json
 /.impeccable/config.local.json
 /.impeccable/hook.cache.json
 /.impeccable/live/
 /.impeccable/review/
+/.impeccable/mocks/
+/.impeccable/surfaces/
