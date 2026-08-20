@@ -666,10 +666,12 @@ grouped by bounded context. The dependency direction, rather than a folder
 named `hexagon`, marks the ports-and-adapters boundary.
 
 ```text
+apps/
+└── web-docs/                         private Storybook application
+
 packages/
-├── design-system/tokens/             semantic CSS design tokens
-├── design-system/ui/                 generic React components and Storybook
-└── discovery/ui/                     Discovery-owned React components and view DTOs
+├── design-tokens/                    context-neutral semantic CSS tokens
+└── design-ui/                        context-neutral React components
 
 src/
 ├── contexts/
@@ -678,64 +680,57 @@ src/
 │       ├── domain/                   matching, salary, and job-state policy
 │       ├── application/              commands, results, use cases, and owned ports
 │       ├── infrastructure/           SQLite, search, ATS, and scheduler adapters
-│       ├── presentation/web/         routes, HTTP adapters, and request schemas
-│       ├── composition/              concrete context wiring
+│       ├── presentation/web/         React components, requests, and formatters
+│       ├── composition/web/          React Router delivery and concrete wiring
 │       └── test-support/             reusable fakes used only by tests
 └── platform/                         context-independent SQLite and HTTP mechanisms
 ```
 
 Dependencies point inward. Domain code imports only its own domain modules.
-Application code may import the Discovery domain, but it cannot import React Router,
-Zod, Drizzle, Node APIs, or an adapter. Infrastructure implements the ports
-owned by the application. Presentation does not import infrastructure.
-Context composition modules select concrete adapters and inject them into use
-cases. React Router's configured application directory is
-`src/contexts/discovery/presentation/web`; there is no framework-owned
-`src/app` layer.
+Application code may import the Discovery domain, but it cannot import React Router, Zod, Drizzle,
+Node APIs, or an adapter. Infrastructure implements application-owned ports. Presentation does not
+import infrastructure. Composition selects concrete adapters, injects clocks, and connects route
+requests to prepared use cases. React Router's application directory is
+`src/contexts/discovery/composition/web`; there is no framework-owned `src/app` layer.
 
 Each use case owns its command, result, and port DTOs. Zod request schemas live
 under `presentation/web/requests` and map untrusted HTTP input into application
-commands. Infrastructure validates and maps vendor, configuration, and
-persistence shapes beside the adapter that owns them. The repository does not
-use global `dto`, `types`, or `schemas` buckets.
+commands. Zod validates each external trust boundary: web input, vendor JSON, and SQLite-backed
+configuration. Domain factories validate reconstituted values such as currencies, salary ranges,
+and identifiers. The repository does not use global `dto`, `types`, or `schemas` buckets.
 
 The architecture test in `tests/architecture/context-boundaries.test.ts`
 enforces those dependency rules. Shared platform code cannot import a bounded
 context. Context-specific tables, read models, provider clients, and policy do
 not belong in `src/platform`.
 
-The design-system packages follow a separate dependency chain:
+The visual packages follow a separate dependency chain:
 
 ```text
 @job-radar/design-tokens
           ↑
-    @job-radar/ui
+ @job-radar/design-ui
           ↑
-@job-radar/discovery-ui
-          ↑
-      Job Radar app
+ Discovery presentation
 ```
 
 Tokens and generic UI are shared technical capabilities, not a DDD subdomain
-or shared kernel. `@job-radar/discovery-ui` remains owned by the Discovery
-bounded context. Its props are presentation DTOs, so the published package does
-not reach back into domain, application, infrastructure, or route modules.
+or shared kernel. Discovery-specific components remain inside the Discovery
+bounded context. A second product consumer is required before another shared
+package is created.
 
 See [`CONTEXT-MAP.md`](CONTEXT-MAP.md), the
-[Discovery context glossary](src/contexts/discovery/CONTEXT.md), and the
-[DDD and ports-and-adapters decision](docs/adr/0001-context-first-ddd-and-ports-adapters.md),
-and the [design-system package decision](docs/adr/0002-versioned-design-system-packages.md)
-for the maintained boundaries.
+[Discovery context glossary](src/contexts/discovery/CONTEXT.md), and
+[`DESIGN.md`](DESIGN.md) for the maintained boundaries.
 
 ## Design system packages
 
-The design system is split into independently versioned packages:
+The design system is split into two focused packages:
 
 | Package | Owns | Must not contain |
 | --- | --- | --- |
 | `@job-radar/design-tokens` | Semantic colour, type, spacing, radius, shadow, and motion tokens | React, HTML, routes, or product terms |
-| `@job-radar/ui` | Context-neutral components such as Button, TextField, Switch, Modal, Skeleton, and PageHeader | Discovery models, React Router, persistence, or provider code |
-| `@job-radar/discovery-ui` | Discovery navigation, profile forms, run controls, filters, job cards, and presentation DTOs | Application service construction, SQLite, search providers, or ATS adapters |
+| `@job-radar/design-ui` | Context-neutral components such as Button, IconButton, TextField, Switch, Modal, Skeleton, and PageHeader | Discovery models, React Router, persistence, or provider code |
 
 Run the generic component catalogue locally:
 
@@ -744,32 +739,12 @@ pnpm storybook
 ```
 
 Storybook opens on `http://localhost:6006`. Build the static catalogue with
-`pnpm storybook:build`. Context-specific stories do not belong in the generic
-catalogue; add a separate Storybook to a context package if its component set
-grows enough to justify one.
+`pnpm storybook:build`. The packages are workspace boundaries today; no publishing workflow or
+release tool is configured. Add one only when an external consumer requires independently released
+artifacts.
 
-Changesets manages independent SemVer releases. Add a release note whenever a
-published package contract changes:
-
-```bash
-pnpm changeset
-pnpm packages:build
-```
-
-Choose the affected packages and whether each change is patch, minor, or
-major. Commit the generated Markdown file with the code. On `main`, the release
-workflow creates or updates a version pull request. Merging that pull request
-publishes the pending packages.
-
-Publishing requires a repository secret named `NPM_TOKEN` with permission to
-publish the `@job-radar` namespace to npm. If that namespace is unavailable,
-change the three package names and their internal workspace dependencies before
-the first release. A different registry also requires changing `registry-url`
-in `.github/workflows/release.yml` and configuring that registry's token.
-
-The workspace uses pnpm directly. Turbo or Nx is not required for three small
-libraries and one application; add a task orchestrator when CI timings or a
-larger dependency graph provide a concrete reason.
+The workspace uses pnpm directly. Turbo or Nx is not required for two small libraries and one
+application. Add a task orchestrator only when CI timings or a larger dependency graph justify it.
 
 ## Development
 
@@ -777,14 +752,17 @@ Run the complete local check suite:
 
 ```bash
 pnpm check
+pnpm test:coverage
+pnpm test:mutation
 pnpm storybook:build
 pnpm test:e2e
 pnpm build
 pnpm audit
 ```
 
-`pnpm check` runs Biome formatting and lint checks, the strict TypeScript
-compiler, and Vitest. Use `pnpm format` and `pnpm lint:fix` to apply safe local
+`pnpm check` runs Biome formatting and lint checks, the strict TypeScript compiler, and Vitest.
+Coverage has enforced thresholds. Stryker mutates the Discovery domain and application layers and
+fails below the configured mutation score. Use `pnpm format` and `pnpm lint:fix` to apply safe local
 fixes.
 
 Vitest and Playwright migrate their own SQLite databases under the operating
@@ -795,7 +773,7 @@ Module behavior tests live beside their owner as `*.test.ts`. Repository-wide
 dependency tests live in `tests/architecture`, runner setup is in
 `tests/support`, and browser journeys live in `e2e`.
 
-Build only the versioned packages with `pnpm packages:build`. The root build
+Build only the shared packages with `pnpm packages:build`. The root build
 does this automatically before compiling the application. Workspace
 dependencies use `workspace:^`, which prevents a missing local package from
 silently resolving to a registry copy and becomes a normal compatible SemVer
@@ -815,6 +793,10 @@ and apply it:
 pnpm db:generate
 pnpm db:migrate
 ```
+
+Migrations contain DDL only. Product defaults for settings, ATS integrations, and source patterns
+are inserted idempotently by the bootstrap step after migration. Never place profiles, jobs, run
+history, local settings, or other developer data in a migration.
 
 Before changing React Router route modules, loaders, actions, or Vite build
 configuration, read the current official framework documentation and follow

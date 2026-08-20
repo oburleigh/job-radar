@@ -13,13 +13,14 @@
 # generated test and browser state
 /coverage/
 /playwright-report/
+/reports/
 /test-results/
 
 # generated web build and route types
 /build
 /.react-router/
 /packages/**/dist/
-/packages/design-system/ui/storybook-static/
+**/storybook-static/
 
 # misc
 .DS_Store
@@ -51,9 +52,4 @@ yarn-error.log*
 /.claude/
 /.codex/
 /.claude/settings.local.json
-/.impeccable/config.local.json
-/.impeccable/hook.cache.json
-/.impeccable/live/
-/.impeccable/review/
-/.impeccable/mocks/
-/.impeccable/surfaces/
+/.impeccable/

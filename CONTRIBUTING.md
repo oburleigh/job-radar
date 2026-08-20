@@ -23,10 +23,9 @@ pnpm check
 pnpm build
 ```
 
-Use `pnpm format` or `pnpm lint:fix` to apply Biome fixes. Zod is the runtime
-boundary for form data and configurable provider or ATS settings. New input
-paths should be parsed before values enter a context's hexagon or database
-adapter.
+Use `pnpm format` or `pnpm lint:fix` to apply Biome fixes. Zod validates web input, vendor JSON, and
+SQLite-backed configuration at the adapter that receives it. Domain factories validate values read
+from persistence. Do not pass unchecked external data into application or domain code.
 
 ## Commit changes
 
@@ -51,6 +50,7 @@ docs(repo): explain clean database setup
 chore(tooling): update lint dependencies
 ```
 
-Lefthook runs Biome against staged files and Commitlint against the message. It
-runs type checking and unit tests before a push. Run `pnpm check` before handing
-work off; run `pnpm build` when a change can affect the production bundle.
+Lefthook runs Biome against staged files and Commitlint against the message. It runs type checking
+and unit tests before a push. Run `pnpm check`, `pnpm test:coverage`, and `pnpm test:mutation` before
+handing off a production behaviour change. Run `pnpm build` when a change can affect the production
+bundle.
