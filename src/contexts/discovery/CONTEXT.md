@@ -43,3 +43,16 @@ _Avoid_: Match, job listing
 **Match**:
 The result of evaluating a job listing against one search profile. A match records the score and the reasons for inclusion or exclusion.
 _Avoid_: Search result, saved job
+
+## Current boundary
+
+The first two complete slices are search-profile persistence and Discovery Run startup. Their rules and use cases live in `hexagon/`; SQLite, web, background scheduling, and the existing search engine connect through adapters.
+
+Starting a Discovery Run has two stages:
+
+1. Reserve one active run for the selected search profile.
+2. Ask Next.js to execute that run after the HTTP response has been sent.
+
+The application owns both decisions. SQLite decides how a reservation is stored, and Next.js decides how deferred work is kept alive. A failed execution is written back only while the run is still active, so a late failure cannot overwrite a terminal state.
+
+The search engine itself still lives in `src/infrastructure/discovery/runner.ts`. `discovery-runner-search.ts` is a transition adapter around it. Move search planning, collection, verification, and matching inward as separate behavior-backed slices; do not copy the runner into this context wholesale.

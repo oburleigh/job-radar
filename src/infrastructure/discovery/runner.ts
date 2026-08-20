@@ -1,6 +1,6 @@
 import { setImmediate as yieldToEventLoop } from "node:timers/promises";
 
-import { and, desc, eq, inArray, isNull, lt, or } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { buildBoardDiscoveryQueries, buildQueries } from "@/application/discovery/queries";
 import {
   type AtsType,
@@ -48,75 +48,6 @@ export interface DiscoverySummary {
   matches: number;
   queryErrors: number;
   syncErrors: number;
-}
-
-export interface ReservedDiscoveryRun {
-  runId: number;
-  created: boolean;
-}
-
-export function failStaleDiscoveryRuns(now = new Date()): number {
-  const cutoff = new Date(now.getTime() - getJobRadarConfig().ui.discoveryStaleAfterMs);
-  return db
-    .update(discoveryRuns)
-    .set({
-      status: "failed",
-      error:
-        "The local app stopped receiving progress from this discovery. Start a new run to retry.",
-      finishedAt: now,
-    })
-    .where(
-      and(
-        eq(discoveryRuns.status, "running"),
-        or(
-          lt(discoveryRuns.heartbeatAt, cutoff),
-          and(isNull(discoveryRuns.heartbeatAt), lt(discoveryRuns.startedAt, cutoff)),
-        ),
-      ),
-    )
-    .run().changes;
-}
-
-export function reserveDiscoveryRun(profileId: number, providerName: string): ReservedDiscoveryRun {
-  const profile = db
-    .select({ id: searchProfiles.id })
-    .from(searchProfiles)
-    .where(eq(searchProfiles.id, profileId))
-    .get();
-  if (!profile) {
-    throw new Error(`Search profile ${profileId} was not found`);
-  }
-
-  failStaleDiscoveryRuns();
-
-  return db.transaction((transaction) => {
-    const existing = transaction
-      .select({ id: discoveryRuns.id })
-      .from(discoveryRuns)
-      .where(and(eq(discoveryRuns.profileId, profileId), eq(discoveryRuns.status, "running")))
-      .orderBy(desc(discoveryRuns.startedAt))
-      .get();
-    if (existing) {
-      return { runId: existing.id, created: false };
-    }
-
-    const now = new Date();
-    const run = transaction
-      .insert(discoveryRuns)
-      .values({
-        profileId,
-        provider: providerName,
-        status: "running",
-        startedAt: now,
-        heartbeatAt: now,
-      })
-      .returning({ id: discoveryRuns.id })
-      .get();
-    if (!run) {
-      throw new Error("Could not create a discovery run");
-    }
-    return { runId: run.id, created: true };
-  });
 }
 
 export async function runDiscovery(
@@ -331,6 +262,7 @@ export async function runDiscovery(
             }
           }
         }
+
         if ((index + 1) % config.discovery.workYieldBatchSize === 0) {
           await yieldToEventLoop();
         }

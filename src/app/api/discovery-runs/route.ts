@@ -1,21 +1,41 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import { after } from "next/server";
 import { z } from "zod";
 
+import { createAfterResponseDiscoveryRunScheduler } from "@/contexts/discovery/adapters/driven/background/after-response-discovery-run-scheduler";
+import { createDiscoveryRunnerSearch } from "@/contexts/discovery/adapters/driven/search/discovery-runner-search";
+import { createSqliteDiscoveryRunRegistry } from "@/contexts/discovery/adapters/driven/sqlite/discovery-run-registry";
+import { createStartDiscoveryRunRoute } from "@/contexts/discovery/adapters/driving/web/start-discovery-run-route";
+import { createDiscoveryRunExecution } from "@/contexts/discovery/hexagon/application/execute-discovery-run";
+import { createDiscoveryRunStarter } from "@/contexts/discovery/hexagon/application/start-discovery-run";
 import { getJobRadarConfig } from "@/infrastructure/config/job-radar";
 import { db } from "@/infrastructure/database/client";
 import { discoveryRuns, searchProfiles } from "@/infrastructure/database/schema";
-import {
-  failStaleDiscoveryRuns,
-  reserveDiscoveryRun,
-  runDiscovery,
-} from "@/infrastructure/discovery/runner";
 import { createSearchProvider } from "@/infrastructure/discovery/search";
 import { assertLocalHost } from "@/infrastructure/http/local-request";
 
-const startSchema = z.object({
-  profileId: z.number().int().positive(),
-  provider: z.string().trim().min(1),
+const runRegistry = createSqliteDiscoveryRunRegistry(db, {
+  now: () => new Date(),
+  staleAfterMs: () => getJobRadarConfig().ui.discoveryStaleAfterMs,
+});
+const runExecution = createDiscoveryRunExecution({
+  search: createDiscoveryRunnerSearch(),
+  registry: runRegistry,
+  now: () => new Date(),
+});
+const runScheduler = createAfterResponseDiscoveryRunScheduler({
+  afterResponse: after,
+  discoveryRuns: runExecution,
+  reportFailure: (message) => console.error(message),
+});
+const runStarter = createDiscoveryRunStarter({ registry: runRegistry, scheduler: runScheduler });
+const startDiscoveryRun = createStartDiscoveryRunRoute({
+  assertLocalRequest: (request) => assertLocalHost(request.headers.get("host") ?? ""),
+  isProviderConfigured: (name) => Boolean(getJobRadarConfig().searchProviders[name]),
+  assertProviderReady: (name) => {
+    createSearchProvider(name);
+  },
+  discoveryRuns: runStarter,
 });
 
 const idsSchema = z
@@ -30,7 +50,7 @@ const idsSchema = z
 
 export async function GET(request: Request) {
   assertLocalHost(request.headers.get("host") ?? "");
-  failStaleDiscoveryRuns();
+  runRegistry.failStale();
   const url = new URL(request.url);
   const idsParam = url.searchParams.get("ids");
   const activeOnly = url.searchParams.get("active") === "1";
@@ -80,52 +100,5 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  try {
-    assertLocalHost(request.headers.get("host") ?? "");
-    const input = startSchema.safeParse(await request.json());
-    if (!input.success || !getJobRadarConfig().searchProviders[input.data.provider]) {
-      return Response.json({ ok: false, message: "Invalid discovery request." }, { status: 400 });
-    }
-
-    const provider = createSearchProvider(input.data.provider);
-    const reserved = reserveDiscoveryRun(input.data.profileId, input.data.provider);
-    if (reserved.created) {
-      after(async () => {
-        try {
-          await runDiscovery(input.data.profileId, provider, {
-            runId: reserved.runId,
-          });
-        } catch (error) {
-          const message = errorMessage(error);
-          db.update(discoveryRuns)
-            .set({
-              status: "failed",
-              error: message,
-              finishedAt: new Date(),
-            })
-            .where(and(eq(discoveryRuns.id, reserved.runId), eq(discoveryRuns.status, "running")))
-            .run();
-          console.error(`Discovery run ${reserved.runId} failed: ${message}`);
-        }
-      });
-    }
-
-    return Response.json(
-      {
-        ok: true,
-        runId: reserved.runId,
-        alreadyRunning: !reserved.created,
-        message: reserved.created
-          ? `Discovery #${reserved.runId} is running in the background. You can keep using the app.`
-          : `Discovery #${reserved.runId} is already running for this profile.`,
-      },
-      { status: reserved.created ? 202 : 200 },
-    );
-  } catch (error) {
-    return Response.json({ ok: false, message: errorMessage(error) }, { status: 400 });
-  }
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  return startDiscoveryRun(request);
 }
