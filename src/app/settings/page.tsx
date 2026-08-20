@@ -2,7 +2,7 @@ import { Database, Plus } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/app/_components/page-header";
 import { ATS_TYPES } from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
-import { getSettingsData } from "@/contexts/discovery/adapters/driven/sqlite/radar-read-model";
+import { getSettingsData } from "@/contexts/discovery/adapters/driven/sqlite/read-models/settings";
 import { IntegrationSettingsForm } from "@/contexts/discovery/adapters/driving/web/integration-settings-form";
 import { RuntimeSettingsForm } from "@/contexts/discovery/adapters/driving/web/runtime-settings-form";
 

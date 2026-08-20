@@ -2,7 +2,7 @@ import { ArrowLeft, CheckCircle2, CircleAlert, LoaderCircle } from "lucide-react
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/app/_components/page-header";
-import { getRunDetail } from "@/contexts/discovery/adapters/driven/sqlite/radar-read-model";
+import { getRunDetail } from "@/contexts/discovery/adapters/driven/sqlite/read-models/runs";
 
 export const dynamic = "force-dynamic";
 

@@ -1,7 +1,7 @@
 import { Copy, Plus } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/app/_components/page-header";
-import { getProfiles } from "@/contexts/discovery/adapters/driven/sqlite/radar-read-model";
+import { getProfiles } from "@/contexts/discovery/adapters/driven/sqlite/read-models/profiles";
 import { DeleteProfileButton } from "@/contexts/discovery/adapters/driving/web/delete-profile-button";
 import { saveProfileAction } from "@/contexts/discovery/adapters/driving/web/profile-actions";
 import { ProfileForm } from "@/contexts/discovery/adapters/driving/web/profile-form";

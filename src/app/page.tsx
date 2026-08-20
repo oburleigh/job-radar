@@ -7,7 +7,7 @@ import { getSearchProviderOptions } from "@/contexts/discovery/adapters/driven/s
 import {
   getDashboardData,
   type JobState,
-} from "@/contexts/discovery/adapters/driven/sqlite/radar-read-model";
+} from "@/contexts/discovery/adapters/driven/sqlite/read-models/dashboard";
 import { JobCard } from "@/contexts/discovery/adapters/driving/web/job-card";
 import { JobFilters } from "@/contexts/discovery/adapters/driving/web/job-filters";
 import { RunControls } from "@/contexts/discovery/adapters/driving/web/run-controls";

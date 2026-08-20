@@ -1,7 +1,7 @@
 import { ArrowUpRight, Banknote, Building2, CalendarDays, MapPin } from "lucide-react";
 
 import type { AtsType } from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
-import type { JobState } from "@/contexts/discovery/adapters/driven/sqlite/radar-read-model";
+import type { JobState } from "@/contexts/discovery/adapters/driven/sqlite/read-models/dashboard";
 
 import { JobActions } from "./job-actions";
 

@@ -2,7 +2,7 @@ import { CheckCircle2, CircleAlert, DatabaseZap, Plus, Search } from "lucide-rea
 import Link from "next/link";
 import { PageHeader } from "@/app/_components/page-header";
 import { getAtsLabels } from "@/contexts/discovery/adapters/driven/job-sources/catalog";
-import { getSourcesData } from "@/contexts/discovery/adapters/driven/sqlite/radar-read-model";
+import { getSourcesData } from "@/contexts/discovery/adapters/driven/sqlite/read-models/sources";
 import { AddBoardForm } from "@/contexts/discovery/adapters/driving/web/add-board-form";
 import { SyncButton } from "@/contexts/discovery/adapters/driving/web/sync-button";
 import { ToggleButton } from "@/contexts/discovery/adapters/driving/web/toggle-button";

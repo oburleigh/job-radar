@@ -1,24 +1,22 @@
 import "server-only";
 
-import { and, asc, desc, eq } from "drizzle-orm";
-import { getJobRadarConfig } from "@/contexts/discovery/adapters/driven/configuration/job-radar-config";
+import { and, desc, eq } from "drizzle-orm";
 import type { AtsType } from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
 import { db } from "@/contexts/discovery/adapters/driven/sqlite/database";
 import {
-  atsIntegrations,
   companyBoards,
-  discoveryQueries,
   discoveryRuns,
   jobMatches,
   jobStates,
   jobs,
-  searchProfiles,
   sourceDomains,
 } from "@/contexts/discovery/adapters/driven/sqlite/schema";
 import {
   extractAnnualSalary,
   formatAnnualSalary,
 } from "@/contexts/discovery/hexagon/domain/annual-salary";
+
+import { getProfiles } from "./profiles";
 
 export type JobState = "new" | "saved" | "applied" | "hidden";
 
@@ -27,32 +25,6 @@ export interface JobFilters {
   atsType?: AtsType;
   state?: JobState | "all";
   query?: string;
-}
-
-export function getProfiles() {
-  return db
-    .select({
-      id: searchProfiles.id,
-      name: searchProfiles.name,
-      enabled: searchProfiles.enabled,
-      titleTerms: searchProfiles.titleTerms,
-      locationTerms: searchProfiles.locationTerms,
-      requiredJobTerms: searchProfiles.requiredJobTerms,
-      excludedTitleTerms: searchProfiles.excludedTitleTerms,
-      excludedLocationTerms: searchProfiles.excludedLocationTerms,
-      excludedDescriptionTerms: searchProfiles.excludedDescriptionTerms,
-      includeRemote: searchProfiles.includeRemote,
-      includeUnverified: searchProfiles.includeUnverified,
-      salaryCurrency: searchProfiles.salaryCurrency,
-      salaryMin: searchProfiles.salaryMin,
-      salaryMax: searchProfiles.salaryMax,
-      maxAgeDays: searchProfiles.maxAgeDays,
-      minScore: searchProfiles.minScore,
-      updatedAt: searchProfiles.updatedAt,
-    })
-    .from(searchProfiles)
-    .orderBy(searchProfiles.name)
-    .all();
 }
 
 export function getDashboardData(filters: JobFilters = {}) {
@@ -253,145 +225,4 @@ function normalizeDedupeText(value: string): string {
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
-}
-
-export function getSourcesData() {
-  return {
-    sources: db.select().from(sourceDomains).orderBy(sourceDomains.priority).all(),
-    boards: db
-      .select({
-        id: companyBoards.id,
-        atsType: companyBoards.atsType,
-        companyName: companyBoards.companyName,
-        slug: companyBoards.slug,
-        baseUrl: companyBoards.baseUrl,
-        enabled: companyBoards.enabled,
-        lastSyncedAt: companyBoards.lastSyncedAt,
-        lastError: companyBoards.lastError,
-      })
-      .from(companyBoards)
-      .orderBy(companyBoards.atsType, companyBoards.companyName)
-      .all(),
-  };
-}
-
-export function getRunsData() {
-  const { runHistoryLimit } = getJobRadarConfig().discovery;
-  return db
-    .select({
-      id: discoveryRuns.id,
-      profileName: searchProfiles.name,
-      provider: discoveryRuns.provider,
-      status: discoveryRuns.status,
-      queryCount: discoveryRuns.queryCount,
-      hitCount: discoveryRuns.hitCount,
-      boardsDiscovered: discoveryRuns.boardsDiscovered,
-      jobsUpserted: discoveryRuns.jobsUpserted,
-      matchesFound: discoveryRuns.matchesFound,
-      queryErrorCount: discoveryRuns.queryErrorCount,
-      syncErrorCount: discoveryRuns.syncErrorCount,
-      error: discoveryRuns.error,
-      startedAt: discoveryRuns.startedAt,
-      finishedAt: discoveryRuns.finishedAt,
-    })
-    .from(discoveryRuns)
-    .innerJoin(searchProfiles, eq(searchProfiles.id, discoveryRuns.profileId))
-    .orderBy(desc(discoveryRuns.startedAt))
-    .limit(runHistoryLimit)
-    .all();
-}
-
-export function getRunDetail(runId: number) {
-  const run = db
-    .select({
-      id: discoveryRuns.id,
-      profileId: discoveryRuns.profileId,
-      profileName: searchProfiles.name,
-      provider: discoveryRuns.provider,
-      status: discoveryRuns.status,
-      queryCount: discoveryRuns.queryCount,
-      hitCount: discoveryRuns.hitCount,
-      boardsDiscovered: discoveryRuns.boardsDiscovered,
-      jobsUpserted: discoveryRuns.jobsUpserted,
-      matchesFound: discoveryRuns.matchesFound,
-      queryErrorCount: discoveryRuns.queryErrorCount,
-      syncErrorCount: discoveryRuns.syncErrorCount,
-      error: discoveryRuns.error,
-      startedAt: discoveryRuns.startedAt,
-      finishedAt: discoveryRuns.finishedAt,
-    })
-    .from(discoveryRuns)
-    .innerJoin(searchProfiles, eq(searchProfiles.id, discoveryRuns.profileId))
-    .where(eq(discoveryRuns.id, runId))
-    .get();
-  if (!run) {
-    return null;
-  }
-
-  const queries = db
-    .select()
-    .from(discoveryQueries)
-    .where(eq(discoveryQueries.runId, runId))
-    .orderBy(
-      asc(discoveryQueries.atsType),
-      asc(discoveryQueries.titleTerm),
-      asc(discoveryQueries.sourcePattern),
-    )
-    .all();
-  const summary = Object.values(
-    queries.reduce<
-      Record<
-        string,
-        {
-          atsType: AtsType;
-          queryCount: number;
-          completedCount: number;
-          hitCount: number;
-          errorCount: number;
-        }
-      >
-    >((groups, query) => {
-      const current = groups[query.atsType] ?? {
-        atsType: query.atsType,
-        queryCount: 0,
-        completedCount: 0,
-        hitCount: 0,
-        errorCount: 0,
-      };
-      current.queryCount += 1;
-      current.completedCount += Number(query.status === "completed");
-      current.hitCount += query.hitCount;
-      current.errorCount += Number(query.status === "failed");
-      groups[query.atsType] = current;
-      return groups;
-    }, {}),
-  ).sort((left, right) => left.atsType.localeCompare(right.atsType));
-
-  return { run, queries, summary };
-}
-
-export function getSettingsData() {
-  const config = getJobRadarConfig();
-  const sources = db.select().from(sourceDomains).orderBy(sourceDomains.priority).all();
-  const integrations = db
-    .select()
-    .from(atsIntegrations)
-    .orderBy(atsIntegrations.priority)
-    .all()
-    .map((integration) => ({
-      ...integration,
-      searchPatterns: sources
-        .filter((source) => source.atsType === integration.atsType)
-        .map((source) => source.pattern),
-    }));
-
-  return {
-    network: config.network,
-    discovery: config.discovery,
-    ui: config.ui,
-    matching: config.matching,
-    searchProviders: config.searchProviders,
-    integrationPolicy: config.integrationPolicy,
-    integrations,
-  };
 }
