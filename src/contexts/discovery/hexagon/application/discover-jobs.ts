@@ -2,6 +2,7 @@ import type { DiscoveryRunExecution } from "./discovery-run";
 import type { DiscoveryRunJournal, DiscoveryRunProgress } from "./discovery-run-journal";
 import type { DiscoverySetupReader } from "./discovery-setup";
 import type { JobDiscoveryCatalog } from "./job-discovery-catalog";
+import type { JobMatchEvaluator } from "./job-match-evaluator";
 import { planBoardDiscoveryQueries, planSearchQueries } from "./plan-search-queries";
 import type { SearchProviderDirectory } from "./search-provider-directory";
 
@@ -32,6 +33,7 @@ type JobDiscoveryDependencies = {
   readonly setup: DiscoverySetupReader;
   readonly runs: DiscoveryRunJournal;
   readonly jobs: JobDiscoveryCatalog;
+  readonly matches: JobMatchEvaluator;
   readonly providers: SearchProviderDirectory;
   readonly now: () => Date;
   readonly yieldControl: () => Promise<void>;
@@ -41,6 +43,7 @@ export function createJobDiscovery({
   setup,
   runs,
   jobs,
+  matches,
   providers,
   now,
   yieldControl,
@@ -143,7 +146,7 @@ export function createJobDiscovery({
         }
 
         matchesFound = (
-          await jobs.evaluateMatches(command.profileId, () => {
+          await matches.evaluate(command.profileId, () => {
             runs.recordProgress(run.id, progress(), now());
           })
         ).matched;

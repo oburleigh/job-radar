@@ -19,8 +19,4 @@ export interface JobDiscoveryCatalog {
     boardId: number,
     jobLimit: number,
   ) => Promise<{ readonly jobsWritten: number; readonly error: string }>;
-  readonly evaluateMatches: (
-    profileId: number,
-    onBatch: () => void,
-  ) => Promise<{ readonly matched: number }>;
 }

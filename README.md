@@ -672,7 +672,7 @@ src/
 │       ├── CONTEXT.md                Discovery language and ownership
 │       ├── hexagon/
 │       │   ├── domain/               deterministic matching and salary policy
-│       │   └── application/          use cases and owned port contracts
+│       │   └── application/          query planning, run orchestration, and owned ports
 │       ├── adapters/
 │       │   ├── driving/web/          forms, Server Actions, and route adapters
 │       │   └── driven/               SQLite, search, ATS, and scheduler adapters

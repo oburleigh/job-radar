@@ -15,8 +15,7 @@ import { classifyUrl } from "@/contexts/discovery/adapters/driven/job-sources/ur
 import type { JobDiscoveryCatalog } from "@/contexts/discovery/hexagon/application/job-discovery-catalog";
 
 import type { db } from "./database";
-import { companyBoards, discoveryHits, searchProfiles } from "./schema";
-import { evaluateAndStore } from "./store-matches";
+import { companyBoards, discoveryHits } from "./schema";
 import {
   deactivateSearchJob,
   upsertSearchResult,
@@ -122,17 +121,6 @@ export function createSqliteJobDiscoveryCatalog(database: Database): JobDiscover
       }
       const result = await syncBoard(board, jobLimit);
       return { jobsWritten: result.created + result.updated, error: result.error };
-    },
-    async evaluateMatches(profileId, onBatch) {
-      const profile = database
-        .select()
-        .from(searchProfiles)
-        .where(eq(searchProfiles.id, profileId))
-        .get();
-      if (!profile) {
-        throw new Error(`Search profile ${profileId} was not found`);
-      }
-      return evaluateAndStore(profile, { onBatch });
     },
   };
 }

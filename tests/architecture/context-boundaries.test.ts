@@ -22,6 +22,7 @@ describe("context boundaries", () => {
     expect(contexts.map((context) => context.name)).toContain("discovery");
     for (const context of contexts) {
       const contextRoot = path.join(contextsRoot, context.name);
+      expect(existsSync(path.join(contextRoot, "CONTEXT.md")), context.name).toBe(true);
       expect(sourceFiles(path.join(contextRoot, "hexagon")), context.name).not.toEqual([]);
       expect(sourceFiles(path.join(contextRoot, "adapters")), context.name).not.toEqual([]);
     }

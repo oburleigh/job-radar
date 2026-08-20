@@ -55,4 +55,12 @@ Starting a Discovery Run has two stages:
 
 The application owns both decisions. SQLite decides how a reservation is stored, and Next.js decides how deferred work is kept alive. A failed execution is written back only while the run is still active, so a late failure cannot overwrite a terminal state.
 
-`adapters/driven/search/discovery-runner.ts` still coordinates provider calls, URL classification, SQLite writes, board refresh, and final evaluation. It remains outside the hexagon because those concrete dependencies have not yet been replaced by application-owned conversations. Move that orchestration inward one behavior-backed port at a time. Do not relabel the existing runner as application policy while it imports concrete adapters.
+The job discovery use case owns the run sequence: load configured inputs, plan queries, call the selected search provider, record progress, refresh discovered boards, and evaluate matches. It depends on five application-owned contracts:
+
+- `DiscoverySetupReader` supplies the profile, enabled sources, and typed discovery policy.
+- `DiscoveryRunJournal` records run and query lifecycle changes.
+- `SearchProviderDirectory` selects a configured web search provider by name.
+- `JobDiscoveryCatalog` records results, verifies listings, and refreshes boards.
+- `JobMatchEvaluator` evaluates the latest saved profile against active listings.
+
+SQLite, ATS parsing, listing verification, and provider clients implement those contracts outside the hexagon. The Next.js route and the command-line script are composition roots. They choose the concrete adapters and supply the clock and cooperative event-loop yield function.

@@ -1,0 +1,25 @@
+import { eq } from "drizzle-orm";
+
+import type { JobMatchEvaluator } from "@/contexts/discovery/hexagon/application/job-match-evaluator";
+
+import type { db } from "./database";
+import { searchProfiles } from "./schema";
+import { evaluateAndStore } from "./store-matches";
+
+type Database = typeof db;
+
+export function createSqliteJobMatchEvaluator(database: Database): JobMatchEvaluator {
+  return {
+    async evaluate(profileId, onBatch) {
+      const profile = database
+        .select()
+        .from(searchProfiles)
+        .where(eq(searchProfiles.id, profileId))
+        .get();
+      if (!profile) {
+        throw new Error(`Search profile ${profileId} was not found`);
+      }
+      return evaluateAndStore(profile, { onBatch });
+    },
+  };
+}

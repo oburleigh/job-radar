@@ -29,6 +29,9 @@ const { createSqliteDiscoveryRunJournal } = await import(
 const { createSqliteJobDiscoveryCatalog } = await import(
   "@/contexts/discovery/adapters/driven/sqlite/sqlite-job-discovery-catalog"
 );
+const { createSqliteJobMatchEvaluator } = await import(
+  "@/contexts/discovery/adapters/driven/sqlite/sqlite-job-match-evaluator"
+);
 
 describe("discovery concurrency", () => {
   beforeAll(() => {
@@ -176,6 +179,7 @@ function createDiscovery(provider: SearchProvider) {
     setup: createSqliteDiscoverySetup(db),
     runs: createSqliteDiscoveryRunJournal(db),
     jobs: createSqliteJobDiscoveryCatalog(db),
+    matches: createSqliteJobMatchEvaluator(db),
     providers: { get: () => provider },
     now: () => new Date(),
     yieldControl: () => new Promise((resolve) => setImmediate(resolve)),

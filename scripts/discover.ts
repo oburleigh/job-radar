@@ -17,6 +17,7 @@ import {
   sourceDomains,
 } from "../src/contexts/discovery/adapters/driven/sqlite/schema";
 import { createSqliteJobDiscoveryCatalog } from "../src/contexts/discovery/adapters/driven/sqlite/sqlite-job-discovery-catalog";
+import { createSqliteJobMatchEvaluator } from "../src/contexts/discovery/adapters/driven/sqlite/sqlite-job-match-evaluator";
 import { createJobDiscovery } from "../src/contexts/discovery/hexagon/application/discover-jobs";
 import {
   planBoardDiscoveryQueries,
@@ -76,6 +77,7 @@ async function main() {
     setup: createSqliteDiscoverySetup(db),
     runs: createSqliteDiscoveryRunJournal(db),
     jobs: createSqliteJobDiscoveryCatalog(db),
+    matches: createSqliteJobMatchEvaluator(db),
     providers: createWebSearchProviderDirectory(),
     now: () => new Date(),
     yieldControl: () => yieldToEventLoop(),

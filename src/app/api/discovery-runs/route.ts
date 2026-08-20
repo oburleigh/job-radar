@@ -14,6 +14,7 @@ import { createSqliteDiscoveryRunJournal } from "@/contexts/discovery/adapters/d
 import { createSqliteDiscoveryRunRegistry } from "@/contexts/discovery/adapters/driven/sqlite/discovery-run-registry";
 import { discoveryRuns, searchProfiles } from "@/contexts/discovery/adapters/driven/sqlite/schema";
 import { createSqliteJobDiscoveryCatalog } from "@/contexts/discovery/adapters/driven/sqlite/sqlite-job-discovery-catalog";
+import { createSqliteJobMatchEvaluator } from "@/contexts/discovery/adapters/driven/sqlite/sqlite-job-match-evaluator";
 import { createStartDiscoveryRunRoute } from "@/contexts/discovery/adapters/driving/web/start-discovery-run-route";
 import { createJobDiscovery } from "@/contexts/discovery/hexagon/application/discover-jobs";
 import { createDiscoveryRunExecution } from "@/contexts/discovery/hexagon/application/execute-discovery-run";
@@ -29,6 +30,7 @@ const runExecution = createDiscoveryRunExecution({
     setup: createSqliteDiscoverySetup(db),
     runs: createSqliteDiscoveryRunJournal(db),
     jobs: createSqliteJobDiscoveryCatalog(db),
+    matches: createSqliteJobMatchEvaluator(db),
     providers: createWebSearchProviderDirectory(),
     now: () => new Date(),
     yieldControl: () => yieldToEventLoop(),

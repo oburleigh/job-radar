@@ -31,7 +31,8 @@ describe("discover jobs", () => {
     const discovery = createJobDiscovery({
       setup: configuredSetup(),
       runs: journal,
-      jobs: { recordHit, synchronizeBoard, evaluateMatches },
+      jobs: { recordHit, synchronizeBoard },
+      matches: { evaluate: evaluateMatches },
       providers: providerDirectory(search),
       now: () => timestamp,
       yieldControl,
@@ -79,8 +80,8 @@ describe("discover jobs", () => {
       jobs: {
         recordHit: vi.fn(),
         synchronizeBoard: vi.fn(),
-        evaluateMatches: vi.fn(async () => ({ matched: 0 })),
       },
+      matches: { evaluate: vi.fn(async () => ({ matched: 0 })) },
       providers: providerDirectory(async () => {
         throw new Error("Search provider timed out");
       }),
@@ -118,8 +119,8 @@ describe("discover jobs", () => {
           throw new Error("Could not store search result");
         },
         synchronizeBoard: vi.fn(),
-        evaluateMatches: vi.fn(),
       },
+      matches: { evaluate: vi.fn() },
       providers: providerDirectory(async () => [
         { title: "VP Engineering", url: "https://example.com/job", snippet: "Dubai" },
       ]),
