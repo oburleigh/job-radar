@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { assertLocalHost } from "./local-request";
+import { assertLocalHost } from "./require-local-request";
 
 const originalAllowRemoteUi = process.env.ALLOW_REMOTE_UI;
 

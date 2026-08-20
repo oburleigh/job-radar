@@ -2,10 +2,23 @@ import { setImmediate as yieldToEventLoop } from "node:timers/promises";
 
 import { and, eq, inArray } from "drizzle-orm";
 import {
+  getJobRadarConfig,
+  supportsBoardSync,
+} from "@/contexts/discovery/adapters/driven/configuration/job-radar-config";
+import {
   type AtsType,
   type BoardIdentity,
   isBuiltInAtsType,
 } from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
+import { db } from "@/contexts/discovery/adapters/driven/sqlite/database";
+import {
+  companyBoards,
+  discoveryHits,
+  discoveryQueries,
+  discoveryRuns,
+  searchProfiles,
+  sourceDomains,
+} from "@/contexts/discovery/adapters/driven/sqlite/schema";
 import {
   planBoardDiscoveryQueries,
   planSearchQueries,
@@ -14,16 +27,6 @@ import type {
   SearchProvider,
   SearchResult,
 } from "@/contexts/discovery/hexagon/application/search-provider";
-import { getJobRadarConfig, supportsBoardSync } from "@/infrastructure/config/job-radar";
-import { db } from "@/infrastructure/database/client";
-import {
-  companyBoards,
-  discoveryHits,
-  discoveryQueries,
-  discoveryRuns,
-  searchProfiles,
-  sourceDomains,
-} from "@/infrastructure/database/schema";
 import { fetchLinkedInJob } from "./linkedin";
 import { inferLocationHint } from "./search-result";
 import { evaluateAndStore } from "./store-matches";

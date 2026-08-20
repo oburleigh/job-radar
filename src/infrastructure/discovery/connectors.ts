@@ -1,9 +1,13 @@
+import {
+  endpoint,
+  getAtsIntegration,
+  getJobRadarConfig,
+} from "@/contexts/discovery/adapters/driven/configuration/job-radar-config";
 import type {
   AtsType,
   BoardInput,
   RawJob,
 } from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
-import { endpoint, getAtsIntegration, getJobRadarConfig } from "@/infrastructure/config/job-radar";
 
 interface FetchOptions {
   limit?: number;

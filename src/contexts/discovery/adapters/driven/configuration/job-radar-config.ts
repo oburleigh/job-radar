@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { ATS_TYPES } from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
+import { db } from "@/contexts/discovery/adapters/driven/sqlite/database";
+import { appSettings, atsIntegrations } from "@/contexts/discovery/adapters/driven/sqlite/schema";
 import type { MatchingPolicy } from "@/contexts/discovery/hexagon/domain/job-match";
-import { db } from "@/infrastructure/database/client";
-import { appSettings, atsIntegrations } from "@/infrastructure/database/schema";
 
 const networkSchema = z.object({
   timeoutMs: z.number().int().positive(),

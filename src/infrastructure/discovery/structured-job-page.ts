@@ -1,8 +1,8 @@
+import { getJobRadarConfig } from "@/contexts/discovery/adapters/driven/configuration/job-radar-config";
 import type {
   AtsType,
   RawJob,
 } from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
-import { getJobRadarConfig } from "@/infrastructure/config/job-radar";
 
 export type StructuredJobPageLookup =
   | { status: "verified"; job: RawJob }

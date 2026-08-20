@@ -1,7 +1,6 @@
 import { and, desc, eq, isNull, lt, or } from "drizzle-orm";
-
-import type { db } from "@/infrastructure/database/client";
-import { discoveryRuns, searchProfiles } from "@/infrastructure/database/schema";
+import type { db } from "@/contexts/discovery/adapters/driven/sqlite/database";
+import { discoveryRuns, searchProfiles } from "@/contexts/discovery/adapters/driven/sqlite/schema";
 
 import type {
   DiscoveryRunRegistry,

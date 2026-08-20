@@ -4,7 +4,7 @@ import { Save } from "lucide-react";
 import { useActionState } from "react";
 
 import { type ActionState, saveRuntimeSettingsAction } from "@/app/actions";
-import type { JobRadarConfig } from "@/infrastructure/config/job-radar";
+import type { JobRadarConfig } from "@/contexts/discovery/adapters/driven/configuration/job-radar-config";
 
 interface RuntimeSettingsFormProps {
   settings: Pick<

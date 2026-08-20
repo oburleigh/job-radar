@@ -1,5 +1,8 @@
+import {
+  endpoint,
+  getJobRadarConfig,
+} from "@/contexts/discovery/adapters/driven/configuration/job-radar-config";
 import type { RawJob } from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
-import { endpoint, getJobRadarConfig } from "@/infrastructure/config/job-radar";
 
 export type LinkedInLookup =
   | { status: "verified"; job: RawJob }

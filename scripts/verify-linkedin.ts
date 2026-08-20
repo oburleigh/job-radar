@@ -1,9 +1,12 @@
 import "dotenv/config";
 
 import { and, eq, inArray } from "drizzle-orm";
-
-import { db } from "../src/infrastructure/database/client";
-import { jobMatches, jobs, searchProfiles } from "../src/infrastructure/database/schema";
+import { db } from "../src/contexts/discovery/adapters/driven/sqlite/database";
+import {
+  jobMatches,
+  jobs,
+  searchProfiles,
+} from "../src/contexts/discovery/adapters/driven/sqlite/schema";
 import { fetchLinkedInJob } from "../src/infrastructure/discovery/linkedin";
 import { evaluateAndStore } from "../src/infrastructure/discovery/store-matches";
 import {

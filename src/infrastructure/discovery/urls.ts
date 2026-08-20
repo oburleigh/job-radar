@@ -1,16 +1,15 @@
 import { createHash } from "node:crypto";
-
+import {
+  getAtsIntegration,
+  getJobRadarConfig,
+  hostMatches,
+} from "@/contexts/discovery/adapters/driven/configuration/job-radar-config";
 import type {
   AtsType,
   BoardIdentity,
   ClassifiedUrl,
 } from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
 import { isBuiltInAtsType } from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
-import {
-  getAtsIntegration,
-  getJobRadarConfig,
-  hostMatches,
-} from "@/infrastructure/config/job-radar";
 
 const IDENTITY_QUERY_KEYS = new Set(["for", "gh_jid"]);
 

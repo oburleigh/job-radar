@@ -1,8 +1,7 @@
 import { CheckCircle2, CircleAlert, DatabaseZap, Plus, Search } from "lucide-react";
 import Link from "next/link";
-
+import { getSourcesData } from "@/contexts/discovery/adapters/driven/sqlite/radar-read-model";
 import { getAtsLabels } from "@/infrastructure/discovery/catalog";
-import { getSourcesData } from "@/infrastructure/read-models/radar";
 import { AddBoardForm } from "@/presentation/components/add-board-form";
 import { PageHeader } from "@/presentation/components/page-header";
 import { SyncButton } from "@/presentation/components/sync-button";

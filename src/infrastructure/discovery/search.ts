@@ -1,9 +1,9 @@
+import { getJobRadarConfig } from "@/contexts/discovery/adapters/driven/configuration/job-radar-config";
 import type {
   SearchProvider,
   SearchRequest,
   SearchResult,
 } from "@/contexts/discovery/hexagon/application/search-provider";
-import { getJobRadarConfig } from "@/infrastructure/config/job-radar";
 
 export class BraveSearchProvider implements SearchProvider {
   readonly name = "brave";

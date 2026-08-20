@@ -1,7 +1,6 @@
 import { eq } from "drizzle-orm";
-
-import type { db } from "@/infrastructure/database/client";
-import { searchProfiles } from "@/infrastructure/database/schema";
+import type { db } from "@/contexts/discovery/adapters/driven/sqlite/database";
+import { searchProfiles } from "@/contexts/discovery/adapters/driven/sqlite/schema";
 
 import type { SearchProfileRepository } from "../../../hexagon/application/save-search-profile";
 import type { SearchProfileDefinition } from "../../../hexagon/domain/search-profile";

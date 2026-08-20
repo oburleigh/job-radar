@@ -14,8 +14,11 @@ const testDirectory = mkdtempSync(path.join(tmpdir(), "job-radar-runner-concurre
 const previousDatabasePath = process.env.DB_PATH;
 process.env.DB_PATH = path.join(testDirectory, "job-radar.sqlite");
 
-const { db, sqlite } = await import("@/infrastructure/database/client");
-const { searchProfiles, sourceDomains } = await import("@/infrastructure/database/schema");
+const { db } = await import("@/contexts/discovery/adapters/driven/sqlite/database");
+const { sqlite } = await import("@/platform/sqlite/client");
+const { searchProfiles, sourceDomains } = await import(
+  "@/contexts/discovery/adapters/driven/sqlite/schema"
+);
 const { runDiscovery } = await import("./runner");
 
 describe("discovery concurrency", () => {

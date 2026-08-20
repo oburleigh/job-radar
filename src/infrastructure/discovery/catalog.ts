@@ -1,5 +1,5 @@
+import { getJobRadarConfig } from "@/contexts/discovery/adapters/driven/configuration/job-radar-config";
 import type { AtsType } from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
-import { getJobRadarConfig } from "@/infrastructure/config/job-radar";
 
 export function getAtsLabels(): Record<AtsType, string> {
   const config = getJobRadarConfig();

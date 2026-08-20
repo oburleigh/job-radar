@@ -5,7 +5,7 @@ import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import * as schema from "@/infrastructure/database/schema";
+import * as schema from "@/contexts/discovery/adapters/driven/sqlite/schema";
 
 import type { SearchProfileDefinition } from "../../../hexagon/domain/search-profile";
 import { createSqliteSearchProfileRepository } from "./search-profile-repository";

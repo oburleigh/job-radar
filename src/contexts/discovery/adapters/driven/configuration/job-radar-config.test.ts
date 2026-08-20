@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { db } from "@/contexts/discovery/adapters/driven/sqlite/database";
+import { sourceDomains } from "@/contexts/discovery/adapters/driven/sqlite/schema";
 
-import { db } from "@/infrastructure/database/client";
-import { sourceDomains } from "@/infrastructure/database/schema";
-
-import { endpoint, getJobRadarConfig, hostMatches, supportsBoardSync } from "./job-radar";
+import { endpoint, getJobRadarConfig, hostMatches, supportsBoardSync } from "./job-radar-config";
 
 describe("SQLite configuration", () => {
   it("loads every supported ATS adapter from the database", () => {

@@ -3,16 +3,16 @@ import { after } from "next/server";
 import { z } from "zod";
 
 import { createAfterResponseDiscoveryRunScheduler } from "@/contexts/discovery/adapters/driven/background/after-response-discovery-run-scheduler";
+import { getJobRadarConfig } from "@/contexts/discovery/adapters/driven/configuration/job-radar-config";
 import { createDiscoveryRunnerSearch } from "@/contexts/discovery/adapters/driven/search/discovery-runner-search";
+import { db } from "@/contexts/discovery/adapters/driven/sqlite/database";
 import { createSqliteDiscoveryRunRegistry } from "@/contexts/discovery/adapters/driven/sqlite/discovery-run-registry";
+import { discoveryRuns, searchProfiles } from "@/contexts/discovery/adapters/driven/sqlite/schema";
 import { createStartDiscoveryRunRoute } from "@/contexts/discovery/adapters/driving/web/start-discovery-run-route";
 import { createDiscoveryRunExecution } from "@/contexts/discovery/hexagon/application/execute-discovery-run";
 import { createDiscoveryRunStarter } from "@/contexts/discovery/hexagon/application/start-discovery-run";
-import { getJobRadarConfig } from "@/infrastructure/config/job-radar";
-import { db } from "@/infrastructure/database/client";
-import { discoveryRuns, searchProfiles } from "@/infrastructure/database/schema";
 import { createSearchProvider } from "@/infrastructure/discovery/search";
-import { assertLocalHost } from "@/infrastructure/http/local-request";
+import { assertLocalHost } from "@/platform/http/require-local-request";
 
 const runRegistry = createSqliteDiscoveryRunRegistry(db, {
   now: () => new Date(),

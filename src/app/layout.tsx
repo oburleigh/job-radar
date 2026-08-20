@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { connection } from "next/server";
 
-import { getJobRadarConfig } from "@/infrastructure/config/job-radar";
+import { getJobRadarConfig } from "@/contexts/discovery/adapters/driven/configuration/job-radar-config";
 import { AppNavigation } from "@/presentation/components/app-navigation";
 import { DiscoveryNotifications } from "@/presentation/components/discovery-notifications";
 

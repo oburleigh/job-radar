@@ -4,8 +4,8 @@ import type {
   AtsType,
   RawJob,
 } from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
-import { db } from "@/infrastructure/database/client";
-import { companyBoards, jobs } from "@/infrastructure/database/schema";
+import { db } from "@/contexts/discovery/adapters/driven/sqlite/database";
+import { companyBoards, jobs } from "@/contexts/discovery/adapters/driven/sqlite/schema";
 
 import { normalizeSearchResult } from "./search-result";
 import { canonicalizeUrl, makeDedupeKey } from "./urls";

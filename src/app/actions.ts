@@ -5,20 +5,16 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-
-import {
-  ATS_TYPES,
-  isBuiltInAtsType,
-} from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
-import { createSqliteSearchProfileRepository } from "@/contexts/discovery/adapters/driven/sqlite/search-profile-repository";
-import { createSaveProfileAction } from "@/contexts/discovery/adapters/driving/web/save-profile-action";
-import { createSaveSearchProfile } from "@/contexts/discovery/hexagon/application/save-search-profile";
 import {
   getAtsIntegration,
   getJobRadarConfig,
   supportsBoardSync,
-} from "@/infrastructure/config/job-radar";
-import { db } from "@/infrastructure/database/client";
+} from "@/contexts/discovery/adapters/driven/configuration/job-radar-config";
+import {
+  ATS_TYPES,
+  isBuiltInAtsType,
+} from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
+import { db } from "@/contexts/discovery/adapters/driven/sqlite/database";
 import {
   appSettings,
   atsIntegrations,
@@ -26,11 +22,14 @@ import {
   jobStates,
   searchProfiles,
   sourceDomains,
-} from "@/infrastructure/database/schema";
+} from "@/contexts/discovery/adapters/driven/sqlite/schema";
+import { createSqliteSearchProfileRepository } from "@/contexts/discovery/adapters/driven/sqlite/search-profile-repository";
+import { createSaveProfileAction } from "@/contexts/discovery/adapters/driving/web/save-profile-action";
+import { createSaveSearchProfile } from "@/contexts/discovery/hexagon/application/save-search-profile";
 import { suggestSearchIntegration } from "@/infrastructure/discovery/custom-integration";
 import { syncEnabledBoards } from "@/infrastructure/discovery/sync";
 import { classifyUrl } from "@/infrastructure/discovery/urls";
-import { assertLocalHost } from "@/infrastructure/http/local-request";
+import { assertLocalHost } from "@/platform/http/require-local-request";
 
 export interface ActionState {
   ok: boolean;

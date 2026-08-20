@@ -1,14 +1,19 @@
 import "dotenv/config";
 
 import { eq } from "drizzle-orm";
-
+import {
+  getJobRadarConfig,
+  supportsBoardSync,
+} from "../src/contexts/discovery/adapters/driven/configuration/job-radar-config";
+import { db } from "../src/contexts/discovery/adapters/driven/sqlite/database";
+import {
+  searchProfiles,
+  sourceDomains,
+} from "../src/contexts/discovery/adapters/driven/sqlite/schema";
 import {
   planBoardDiscoveryQueries,
   planSearchQueries,
 } from "../src/contexts/discovery/hexagon/application/plan-search-queries";
-import { getJobRadarConfig, supportsBoardSync } from "../src/infrastructure/config/job-radar";
-import { db } from "../src/infrastructure/database/client";
-import { searchProfiles, sourceDomains } from "../src/infrastructure/database/schema";
 import { runDiscovery } from "../src/infrastructure/discovery/runner";
 import {
   createSearchProvider,

@@ -6,7 +6,7 @@ import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 
-import * as schema from "../src/infrastructure/database/schema";
+import * as schema from "../src/contexts/discovery/adapters/driven/sqlite/schema";
 
 export default function setupVitestDatabase() {
   const directory = mkdtempSync(path.join(tmpdir(), "job-radar-vitest-"));

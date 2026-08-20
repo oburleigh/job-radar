@@ -1,14 +1,9 @@
 import "server-only";
 
 import { and, asc, desc, eq } from "drizzle-orm";
-
+import { getJobRadarConfig } from "@/contexts/discovery/adapters/driven/configuration/job-radar-config";
 import type { AtsType } from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
-import {
-  extractAnnualSalary,
-  formatAnnualSalary,
-} from "@/contexts/discovery/hexagon/domain/annual-salary";
-import { getJobRadarConfig } from "@/infrastructure/config/job-radar";
-import { db } from "@/infrastructure/database/client";
+import { db } from "@/contexts/discovery/adapters/driven/sqlite/database";
 import {
   atsIntegrations,
   companyBoards,
@@ -19,7 +14,11 @@ import {
   jobs,
   searchProfiles,
   sourceDomains,
-} from "@/infrastructure/database/schema";
+} from "@/contexts/discovery/adapters/driven/sqlite/schema";
+import {
+  extractAnnualSalary,
+  formatAnnualSalary,
+} from "@/contexts/discovery/hexagon/domain/annual-salary";
 
 export type JobState = "new" | "saved" | "applied" | "hidden";
 
