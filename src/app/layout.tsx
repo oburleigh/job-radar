@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 
-import { AppNavigation } from "@/components/app-navigation";
-import { DiscoveryNotifications } from "@/components/discovery-notifications";
-import { getJobRadarConfig } from "@/config/job-radar";
+import { getJobRadarConfig } from "@/infrastructure/config/job-radar";
+import { AppNavigation } from "@/presentation/components/app-navigation";
+import { DiscoveryNotifications } from "@/presentation/components/discovery-notifications";
 
 import "@fontsource/barlow-condensed/latin-700.css";
 import "@fontsource/barlow-condensed/latin-800.css";

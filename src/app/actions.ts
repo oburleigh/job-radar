@@ -1,12 +1,22 @@
 "use server";
 
-import { headers } from "next/headers";
+import { eq, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { and, eq, ne } from "drizzle-orm";
 import { z } from "zod";
 
-import { db } from "@/db/client";
+import { DEFAULT_CUSTOM_INTEGRATION_PRIORITY } from "@/application/discovery/integration-policy";
+import { ATS_TYPES, isBuiltInAtsType } from "@/application/discovery/types";
+import { createSqliteSearchProfileRepository } from "@/contexts/discovery/adapters/driven/sqlite/search-profile-repository";
+import { createSaveProfileAction } from "@/contexts/discovery/adapters/driving/web/save-profile-action";
+import { createSaveSearchProfile } from "@/contexts/discovery/hexagon/application/save-search-profile";
+import {
+  getAtsIntegration,
+  getJobRadarConfig,
+  supportsBoardSync,
+} from "@/infrastructure/config/job-radar";
+import { db } from "@/infrastructure/database/client";
 import {
   appSettings,
   atsIntegrations,
@@ -14,69 +24,16 @@ import {
   jobStates,
   searchProfiles,
   sourceDomains,
-} from "@/db/schema";
-import { ATS_TYPES } from "@/lib/discovery/types";
-import { getAtsIntegration, getJobRadarConfig, supportsBoardSync } from "@/config/job-radar";
-import { suggestSearchIntegration } from "@/lib/discovery/custom-integration";
-import { syncEnabledBoards } from "@/lib/discovery/sync";
-import { isBuiltInAtsType } from "@/lib/discovery/types";
-import { classifyUrl } from "@/lib/discovery/urls";
-import { assertLocalHost } from "@/lib/local-request";
+} from "@/infrastructure/database/schema";
+import { suggestSearchIntegration } from "@/infrastructure/discovery/custom-integration";
+import { syncEnabledBoards } from "@/infrastructure/discovery/sync";
+import { classifyUrl } from "@/infrastructure/discovery/urls";
+import { assertLocalHost } from "@/infrastructure/http/local-request";
 
 export interface ActionState {
   ok: boolean;
   message: string;
 }
-
-const optionalSalaryAmount = z.preprocess(
-  (value) => (value === "" || value === null ? null : value),
-  z.coerce.number().int().positive().max(100_000_000).nullable(),
-);
-
-const profileSchema = z
-  .object({
-    id: z.coerce.number().int().positive().optional(),
-    name: z.string().trim().min(2).max(120),
-    titleTerms: z.string().transform(splitLines).pipe(z.array(z.string()).min(1)),
-    locationTerms: z.string().transform(splitLines).pipe(z.array(z.string()).min(1)),
-    requiredJobTerms: z.string().transform(splitLines),
-    excludedTitleTerms: z.string().transform(splitLines),
-    excludedLocationTerms: z.string().transform(splitLines),
-    excludedDescriptionTerms: z.string().transform(splitLines),
-    includeRemote: z.coerce.boolean(),
-    includeUnverified: z.coerce.boolean(),
-    salaryCurrency: z
-      .string()
-      .trim()
-      .transform((value) => value.toUpperCase())
-      .refine((value) => value === "" || /^[A-Z]{3}$/.test(value), {
-        message: "Salary currency must be a three-letter code such as GBP.",
-      }),
-    salaryMin: optionalSalaryAmount,
-    salaryMax: optionalSalaryAmount,
-    maxAgeDays: z.coerce.number().int().min(1).max(365),
-    minScore: z.coerce.number().int().min(0).max(100),
-  })
-  .superRefine((profile, context) => {
-    if ((profile.salaryMin !== null || profile.salaryMax !== null) && !profile.salaryCurrency) {
-      context.addIssue({
-        code: "custom",
-        path: ["salaryCurrency"],
-        message: "Add a salary currency when setting a salary range.",
-      });
-    }
-    if (
-      profile.salaryMin !== null &&
-      profile.salaryMax !== null &&
-      profile.salaryMin > profile.salaryMax
-    ) {
-      context.addIssue({
-        code: "custom",
-        path: ["salaryMax"],
-        message: "Salary maximum must be at least the salary minimum.",
-      });
-    }
-  });
 
 const boardSchema = z.object({
   url: z.url(),
@@ -95,7 +52,11 @@ const runtimeSettingsSchema = z.object({
   resultsPerQuery: z.coerce.number().int().min(1).max(100),
   boardJobLimit: z.coerce.number().int().min(1).max(2000),
   searchFreshnessDays: z.coerce.number().int().min(0).max(365),
+  workYieldBatchSize: z.coerce.number().int().min(1).max(1000),
+  runHistoryLimit: z.coerce.number().int().min(1).max(1000),
   titleSearchMode: z.enum(["title", "anywhere"]),
+  structuredVerificationSources: z.string().transform(splitLines),
+  closedListingMarkers: z.string().transform(splitLines).pipe(z.array(z.string()).min(1)),
   discoveryPollIntervalMs: z.coerce.number().int().min(1000).max(60000),
   discoveryStaleAfterMs: z.coerce.number().int().min(60000).max(3600000),
   exactTitleScore: z.coerce.number().int().min(0).max(100),
@@ -111,6 +72,7 @@ const runtimeSettingsSchema = z.object({
   stopWords: z.string().transform(splitLines),
   genericTitleTerms: z.string().transform(splitLines).pipe(z.array(z.string()).min(1)),
   remoteTerms: z.string().transform(splitLines).pipe(z.array(z.string()).min(1)),
+  unrestrictedRemotePhrases: z.string().transform(splitLines).pipe(z.array(z.string()).min(1)),
   searchProviders: z.record(
     z.string().min(1),
     z.object({
@@ -150,106 +112,17 @@ const integrationSettingsSchema = z.object({
   }),
 });
 
-export async function saveProfileAction(
-  _previous: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
-  await assertLocalRequest();
-  const parsed = profileSchema.safeParse({
-    id: optionalFormValue(formData, "id"),
-    name: formData.get("name"),
-    titleTerms: formData.get("titleTerms"),
-    locationTerms: formData.get("locationTerms"),
-    requiredJobTerms: formData.get("requiredJobTerms") ?? "",
-    excludedTitleTerms: formData.get("excludedTitleTerms") ?? "",
-    excludedLocationTerms: formData.get("excludedLocationTerms") ?? "",
-    excludedDescriptionTerms: formData.get("excludedDescriptionTerms") ?? "",
-    includeRemote: formData.get("includeRemote") === "on",
-    includeUnverified: formData.get("includeUnverified") === "on",
-    salaryCurrency: formData.get("salaryCurrency") ?? "",
-    salaryMin: formData.get("salaryMin"),
-    salaryMax: formData.get("salaryMax"),
-    maxAgeDays: formData.get("maxAgeDays"),
-    minScore: formData.get("minScore"),
-  });
+const saveSearchProfile = createSaveSearchProfile({
+  profiles: createSqliteSearchProfileRepository(db),
+  now: () => new Date(),
+});
 
-  if (!parsed.success) {
-    return {
-      ok: false,
-      message: parsed.error.issues[0]?.message ?? "Invalid profile",
-    };
-  }
-
-  const values = parsed.data;
-  const duplicate = db
-    .select({ id: searchProfiles.id })
-    .from(searchProfiles)
-    .where(
-      values.id
-        ? and(eq(searchProfiles.name, values.name), ne(searchProfiles.id, values.id))
-        : eq(searchProfiles.name, values.name),
-    )
-    .get();
-  if (duplicate) {
-    return { ok: false, message: "A profile with that name already exists." };
-  }
-
-  const now = new Date();
-  let createdId: number | undefined;
-  if (values.id) {
-    db.update(searchProfiles)
-      .set({
-        name: values.name,
-        titleTerms: values.titleTerms,
-        locationTerms: values.locationTerms,
-        requiredJobTerms: values.requiredJobTerms,
-        excludedTitleTerms: values.excludedTitleTerms,
-        excludedLocationTerms: values.excludedLocationTerms,
-        excludedDescriptionTerms: values.excludedDescriptionTerms,
-        includeRemote: values.includeRemote,
-        includeUnverified: values.includeUnverified,
-        salaryCurrency: values.salaryCurrency,
-        salaryMin: values.salaryMin,
-        salaryMax: values.salaryMax,
-        maxAgeDays: values.maxAgeDays,
-        minScore: values.minScore,
-        updatedAt: now,
-      })
-      .where(eq(searchProfiles.id, values.id))
-      .run();
-  } else {
-    createdId = db
-      .insert(searchProfiles)
-      .values({
-        name: values.name,
-        titleTerms: values.titleTerms,
-        locationTerms: values.locationTerms,
-        requiredJobTerms: values.requiredJobTerms,
-        excludedTitleTerms: values.excludedTitleTerms,
-        excludedLocationTerms: values.excludedLocationTerms,
-        excludedDescriptionTerms: values.excludedDescriptionTerms,
-        includeRemote: values.includeRemote,
-        includeUnverified: values.includeUnverified,
-        salaryCurrency: values.salaryCurrency,
-        salaryMin: values.salaryMin,
-        salaryMax: values.salaryMax,
-        maxAgeDays: values.maxAgeDays,
-        minScore: values.minScore,
-        enabled: true,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning({ id: searchProfiles.id })
-      .get().id;
-  }
-
-  revalidatePath("/");
-  revalidatePath("/profiles");
-  if (createdId) {
-    redirect(`/profiles?profile=${createdId}`);
-  }
-  return { ok: true, message: "Profile saved." };
-}
+export const saveProfileAction = createSaveProfileAction({
+  assertLocalRequest,
+  saveSearchProfile,
+  revalidatePath,
+  redirect,
+});
 
 export async function deleteProfileAction(profileId: number): Promise<ActionState> {
   let destination = "/profiles?new=1";
@@ -395,7 +268,7 @@ export async function addBoardAction(
   const suggestion = suggestSearchIntegration(parsed.data.url, existingIds);
   const atsType = classified?.atsType ?? suggestion.atsType;
   const existingIntegration = classified ? getAtsIntegration(classified.atsType) : null;
-  const priority = existingIntegration?.priority ?? 200;
+  const priority = existingIntegration?.priority ?? DEFAULT_CUSTOM_INTEGRATION_PRIORITY;
   const now = new Date();
 
   db.transaction((transaction) => {
@@ -536,7 +409,11 @@ export async function saveRuntimeSettingsAction(
         resultsPerQuery: values.resultsPerQuery,
         boardJobLimit: values.boardJobLimit,
         searchFreshnessDays: values.searchFreshnessDays,
+        workYieldBatchSize: values.workYieldBatchSize,
+        runHistoryLimit: values.runHistoryLimit,
         titleSearchMode: values.titleSearchMode,
+        structuredVerificationSources: values.structuredVerificationSources,
+        closedListingMarkers: values.closedListingMarkers,
       },
     },
     {
@@ -555,6 +432,7 @@ export async function saveRuntimeSettingsAction(
         stopWords: values.stopWords,
         genericTitleTerms: values.genericTitleTerms,
         remoteTerms: values.remoteTerms,
+        unrestrictedRemotePhrases: values.unrestrictedRemotePhrases,
       },
     },
     {
@@ -754,11 +632,6 @@ function splitLines(value: string): string[] {
         .filter(Boolean),
     ),
   ];
-}
-
-function optionalFormValue(formData: FormData, key: string): FormDataEntryValue | undefined {
-  const value = formData.get(key);
-  return value === null || value === "" ? undefined : value;
 }
 
 function hostnameFromPattern(pattern: string): string {

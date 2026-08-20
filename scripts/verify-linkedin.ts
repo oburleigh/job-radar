@@ -2,14 +2,14 @@ import "dotenv/config";
 
 import { and, eq, inArray } from "drizzle-orm";
 
-import { db } from "../src/db/client";
-import { jobMatches, jobs, searchProfiles } from "../src/db/schema";
-import { fetchLinkedInJob } from "../src/lib/discovery/linkedin";
-import { evaluateAndStore } from "../src/lib/discovery/store-matches";
+import { db } from "../src/infrastructure/database/client";
+import { jobMatches, jobs, searchProfiles } from "../src/infrastructure/database/schema";
+import { fetchLinkedInJob } from "../src/infrastructure/discovery/linkedin";
+import { evaluateAndStore } from "../src/infrastructure/discovery/store-matches";
 import {
   deactivateSearchJob,
   upsertVerifiedSearchJob,
-} from "../src/lib/discovery/store-search-result";
+} from "../src/infrastructure/discovery/store-search-result";
 
 interface VerificationCounts {
   checked: number;

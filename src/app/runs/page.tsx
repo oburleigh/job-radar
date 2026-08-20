@@ -1,8 +1,8 @@
 import { CheckCircle2, CircleAlert, Clock3, LoaderCircle } from "lucide-react";
 import Link from "next/link";
 
-import { PageHeader } from "@/components/page-header";
-import { getRunsData } from "@/data/radar";
+import { getRunsData } from "@/infrastructure/read-models/radar";
+import { PageHeader } from "@/presentation/components/page-header";
 
 export const dynamic = "force-dynamic";
 

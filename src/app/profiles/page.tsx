@@ -1,10 +1,11 @@
 import { Copy, Plus } from "lucide-react";
 import Link from "next/link";
 
-import { PageHeader } from "@/components/page-header";
-import { ProfileForm } from "@/components/profile-form";
-import { DeleteProfileButton } from "@/components/delete-profile-button";
-import { getProfiles } from "@/data/radar";
+import { saveProfileAction } from "@/app/actions";
+import { ProfileForm } from "@/contexts/discovery/adapters/driving/web/profile-form";
+import { getProfiles } from "@/infrastructure/read-models/radar";
+import { DeleteProfileButton } from "@/presentation/components/delete-profile-button";
+import { PageHeader } from "@/presentation/components/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -95,6 +96,7 @@ export default async function ProfilesPage({ searchParams }: ProfilesPageProps) 
             <h2>{selected?.name ?? "New search profile"}</h2>
           </div>
           <ProfileForm
+            saveProfile={saveProfileAction}
             key={
               cloneSource ? `clone-${cloneSource.id}` : selectedId ? `profile-${selectedId}` : "new"
             }

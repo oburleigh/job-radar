@@ -1,12 +1,12 @@
 import { CheckCircle2, CircleAlert, DatabaseZap, Plus, Search } from "lucide-react";
 import Link from "next/link";
 
-import { AddBoardForm } from "@/components/add-board-form";
-import { PageHeader } from "@/components/page-header";
-import { SyncButton } from "@/components/sync-button";
-import { ToggleButton } from "@/components/toggle-button";
-import { getSourcesData } from "@/data/radar";
-import { getAtsLabels } from "@/lib/discovery/catalog";
+import { getAtsLabels } from "@/infrastructure/discovery/catalog";
+import { getSourcesData } from "@/infrastructure/read-models/radar";
+import { AddBoardForm } from "@/presentation/components/add-board-form";
+import { PageHeader } from "@/presentation/components/page-header";
+import { SyncButton } from "@/presentation/components/sync-button";
+import { ToggleButton } from "@/presentation/components/toggle-button";
 
 export const dynamic = "force-dynamic";
 

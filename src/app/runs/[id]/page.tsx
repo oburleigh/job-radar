@@ -2,8 +2,8 @@ import { ArrowLeft, CheckCircle2, CircleAlert, LoaderCircle } from "lucide-react
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { PageHeader } from "@/components/page-header";
-import { getRunDetail } from "@/data/radar";
+import { getRunDetail } from "@/infrastructure/read-models/radar";
+import { PageHeader } from "@/presentation/components/page-header";
 
 export const dynamic = "force-dynamic";
 

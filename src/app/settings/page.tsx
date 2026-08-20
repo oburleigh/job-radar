@@ -1,11 +1,11 @@
 import { Database, Plus } from "lucide-react";
 import Link from "next/link";
 
-import { IntegrationSettingsForm } from "@/components/integration-settings-form";
-import { PageHeader } from "@/components/page-header";
-import { RuntimeSettingsForm } from "@/components/runtime-settings-form";
-import { getSettingsData } from "@/data/radar";
-import { ATS_TYPES } from "@/lib/discovery/types";
+import { ATS_TYPES } from "@/application/discovery/types";
+import { getSettingsData } from "@/infrastructure/read-models/radar";
+import { IntegrationSettingsForm } from "@/presentation/components/integration-settings-form";
+import { PageHeader } from "@/presentation/components/page-header";
+import { RuntimeSettingsForm } from "@/presentation/components/runtime-settings-form";
 
 export const dynamic = "force-dynamic";
 

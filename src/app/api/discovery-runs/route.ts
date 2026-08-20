@@ -2,12 +2,16 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { after } from "next/server";
 import { z } from "zod";
 
-import { getJobRadarConfig } from "@/config/job-radar";
-import { db } from "@/db/client";
-import { discoveryRuns, searchProfiles } from "@/db/schema";
-import { failStaleDiscoveryRuns, reserveDiscoveryRun, runDiscovery } from "@/lib/discovery/runner";
-import { createSearchProvider } from "@/lib/discovery/search";
-import { assertLocalHost } from "@/lib/local-request";
+import { getJobRadarConfig } from "@/infrastructure/config/job-radar";
+import { db } from "@/infrastructure/database/client";
+import { discoveryRuns, searchProfiles } from "@/infrastructure/database/schema";
+import {
+  failStaleDiscoveryRuns,
+  reserveDiscoveryRun,
+  runDiscovery,
+} from "@/infrastructure/discovery/runner";
+import { createSearchProvider } from "@/infrastructure/discovery/search";
+import { assertLocalHost } from "@/infrastructure/http/local-request";
 
 const startSchema = z.object({
   profileId: z.number().int().positive(),

@@ -617,6 +617,14 @@ textarea:focus-visible {
   font-size: 11px;
 }
 
+table td small {
+  display: block;
+  margin-top: 4px;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+  font-size: 8px;
+}
+
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -679,6 +687,10 @@ textarea:focus-visible {
 .metric-card small {
   color: var(--ink-faint);
   font-size: 10px;
+}
+
+table td a:hover {
+  text-decoration: underline;
 }
 
 .filter-bar {
@@ -1694,18 +1706,6 @@ tbody tr:hover {
 td a {
   color: var(--cobalt-deep);
   font-weight: 700;
-}
-
-td a:hover {
-  text-decoration: underline;
-}
-
-td small {
-  display: block;
-  margin-top: 4px;
-  color: var(--ink-faint);
-  font-family: var(--font-mono);
-  font-size: 8px;
 }
 
 .run-panel {

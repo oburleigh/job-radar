@@ -141,6 +141,27 @@
       "when": 1786182154000,
       "tag": "0019_add_crypto_sources_and_expand_uae_window",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1787040000000,
+      "tag": "0020_configure_remote_phrase_policy",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "6",
+      "when": 1787043600000,
+      "tag": "0021_configure_structured_verification",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "6",
+      "when": 1787047200000,
+      "tag": "0022_configure_discovery_runtime_limits",
+      "breakpoints": true
     }
   ]
 }

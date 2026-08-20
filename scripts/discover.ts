@@ -2,12 +2,15 @@ import "dotenv/config";
 
 import { eq } from "drizzle-orm";
 
-import { db } from "../src/db/client";
-import { getJobRadarConfig, supportsBoardSync } from "../src/config/job-radar";
-import { searchProfiles, sourceDomains } from "../src/db/schema";
-import { buildBoardDiscoveryQueries, buildQueries } from "../src/lib/discovery/queries";
-import { runDiscovery } from "../src/lib/discovery/runner";
-import { createSearchProvider, getSearchProviderOptions } from "../src/lib/discovery/search";
+import { buildBoardDiscoveryQueries, buildQueries } from "../src/application/discovery/queries";
+import { getJobRadarConfig, supportsBoardSync } from "../src/infrastructure/config/job-radar";
+import { db } from "../src/infrastructure/database/client";
+import { searchProfiles, sourceDomains } from "../src/infrastructure/database/schema";
+import { runDiscovery } from "../src/infrastructure/discovery/runner";
+import {
+  createSearchProvider,
+  getSearchProviderOptions,
+} from "../src/infrastructure/discovery/search";
 
 async function main() {
   const args = process.argv.slice(2);
@@ -44,6 +47,7 @@ async function main() {
       profile,
       sources,
       config.searchProviders[providerName]?.titleSearchMode ?? config.discovery.titleSearchMode,
+      [...config.matching.remoteTerms, ...config.matching.unrestrictedRemotePhrases],
     );
     const boardQueries = buildBoardDiscoveryQueries(
       profile,

@@ -1,13 +1,18 @@
 import "dotenv/config";
 
-import { eq } from "drizzle-orm";
 import { setImmediate as yieldToEventLoop } from "node:timers/promises";
+import { eq } from "drizzle-orm";
 
-import { db } from "../src/db/client";
-import { companyBoards, discoveryHits, searchProfiles } from "../src/db/schema";
-import { evaluateAndStore } from "../src/lib/discovery/store-matches";
-import { upsertSearchResult } from "../src/lib/discovery/store-search-result";
-import { classifyUrl } from "../src/lib/discovery/urls";
+import { getJobRadarConfig } from "../src/infrastructure/config/job-radar";
+import { db } from "../src/infrastructure/database/client";
+import {
+  companyBoards,
+  discoveryHits,
+  searchProfiles,
+} from "../src/infrastructure/database/schema";
+import { evaluateAndStore } from "../src/infrastructure/discovery/store-matches";
+import { upsertSearchResult } from "../src/infrastructure/discovery/store-search-result";
+import { classifyUrl } from "../src/infrastructure/discovery/urls";
 
 async function main() {
   const boards = new Map(
@@ -21,6 +26,7 @@ async function main() {
       .map((board) => [board.canonicalKey, board.id]),
   );
   const hits = db.select().from(discoveryHits).all();
+  const { workYieldBatchSize } = getJobRadarConfig().discovery;
   let reprocessed = 0;
 
   for (const [index, hit] of hits.entries()) {
@@ -43,7 +49,7 @@ async function main() {
       .where(eq(discoveryHits.id, hit.id))
       .run();
     reprocessed += 1;
-    if ((index + 1) % 25 === 0) {
+    if ((index + 1) % workYieldBatchSize === 0) {
       await yieldToEventLoop();
     }
   }

@@ -1,6 +1,6 @@
 import "dotenv/config";
 
-import { syncEnabledBoards } from "../src/lib/discovery/sync";
+import { syncEnabledBoards } from "../src/infrastructure/discovery/sync";
 
 async function main() {
   const sourceValue = valueAfter(process.argv.slice(2), "--source");

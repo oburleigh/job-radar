@@ -642,7 +642,8 @@ Conventional Commits through Commitlint, and the pre-push hook runs type
 checking and unit tests. See
 [`CONTRIBUTING.md`](CONTRIBUTING.md) for the accepted scopes and examples.
 
-After changing `src/db/schema.ts`, create a migration and apply it:
+After changing `src/infrastructure/database/schema.ts`, create a migration and
+apply it:
 
 ```bash
 pnpm db:generate

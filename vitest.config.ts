@@ -10,7 +10,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "tests/architecture/**/*.test.ts"],
     coverage: {
       reporter: ["text", "html"],
     },
