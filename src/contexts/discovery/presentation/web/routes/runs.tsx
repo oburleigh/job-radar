@@ -1,7 +1,7 @@
+import { PageHeader } from "@job-radar/ui";
 import { CheckCircle2, CircleAlert, Clock3, LoaderCircle } from "lucide-react";
 import { Link, useLoaderData } from "react-router";
 import { discoveryWeb } from "../../../composition/discovery-web.server";
-import { PageHeader } from "../components/page-header";
 
 export function loader() {
   return { runs: discoveryWeb.getRunsData() };

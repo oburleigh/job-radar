@@ -1,7 +1,7 @@
 import { Save } from "lucide-react";
 import { useFetcher } from "react-router";
-import type { MatchingPolicy } from "@/contexts/discovery/domain/job-match";
-import type { ActionState } from "../action-state";
+import type { ActionState } from "./action-state.js";
+import type { MatchingPolicyView } from "./contracts.js";
 
 export interface RuntimeSettingsViewModel {
   network: {
@@ -22,7 +22,7 @@ export interface RuntimeSettingsViewModel {
     discoveryPollIntervalMs: number;
     discoveryStaleAfterMs: number;
   };
-  matching: MatchingPolicy;
+  matching: MatchingPolicyView;
   searchProviders: Record<
     string,
     {

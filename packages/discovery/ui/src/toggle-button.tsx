@@ -1,3 +1,4 @@
+import { Switch } from "@job-radar/ui";
 import { useOptimistic, useTransition } from "react";
 import { useFetcher } from "react-router";
 
@@ -29,16 +30,12 @@ export function ToggleButton({ id, enabled, kind, label }: ToggleButtonProps) {
   }
 
   return (
-    <button
+    <Switch
+      checked={optimistic}
       className={`toggle${optimistic ? " toggle-on" : ""}`}
-      type="button"
-      role="switch"
-      aria-checked={optimistic}
-      aria-label={`${optimistic ? "Disable" : "Enable"} ${label}`}
       disabled={pending}
-      onClick={toggle}
-    >
-      <span />
-    </button>
+      label={`${optimistic ? "Disable" : "Enable"} ${label}`}
+      onCheckedChange={toggle}
+    />
   );
 }

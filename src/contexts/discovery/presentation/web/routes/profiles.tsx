@@ -1,10 +1,9 @@
+import { DeleteProfileButton, ProfileForm } from "@job-radar/discovery-ui";
+import { PageHeader } from "@job-radar/ui";
 import { Copy, Plus } from "lucide-react";
 import { type ActionFunctionArgs, Link, redirect, useLoaderData } from "react-router";
 import { assertLocalHost } from "@/platform/http/require-local-request";
 import { discoveryWeb } from "../../../composition/discovery-web.server";
-import { DeleteProfileButton } from "../components/delete-profile-button";
-import { PageHeader } from "../components/page-header";
-import { ProfileForm } from "../components/profile-form";
 import { parseProfileRequest } from "../requests/profile-request";
 
 export function loader({ request }: { readonly request: Request }) {

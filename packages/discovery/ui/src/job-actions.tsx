@@ -1,12 +1,13 @@
 import { Bookmark, Check, Eye, EyeOff } from "lucide-react";
 import { useOptimistic, useTransition } from "react";
 import { useFetcher } from "react-router";
-import type { JobListingState } from "@/contexts/discovery/domain/job-listing-state";
+
+import type { JobListingStateView } from "./contracts.js";
 
 interface JobActionsProps {
   profileId: number;
   jobId: number;
-  initialState: JobListingState;
+  initialState: JobListingStateView;
 }
 
 export function JobActions({ profileId, jobId, initialState }: JobActionsProps) {
@@ -14,7 +15,7 @@ export function JobActions({ profileId, jobId, initialState }: JobActionsProps) 
   const [state, setOptimisticState] = useOptimistic(initialState);
   const [isPending, startTransition] = useTransition();
 
-  function update(nextState: JobListingState) {
+  function update(nextState: JobListingStateView) {
     startTransition(async () => {
       setOptimisticState(nextState);
       await fetcher.submit(

@@ -1,12 +1,10 @@
+import { AddBoardForm, SyncButton, ToggleButton } from "@job-radar/discovery-ui";
+import { PageHeader } from "@job-radar/ui";
 import { CheckCircle2, CircleAlert, DatabaseZap, Plus, Search } from "lucide-react";
 import { type ActionFunctionArgs, Link, useLoaderData } from "react-router";
 import { assertLocalHost } from "@/platform/http/require-local-request";
 import type { AddJobSourceResult } from "../../../application/source-coverage/add/result";
 import { discoveryWeb } from "../../../composition/discovery-web.server";
-import { AddBoardForm } from "../components/add-board-form";
-import { PageHeader } from "../components/page-header";
-import { SyncButton } from "../components/sync-button";
-import { ToggleButton } from "../components/toggle-button";
 import { parseAddJobSourceRequest } from "../requests/add-job-source-request";
 
 export function loader() {

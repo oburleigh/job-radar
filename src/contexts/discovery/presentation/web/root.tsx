@@ -1,12 +1,11 @@
 import "@fontsource/barlow-condensed/latin-700.css";
 import "@fontsource/barlow-condensed/latin-800.css";
-import "./styles.css";
+import "@job-radar/discovery-ui/styles.css";
 
+import { AppNavigation, DiscoveryNotifications } from "@job-radar/discovery-ui";
 import { Links, Meta, Outlet, Scripts, ScrollRestoration, useLoaderData } from "react-router";
 
 import { discoveryWeb } from "../../composition/discovery-web.server";
-import { AppNavigation } from "./components/app-navigation";
-import { DiscoveryNotifications } from "./components/discovery-notifications";
 
 const directionContract = {
   thesis: "Job Radar is an opportunity catalogue, not a generic dashboard of cards.",

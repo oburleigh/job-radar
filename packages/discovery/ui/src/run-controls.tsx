@@ -1,8 +1,8 @@
 import { Play, RefreshCw } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useFetcher } from "react-router";
-import type { ActionState } from "../action-state";
-import { DISCOVERY_RUN_STARTED_EVENT } from "../client-events";
+import type { ActionState } from "./action-state.js";
+import { DISCOVERY_RUN_STARTED_EVENT } from "./client-events.js";
 
 interface RunControlsProps {
   profileId: number;

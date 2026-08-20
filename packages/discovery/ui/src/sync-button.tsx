@@ -1,7 +1,7 @@
 import { RefreshCw } from "lucide-react";
 import { useFetcher } from "react-router";
 
-import type { ActionState } from "../action-state";
+import type { ActionState } from "./action-state.js";
 
 export function SyncButton() {
   const fetcher = useFetcher<ActionState>();

@@ -1,7 +1,7 @@
+import { PageHeader } from "@job-radar/ui";
 import { ArrowLeft, CheckCircle2, CircleAlert, LoaderCircle } from "lucide-react";
 import { Link, useLoaderData } from "react-router";
 import { discoveryWeb } from "../../../composition/discovery-web.server";
-import { PageHeader } from "../components/page-header";
 
 export function loader({ params }: { readonly params: Record<string, string | undefined> }) {
   const runId = Number.parseInt(params.runId ?? "", 10);

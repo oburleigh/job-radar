@@ -1,7 +1,7 @@
 import { Save } from "lucide-react";
 import { useFetcher } from "react-router";
 
-import type { ActionState } from "../action-state";
+import type { ActionState } from "./action-state.js";
 
 interface ProfileFormProps {
   defaults: {

@@ -3,6 +3,15 @@
 ## Current context
 
 - [Discovery](./src/contexts/discovery/CONTEXT.md) owns search profiles, source coverage, discovery runs, job listings, verification, and matching.
+- [`@job-radar/discovery-ui`](./packages/discovery/ui) is Discovery's versioned presentation package. It is not a separate bounded context.
+
+## Shared visual capabilities
+
+[`@job-radar/design-tokens`](./packages/design-system/tokens) and
+[`@job-radar/ui`](./packages/design-system/ui) are context-neutral technical packages.
+They contain no domain model and are not a DDD shared kernel. Their dependency rules and
+release policy are recorded in
+[ADR 0002](./docs/adr/0002-versioned-design-system-packages.md).
 
 ## Candidate context
 

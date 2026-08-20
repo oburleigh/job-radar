@@ -64,3 +64,9 @@ The job discovery use case owns the run sequence: load configured inputs, plan q
 - `JobMatchEvaluator` evaluates the latest saved profile against active listings.
 
 Infrastructure implements those contracts with SQLite, ATS parsing, listing verification, provider clients, and background scheduling. Presentation owns React components, React Router route modules, request schemas, response DTOs, and HTTP translation. Modules in `composition` choose concrete infrastructure and supply clocks and cooperative event-loop yielding. Command-line scripts are separate executable composition roots. Reusable fakes live in `test-support` and cannot be imported by production code.
+
+Discovery-specific React components may live in the versioned
+`@job-radar/discovery-ui` workspace package. That package remains part of this bounded
+context. Routes own the mapping from application and read-model results into presentation
+DTOs. The package may consume context-neutral design tokens and UI primitives, but it
+must not import Discovery infrastructure or composition.

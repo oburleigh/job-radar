@@ -11,7 +11,12 @@ export default defineConfig({
   test: {
     environment: "node",
     globalSetup: ["./tests/support/setup-vitest-database.ts"],
-    include: ["src/**/*.test.ts", "tests/architecture/**/*.test.ts"],
+    include: [
+      "src/**/*.test.ts",
+      "packages/**/*.test.ts",
+      "packages/**/*.test.tsx",
+      "tests/architecture/**/*.test.ts",
+    ],
     coverage: {
       reporter: ["text", "html"],
     },

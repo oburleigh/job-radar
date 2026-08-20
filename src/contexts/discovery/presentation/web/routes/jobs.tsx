@@ -1,3 +1,5 @@
+import { JobCard, JobFilters, RunControls } from "@job-radar/discovery-ui";
+import { PageHeader } from "@job-radar/ui";
 import { Bookmark, BriefcaseBusiness, CheckCircle2, Radar, Waypoints } from "lucide-react";
 import { type ActionFunctionArgs, Link, useLoaderData } from "react-router";
 import {
@@ -6,10 +8,6 @@ import {
 } from "@/contexts/discovery/domain/job-listing-state";
 import { assertLocalHost } from "@/platform/http/require-local-request";
 import { discoveryWeb } from "../../../composition/discovery-web.server";
-import { JobCard } from "../components/job-card";
-import { JobFilters } from "../components/job-filters";
-import { PageHeader } from "../components/page-header";
-import { RunControls } from "../components/run-controls";
 
 export function loader({ request }: { readonly request: Request }) {
   const searchParams = new URL(request.url).searchParams;

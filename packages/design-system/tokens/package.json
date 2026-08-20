@@ -1,0 +1,23 @@
+{
+  "name": "@job-radar/design-tokens",
+  "version": "0.0.0",
+  "description": "Semantic design tokens for Job Radar interfaces.",
+  "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "files": [
+    "src"
+  ],
+  "exports": {
+    "./theme.css": "./src/theme.css"
+  },
+  "dependencies": {},
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "license": "MIT"
+}

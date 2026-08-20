@@ -1,7 +1,7 @@
 import { Plus } from "lucide-react";
 import { useFetcher } from "react-router";
 
-import type { ActionState } from "../action-state";
+import type { ActionState } from "./action-state.js";
 
 const initialState: ActionState = { ok: false, message: "" };
 

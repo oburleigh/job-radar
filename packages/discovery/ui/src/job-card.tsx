@@ -1,8 +1,7 @@
 import { ArrowUpRight, Banknote, Building2, CalendarDays, MapPin } from "lucide-react";
 
-import type { JobListingState } from "@/contexts/discovery/domain/job-listing-state";
-
-import { JobActions } from "./job-actions";
+import type { JobListingStateView } from "./contracts.js";
+import { JobActions } from "./job-actions.js";
 
 interface JobCardProps {
   profileId: number;
@@ -24,7 +23,7 @@ interface JobCardProps {
     verified: boolean;
     score: number;
     reasons: string[];
-    state: JobListingState;
+    state: JobListingStateView;
   };
 }
 

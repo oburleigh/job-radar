@@ -1,11 +1,10 @@
+import { IntegrationSettingsForm, RuntimeSettingsForm } from "@job-radar/discovery-ui";
+import { PageHeader } from "@job-radar/ui";
 import { Database, Plus } from "lucide-react";
 import { type ActionFunctionArgs, Link, redirect, useLoaderData } from "react-router";
 import { assertLocalHost } from "@/platform/http/require-local-request";
 import type { SaveAtsIntegrationResult } from "../../../application/ats-integrations/save/result";
 import { discoveryWeb } from "../../../composition/discovery-web.server";
-import { IntegrationSettingsForm } from "../components/integration-settings-form";
-import { PageHeader } from "../components/page-header";
-import { RuntimeSettingsForm } from "../components/runtime-settings-form";
 import { parseAtsIntegrationRequest } from "../requests/ats-integration-request";
 import { parseRuntimeSettingsRequest } from "../requests/runtime-settings-request";
 

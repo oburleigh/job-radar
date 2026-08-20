@@ -2,7 +2,7 @@ import { CheckCircle2, CircleAlert, LoaderCircle, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useRevalidator } from "react-router";
 
-import { DISCOVERY_RUN_STARTED_EVENT } from "../client-events";
+import { DISCOVERY_RUN_STARTED_EVENT } from "./client-events.js";
 
 const PENDING_RUNS_KEY = "job-radar.pending-discovery-runs";
 

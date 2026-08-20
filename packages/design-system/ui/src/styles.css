@@ -1,0 +1,188 @@
+@import "@job-radar/design-tokens/theme.css";
+
+.jr-button {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: 0.65rem var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-small);
+  font: 700 0.78rem / 1 var(--font-ui);
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition:
+    color var(--motion-fast) ease,
+    background var(--motion-fast) ease,
+    border-color var(--motion-fast) ease;
+}
+
+.jr-button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.jr-button-primary {
+  color: white;
+  background: var(--persimmon);
+  border-color: var(--persimmon);
+}
+
+.jr-button-primary:hover:not(:disabled) {
+  background: var(--persimmon-deep);
+}
+
+.jr-button-secondary {
+  color: var(--ink);
+  background: var(--paper);
+  border-color: var(--line-strong);
+}
+
+.jr-button-secondary:hover:not(:disabled) {
+  color: var(--cobalt-deep);
+  border-color: var(--cobalt);
+}
+
+.jr-button-danger {
+  color: var(--red);
+  background: var(--red-soft);
+  border-color: var(--red);
+}
+
+.jr-button:focus-visible,
+.jr-switch:focus-visible,
+.jr-text-field:focus-visible {
+  outline: 3px solid var(--yellow-soft);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 1px var(--cobalt-deep);
+}
+
+.jr-field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.jr-field-label {
+  color: var(--ink-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.jr-text-field {
+  min-height: 2.65rem;
+  padding: 0.65rem 0.75rem;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  font: inherit;
+}
+
+.jr-text-field[aria-invalid="true"] {
+  border-color: var(--red);
+}
+
+.jr-field-hint,
+.jr-field-error {
+  color: var(--ink-muted);
+  font-size: 0.75rem;
+}
+
+.jr-field-error {
+  color: var(--red);
+}
+
+.jr-switch {
+  position: relative;
+  width: 2.55rem;
+  height: 1.4rem;
+  padding: 0.15rem;
+  background: var(--line-strong);
+  border: 0;
+  border-radius: var(--radius-round);
+  cursor: pointer;
+}
+
+.jr-switch span {
+  display: block;
+  width: 1.1rem;
+  height: 1.1rem;
+  background: white;
+  border-radius: 50%;
+  transition: transform var(--motion-standard) ease;
+}
+
+.jr-switch-on {
+  background: var(--cobalt);
+}
+
+.jr-switch-on span {
+  transform: translateX(1.15rem);
+}
+
+.jr-modal-backdrop {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: #050914b8;
+}
+
+.jr-modal {
+  width: min(36rem, 100%);
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-raised);
+}
+
+.jr-modal-header,
+.jr-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+.jr-modal-header {
+  border-bottom: 1px solid var(--line);
+}
+
+.jr-modal-header h2 {
+  margin: 0;
+}
+
+.jr-modal-content {
+  padding: var(--space-4);
+}
+
+.jr-modal-actions {
+  justify-content: flex-end;
+  border-top: 1px solid var(--line);
+}
+
+.jr-skeleton {
+  display: block;
+  overflow: hidden;
+  background: linear-gradient(90deg, var(--paper-alt), var(--line), var(--paper-alt));
+  background-size: 200% 100%;
+  border-radius: var(--radius-small);
+  animation: jr-skeleton-pulse 1.4s ease infinite;
+}
+
+@keyframes jr-skeleton-pulse {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}

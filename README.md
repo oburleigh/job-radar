@@ -26,6 +26,7 @@ but no profiles, company boards, jobs, matches, or history.
 - [Data and security](#data-and-security)
 - [Production-style local run](#production-style-local-run)
 - [Architecture](#architecture)
+- [Design system packages](#design-system-packages)
 - [Development](#development)
 
 ## What it does
@@ -660,11 +661,16 @@ Keep the Node.js process alive while background discovery is running.
 
 ## Architecture
 
-Job Radar is one deployable package. Business code is grouped by bounded
-context. The dependency direction, rather than a folder named `hexagon`, marks
-the ports-and-adapters boundary.
+Job Radar is one deployable application in a pnpm workspace. Business code is
+grouped by bounded context. The dependency direction, rather than a folder
+named `hexagon`, marks the ports-and-adapters boundary.
 
 ```text
+packages/
+├── design-system/tokens/             semantic CSS design tokens
+├── design-system/ui/                 generic React components and Storybook
+└── discovery/ui/                     Discovery-owned React components and view DTOs
+
 src/
 ├── contexts/
 │   └── discovery/
@@ -672,7 +678,7 @@ src/
 │       ├── domain/                   matching, salary, and job-state policy
 │       ├── application/              commands, results, use cases, and owned ports
 │       ├── infrastructure/           SQLite, search, ATS, and scheduler adapters
-│       ├── presentation/web/         routes, HTTP adapters, schemas, and React views
+│       ├── presentation/web/         routes, HTTP adapters, and request schemas
 │       ├── composition/              concrete context wiring
 │       └── test-support/             reusable fakes used only by tests
 └── platform/                         context-independent SQLite and HTTP mechanisms
@@ -698,10 +704,72 @@ enforces those dependency rules. Shared platform code cannot import a bounded
 context. Context-specific tables, read models, provider clients, and policy do
 not belong in `src/platform`.
 
+The design-system packages follow a separate dependency chain:
+
+```text
+@job-radar/design-tokens
+          ↑
+    @job-radar/ui
+          ↑
+@job-radar/discovery-ui
+          ↑
+      Job Radar app
+```
+
+Tokens and generic UI are shared technical capabilities, not a DDD subdomain
+or shared kernel. `@job-radar/discovery-ui` remains owned by the Discovery
+bounded context. Its props are presentation DTOs, so the published package does
+not reach back into domain, application, infrastructure, or route modules.
+
 See [`CONTEXT-MAP.md`](CONTEXT-MAP.md), the
 [Discovery context glossary](src/contexts/discovery/CONTEXT.md), and the
-[architecture decision](docs/adr/0001-context-first-ddd-and-ports-adapters.md)
+[DDD and ports-and-adapters decision](docs/adr/0001-context-first-ddd-and-ports-adapters.md),
+and the [design-system package decision](docs/adr/0002-versioned-design-system-packages.md)
 for the maintained boundaries.
+
+## Design system packages
+
+The design system is split into independently versioned packages:
+
+| Package | Owns | Must not contain |
+| --- | --- | --- |
+| `@job-radar/design-tokens` | Semantic colour, type, spacing, radius, shadow, and motion tokens | React, HTML, routes, or product terms |
+| `@job-radar/ui` | Context-neutral components such as Button, TextField, Switch, Modal, Skeleton, and PageHeader | Discovery models, React Router, persistence, or provider code |
+| `@job-radar/discovery-ui` | Discovery navigation, profile forms, run controls, filters, job cards, and presentation DTOs | Application service construction, SQLite, search providers, or ATS adapters |
+
+Run the generic component catalogue locally:
+
+```bash
+pnpm storybook
+```
+
+Storybook opens on `http://localhost:6006`. Build the static catalogue with
+`pnpm storybook:build`. Context-specific stories do not belong in the generic
+catalogue; add a separate Storybook to a context package if its component set
+grows enough to justify one.
+
+Changesets manages independent SemVer releases. Add a release note whenever a
+published package contract changes:
+
+```bash
+pnpm changeset
+pnpm packages:build
+```
+
+Choose the affected packages and whether each change is patch, minor, or
+major. Commit the generated Markdown file with the code. On `main`, the release
+workflow creates or updates a version pull request. Merging that pull request
+publishes the pending packages.
+
+Publishing requires a repository secret named `NPM_TOKEN` with permission to
+publish the `@job-radar` namespace to npm. If that namespace is unavailable,
+change the three package names and their internal workspace dependencies before
+the first release. A different registry also requires changing `registry-url`
+in `.github/workflows/release.yml` and configuring that registry's token.
+
+The workspace uses pnpm directly. Turbo or Nx is not required for three small
+libraries and one application; add a task orchestrator when CI timings or a
+larger dependency graph provide a concrete reason.
 
 ## Development
 
@@ -709,6 +777,7 @@ Run the complete local check suite:
 
 ```bash
 pnpm check
+pnpm storybook:build
 pnpm test:e2e
 pnpm build
 pnpm audit
@@ -725,6 +794,12 @@ not read or modify the database named by your normal `DB_PATH`.
 Module behavior tests live beside their owner as `*.test.ts`. Repository-wide
 dependency tests live in `tests/architecture`, runner setup is in
 `tests/support`, and browser journeys live in `e2e`.
+
+Build only the versioned packages with `pnpm packages:build`. The root build
+does this automatically before compiling the application. Workspace
+dependencies use `workspace:^`, which prevents a missing local package from
+silently resolving to a registry copy and becomes a normal compatible SemVer
+range when published.
 
 Lefthook installs the repository hooks during `pnpm install`. The pre-commit
 hook runs Biome against staged files. The commit-message hook enforces scoped
