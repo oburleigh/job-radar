@@ -2,7 +2,10 @@ import "dotenv/config";
 
 import { eq } from "drizzle-orm";
 
-import { buildBoardDiscoveryQueries, buildQueries } from "../src/application/discovery/queries";
+import {
+  planBoardDiscoveryQueries,
+  planSearchQueries,
+} from "../src/contexts/discovery/hexagon/application/plan-search-queries";
 import { getJobRadarConfig, supportsBoardSync } from "../src/infrastructure/config/job-radar";
 import { db } from "../src/infrastructure/database/client";
 import { searchProfiles, sourceDomains } from "../src/infrastructure/database/schema";
@@ -43,13 +46,13 @@ async function main() {
       .where(eq(sourceDomains.enabled, true))
       .all()
       .filter((item) => !source || item.atsType === source);
-    const roleQueries = buildQueries(
+    const roleQueries = planSearchQueries(
       profile,
       sources,
       config.searchProviders[providerName]?.titleSearchMode ?? config.discovery.titleSearchMode,
       [...config.matching.remoteTerms, ...config.matching.unrestrictedRemotePhrases],
     );
-    const boardQueries = buildBoardDiscoveryQueries(
+    const boardQueries = planBoardDiscoveryQueries(
       profile,
       sources.filter((item) => supportsBoardSync(item.atsType)),
     );

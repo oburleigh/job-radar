@@ -1,7 +1,6 @@
 import { setImmediate as yieldToEventLoop } from "node:timers/promises";
 
 import { and, eq, inArray } from "drizzle-orm";
-import { buildBoardDiscoveryQueries, buildQueries } from "@/application/discovery/queries";
 import {
   type AtsType,
   type BoardIdentity,
@@ -9,6 +8,10 @@ import {
   type SearchHit,
   type SearchProvider,
 } from "@/application/discovery/types";
+import {
+  planBoardDiscoveryQueries,
+  planSearchQueries,
+} from "@/contexts/discovery/hexagon/application/plan-search-queries";
 import { getJobRadarConfig, supportsBoardSync } from "@/infrastructure/config/job-radar";
 import { db } from "@/infrastructure/database/client";
 import {
@@ -72,13 +75,13 @@ export async function runDiscovery(
     config.discovery.searchFreshnessDays > 0
       ? Math.min(profile.maxAgeDays, config.discovery.searchFreshnessDays)
       : profile.maxAgeDays;
-  const roleQueries = buildQueries(
+  const roleQueries = planSearchQueries(
     profile,
     sources,
     providerConfig?.titleSearchMode ?? config.discovery.titleSearchMode,
     [...config.matching.remoteTerms, ...config.matching.unrestrictedRemotePhrases],
   );
-  const boardQueries = buildBoardDiscoveryQueries(
+  const boardQueries = planBoardDiscoveryQueries(
     profile,
     sources.filter((source) => supportsBoardSync(source.atsType)),
   );

@@ -46,7 +46,7 @@ _Avoid_: Search result, saved job
 
 ## Current boundary
 
-The first two complete slices are search-profile persistence and Discovery Run startup. Their rules and use cases live in `hexagon/`; SQLite, web, background scheduling, and the existing search engine connect through adapters.
+The completed slices are search-profile persistence, search-query planning, and Discovery Run startup. Their rules and use cases live in `hexagon/`; SQLite, web, background scheduling, and the existing search engine connect through adapters.
 
 Starting a Discovery Run has two stages:
 

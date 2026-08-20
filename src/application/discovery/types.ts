@@ -41,13 +41,6 @@ export interface SearchHit {
   snippet: string;
 }
 
-export interface DiscoveryQuery {
-  atsType: AtsType;
-  sourcePattern: string;
-  titleTerm: string;
-  text: string;
-}
-
 export interface SearchProvider {
   readonly name: string;
   search(query: string, options?: SearchOptions): Promise<SearchHit[]>;

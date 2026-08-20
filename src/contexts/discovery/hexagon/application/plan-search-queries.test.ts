@@ -1,12 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import { BOARD_DISCOVERY_TITLE, buildBoardDiscoveryQueries, buildQueries } from "./queries";
+import {
+  BOARD_DISCOVERY_TITLE,
+  planBoardDiscoveryQueries,
+  planSearchQueries,
+} from "./plan-search-queries";
 
 const worldwideRemoteTerms = ["remote", "work from anywhere", "anywhere in the world"];
 
-describe("search query builder", () => {
+describe("search query planning", () => {
   it("creates one query per title and source without losing locations", () => {
-    const queries = buildQueries(
+    const queries = planSearchQueries(
       {
         titleTerms: [
           "Head of Engineering",
@@ -37,7 +41,7 @@ describe("search query builder", () => {
 
   it("returns no queries when a required profile dimension is empty", () => {
     expect(
-      buildQueries(
+      planSearchQueries(
         {
           titleTerms: [],
           locationTerms: ["Dubai"],
@@ -51,7 +55,7 @@ describe("search query builder", () => {
   });
 
   it("keeps regional and worldwide remote searches separate", () => {
-    const queries = buildQueries(
+    const queries = planSearchQueries(
       {
         titleTerms: ["Staff Platform Engineer"],
         locationTerms: ["London", "UK"],
@@ -74,7 +78,7 @@ describe("search query builder", () => {
   });
 
   it("keeps titles separate when searching page content", () => {
-    const queries = buildQueries(
+    const queries = planSearchQueries(
       {
         titleTerms: ["AI Platform Engineer", "Forward Deployed Engineer"],
         locationTerms: ["London"],
@@ -92,7 +96,7 @@ describe("search query builder", () => {
   });
 
   it("builds one location-led board query per sync source", () => {
-    const queries = buildBoardDiscoveryQueries({ locationTerms: ["Dubai", "UAE"] }, [
+    const queries = planBoardDiscoveryQueries({ locationTerms: ["Dubai", "UAE"] }, [
       { atsType: "ashby", pattern: "jobs.ashbyhq.com" },
       { atsType: "greenhouse", pattern: "boards.greenhouse.io" },
     ]);
