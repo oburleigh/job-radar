@@ -117,7 +117,7 @@ describe("design system boundaries", () => {
       expect(source, stylesheet).not.toMatch(/\b(?:oklch|rgb|rgba|hsl|hsla)\(/i);
       expect(source, stylesheet).not.toMatch(/var\(--jr-palette-/);
       expect(source, stylesheet).not.toMatch(/\bcolor-scheme\s*:/);
-      expect(source, stylesheet).not.toMatch(/font-size:\s*[0-9.]+(?:px|rem)/);
+      expect(source, stylesheet).not.toMatch(/font-size:\s*[^;]*(?:px|rem)/);
       expect(source, stylesheet).not.toContain("!important");
 
       const customProperties = [...source.matchAll(/var\((--[a-z0-9-]+)/g)].map(

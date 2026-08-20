@@ -304,7 +304,7 @@
     max-width: 51.25rem;
     margin: 0;
     font-family: var(--jr-font-family-display);
-    font-size: clamp(2.125rem, 4vw, 3.625rem);
+    font-size: var(--jr-font-size-display);
     font-stretch: condensed;
     font-weight: 850;
     line-height: 0.92;

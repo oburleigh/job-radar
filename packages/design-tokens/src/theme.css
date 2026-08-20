@@ -184,6 +184,7 @@
     --jr-font-size-heading-lg: 1.5rem;
     --jr-font-size-heading-xl: 1.75rem;
     --jr-font-size-2xl: 2rem;
+    --jr-font-size-display: clamp(2.125rem, 4vw, 3.625rem);
     --jr-font-weight-medium: 500;
     --jr-font-weight-semibold: 600;
     --jr-font-weight-bold: 700;
