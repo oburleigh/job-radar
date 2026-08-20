@@ -54,9 +54,9 @@ rule-based and does not call an LLM.
 - One supported web search API key
 - Network access to the selected search provider and public ATS endpoints
 
-The app is built with React Router 8, Vite 8, React 19, TypeScript, SQLite,
-Drizzle ORM, Zod, and Vitest. Zod validates form input, runtime settings, and ATS registry
-changes at the web and configuration boundaries.
+The app is built with React Router 8, Vite 8, React 19, TypeScript, SQLite, Drizzle ORM, Zod, and
+Vitest. Zod validates web input, vendor and search-provider responses, and runtime configuration at
+the adapter that receives each value.
 
 ## Start with a clean database
 

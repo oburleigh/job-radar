@@ -66,8 +66,8 @@ must represent repeated generic interaction, not a single Discovery feature.
 - Dialogs use the native `dialog` element, an accessible title, and keyboard cancellation.
 - Colour pairs used for text and controls meet WCAG AA contrast.
 
-Storybook runs the accessibility addon. Playwright runs axe checks against the component catalogue
-and the real application.
+Storybook evaluates catalogue stories with its accessibility addon. Playwright runs axe checks
+against the real application in light and dark modes.
 
 ## Motion
 
