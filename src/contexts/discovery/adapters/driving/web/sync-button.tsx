@@ -3,7 +3,7 @@
 import { RefreshCw } from "lucide-react";
 import { useState, useTransition } from "react";
 
-import { syncBoardsAction } from "@/app/actions";
+import { syncBoardsAction } from "./actions";
 
 export function SyncButton() {
   const [pending, startTransition] = useTransition();

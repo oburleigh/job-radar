@@ -2,9 +2,8 @@
 
 import { Bookmark, Check, Eye, EyeOff } from "lucide-react";
 import { useOptimistic, useTransition } from "react";
-
-import { updateJobStateAction } from "@/app/actions";
 import type { JobState } from "@/contexts/discovery/adapters/driven/sqlite/radar-read-model";
+import { updateJobStateAction } from "./actions";
 
 interface JobActionsProps {
   profileId: number;
