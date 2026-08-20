@@ -389,6 +389,7 @@ export function getSettingsData() {
     ui: config.ui,
     matching: config.matching,
     searchProviders: config.searchProviders,
+    integrationPolicy: config.integrationPolicy,
     integrations,
   };
 }

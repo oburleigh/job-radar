@@ -30,7 +30,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         hostnames: [],
         hostSuffixes: [],
         supportsBoardSync: false,
-        priority: 200,
+        priority: data.integrationPolicy.customPriority,
         pageSize: null,
         endpoints: {},
       }
@@ -69,6 +69,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
               ui: data.ui,
               matching: data.matching,
               searchProviders: data.searchProviders,
+              integrationPolicy: data.integrationPolicy,
             }}
           />
         </div>

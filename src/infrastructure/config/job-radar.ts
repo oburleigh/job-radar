@@ -69,12 +69,17 @@ const integrationSchema = z.object({
   endpoints: z.record(z.string(), z.url()),
 });
 
+const integrationPolicySchema = z.object({
+  customPriority: z.number().int().min(0).max(10000),
+});
+
 export interface JobRadarConfig {
   network: z.infer<typeof networkSchema>;
   discovery: z.infer<typeof discoverySchema>;
   ui: z.infer<typeof uiSchema>;
   matching: MatchingPolicy;
   searchProviders: z.infer<typeof searchProvidersSchema>;
+  integrationPolicy: z.infer<typeof integrationPolicySchema>;
   ats: Record<string, z.infer<typeof integrationSchema>>;
 }
 
@@ -114,6 +119,7 @@ export function getJobRadarConfig(): JobRadarConfig {
     ui: uiSchema.parse(requireSetting(settings, "ui")),
     matching: matchingSchema.parse(requireSetting(settings, "matching")),
     searchProviders: searchProvidersSchema.parse(requireSetting(settings, "searchProviders")),
+    integrationPolicy: integrationPolicySchema.parse(requireSetting(settings, "integrationPolicy")),
     ats,
   };
 }

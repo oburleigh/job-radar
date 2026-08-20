@@ -6,7 +6,6 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { DEFAULT_CUSTOM_INTEGRATION_PRIORITY } from "@/application/discovery/integration-policy";
 import { ATS_TYPES, isBuiltInAtsType } from "@/application/discovery/types";
 import { createSqliteSearchProfileRepository } from "@/contexts/discovery/adapters/driven/sqlite/search-profile-repository";
 import { createSaveProfileAction } from "@/contexts/discovery/adapters/driving/web/save-profile-action";
@@ -81,6 +80,7 @@ const runtimeSettingsSchema = z.object({
       titleSearchMode: z.union([z.literal(""), z.enum(["title", "anywhere"])]),
     }),
   ),
+  customIntegrationPriority: z.coerce.number().int().min(0).max(10000),
 });
 
 const integrationSettingsSchema = z.object({
@@ -268,7 +268,8 @@ export async function addBoardAction(
   const suggestion = suggestSearchIntegration(parsed.data.url, existingIds);
   const atsType = classified?.atsType ?? suggestion.atsType;
   const existingIntegration = classified ? getAtsIntegration(classified.atsType) : null;
-  const priority = existingIntegration?.priority ?? DEFAULT_CUSTOM_INTEGRATION_PRIORITY;
+  const priority =
+    existingIntegration?.priority ?? getJobRadarConfig().integrationPolicy.customPriority;
   const now = new Date();
 
   db.transaction((transaction) => {
@@ -460,6 +461,12 @@ export async function saveRuntimeSettingsAction(
           ];
         }),
       ),
+    },
+    {
+      key: "integrationPolicy",
+      value: {
+        customPriority: values.customIntegrationPriority,
+      },
     },
   ] as const;
   const now = new Date();

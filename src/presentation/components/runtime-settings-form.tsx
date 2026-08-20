@@ -7,14 +7,17 @@ import { type ActionState, saveRuntimeSettingsAction } from "@/app/actions";
 import type { JobRadarConfig } from "@/infrastructure/config/job-radar";
 
 interface RuntimeSettingsFormProps {
-  settings: Pick<JobRadarConfig, "network" | "discovery" | "ui" | "matching" | "searchProviders">;
+  settings: Pick<
+    JobRadarConfig,
+    "network" | "discovery" | "ui" | "matching" | "searchProviders" | "integrationPolicy"
+  >;
 }
 
 const initialState: ActionState = { ok: false, message: "" };
 
 export function RuntimeSettingsForm({ settings }: RuntimeSettingsFormProps) {
   const [state, action, pending] = useActionState(saveRuntimeSettingsAction, initialState);
-  const { network, discovery, ui, matching, searchProviders } = settings;
+  const { network, discovery, ui, matching, searchProviders, integrationPolicy } = settings;
 
   return (
     <form action={action} className="profile-form">
@@ -262,6 +265,25 @@ export function RuntimeSettingsForm({ settings }: RuntimeSettingsFormProps) {
                 <small className="field-help">Credential: {provider.apiKeyEnv}</small>
               </div>
             ))}
+        </div>
+      </section>
+
+      <section className="form-section">
+        <div className="form-section-copy">
+          <span className="form-step">04</span>
+          <div>
+            <h2>ATS registry defaults</h2>
+            <p>Set the ordering used when Job Radar creates a search-only integration.</p>
+          </div>
+        </div>
+        <div className="form-grid form-grid-three">
+          <NumberField
+            label="New integration priority"
+            name="customIntegrationPriority"
+            value={integrationPolicy.customPriority}
+            min={0}
+            max={10000}
+          />
         </div>
       </section>
 

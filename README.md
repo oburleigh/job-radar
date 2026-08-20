@@ -313,6 +313,10 @@ yourself:
 - one or more domains used to build `site:` searches
 - exact hostnames or hostname suffixes used to recognize result URLs
 
+Settings also exposes the default priority assigned when **Add ATS URL** creates
+a search-only integration. Lower numbers appear earlier in the registry and
+search-source ordering.
+
 New integrations are search-only. They can generate queries, classify results,
 appear in filters, and save unverified leads. Enable **Include unverified
 leads** on a profile if you want those leads to appear as matches.
@@ -636,6 +640,10 @@ pnpm audit
 compiler, and Vitest. Use `pnpm format` and `pnpm lint:fix` to apply safe local
 fixes.
 
+Vitest and Playwright migrate their own SQLite databases under the operating
+system temporary directory and remove them after the run. The test suites do
+not read or modify the database named by your normal `DB_PATH`.
+
 Lefthook installs the repository hooks during `pnpm install`. The pre-commit
 hook runs Biome against staged files. The commit-message hook enforces scoped
 Conventional Commits through Commitlint, and the pre-push hook runs type
@@ -650,8 +658,9 @@ pnpm db:generate
 pnpm db:migrate
 ```
 
-This repository uses Next.js 16 conventions. Before changing application code,
-read `AGENTS.md` and the relevant guide in `node_modules/next/dist/docs/`.
+This repository uses Next.js 16 conventions. Before changing framework code,
+read the relevant guide in `node_modules/next/dist/docs/` and follow
+[`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 The visual rules and light and dark theme tokens are recorded in
 [`DESIGN.md`](DESIGN.md).

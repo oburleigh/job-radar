@@ -162,6 +162,13 @@
       "when": 1787047200000,
       "tag": "0022_configure_discovery_runtime_limits",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1787212800000,
+      "tag": "0023_configure_integration_policy",
+      "breakpoints": true
     }
   ]
 }

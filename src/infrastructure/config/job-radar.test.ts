@@ -18,6 +18,7 @@ describe("SQLite configuration", () => {
     expect(config.ui.discoveryStaleAfterMs).toBeGreaterThan(config.ui.discoveryPollIntervalMs);
     expect(config.discovery.workYieldBatchSize).toBeGreaterThan(0);
     expect(config.discovery.runHistoryLimit).toBeGreaterThan(0);
+    expect(config.integrationPolicy.customPriority).toBe(200);
   });
 
   it("renders configured endpoints with encoded values", () => {

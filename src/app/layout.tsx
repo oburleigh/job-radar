@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import { connection } from "next/server";
 
 import { getJobRadarConfig } from "@/infrastructure/config/job-radar";
 import { AppNavigation } from "@/presentation/components/app-navigation";
@@ -31,11 +32,12 @@ const directionContract = {
     "unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  await connection();
   const { discoveryPollIntervalMs } = getJobRadarConfig().ui;
 
   return (
