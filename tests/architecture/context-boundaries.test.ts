@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 const sourceRoot = path.resolve(process.cwd(), "src");
 const contextsRoot = path.join(sourceRoot, "contexts");
+const platformRoot = path.join(sourceRoot, "platform");
 const providerModules = ["next", "zod", "drizzle-orm", "better-sqlite3", "node:"];
 
 describe("context boundaries", () => {
@@ -43,7 +44,11 @@ describe("context boundaries", () => {
     for (const domainRoot of roleDirectories("domain")) {
       for (const file of sourceFiles(domainRoot)) {
         assertNoProductionProviderImport(file);
-        assertInternalImportsStayInside(file, [domainRoot]);
+        if (isTestFile(file)) {
+          assertInternalImportsStayInside(file, [domainRoot]);
+        } else {
+          assertAllImportsResolveInside(file, [domainRoot]);
+        }
       }
     }
   });
@@ -53,11 +58,15 @@ describe("context boundaries", () => {
       const contextRoot = path.dirname(applicationRoot);
       for (const file of sourceFiles(applicationRoot)) {
         assertNoProductionProviderImport(file);
-        assertInternalImportsStayInside(file, [
-          applicationRoot,
-          path.join(contextRoot, "domain"),
-          path.join(contextRoot, "test-support"),
-        ]);
+        if (isTestFile(file)) {
+          assertInternalImportsStayInside(file, [
+            applicationRoot,
+            path.join(contextRoot, "domain"),
+            path.join(contextRoot, "test-support"),
+          ]);
+        } else {
+          assertAllImportsResolveInside(file, [applicationRoot, path.join(contextRoot, "domain")]);
+        }
       }
     }
   });
@@ -71,6 +80,7 @@ describe("context boundaries", () => {
           path.join(contextRoot, "application"),
           path.join(contextRoot, "domain"),
           path.join(contextRoot, "test-support"),
+          platformRoot,
         ]);
       }
     }
@@ -84,6 +94,7 @@ describe("context boundaries", () => {
           presentationRoot,
           path.join(contextRoot, "application"),
           path.join(contextRoot, "domain"),
+          path.join(platformRoot, "http"),
         ]);
       }
     }
@@ -133,7 +144,6 @@ describe("context boundaries", () => {
   });
 
   it("keeps shared platform mechanisms independent from contexts", () => {
-    const platformRoot = path.join(sourceRoot, "platform");
     for (const file of sourceFiles(platformRoot)) {
       for (const specifier of importSpecifiers(file)) {
         const target = internalTarget(file, specifier);
@@ -158,12 +168,22 @@ function assertNoProductionProviderImport(file: string): void {
 function assertInternalImportsStayInside(file: string, allowedRoots: readonly string[]): void {
   for (const specifier of importSpecifiers(file)) {
     const target = internalTarget(file, specifier);
-    if (!target || !isInside(target, contextsRoot)) {
+    if (!target || !isInside(target, sourceRoot)) {
       continue;
     }
     expect(
       allowedRoots.some((allowedRoot) => isInside(target, allowedRoot)),
       `${relativePath(file)} crosses its boundary through ${specifier}`,
+    ).toBe(true);
+  }
+}
+
+function assertAllImportsResolveInside(file: string, allowedRoots: readonly string[]): void {
+  for (const specifier of importSpecifiers(file)) {
+    const target = internalTarget(file, specifier);
+    expect(
+      target !== null && allowedRoots.some((allowedRoot) => isInside(target, allowedRoot)),
+      `${relativePath(file)} imports outside its boundary through ${specifier}`,
     ).toBe(true);
   }
 }
