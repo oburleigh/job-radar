@@ -1,7 +1,7 @@
 import { setImmediate as yieldToEventLoop } from "node:timers/promises";
 import { eq } from "drizzle-orm";
 
-import { evaluateJob } from "@/domain/discovery/matching";
+import { evaluateJob } from "@/contexts/discovery/hexagon/domain/evaluate-job";
 import { getJobRadarConfig } from "@/infrastructure/config/job-radar";
 import { db } from "@/infrastructure/database/client";
 import { jobMatches, jobs, type searchProfiles } from "@/infrastructure/database/schema";

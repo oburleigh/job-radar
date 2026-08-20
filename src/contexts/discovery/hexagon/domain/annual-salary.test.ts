@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { extractAnnualSalary, formatAnnualSalary } from "./salary";
+import { extractAnnualSalary, formatAnnualSalary } from "./annual-salary";
 
 describe("annual salary extraction", () => {
   it("reads an annual salary range from job text", () => {

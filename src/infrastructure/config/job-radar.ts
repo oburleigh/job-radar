@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ATS_TYPES } from "@/application/discovery/types";
-import type { MatchingPolicy } from "@/domain/discovery/types";
+import type { MatchingPolicy } from "@/contexts/discovery/hexagon/domain/job-match";
 import { db } from "@/infrastructure/database/client";
 import { appSettings, atsIntegrations } from "@/infrastructure/database/schema";
 

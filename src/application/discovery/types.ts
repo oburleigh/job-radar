@@ -82,4 +82,4 @@ export type {
   MatchingPolicy,
   MatchProfile,
   MatchResult,
-} from "@/domain/discovery/types";
+} from "@/contexts/discovery/hexagon/domain/job-match";

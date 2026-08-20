@@ -3,7 +3,10 @@ import "server-only";
 import { and, asc, desc, eq } from "drizzle-orm";
 
 import type { AtsType } from "@/application/discovery/types";
-import { extractAnnualSalary, formatAnnualSalary } from "@/domain/discovery/salary";
+import {
+  extractAnnualSalary,
+  formatAnnualSalary,
+} from "@/contexts/discovery/hexagon/domain/annual-salary";
 import { getJobRadarConfig } from "@/infrastructure/config/job-radar";
 import { db } from "@/infrastructure/database/client";
 import {

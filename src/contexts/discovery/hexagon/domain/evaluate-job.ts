@@ -1,5 +1,5 @@
-import { extractAnnualSalary, formatAnnualSalary } from "./salary";
-import type { MatchableJob, MatchingPolicy, MatchProfile, MatchResult } from "./types";
+import { extractAnnualSalary, formatAnnualSalary } from "./annual-salary";
+import type { MatchableJob, MatchingPolicy, MatchProfile, MatchResult } from "./job-match";
 
 export function evaluateJob(
   job: MatchableJob,

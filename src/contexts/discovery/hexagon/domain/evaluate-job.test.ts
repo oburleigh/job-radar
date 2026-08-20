@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { createJobMatcher } from "./matching";
-import type { MatchableJob, MatchingPolicy, MatchProfile } from "./types";
+import { createJobMatcher } from "./evaluate-job";
+import type { MatchableJob, MatchingPolicy, MatchProfile } from "./job-match";
 
 const matchingPolicy: MatchingPolicy = {
   exactTitleScore: 60,
