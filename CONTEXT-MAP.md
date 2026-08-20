@@ -4,10 +4,10 @@
 
 - [Discovery](./src/contexts/discovery/CONTEXT.md) owns search profiles, source coverage, discovery runs, job listings, verification, and matching.
 
-## Planned context
+## Candidate context
 
-- Opportunity Tracking will own what a person does after a match appears, including saved, hidden, applied, and later interview states. The current job-state code remains in the legacy structure until that behaviour is moved as a tested vertical slice. No empty context package is created in advance.
+Opportunity Tracking may become a separate context when saved, hidden, applied, and interview states gain a lifecycle or language independent from Discovery. Job state is owned by Discovery's web and SQLite adapters until that boundary is earned. No empty context package is created in advance.
 
 ## Relationship
 
-Opportunity Tracking will consume a stable Discovery contract for matched listings. The integration mechanism is deliberately undecided. A direct application call is enough while Job Radar remains one local process; an event bus is not justified by a future possibility alone.
+If Opportunity Tracking is split out, it will consume a stable Discovery contract for matched listings. The integration mechanism is deliberately undecided. A direct application call is enough while Job Radar remains one local process; an event bus is not justified by a future possibility alone.

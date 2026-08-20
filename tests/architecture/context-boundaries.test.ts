@@ -8,6 +8,12 @@ const contextsRoot = path.join(sourceRoot, "contexts");
 const providerModules = ["next", "zod", "drizzle-orm", "better-sqlite3", "node:"];
 
 describe("context boundaries", () => {
+  it("keeps business ownership out of repository-wide layer buckets", () => {
+    for (const legacyRoot of ["application", "domain", "infrastructure", "presentation"]) {
+      expect(existsSync(path.join(sourceRoot, legacyRoot)), legacyRoot).toBe(false);
+    }
+  });
+
   it("keeps every declared context concrete", () => {
     const contexts = readdirSync(contextsRoot, { withFileTypes: true }).filter((entry) =>
       entry.isDirectory(),

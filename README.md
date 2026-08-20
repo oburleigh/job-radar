@@ -9,6 +9,25 @@ All profiles, jobs, decisions, settings, and run history live in a local SQLite
 database. A fresh install starts with the ATS definitions and runtime defaults,
 but no profiles, company boards, jobs, matches, or history.
 
+## Contents
+
+- [What it does](#what-it-does)
+- [Requirements](#requirements)
+- [Start with a clean database](#start-with-a-clean-database)
+- [Search provider configuration](#search-provider-configuration)
+- [Create a useful search profile](#create-a-useful-search-profile)
+- [Run your first discovery](#run-your-first-discovery)
+- [Understand the pages](#understand-the-pages)
+- [ATS coverage](#ats-coverage)
+- [Command-line use](#command-line-use)
+- [Search tuning](#search-tuning)
+- [Why run counts and visible cards differ](#why-run-counts-and-visible-cards-differ)
+- [Troubleshooting](#troubleshooting)
+- [Data and security](#data-and-security)
+- [Production-style local run](#production-style-local-run)
+- [Architecture](#architecture)
+- [Development](#development)
+
 ## What it does
 
 ```text
@@ -36,7 +55,7 @@ rule-based and does not call an LLM.
 
 The app is built with Next.js 16, React 19, TypeScript, SQLite, Drizzle ORM,
 Tailwind CSS, Zod, and Vitest. Zod validates form input, runtime settings, and
-ATS registry changes at the application boundary.
+ATS registry changes at the web and configuration boundaries.
 
 ## Start with a clean database
 
@@ -101,6 +120,20 @@ pnpm dev
 
 Changing `DB_PATH` switches the whole workspace. Profiles and settings are
 stored in the selected database, so they do not carry across automatically.
+
+### Environment variable reference
+
+| Variable                            | Required | Purpose                                                                                         |
+| ----------------------------------- | :------: | ----------------------------------------------------------------------------------------------- |
+| `DB_PATH`                           |    No    | SQLite file path. Defaults to `./data/job-radar.sqlite`                                         |
+| `BRAVE_SEARCH_API_KEY`              |   One    | Enables Brave Search                                                                            |
+| `SERPAPI_KEY`                       |   One    | Enables SerpAPI                                                                                 |
+| `SERPER_API_KEY`                    |   One    | Enables Serper.dev                                                                              |
+| `ALLOW_REMOTE_UI`                   |    No    | Set to `1` only when another access-control layer protects the app; the default is local only    |
+| `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` |    No    | Stable Server Action key for a multi-instance self-hosted deployment; unnecessary for local use |
+
+Set at least one of the three provider keys. Keep every secret in `.env`, not
+in SQLite or the Settings page.
 
 ## Search provider configuration
 
@@ -626,12 +659,50 @@ pnpm start
 
 Keep the Node.js process alive while background discovery is running.
 
+## Architecture
+
+Job Radar is one deployable Next.js package. Business ownership comes first in
+the source tree, and the provider boundary is visible inside each context.
+
+```text
+src/
+├── app/                              Next.js routes, layout, and composition
+├── contexts/
+│   └── discovery/
+│       ├── CONTEXT.md                Discovery language and ownership
+│       ├── hexagon/
+│       │   ├── domain/               deterministic matching and salary policy
+│       │   └── application/          use cases and owned port contracts
+│       ├── adapters/
+│       │   ├── driving/web/          forms, Server Actions, and route adapters
+│       │   └── driven/               SQLite, search, ATS, and scheduler adapters
+│       └── testing/                  reusable test interactors
+└── platform/                         context-independent SQLite and HTTP mechanisms
+```
+
+Dependencies point inward. Domain code imports only its own domain modules.
+Application code may import the Discovery domain, but it cannot import Next.js,
+Zod, Drizzle, Node APIs, or an adapter. Adapters implement the contracts owned
+by the hexagon. `src/app` chooses the concrete adapters and exposes the Next.js
+entrypoints.
+
+The architecture test in `tests/architecture/context-boundaries.test.ts`
+enforces those dependency rules. Shared platform code cannot import a bounded
+context. Context-specific tables, read models, provider clients, and policy do
+not belong in `src/platform`.
+
+See [`CONTEXT-MAP.md`](CONTEXT-MAP.md), the
+[Discovery context glossary](src/contexts/discovery/CONTEXT.md), and the
+[architecture decision](docs/adr/0001-context-first-hexagonal-modular-monolith.md)
+for the maintained boundaries.
+
 ## Development
 
 Run the complete local check suite:
 
 ```bash
 pnpm check
+pnpm test:e2e
 pnpm build
 pnpm audit
 ```
@@ -650,8 +721,9 @@ Conventional Commits through Commitlint, and the pre-push hook runs type
 checking and unit tests. See
 [`CONTRIBUTING.md`](CONTRIBUTING.md) for the accepted scopes and examples.
 
-After changing `src/infrastructure/database/schema.ts`, create a migration and
-apply it:
+After changing
+`src/contexts/discovery/adapters/driven/sqlite/schema.ts`, create a migration
+and apply it:
 
 ```bash
 pnpm db:generate

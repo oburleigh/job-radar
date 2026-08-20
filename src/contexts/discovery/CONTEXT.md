@@ -46,7 +46,7 @@ _Avoid_: Search result, saved job
 
 ## Current boundary
 
-The completed slices are search-profile persistence, search-query planning, and Discovery Run startup. Their rules and use cases live in `hexagon/`; SQLite, web, background scheduling, and the existing search engine connect through adapters.
+The hexagon owns search profiles, search-query planning, Discovery Run lifecycle, annual salary interpretation, and deterministic job matching. SQLite, web search, ATS protocols, background scheduling, Server Actions, and React components connect through adapters.
 
 Starting a Discovery Run has two stages:
 
@@ -55,4 +55,4 @@ Starting a Discovery Run has two stages:
 
 The application owns both decisions. SQLite decides how a reservation is stored, and Next.js decides how deferred work is kept alive. A failed execution is written back only while the run is still active, so a late failure cannot overwrite a terminal state.
 
-The search engine itself still lives in `src/infrastructure/discovery/runner.ts`. `discovery-runner-search.ts` is a transition adapter around it. Move search planning, collection, verification, and matching inward as separate behavior-backed slices; do not copy the runner into this context wholesale.
+`adapters/driven/search/discovery-runner.ts` still coordinates provider calls, URL classification, SQLite writes, board refresh, and final evaluation. It remains outside the hexagon because those concrete dependencies have not yet been replaced by application-owned conversations. Move that orchestration inward one behavior-backed port at a time. Do not relabel the existing runner as application policy while it imports concrete adapters.
