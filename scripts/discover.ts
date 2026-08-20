@@ -1,20 +1,23 @@
 import "dotenv/config";
 
+import { setImmediate as yieldToEventLoop } from "node:timers/promises";
+
 import { eq } from "drizzle-orm";
 import {
   getJobRadarConfig,
   supportsBoardSync,
 } from "../src/contexts/discovery/adapters/driven/configuration/job-radar-config";
-import { runDiscovery } from "../src/contexts/discovery/adapters/driven/search/discovery-runner";
-import {
-  createSearchProvider,
-  getSearchProviderOptions,
-} from "../src/contexts/discovery/adapters/driven/search/web-search-provider";
+import { createSqliteDiscoverySetup } from "../src/contexts/discovery/adapters/driven/configuration/sqlite-discovery-setup";
+import { getSearchProviderOptions } from "../src/contexts/discovery/adapters/driven/search/web-search-provider";
+import { createWebSearchProviderDirectory } from "../src/contexts/discovery/adapters/driven/search/web-search-provider-directory";
 import { db } from "../src/contexts/discovery/adapters/driven/sqlite/database";
+import { createSqliteDiscoveryRunJournal } from "../src/contexts/discovery/adapters/driven/sqlite/discovery-run-journal";
 import {
   searchProfiles,
   sourceDomains,
 } from "../src/contexts/discovery/adapters/driven/sqlite/schema";
+import { createSqliteJobDiscoveryCatalog } from "../src/contexts/discovery/adapters/driven/sqlite/sqlite-job-discovery-catalog";
+import { createJobDiscovery } from "../src/contexts/discovery/hexagon/application/discover-jobs";
 import {
   planBoardDiscoveryQueries,
   planSearchQueries,
@@ -69,8 +72,17 @@ async function main() {
     return;
   }
 
-  const provider = createSearchProvider(providerName);
-  const summary = await runDiscovery(profileId, provider, {
+  const discovery = createJobDiscovery({
+    setup: createSqliteDiscoverySetup(db),
+    runs: createSqliteDiscoveryRunJournal(db),
+    jobs: createSqliteJobDiscoveryCatalog(db),
+    providers: createWebSearchProviderDirectory(),
+    now: () => new Date(),
+    yieldControl: () => yieldToEventLoop(),
+  });
+  const summary = await discovery.discoverJobs({
+    profileId,
+    providerName,
     ...(source ? { source } : {}),
   });
   console.log(summary);

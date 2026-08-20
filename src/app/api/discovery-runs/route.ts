@@ -1,15 +1,21 @@
+import { setImmediate as yieldToEventLoop } from "node:timers/promises";
+
 import { desc, eq, inArray } from "drizzle-orm";
 import { after } from "next/server";
 import { z } from "zod";
 
 import { createAfterResponseDiscoveryRunScheduler } from "@/contexts/discovery/adapters/driven/background/after-response-discovery-run-scheduler";
 import { getJobRadarConfig } from "@/contexts/discovery/adapters/driven/configuration/job-radar-config";
-import { createDiscoveryRunnerSearch } from "@/contexts/discovery/adapters/driven/search/discovery-runner-search";
+import { createSqliteDiscoverySetup } from "@/contexts/discovery/adapters/driven/configuration/sqlite-discovery-setup";
 import { createSearchProvider } from "@/contexts/discovery/adapters/driven/search/web-search-provider";
+import { createWebSearchProviderDirectory } from "@/contexts/discovery/adapters/driven/search/web-search-provider-directory";
 import { db } from "@/contexts/discovery/adapters/driven/sqlite/database";
+import { createSqliteDiscoveryRunJournal } from "@/contexts/discovery/adapters/driven/sqlite/discovery-run-journal";
 import { createSqliteDiscoveryRunRegistry } from "@/contexts/discovery/adapters/driven/sqlite/discovery-run-registry";
 import { discoveryRuns, searchProfiles } from "@/contexts/discovery/adapters/driven/sqlite/schema";
+import { createSqliteJobDiscoveryCatalog } from "@/contexts/discovery/adapters/driven/sqlite/sqlite-job-discovery-catalog";
 import { createStartDiscoveryRunRoute } from "@/contexts/discovery/adapters/driving/web/start-discovery-run-route";
+import { createJobDiscovery } from "@/contexts/discovery/hexagon/application/discover-jobs";
 import { createDiscoveryRunExecution } from "@/contexts/discovery/hexagon/application/execute-discovery-run";
 import { createDiscoveryRunStarter } from "@/contexts/discovery/hexagon/application/start-discovery-run";
 import { assertLocalHost } from "@/platform/http/require-local-request";
@@ -19,9 +25,14 @@ const runRegistry = createSqliteDiscoveryRunRegistry(db, {
   staleAfterMs: () => getJobRadarConfig().ui.discoveryStaleAfterMs,
 });
 const runExecution = createDiscoveryRunExecution({
-  search: createDiscoveryRunnerSearch(),
-  registry: runRegistry,
-  now: () => new Date(),
+  discovery: createJobDiscovery({
+    setup: createSqliteDiscoverySetup(db),
+    runs: createSqliteDiscoveryRunJournal(db),
+    jobs: createSqliteJobDiscoveryCatalog(db),
+    providers: createWebSearchProviderDirectory(),
+    now: () => new Date(),
+    yieldControl: () => yieldToEventLoop(),
+  }),
 });
 const runScheduler = createAfterResponseDiscoveryRunScheduler({
   afterResponse: after,

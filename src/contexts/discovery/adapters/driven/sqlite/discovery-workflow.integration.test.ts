@@ -7,6 +7,7 @@ import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createSqliteSearchProfileRepository } from "@/contexts/discovery/adapters/driven/sqlite/search-profile-repository";
 import { createSaveProfileAction } from "@/contexts/discovery/adapters/driving/web/save-profile-action";
+import { createJobDiscovery } from "@/contexts/discovery/hexagon/application/discover-jobs";
 import { createSaveSearchProfile } from "@/contexts/discovery/hexagon/application/save-search-profile";
 import type { SearchProvider } from "@/contexts/discovery/hexagon/application/search-provider";
 
@@ -19,7 +20,15 @@ const { sqlite } = await import("@/platform/sqlite/client");
 const { discoveryQueries, discoveryRuns, searchProfiles, sourceDomains } = await import(
   "@/contexts/discovery/adapters/driven/sqlite/schema"
 );
-const { runDiscovery } = await import("./discovery-runner");
+const { createSqliteDiscoverySetup } = await import(
+  "@/contexts/discovery/adapters/driven/configuration/sqlite-discovery-setup"
+);
+const { createSqliteDiscoveryRunJournal } = await import(
+  "@/contexts/discovery/adapters/driven/sqlite/discovery-run-journal"
+);
+const { createSqliteJobDiscoveryCatalog } = await import(
+  "@/contexts/discovery/adapters/driven/sqlite/sqlite-job-discovery-catalog"
+);
 
 describe("discovery concurrency", () => {
   beforeAll(() => {
@@ -60,12 +69,16 @@ describe("discovery concurrency", () => {
       },
     };
     let discoveryFinished = false;
-    const discovery = runDiscovery(profileId, provider, {
-      source: "ashby",
-      syncBoards: false,
-    }).finally(() => {
-      discoveryFinished = true;
-    });
+    const discovery = createDiscovery(provider)
+      .discoverJobs({
+        profileId,
+        providerName: provider.name,
+        source: "ashby",
+        syncBoards: false,
+      })
+      .finally(() => {
+        discoveryFinished = true;
+      });
     await searchStarted.promise;
 
     const saveProfile = createSaveProfileAction({
@@ -122,7 +135,12 @@ describe("discovery concurrency", () => {
       ],
     };
 
-    const summary = await runDiscovery(profileId, provider, { source: "ashby", syncBoards: false });
+    const summary = await createDiscovery(provider).discoverJobs({
+      profileId,
+      providerName: provider.name,
+      source: "ashby",
+      syncBoards: false,
+    });
 
     expect(summary).toEqual({
       runId: expect.any(Number),
@@ -152,6 +170,17 @@ describe("discovery concurrency", () => {
     ]);
   });
 });
+
+function createDiscovery(provider: SearchProvider) {
+  return createJobDiscovery({
+    setup: createSqliteDiscoverySetup(db),
+    runs: createSqliteDiscoveryRunJournal(db),
+    jobs: createSqliteJobDiscoveryCatalog(db),
+    providers: { get: () => provider },
+    now: () => new Date(),
+    yieldControl: () => new Promise((resolve) => setImmediate(resolve)),
+  });
+}
 
 function seedProfile(name = "Concurrent profile"): number {
   return db
