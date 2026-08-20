@@ -16,7 +16,7 @@ process.env.DB_PATH = path.join(testDirectory, "job-radar.sqlite");
 
 const { db } = await import("@/contexts/discovery/adapters/driven/sqlite/database");
 const { sqlite } = await import("@/platform/sqlite/client");
-const { searchProfiles, sourceDomains } = await import(
+const { discoveryQueries, discoveryRuns, searchProfiles, sourceDomains } = await import(
   "@/contexts/discovery/adapters/driven/sqlite/schema"
 );
 const { runDiscovery } = await import("./discovery-runner");
@@ -107,13 +107,57 @@ describe("discovery concurrency", () => {
         .get(),
     ).toEqual({ minScore: 82 });
   }, 10_000);
+
+  it("records the lifecycle and summary of every planned query", async () => {
+    const profileId = seedProfile("Lifecycle profile");
+    seedSingleSource();
+    const provider: SearchProvider = {
+      name: "test-provider",
+      search: async (_query, _request) => [
+        {
+          title: "Engineering leader",
+          url: "https://example.com/jobs/engineering-leader",
+          snippet: "Engineering leadership role in Dubai",
+        },
+      ],
+    };
+
+    const summary = await runDiscovery(profileId, provider, { source: "ashby", syncBoards: false });
+
+    expect(summary).toEqual({
+      runId: expect.any(Number),
+      queries: 2,
+      hits: 1,
+      boards: 0,
+      jobs: 0,
+      matches: 0,
+      queryErrors: 0,
+      syncErrors: 0,
+    });
+    expect(
+      db.select().from(discoveryRuns).where(eq(discoveryRuns.id, summary.runId)).get(),
+    ).toMatchObject({
+      profileId,
+      provider: "test-provider",
+      status: "completed",
+      queryCount: 2,
+      hitCount: 1,
+      queryErrorCount: 0,
+    });
+    expect(
+      db.select().from(discoveryQueries).where(eq(discoveryQueries.runId, summary.runId)).all(),
+    ).toEqual([
+      expect.objectContaining({ status: "completed", hitCount: 1 }),
+      expect.objectContaining({ status: "completed", hitCount: 1 }),
+    ]);
+  });
 });
 
-function seedProfile(): number {
+function seedProfile(name = "Concurrent profile"): number {
   return db
     .insert(searchProfiles)
     .values({
-      name: "Concurrent profile",
+      name,
       titleTerms: ["VP Engineering"],
       locationTerms: ["Dubai"],
       requiredJobTerms: [],
