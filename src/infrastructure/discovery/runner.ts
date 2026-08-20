@@ -1,3 +1,5 @@
+import { setImmediate as yieldToEventLoop } from "node:timers/promises";
+
 import { and, desc, eq, inArray, isNull, lt, or } from "drizzle-orm";
 import { buildBoardDiscoveryQueries, buildQueries } from "@/application/discovery/queries";
 import {
@@ -328,6 +330,9 @@ export async function runDiscovery(
               deactivateSearchJob(classified.atsType, classified.externalId);
             }
           }
+        }
+        if ((index + 1) % config.discovery.workYieldBatchSize === 0) {
+          await yieldToEventLoop();
         }
       }
       if (!queryFailed) {
