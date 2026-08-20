@@ -769,6 +769,14 @@ Vitest and Playwright migrate their own SQLite databases under the operating
 system temporary directory and remove them after the run. The test suites do
 not read or modify the database named by your normal `DB_PATH`.
 
+Playwright downloads its own Chromium build on first use. If that download
+fails, for example because the machine cannot reach `cdn.playwright.dev`, run
+the browser journeys against an installed Google Chrome instead:
+
+```bash
+PLAYWRIGHT_USE_SYSTEM_CHROME=1 pnpm test:e2e
+```
+
 Module behavior tests live beside their owner as `*.test.ts`. Repository-wide
 dependency tests live in `tests/architecture`, runner setup is in
 `tests/support`, and browser journeys live in `e2e`.
