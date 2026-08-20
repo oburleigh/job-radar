@@ -46,6 +46,100 @@ describe("ATS connectors", () => {
     });
   });
 
+  it("normalizes an Ashby response", async () => {
+    const result = await fetchBoardJobs(board("ashby", "https://jobs.ashbyhq.com/acme"), {
+      fetcher: async () =>
+        Response.json({
+          jobs: [
+            {
+              id: "ashby-1",
+              title: "VP Engineering",
+              location: "Dubai",
+              jobUrl: "https://jobs.ashbyhq.com/acme/ashby-1",
+              isListed: true,
+            },
+          ],
+        }),
+    });
+
+    expect(result[0]).toMatchObject({
+      atsType: "ashby",
+      externalId: "ashby-1",
+      title: "VP Engineering",
+      locations: ["Dubai"],
+    });
+  });
+
+  it("normalizes a Lever response", async () => {
+    const result = await fetchBoardJobs(board("lever", "https://jobs.lever.co/acme"), {
+      fetcher: async () =>
+        Response.json([
+          {
+            id: "lever-1",
+            text: "Engineering Director",
+            hostedUrl: "https://jobs.lever.co/acme/lever-1",
+            categories: { location: "London", department: "Engineering" },
+          },
+        ]),
+    });
+
+    expect(result[0]).toMatchObject({
+      atsType: "lever",
+      externalId: "lever-1",
+      title: "Engineering Director",
+      locations: ["London"],
+      department: "Engineering",
+    });
+  });
+
+  it("normalizes a BambooHR response", async () => {
+    const result = await fetchBoardJobs(board("bamboohr", "https://acme.bamboohr.com/careers"), {
+      fetcher: async () =>
+        Response.json({
+          result: [
+            {
+              id: "bamboo-1",
+              jobOpeningName: "Head of Platform",
+              location: { city: "Dubai", addressCountry: "AE" },
+              departmentLabel: "Engineering",
+            },
+          ],
+        }),
+    });
+
+    expect(result[0]).toMatchObject({
+      atsType: "bamboohr",
+      externalId: "bamboo-1",
+      title: "Head of Platform",
+      locations: ["Dubai, AE"],
+      department: "Engineering",
+    });
+  });
+
+  it("normalizes a Workable response", async () => {
+    const result = await fetchBoardJobs(board("workable", "https://apply.workable.com/acme"), {
+      fetcher: async () =>
+        Response.json({
+          jobs: [
+            {
+              shortcode: "workable-1",
+              title: "Director of Engineering",
+              url: "https://apply.workable.com/acme/j/workable-1",
+              city: "Abu Dhabi",
+              country: "AE",
+            },
+          ],
+        }),
+    });
+
+    expect(result[0]).toMatchObject({
+      atsType: "workable",
+      externalId: "workable-1",
+      title: "Director of Engineering",
+      locations: ["Abu Dhabi, AE"],
+    });
+  });
+
   it("uses the configured Workday endpoint and normalizes relative dates", async () => {
     let requestedUrl = "";
     const workdayBoard: BoardInput = {
@@ -196,3 +290,15 @@ describe("ATS connectors", () => {
     });
   });
 });
+
+function board(atsType: string, baseUrl: string): BoardInput {
+  return {
+    id: 10,
+    atsType,
+    canonicalKey: `${atsType}:acme`,
+    companyName: "Acme",
+    slug: "acme",
+    baseUrl,
+    config: {},
+  };
+}
