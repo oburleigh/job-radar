@@ -4,7 +4,7 @@ import { Play, RefreshCw } from "lucide-react";
 import { useState, useTransition } from "react";
 
 import { syncBoardsAction } from "@/app/actions";
-import { DISCOVERY_RUN_STARTED_EVENT } from "@/presentation/discovery/client-events";
+import { DISCOVERY_RUN_STARTED_EVENT } from "./client-events";
 
 interface RunControlsProps {
   profileId: number;

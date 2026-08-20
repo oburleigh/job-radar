@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
-import { DISCOVERY_RUN_STARTED_EVENT } from "@/presentation/discovery/client-events";
+import { DISCOVERY_RUN_STARTED_EVENT } from "./client-events";
 
 const PENDING_RUNS_KEY = "job-radar.pending-discovery-runs";
 

@@ -1,6 +1,6 @@
 import { Bookmark, BriefcaseBusiness, CheckCircle2, Radar, Waypoints } from "lucide-react";
 import Link from "next/link";
-
+import { PageHeader } from "@/app/_components/page-header";
 import type { AtsType } from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
 import { getAtsLabels } from "@/contexts/discovery/adapters/driven/job-sources/catalog";
 import { getSearchProviderOptions } from "@/contexts/discovery/adapters/driven/search/web-search-provider";
@@ -8,10 +8,9 @@ import {
   getDashboardData,
   type JobState,
 } from "@/contexts/discovery/adapters/driven/sqlite/radar-read-model";
-import { JobCard } from "@/presentation/components/job-card";
-import { JobFilters } from "@/presentation/components/job-filters";
-import { PageHeader } from "@/presentation/components/page-header";
-import { RunControls } from "@/presentation/components/run-controls";
+import { JobCard } from "@/contexts/discovery/adapters/driving/web/job-card";
+import { JobFilters } from "@/contexts/discovery/adapters/driving/web/job-filters";
+import { RunControls } from "@/contexts/discovery/adapters/driving/web/run-controls";
 
 export const dynamic = "force-dynamic";
 

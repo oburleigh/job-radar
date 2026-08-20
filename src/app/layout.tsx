@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import { connection } from "next/server";
-
+import { AppNavigation } from "@/app/_components/app-navigation";
 import { getJobRadarConfig } from "@/contexts/discovery/adapters/driven/configuration/job-radar-config";
-import { AppNavigation } from "@/presentation/components/app-navigation";
-import { DiscoveryNotifications } from "@/presentation/components/discovery-notifications";
+import { DiscoveryNotifications } from "@/contexts/discovery/adapters/driving/web/discovery-notifications";
 
 import "@fontsource/barlow-condensed/latin-700.css";
 import "@fontsource/barlow-condensed/latin-800.css";
