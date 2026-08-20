@@ -3,7 +3,7 @@
 import { Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 
-import { deleteProfileAction } from "./actions";
+import { deleteProfileAction } from "./profile-actions";
 
 interface DeleteProfileButtonProps {
   profileId: number;

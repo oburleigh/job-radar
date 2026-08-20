@@ -2,8 +2,8 @@ import { Copy, Plus } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/app/_components/page-header";
 import { getProfiles } from "@/contexts/discovery/adapters/driven/sqlite/radar-read-model";
-import { saveProfileAction } from "@/contexts/discovery/adapters/driving/web/actions";
 import { DeleteProfileButton } from "@/contexts/discovery/adapters/driving/web/delete-profile-button";
+import { saveProfileAction } from "@/contexts/discovery/adapters/driving/web/profile-actions";
 import { ProfileForm } from "@/contexts/discovery/adapters/driving/web/profile-form";
 
 export const dynamic = "force-dynamic";

@@ -3,7 +3,8 @@
 import { Save } from "lucide-react";
 import { useActionState } from "react";
 import type { AtsType } from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
-import { type ActionState, saveIntegrationSettingsAction } from "./actions";
+import type { ActionState } from "./action-state";
+import { saveIntegrationSettingsAction } from "./integration-settings-actions";
 
 interface IntegrationSettingsFormProps {
   integration: {

@@ -3,7 +3,7 @@
 import { Bookmark, Check, Eye, EyeOff } from "lucide-react";
 import { useOptimistic, useTransition } from "react";
 import type { JobState } from "@/contexts/discovery/adapters/driven/sqlite/radar-read-model";
-import { updateJobStateAction } from "./actions";
+import { updateJobStateAction } from "./job-state-actions";
 
 interface JobActionsProps {
   profileId: number;

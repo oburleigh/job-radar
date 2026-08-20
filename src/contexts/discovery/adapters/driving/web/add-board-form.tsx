@@ -3,7 +3,8 @@
 import { Plus } from "lucide-react";
 import { useActionState } from "react";
 
-import { type ActionState, addBoardAction } from "./actions";
+import type { ActionState } from "./action-state";
+import { addBoardAction } from "./source-actions";
 
 const initialState: ActionState = { ok: false, message: "" };
 

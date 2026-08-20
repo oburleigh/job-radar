@@ -2,7 +2,7 @@
 
 import { useOptimistic, useTransition } from "react";
 
-import { toggleBoardAction, toggleSourceAction } from "./actions";
+import { toggleBoardAction, toggleSourceAction } from "./source-actions";
 
 interface ToggleButtonProps {
   id: number;
