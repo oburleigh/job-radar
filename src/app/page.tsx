@@ -2,12 +2,12 @@ import { Bookmark, BriefcaseBusiness, CheckCircle2, Radar, Waypoints } from "luc
 import Link from "next/link";
 
 import type { AtsType } from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
+import { getAtsLabels } from "@/contexts/discovery/adapters/driven/job-sources/catalog";
+import { getSearchProviderOptions } from "@/contexts/discovery/adapters/driven/search/web-search-provider";
 import {
   getDashboardData,
   type JobState,
 } from "@/contexts/discovery/adapters/driven/sqlite/radar-read-model";
-import { getAtsLabels } from "@/infrastructure/discovery/catalog";
-import { getSearchProviderOptions } from "@/infrastructure/discovery/search";
 import { JobCard } from "@/presentation/components/job-card";
 import { JobFilters } from "@/presentation/components/job-filters";
 import { PageHeader } from "@/presentation/components/page-header";

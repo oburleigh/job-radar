@@ -14,6 +14,8 @@ import {
   ATS_TYPES,
   isBuiltInAtsType,
 } from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
+import { suggestSearchIntegration } from "@/contexts/discovery/adapters/driven/job-sources/custom-integration";
+import { classifyUrl } from "@/contexts/discovery/adapters/driven/job-sources/urls";
 import { db } from "@/contexts/discovery/adapters/driven/sqlite/database";
 import {
   appSettings,
@@ -24,11 +26,9 @@ import {
   sourceDomains,
 } from "@/contexts/discovery/adapters/driven/sqlite/schema";
 import { createSqliteSearchProfileRepository } from "@/contexts/discovery/adapters/driven/sqlite/search-profile-repository";
+import { syncEnabledBoards } from "@/contexts/discovery/adapters/driven/sqlite/sync-boards";
 import { createSaveProfileAction } from "@/contexts/discovery/adapters/driving/web/save-profile-action";
 import { createSaveSearchProfile } from "@/contexts/discovery/hexagon/application/save-search-profile";
-import { suggestSearchIntegration } from "@/infrastructure/discovery/custom-integration";
-import { syncEnabledBoards } from "@/infrastructure/discovery/sync";
-import { classifyUrl } from "@/infrastructure/discovery/urls";
 import { assertLocalHost } from "@/platform/http/require-local-request";
 
 export interface ActionState {

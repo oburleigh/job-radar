@@ -27,17 +27,20 @@ import type {
   SearchProvider,
   SearchResult,
 } from "@/contexts/discovery/hexagon/application/search-provider";
-import { fetchLinkedInJob } from "./linkedin";
-import { inferLocationHint } from "./search-result";
-import { evaluateAndStore } from "./store-matches";
+import { fetchLinkedInJob } from "../job-sources/linkedin";
+import { inferLocationHint } from "../job-sources/search-result";
+import {
+  fetchStructuredJobPage,
+  supportsStructuredJobPage,
+} from "../job-sources/structured-job-page";
+import { classifyUrl } from "../job-sources/urls";
+import { evaluateAndStore } from "../sqlite/store-matches";
 import {
   deactivateSearchJob,
   upsertSearchResult,
   upsertVerifiedSearchJob,
-} from "./store-search-result";
-import { fetchStructuredJobPage, supportsStructuredJobPage } from "./structured-job-page";
-import { syncBoard } from "./sync";
-import { classifyUrl } from "./urls";
+} from "../sqlite/store-search-result";
+import { syncBoard } from "../sqlite/sync-boards";
 
 export interface DiscoveryOptions {
   source?: AtsType;

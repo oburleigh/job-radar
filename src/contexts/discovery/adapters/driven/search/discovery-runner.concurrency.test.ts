@@ -19,7 +19,7 @@ const { sqlite } = await import("@/platform/sqlite/client");
 const { searchProfiles, sourceDomains } = await import(
   "@/contexts/discovery/adapters/driven/sqlite/schema"
 );
-const { runDiscovery } = await import("./runner");
+const { runDiscovery } = await import("./discovery-runner");
 
 describe("discovery concurrency", () => {
   beforeAll(() => {

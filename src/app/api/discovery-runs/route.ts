@@ -5,13 +5,13 @@ import { z } from "zod";
 import { createAfterResponseDiscoveryRunScheduler } from "@/contexts/discovery/adapters/driven/background/after-response-discovery-run-scheduler";
 import { getJobRadarConfig } from "@/contexts/discovery/adapters/driven/configuration/job-radar-config";
 import { createDiscoveryRunnerSearch } from "@/contexts/discovery/adapters/driven/search/discovery-runner-search";
+import { createSearchProvider } from "@/contexts/discovery/adapters/driven/search/web-search-provider";
 import { db } from "@/contexts/discovery/adapters/driven/sqlite/database";
 import { createSqliteDiscoveryRunRegistry } from "@/contexts/discovery/adapters/driven/sqlite/discovery-run-registry";
 import { discoveryRuns, searchProfiles } from "@/contexts/discovery/adapters/driven/sqlite/schema";
 import { createStartDiscoveryRunRoute } from "@/contexts/discovery/adapters/driving/web/start-discovery-run-route";
 import { createDiscoveryRunExecution } from "@/contexts/discovery/hexagon/application/execute-discovery-run";
 import { createDiscoveryRunStarter } from "@/contexts/discovery/hexagon/application/start-discovery-run";
-import { createSearchProvider } from "@/infrastructure/discovery/search";
 import { assertLocalHost } from "@/platform/http/require-local-request";
 
 const runRegistry = createSqliteDiscoveryRunRegistry(db, {

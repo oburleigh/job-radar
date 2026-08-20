@@ -1,7 +1,7 @@
-import { runDiscovery } from "@/infrastructure/discovery/runner";
-import { createSearchProvider } from "@/infrastructure/discovery/search";
 import type { DiscoverySearch } from "../../../hexagon/application/execute-discovery-run";
 import type { SearchProvider } from "../../../hexagon/application/search-provider";
+import { runDiscovery } from "./discovery-runner";
+import { createSearchProvider } from "./web-search-provider";
 
 type DiscoveryRunnerSearchDependencies = {
   readonly createProvider: (name: string) => SearchProvider;

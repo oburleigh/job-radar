@@ -4,15 +4,15 @@ import { setImmediate as yieldToEventLoop } from "node:timers/promises";
 import { eq } from "drizzle-orm";
 
 import { getJobRadarConfig } from "../src/contexts/discovery/adapters/driven/configuration/job-radar-config";
+import { classifyUrl } from "../src/contexts/discovery/adapters/driven/job-sources/urls";
 import { db } from "../src/contexts/discovery/adapters/driven/sqlite/database";
 import {
   companyBoards,
   discoveryHits,
   searchProfiles,
 } from "../src/contexts/discovery/adapters/driven/sqlite/schema";
-import { evaluateAndStore } from "../src/infrastructure/discovery/store-matches";
-import { upsertSearchResult } from "../src/infrastructure/discovery/store-search-result";
-import { classifyUrl } from "../src/infrastructure/discovery/urls";
+import { evaluateAndStore } from "../src/contexts/discovery/adapters/driven/sqlite/store-matches";
+import { upsertSearchResult } from "../src/contexts/discovery/adapters/driven/sqlite/store-search-result";
 
 async function main() {
   const boards = new Map(

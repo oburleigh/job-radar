@@ -5,6 +5,11 @@ import {
   getJobRadarConfig,
   supportsBoardSync,
 } from "../src/contexts/discovery/adapters/driven/configuration/job-radar-config";
+import { runDiscovery } from "../src/contexts/discovery/adapters/driven/search/discovery-runner";
+import {
+  createSearchProvider,
+  getSearchProviderOptions,
+} from "../src/contexts/discovery/adapters/driven/search/web-search-provider";
 import { db } from "../src/contexts/discovery/adapters/driven/sqlite/database";
 import {
   searchProfiles,
@@ -14,11 +19,6 @@ import {
   planBoardDiscoveryQueries,
   planSearchQueries,
 } from "../src/contexts/discovery/hexagon/application/plan-search-queries";
-import { runDiscovery } from "../src/infrastructure/discovery/runner";
-import {
-  createSearchProvider,
-  getSearchProviderOptions,
-} from "../src/infrastructure/discovery/search";
 
 async function main() {
   const args = process.argv.slice(2);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { BraveSearchProvider, SerperSearchProvider } from "./search";
+import { BraveSearchProvider, SerperSearchProvider } from "./web-search-provider";
 
 describe("Brave search provider", () => {
   it("applies the profile age window as a freshness filter", async () => {

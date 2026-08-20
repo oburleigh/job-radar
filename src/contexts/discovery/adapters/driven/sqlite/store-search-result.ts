@@ -7,8 +7,8 @@ import type {
 import { db } from "@/contexts/discovery/adapters/driven/sqlite/database";
 import { companyBoards, jobs } from "@/contexts/discovery/adapters/driven/sqlite/schema";
 
-import { normalizeSearchResult } from "./search-result";
-import { canonicalizeUrl, makeDedupeKey } from "./urls";
+import { normalizeSearchResult } from "../job-sources/search-result";
+import { canonicalizeUrl, makeDedupeKey } from "../job-sources/urls";
 
 interface SearchResultInput {
   atsType: AtsType;

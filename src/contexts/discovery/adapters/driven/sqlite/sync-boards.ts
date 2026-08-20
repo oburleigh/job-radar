@@ -13,9 +13,9 @@ import {
   searchProfiles,
 } from "@/contexts/discovery/adapters/driven/sqlite/schema";
 
-import { fetchBoardJobs } from "./connectors";
+import { fetchBoardJobs } from "../job-sources/connectors";
+import { makeDedupeKey } from "../job-sources/urls";
 import { evaluateAndStore } from "./store-matches";
-import { makeDedupeKey } from "./urls";
 
 export interface SyncResult {
   boardId: number;
