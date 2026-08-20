@@ -1,17 +1,20 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { createSetSourceCoverageEnabled } from "./use-case";
 
 describe("set source coverage enabled", () => {
   it.each(["source", "board"] as const)("updates the selected %s", (kind) => {
-    const setSourceEnabled = vi.fn();
-    const setBoardEnabled = vi.fn();
+    const changedSources: { id: number; enabled: boolean }[] = [];
+    const changedBoards: { id: number; enabled: boolean }[] = [];
     const setEnabled = createSetSourceCoverageEnabled({
-      coverage: { setSourceEnabled, setBoardEnabled },
+      coverage: {
+        setSourceEnabled: (id, enabled) => changedSources.push({ id, enabled }),
+        setBoardEnabled: (id, enabled) => changedBoards.push({ id, enabled }),
+      },
     });
 
     expect(setEnabled({ kind, id: 4, enabled: false })).toEqual({ status: "changed" });
-    const expected = kind === "source" ? setSourceEnabled : setBoardEnabled;
-    expect(expected).toHaveBeenCalledWith(4, false);
+    expect(changedSources).toEqual(kind === "source" ? [{ id: 4, enabled: false }] : []);
+    expect(changedBoards).toEqual(kind === "board" ? [{ id: 4, enabled: false }] : []);
   });
 });

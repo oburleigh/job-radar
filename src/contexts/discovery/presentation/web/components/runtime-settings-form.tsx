@@ -1,0 +1,376 @@
+import { Button } from "@job-radar/design-ui";
+import { Save } from "lucide-react";
+import { useFetcher } from "react-router";
+import { runtimeSettingConstraints } from "@/contexts/discovery/application/runtime-settings/save/constraints";
+import type { RuntimeSettings } from "@/contexts/discovery/application/runtime-settings/settings";
+import type { ActionState } from "@/contexts/discovery/presentation/web/action-state";
+
+interface RuntimeSettingsFormProps {
+  settings: RuntimeSettings;
+}
+
+const initialState: ActionState = { ok: false, message: "" };
+
+export function RuntimeSettingsForm({ settings }: RuntimeSettingsFormProps) {
+  const fetcher = useFetcher<ActionState>();
+  const state = fetcher.data ?? initialState;
+  const pending = fetcher.state !== "idle";
+  const { network, discovery, ui, matching, searchProviders, integrationPolicy, profileDefaults } =
+    settings;
+  const limits = runtimeSettingConstraints;
+
+  return (
+    <fetcher.Form method="post" action="/settings" className="profile-form">
+      <input type="hidden" name="intent" value="save-runtime-settings" />
+      <section className="form-section">
+        <div className="form-section-copy">
+          <span className="form-step">01</span>
+          <div>
+            <h2>Network and discovery</h2>
+            <p>Control request behavior and how much work each run performs.</p>
+          </div>
+        </div>
+        <div className="form-grid form-grid-three">
+          <NumberField
+            label="Request timeout (ms)"
+            name="timeoutMs"
+            value={network.timeoutMs}
+            min={limits.timeoutMs.min}
+            max={limits.timeoutMs.max}
+          />
+          <NumberField
+            label="Requested web results per query"
+            name="resultsPerQuery"
+            value={discovery.resultsPerQuery}
+            min={limits.resultsPerQuery.min}
+            max={limits.resultsPerQuery.max}
+            help="The provider-specific cap below can reduce this value."
+          />
+          <label className="form-span-two">
+            <span>HTTP user agent</span>
+            <input name="userAgent" required defaultValue={network.userAgent} />
+          </label>
+          <NumberField
+            label="Total jobs per discovered board"
+            name="boardJobLimit"
+            value={discovery.boardJobLimit}
+            min={limits.boardJobLimit.min}
+            max={limits.boardJobLimit.max}
+            help="Direct connectors paginate until this total is reached."
+          />
+          <NumberField
+            label="Web freshness (days)"
+            name="searchFreshnessDays"
+            value={discovery.searchFreshnessDays}
+            min={limits.searchFreshnessDays.min}
+            max={limits.searchFreshnessDays.max}
+            help="Use 0 to disable the web-search freshness request."
+          />
+          <NumberField
+            label="Background work batch size"
+            name="workYieldBatchSize"
+            value={discovery.workYieldBatchSize}
+            min={limits.workYieldBatchSize.min}
+            max={limits.workYieldBatchSize.max}
+            help="Yield after this many writes so saving a profile stays responsive during discovery."
+          />
+          <NumberField
+            label="Run history entries"
+            name="runHistoryLimit"
+            value={discovery.runHistoryLimit}
+            min={limits.runHistoryLimit.min}
+            max={limits.runHistoryLimit.max}
+            help="Maximum number of completed and in-progress runs shown in Run history."
+          />
+          <NumberField
+            label="Run status polling (ms)"
+            name="discoveryPollIntervalMs"
+            value={ui.discoveryPollIntervalMs}
+            min={limits.discoveryPollIntervalMs.min}
+            max={limits.discoveryPollIntervalMs.max}
+          />
+          <NumberField
+            label="Stale run timeout (ms)"
+            name="discoveryStaleAfterMs"
+            value={ui.discoveryStaleAfterMs}
+            min={limits.discoveryStaleAfterMs.min}
+            max={limits.discoveryStaleAfterMs.max}
+          />
+          <label>
+            <span>Title search mode</span>
+            <select name="titleSearchMode" defaultValue={discovery.titleSearchMode}>
+              <option value="title">Page title only</option>
+              <option value="anywhere">Anywhere on page</option>
+            </select>
+          </label>
+        </div>
+        <div className="form-grid form-grid-two settings-text-grid">
+          <label>
+            <span>Structured verification source IDs</span>
+            <textarea
+              name="structuredVerificationSources"
+              rows={4}
+              defaultValue={discovery.structuredVerificationSources.join("\n")}
+            />
+            <small className="field-help">
+              Search-only integration IDs that publish schema.org JobPosting data.
+            </small>
+          </label>
+          <label>
+            <span>Closed-listing markers</span>
+            <textarea
+              name="closedListingMarkers"
+              required
+              rows={4}
+              defaultValue={discovery.closedListingMarkers.join("\n")}
+            />
+            <small className="field-help">
+              A listed phrase marks a fetched search-only role as inactive.
+            </small>
+          </label>
+        </div>
+      </section>
+
+      <section className="form-section">
+        <div className="form-section-copy">
+          <span className="form-step">02</span>
+          <div>
+            <h2>Match scoring</h2>
+            <p>These weights determine whether a fetched job qualifies.</p>
+          </div>
+        </div>
+        <div className="form-grid settings-number-grid">
+          <NumberField
+            label="Exact title"
+            name="exactTitleScore"
+            value={matching.exactTitleScore}
+          />
+          <NumberField
+            label="All title tokens"
+            name="fullTokenScore"
+            value={matching.fullTokenScore}
+          />
+          <NumberField
+            label="Partial title"
+            name="partialTokenScore"
+            value={matching.partialTokenScore}
+          />
+          <NumberField
+            label="Partial threshold"
+            name="partialTokenThreshold"
+            value={matching.partialTokenThreshold}
+            min={limits.partialTokenThreshold.min}
+            max={limits.partialTokenThreshold.max}
+            step={String(limits.partialTokenThreshold.step)}
+          />
+          <NumberField label="Location" name="locationScore" value={matching.locationScore} />
+          <NumberField label="Remote" name="remoteScore" value={matching.remoteScore} />
+          <NumberField
+            label="Unknown date"
+            name="unknownDateScore"
+            value={matching.unknownDateScore}
+          />
+          <NumberField
+            label="Freshness maximum"
+            name="freshnessMaxScore"
+            value={matching.freshnessMaxScore}
+          />
+          <NumberField
+            label="Freshness minimum"
+            name="freshnessMinimumScore"
+            value={matching.freshnessMinimumScore}
+          />
+          <NumberField
+            label="Freshness step (days)"
+            name="freshnessStepDays"
+            value={matching.freshnessStepDays}
+            min={limits.freshnessStepDays.min}
+            max={limits.freshnessStepDays.max}
+          />
+        </div>
+        <div className="form-grid form-grid-two settings-text-grid">
+          <label>
+            <span>Ignored title words</span>
+            <textarea name="stopWords" rows={6} defaultValue={matching.stopWords.join("\n")} />
+          </label>
+          <label>
+            <span>Generic leadership words</span>
+            <textarea
+              name="genericTitleTerms"
+              required
+              rows={6}
+              defaultValue={matching.genericTitleTerms.join("\n")}
+            />
+          </label>
+          <label>
+            <span>Remote work terms</span>
+            <textarea
+              name="remoteTerms"
+              required
+              rows={6}
+              defaultValue={matching.remoteTerms.join("\n")}
+            />
+          </label>
+          <label>
+            <span>Unrestricted remote phrases</span>
+            <textarea
+              name="unrestrictedRemotePhrases"
+              required
+              rows={6}
+              defaultValue={matching.unrestrictedRemotePhrases.join("\n")}
+            />
+          </label>
+        </div>
+      </section>
+
+      <section className="form-section">
+        <div className="form-section-copy">
+          <span className="form-step">03</span>
+          <div>
+            <h2>Search providers</h2>
+            <p>Provider credentials remain in .env; non-secret defaults live here.</p>
+          </div>
+        </div>
+        <div className="form-grid provider-grid">
+          {Object.entries(searchProviders)
+            .sort(([, left], [, right]) => left.priority - right.priority)
+            .map(([name, provider]) => (
+              <div className="provider-settings" key={name}>
+                <label>
+                  <span>{provider.label} endpoint</span>
+                  <input
+                    name={`provider:${name}:endpoint`}
+                    type="url"
+                    required
+                    defaultValue={provider.endpoint}
+                  />
+                </label>
+                <NumberField
+                  label={`${provider.label} maximum per query`}
+                  name={`provider:${name}:maxResults`}
+                  value={provider.maxResults}
+                  min={limits.providerMaxResults.min}
+                  max={limits.providerMaxResults.max}
+                />
+                <label>
+                  <span>Title query mode</span>
+                  <select
+                    name={`provider:${name}:titleSearchMode`}
+                    defaultValue={provider.titleSearchMode ?? ""}
+                  >
+                    <option value="">Use discovery default</option>
+                    <option value="title">Page title only</option>
+                    <option value="anywhere">Anywhere on page</option>
+                  </select>
+                </label>
+                <small className="field-help">Credential: {provider.apiKeyEnv}</small>
+              </div>
+            ))}
+        </div>
+      </section>
+
+      <section className="form-section">
+        <div className="form-section-copy">
+          <span className="form-step">04</span>
+          <div>
+            <h2>New profile defaults</h2>
+            <p>Choose the starting values used when you create a search profile.</p>
+          </div>
+        </div>
+        <div className="form-grid form-grid-three">
+          <NumberField
+            label="Maximum age (days)"
+            name="maximumAgeDays"
+            value={profileDefaults.maximumAgeDays}
+            min={limits.maximumAgeDays.min}
+            max={limits.maximumAgeDays.max}
+          />
+          <NumberField
+            label="Minimum match score"
+            name="minimumScore"
+            value={profileDefaults.minimumScore}
+            min={limits.minimumScore.min}
+            max={limits.minimumScore.max}
+          />
+          <label>
+            <span>Salary currency</span>
+            <input
+              name="salaryCurrency"
+              maxLength={3}
+              pattern="[A-Za-z]{3}"
+              defaultValue={profileDefaults.salaryCurrency}
+              placeholder="Optional, for example GBP"
+            />
+          </label>
+        </div>
+      </section>
+
+      <section className="form-section">
+        <div className="form-section-copy">
+          <span className="form-step">05</span>
+          <div>
+            <h2>ATS registry defaults</h2>
+            <p>Set the ordering used when Job Radar creates a search-only integration.</p>
+          </div>
+        </div>
+        <div className="form-grid form-grid-three">
+          <NumberField
+            label="New integration priority"
+            name="customIntegrationPriority"
+            value={integrationPolicy.customPriority}
+            min={limits.customIntegrationPriority.min}
+            max={limits.customIntegrationPriority.max}
+          />
+        </div>
+      </section>
+
+      <div className="form-submit-row">
+        {state.message ? (
+          <p className={state.ok ? "form-success" : "form-error"}>{state.message}</p>
+        ) : (
+          <span />
+        )}
+        <Button type="submit" busy={pending} disabled={pending} variant="primary">
+          <Save size={17} />
+          {pending ? "Saving..." : "Save runtime settings"}
+        </Button>
+      </div>
+    </fetcher.Form>
+  );
+}
+
+interface NumberFieldProps {
+  label: string;
+  name: string;
+  value: number;
+  min?: number;
+  max?: number;
+  step?: string;
+  help?: string;
+}
+
+function NumberField({
+  label,
+  name,
+  value,
+  min = 0,
+  max = 100,
+  step = "1",
+  help,
+}: NumberFieldProps) {
+  return (
+    <label>
+      <span>{label}</span>
+      <input
+        name={name}
+        type="number"
+        min={min}
+        max={max}
+        step={step}
+        required
+        defaultValue={value}
+      />
+      {help ? <small className="field-help">{help}</small> : null}
+    </label>
+  );
+}

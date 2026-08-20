@@ -1,6 +1,9 @@
-import type { QuerySource, SearchQueryCriteria } from "../planning/plan-search-queries";
+import type {
+  QuerySource,
+  SearchQueryCriteria,
+} from "@/contexts/discovery/application/discovery-runs/planning/plan-search-queries";
 
-export type DiscoveryProfile = SearchQueryCriteria & {
+export type DiscoveryCriteria = SearchQueryCriteria & {
   readonly id: number;
   readonly maxAgeDays: number;
 };
@@ -19,7 +22,7 @@ export type DiscoveryPolicy = {
 };
 
 export type DiscoverySetup = {
-  readonly profile: DiscoveryProfile;
+  readonly profile: DiscoveryCriteria;
   readonly sources: readonly DiscoverySource[];
   readonly policy: DiscoveryPolicy;
 };

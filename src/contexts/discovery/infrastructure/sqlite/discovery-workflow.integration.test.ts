@@ -8,8 +8,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createJobDiscovery } from "@/contexts/discovery/application/discovery-runs/discover/discover-jobs";
 import type { SearchProvider } from "@/contexts/discovery/application/discovery-runs/ports/search-provider";
 import { createSaveSearchProfile } from "@/contexts/discovery/application/search-profiles/save/use-case";
+import { type SearchProfileId, searchProfileIdFrom } from "@/contexts/discovery/domain/identifiers";
+import { createSearchProfileDefinition } from "@/contexts/discovery/domain/search-profile";
+import { bootstrapJobRadar } from "@/contexts/discovery/infrastructure/configuration/bootstrap-job-radar";
 import { createSqliteSearchProfileRepository } from "@/contexts/discovery/infrastructure/sqlite/search-profile-repository";
-import { parseProfileRequest } from "@/contexts/discovery/presentation/web/requests/profile-request";
 
 const testDirectory = mkdtempSync(path.join(tmpdir(), "job-radar-runner-concurrency-"));
 const previousDatabasePath = process.env.DB_PATH;
@@ -36,6 +38,7 @@ const { createSqliteJobMatchEvaluator } = await import(
 describe("discovery concurrency", () => {
   beforeAll(() => {
     migrate(db, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    bootstrapJobRadar(db, new Date("2026-08-20T09:00:00.000Z"));
   });
 
   afterAll(() => {
@@ -93,11 +96,23 @@ describe("discovery concurrency", () => {
       readonly result: ReturnType<typeof saveProfile>;
     }>((resolve) => {
       setImmediate(async () => {
-        const parsed = parseProfileRequest(profileForm(profileId, { minScore: "82" }));
-        if (!parsed.ok) {
-          throw new Error(parsed.message);
-        }
-        const result = saveProfile(parsed.command);
+        const result = saveProfile({
+          id: profileId,
+          profile: profileDefinition({
+            name: "Concurrent profile",
+            targetTitles: ["VP Engineering"],
+            targetLocations: ["Dubai"],
+            requiredJobTerms: [],
+            excludedTitleTerms: [],
+            excludedLocationTerms: [],
+            excludedDescriptionTerms: [],
+            includeRemote: false,
+            includeUnverified: false,
+            salaryPreference: { currency: null, minimumAnnual: null, maximumAnnual: null },
+            maximumAgeDays: 30,
+            minimumScore: 82,
+          }),
+        });
         resolve({
           discoveryFinished,
           result,
@@ -182,8 +197,8 @@ function createDiscovery(provider: SearchProvider) {
   });
 }
 
-function seedProfile(name = "Concurrent profile"): number {
-  return db
+function seedProfile(name = "Concurrent profile"): SearchProfileId {
+  const value = db
     .insert(searchProfiles)
     .values({
       name,
@@ -206,6 +221,11 @@ function seedProfile(name = "Concurrent profile"): number {
     })
     .returning({ id: searchProfiles.id })
     .get().id;
+  const id = searchProfileIdFrom(value);
+  if (id === null) {
+    throw new Error(`Invalid search profile fixture identifier: ${value}`);
+  }
+  return id;
 }
 
 function seedSingleSource(): void {
@@ -225,26 +245,10 @@ function seedSingleSource(): void {
     .run();
 }
 
-function profileForm(profileId: number, overrides: Record<string, string> = {}): FormData {
-  const formData = new FormData();
-  const values = {
-    id: String(profileId),
-    name: "Concurrent profile",
-    titleTerms: "VP Engineering",
-    locationTerms: "Dubai",
-    requiredJobTerms: "",
-    excludedTitleTerms: "",
-    excludedLocationTerms: "",
-    excludedDescriptionTerms: "",
-    salaryCurrency: "",
-    salaryMin: "",
-    salaryMax: "",
-    maxAgeDays: "30",
-    minScore: "70",
-    ...overrides,
-  };
-  for (const [key, value] of Object.entries(values)) {
-    formData.set(key, value);
+function profileDefinition(draft: Parameters<typeof createSearchProfileDefinition>[0]) {
+  const result = createSearchProfileDefinition(draft);
+  if (result.status === "invalid") {
+    throw new Error(`Invalid profile fixture: ${result.reason}`);
   }
-  return formData;
+  return result.profile;
 }

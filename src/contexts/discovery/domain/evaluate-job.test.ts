@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
+import { createAnnualSalaryRange } from "./annual-salary";
+import { currencyFrom } from "./currency";
 import { createJobMatcher } from "./evaluate-job";
-import type { MatchableJob, MatchingPolicy, MatchProfile } from "./job-match";
+import type { JobMatchingCriteria, MatchableJob, MatchingPolicy } from "./job-match";
 
 const matchingPolicy: MatchingPolicy = {
   exactTitleScore: 60,
@@ -42,7 +44,7 @@ const matchingPolicy: MatchingPolicy = {
 
 const evaluateJob = createJobMatcher(matchingPolicy);
 
-const profile: MatchProfile = {
+const profile: JobMatchingCriteria = {
   titleTerms: ["Head of Engineering", "Director of Engineering"],
   locationTerms: ["Dubai", "UAE"],
   requiredJobTerms: [],
@@ -51,7 +53,7 @@ const profile: MatchProfile = {
   excludedDescriptionTerms: ["US only"],
   includeRemote: false,
   includeUnverified: false,
-  salaryCurrency: "",
+  salaryCurrency: null,
   salaryMin: null,
   salaryMax: null,
   maxAgeDays: 30,
@@ -67,7 +69,7 @@ const baseJob: MatchableJob = {
   workplaceType: "hybrid",
   verified: true,
   publishedAt: new Date("2026-07-25T00:00:00Z"),
-  rawPayload: {},
+  publishedSalary: null,
 };
 
 describe("deterministic matching", () => {
@@ -76,7 +78,7 @@ describe("deterministic matching", () => {
 
     expect(result.status).toBe("matched");
     expect(result.score).toBeGreaterThanOrEqual(90);
-    expect(result.reasons).toContain("Title matches Head of Engineering");
+    expect(result.reasons).toContainEqual({ code: "title-match", term: "Head of Engineering" });
   });
 
   it("rejects a role outside the configured location", () => {
@@ -87,7 +89,7 @@ describe("deterministic matching", () => {
     );
 
     expect(result.status).toBe("excluded");
-    expect(result.exclusionReasons).toContain("Location does not match the profile");
+    expect(result.exclusionReasons).toContainEqual({ code: "location-mismatch" });
   });
 
   it("applies explicit exclusion terms before scoring", () => {
@@ -98,7 +100,7 @@ describe("deterministic matching", () => {
     );
 
     expect(result.status).toBe("excluded");
-    expect(result.exclusionReasons).toContain("Excluded title term: Assistant");
+    expect(result.exclusionReasons).toContainEqual({ code: "excluded-title", term: "Assistant" });
   });
 
   it("applies context exclusions when the phrase appears in the title", () => {
@@ -116,9 +118,10 @@ describe("deterministic matching", () => {
     );
 
     expect(result.status).toBe("excluded");
-    expect(result.exclusionReasons).toContain(
-      "Excluded description term: Security clearance required",
-    );
+    expect(result.exclusionReasons).toContainEqual({
+      code: "excluded-description",
+      term: "Security clearance required",
+    });
   });
 
   it("does not confuse a generic senior manager role with engineering leadership", () => {
@@ -135,7 +138,7 @@ describe("deterministic matching", () => {
     );
 
     expect(result.status).toBe("excluded");
-    expect(result.exclusionReasons).toContain("Title does not match a target role");
+    expect(result.exclusionReasons).toContainEqual({ code: "title-mismatch" });
   });
 
   it("does not treat a description mention as the job location", () => {
@@ -154,7 +157,7 @@ describe("deterministic matching", () => {
     );
 
     expect(result.status).toBe("excluded");
-    expect(result.exclusionReasons).toContain("Location does not match the profile");
+    expect(result.exclusionReasons).toContainEqual({ code: "location-mismatch" });
   });
 
   it("supports an optional positive keyword filter for ambiguous industries", () => {
@@ -174,7 +177,7 @@ describe("deterministic matching", () => {
     );
 
     expect(result.status).toBe("excluded");
-    expect(result.exclusionReasons).toContain("Missing a required job keyword");
+    expect(result.exclusionReasons).toContainEqual({ code: "missing-required-job-term" });
   });
 
   it("keeps unverified search-engine pages out unless the profile opts in", () => {
@@ -185,7 +188,7 @@ describe("deterministic matching", () => {
     );
 
     expect(result.status).toBe("excluded");
-    expect(result.exclusionReasons).toContain("Web-search lead is not verified by an ATS feed");
+    expect(result.exclusionReasons).toContainEqual({ code: "unverified-lead" });
   });
 
   it("rejects remote roles restricted to a different country", () => {
@@ -205,7 +208,7 @@ describe("deterministic matching", () => {
     );
 
     expect(result.status).toBe("excluded");
-    expect(result.exclusionReasons).toContain("Location does not match the profile");
+    expect(result.exclusionReasons).toContainEqual({ code: "location-mismatch" });
   });
 
   it("rejects an ambiguous target city when the profile excludes its country", () => {
@@ -224,7 +227,7 @@ describe("deterministic matching", () => {
     );
 
     expect(result.status).toBe("excluded");
-    expect(result.exclusionReasons).toContain("Excluded location term: Canada");
+    expect(result.exclusionReasons).toContainEqual({ code: "excluded-location", term: "Canada" });
   });
 
   it("accepts location-agnostic remote roles when enabled", () => {
@@ -244,7 +247,7 @@ describe("deterministic matching", () => {
     );
 
     expect(result.status).toBe("matched");
-    expect(result.reasons).toContain("Remote role allowed by profile");
+    expect(result.reasons).toContainEqual({ code: "remote-allowed" });
   });
 
   it("accepts an explicitly worldwide role with a nominal office location", () => {
@@ -265,7 +268,7 @@ describe("deterministic matching", () => {
     );
 
     expect(result.status).toBe("matched");
-    expect(result.reasons).toContain("Remote role allowed by profile");
+    expect(result.reasons).toContainEqual({ code: "remote-allowed" });
   });
 
   it("accepts remote roles explicitly located in the target country", () => {
@@ -285,7 +288,7 @@ describe("deterministic matching", () => {
     );
 
     expect(result.status).toBe("matched");
-    expect(result.reasons).toContain("Location matches United Kingdom");
+    expect(result.reasons).toContainEqual({ code: "location-match", term: "United Kingdom" });
   });
 
   it("does not treat International as the excluded title Intern", () => {
@@ -321,18 +324,18 @@ describe("deterministic matching", () => {
     );
 
     expect(result.status).toBe("excluded");
-    expect(result.exclusionReasons).toContain("Title does not match a target role");
+    expect(result.exclusionReasons).toContainEqual({ code: "title-mismatch" });
   });
 
   it("rejects a published salary range below the profile preference", () => {
     const result = evaluateJob(
       {
         ...baseJob,
-        description: "The base salary range is £70,000 - £90,000 per year.",
+        publishedSalary: createAnnualSalaryRange("GBP", 70_000, 90_000),
       },
       {
         ...profile,
-        salaryCurrency: "GBP",
+        salaryCurrency: currencyFrom("GBP"),
         salaryMin: 100_000,
         salaryMax: 150_000,
       },
@@ -340,20 +343,21 @@ describe("deterministic matching", () => {
     );
 
     expect(result.status).toBe("excluded");
-    expect(result.exclusionReasons).toContain(
-      "Salary GBP 70,000-90,000 is below the preferred range",
-    );
+    expect(result.exclusionReasons).toContainEqual({
+      code: "salary-below",
+      salary: { currency: "GBP", min: 70_000, max: 90_000 },
+    });
   });
 
   it("keeps a role whose published salary overlaps the preference", () => {
     const result = evaluateJob(
       {
         ...baseJob,
-        description: "The base salary range is £90,000 - £120,000 per year.",
+        publishedSalary: createAnnualSalaryRange("GBP", 90_000, 120_000),
       },
       {
         ...profile,
-        salaryCurrency: "GBP",
+        salaryCurrency: currencyFrom("GBP"),
         salaryMin: 100_000,
         salaryMax: 150_000,
       },
@@ -361,7 +365,10 @@ describe("deterministic matching", () => {
     );
 
     expect(result.status).toBe("matched");
-    expect(result.reasons).toContain("Salary GBP 90,000-120,000 overlaps the profile preference");
+    expect(result.reasons).toContainEqual({
+      code: "salary-overlap",
+      salary: { currency: "GBP", min: 90_000, max: 120_000 },
+    });
   });
 
   it("keeps a role when salary is not published", () => {
@@ -369,7 +376,7 @@ describe("deterministic matching", () => {
       baseJob,
       {
         ...profile,
-        salaryCurrency: "GBP",
+        salaryCurrency: currencyFrom("GBP"),
         salaryMin: 100_000,
         salaryMax: 150_000,
       },
@@ -383,11 +390,11 @@ describe("deterministic matching", () => {
     const result = evaluateJob(
       {
         ...baseJob,
-        description: "The base salary range is $70,000 - $90,000 per year.",
+        publishedSalary: createAnnualSalaryRange("USD", 70_000, 90_000),
       },
       {
         ...profile,
-        salaryCurrency: "GBP",
+        salaryCurrency: currencyFrom("GBP"),
         salaryMin: 100_000,
         salaryMax: 150_000,
       },

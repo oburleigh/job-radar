@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import type { RuntimeSettingsCommand } from "@/contexts/discovery/application/runtime-settings/save/command";
-import { getJobRadarConfig } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
 
 import { parseRuntimeSettingsRequest } from "./runtime-settings-request";
 
@@ -27,16 +26,49 @@ describe("runtime settings request", () => {
 });
 
 function currentRuntimeSettings(): RuntimeSettingsCommand {
-  const { network, discovery, matching, ui, searchProviders, integrationPolicy, profileDefaults } =
-    getJobRadarConfig();
   return {
-    network,
-    discovery,
-    matching,
-    ui,
-    searchProviders,
-    integrationPolicy,
-    profileDefaults,
+    network: { timeoutMs: 30_000, userAgent: "Job Radar test" },
+    discovery: {
+      resultsPerQuery: 20,
+      boardJobLimit: 200,
+      searchFreshnessDays: 0,
+      workYieldBatchSize: 25,
+      runHistoryLimit: 100,
+      titleSearchMode: "title",
+      structuredVerificationSources: ["web3-career"],
+      closedListingMarkers: ["no longer available"],
+    },
+    ui: { discoveryPollIntervalMs: 3_000, discoveryStaleAfterMs: 300_000 },
+    matching: {
+      exactTitleScore: 60,
+      fullTokenScore: 50,
+      partialTokenScore: 42,
+      partialTokenThreshold: 0.8,
+      locationScore: 30,
+      remoteScore: 25,
+      unknownDateScore: 5,
+      freshnessMaxScore: 10,
+      freshnessMinimumScore: 2,
+      freshnessStepDays: 3,
+      stopWords: ["the"],
+      genericTitleTerms: ["head"],
+      remoteTerms: ["remote"],
+      unrestrictedRemotePhrases: ["worldwide remote"],
+    },
+    searchProviders: {
+      test: {
+        label: "Test search",
+        endpoint: "https://example.com/search",
+        maxResults: 20,
+        parameters: {},
+        apiKeyEnv: "TEST_SEARCH_API_KEY",
+        enabled: true,
+        priority: 10,
+        titleSearchMode: null,
+      },
+    },
+    integrationPolicy: { customPriority: 200 },
+    profileDefaults: { maximumAgeDays: 30, minimumScore: 70, salaryCurrency: "" },
   };
 }
 
@@ -45,7 +77,7 @@ function runtimeSettingsForm(profileDefaults: {
   minimumScore: string;
   salaryCurrency: string;
 }): FormData {
-  const config = getJobRadarConfig();
+  const config = currentRuntimeSettings();
   const formData = new FormData();
   const values: Record<string, string> = {
     timeoutMs: String(config.network.timeoutMs),

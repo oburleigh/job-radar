@@ -1,5 +1,6 @@
+import { z } from "zod";
 import { endpoint } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
-
+import { optionalVendorTextValue, parseVendorResponse } from "./response-schema";
 import {
   asRecord,
   type BoardConnector,
@@ -11,14 +12,28 @@ import {
   stripHtml,
 } from "./shared";
 
+const greenhouseJobSchema = z.looseObject({
+  id: optionalVendorTextValue,
+  internal_job_id: optionalVendorTextValue,
+  title: z.string().trim().min(1),
+  company_name: optionalVendorTextValue,
+  absolute_url: optionalVendorTextValue,
+  location: z.looseObject({ name: optionalVendorTextValue }).optional(),
+  content: optionalVendorTextValue,
+  departments: z.array(z.looseObject({ name: optionalVendorTextValue })).optional(),
+  first_published: z.unknown().optional(),
+  updated_at: z.unknown().optional(),
+});
+const greenhouseResponseSchema = z.looseObject({ jobs: z.array(greenhouseJobSchema) });
+
 export const fetchGreenhouse: BoardConnector = async (board, limit, fetcher) => {
-  const payload = await requestJson(
-    endpoint("greenhouse", "jobs", { slug: board.slug }),
-    {},
-    fetcher,
+  const payload = parseVendorResponse(
+    "Greenhouse",
+    greenhouseResponseSchema,
+    await requestJson(endpoint("greenhouse", "jobs", { slug: board.slug }), {}, fetcher),
   );
 
-  return recordArray(asRecord(payload).jobs)
+  return recordArray(payload.jobs)
     .slice(0, limit)
     .filter((row) => stringValue(row.title))
     .map((row) => {

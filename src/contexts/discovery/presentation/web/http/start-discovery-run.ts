@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { ForStartingDiscoveryRuns } from "../../../application/discovery-runs/start/start-discovery-run";
+import type { ForStartingDiscoveryRuns } from "@/contexts/discovery/application/discovery-runs/start/start-discovery-run";
 
 type StartDiscoveryRunRouteDependencies = {
   readonly assertLocalRequest: (request: Request) => void;

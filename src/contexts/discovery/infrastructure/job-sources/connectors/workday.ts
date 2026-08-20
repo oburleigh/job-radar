@@ -1,11 +1,11 @@
+import { z } from "zod";
 import {
   endpoint,
   getAtsIntegration,
 } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
 import type { RawJob } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
-
+import { optionalVendorTextValue, parseVendorResponse } from "./response-schema";
 import {
-  asRecord,
   type BoardConnector,
   lastPathPart,
   parseWorkdayDate,
@@ -15,6 +15,16 @@ import {
   stringArray,
   stringValue,
 } from "./shared";
+
+const workdayJobSchema = z.looseObject({
+  title: z.string().trim().min(1),
+  externalPath: z.string().trim().min(1),
+  locationsText: optionalVendorTextValue,
+  bulletFields: z.array(optionalVendorTextValue).optional(),
+  remoteType: optionalVendorTextValue,
+  postedOn: z.unknown().optional(),
+});
+const workdayResponseSchema = z.looseObject({ jobPostings: z.array(workdayJobSchema) });
 
 export const fetchWorkday: BoardConnector = async (board, limit, fetcher) => {
   const host = board.config.host || new URL(board.baseUrl).hostname;
@@ -31,21 +41,25 @@ export const fetchWorkday: BoardConnector = async (board, limit, fetcher) => {
   while (results.length < limit) {
     const pageSize = getAtsIntegration("workday").pageSize ?? limit;
     const pageLimit = Math.min(pageSize, limit - results.length);
-    const payload = await requestJson(
-      jobsEndpoint,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          appliedFacets: {},
-          limit: pageLimit,
-          offset,
-          searchText: "",
-        }),
-      },
-      fetcher,
+    const payload = parseVendorResponse(
+      "Workday",
+      workdayResponseSchema,
+      await requestJson(
+        jobsEndpoint,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            appliedFacets: {},
+            limit: pageLimit,
+            offset,
+            searchText: "",
+          }),
+        },
+        fetcher,
+      ),
     );
-    const rows = recordArray(asRecord(payload).jobPostings);
+    const rows = recordArray(payload.jobPostings);
     if (rows.length === 0) {
       break;
     }

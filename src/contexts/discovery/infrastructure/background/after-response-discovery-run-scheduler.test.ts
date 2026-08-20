@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { ForExecutingDiscoveryRuns } from "../../application/discovery-runs/execute/execute-discovery-run";
+import type { ForExecutingDiscoveryRuns } from "@/contexts/discovery/application/discovery-runs/execute/execute-discovery-run";
 import { createAfterResponseDiscoveryRunScheduler } from "./after-response-discovery-run-scheduler";
 
 const execution = { profileId: 7, providerName: "serper", runId: 41 };

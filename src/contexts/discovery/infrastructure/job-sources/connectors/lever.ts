@@ -1,5 +1,6 @@
+import { z } from "zod";
 import { endpoint } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
-
+import { optionalVendorTextValue, parseVendorResponse } from "./response-schema";
 import {
   asRecord,
   type BoardConnector,
@@ -12,13 +13,40 @@ import {
   stripHtml,
 } from "./shared";
 
+const leverJobSchema = z.looseObject({
+  id: optionalVendorTextValue,
+  text: z.string().trim().min(1),
+  hostedUrl: optionalVendorTextValue,
+  applyUrl: optionalVendorTextValue,
+  categories: z
+    .looseObject({
+      allLocations: z.array(optionalVendorTextValue).optional(),
+      location: optionalVendorTextValue,
+      department: optionalVendorTextValue,
+      commitment: optionalVendorTextValue,
+    })
+    .optional(),
+  lists: z.array(z.looseObject({ content: optionalVendorTextValue })).optional(),
+  descriptionPlain: optionalVendorTextValue,
+  description: optionalVendorTextValue,
+  additionalPlain: optionalVendorTextValue,
+  additional: optionalVendorTextValue,
+  workplaceType: optionalVendorTextValue,
+  createdAt: z.unknown().optional(),
+});
+const leverResponseSchema = z.array(leverJobSchema);
+
 export const fetchLever: BoardConnector = async (board, limit, fetcher) => {
-  const payload = await requestJson(
-    endpoint("lever", board.config.region === "eu" ? "jobsEu" : "jobs", {
-      slug: board.slug,
-    }),
-    {},
-    fetcher,
+  const payload = parseVendorResponse(
+    "Lever",
+    leverResponseSchema,
+    await requestJson(
+      endpoint("lever", board.config.region === "eu" ? "jobsEu" : "jobs", {
+        slug: board.slug,
+      }),
+      {},
+      fetcher,
+    ),
   );
 
   return recordArray(payload)

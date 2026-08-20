@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { DiscoveryRunRegistry } from "../ports/discovery-run-registry";
+import type { DiscoveryRunRegistry } from "@/contexts/discovery/application/discovery-runs/ports/discovery-run-registry";
 import { createDiscoveryRunStarter, type DiscoveryRunScheduler } from "./start-discovery-run";
 
 describe("start discovery run", () => {

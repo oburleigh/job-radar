@@ -1,14 +1,18 @@
 import { and, eq, isNull } from "drizzle-orm";
 
+import { isVerifiedJobListing } from "@/contexts/discovery/domain/job-listing-provenance";
+import { extractAnnualSalaryFromText } from "@/contexts/discovery/infrastructure/job-sources/annual-salary-parser";
 import type {
   AtsType,
   RawJob,
 } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
+import { normalizeSearchResult } from "@/contexts/discovery/infrastructure/job-sources/search-result";
+import {
+  canonicalizeUrl,
+  makeDedupeKey,
+} from "@/contexts/discovery/infrastructure/job-sources/urls";
 import { db } from "@/contexts/discovery/infrastructure/sqlite/database";
 import { companyBoards, jobs } from "@/contexts/discovery/infrastructure/sqlite/schema";
-
-import { normalizeSearchResult } from "../job-sources/search-result";
-import { canonicalizeUrl, makeDedupeKey } from "../job-sources/urls";
 
 interface SearchResultInput {
   atsType: AtsType;
@@ -42,7 +46,7 @@ export function upsertSearchResult(input: SearchResultInput): number {
         )
         .all()
     : [];
-  const structuredMatch = identityMatches.find((job) => Object.keys(job.rawPayload).length > 0);
+  const structuredMatch = identityMatches.find((job) => isVerifiedJobListing(job.evidence));
   if (structuredMatch) {
     if (existing && existing.id !== structuredMatch.id) {
       db.update(jobs).set({ isActive: false }).where(eq(jobs.id, existing.id)).run();
@@ -74,24 +78,30 @@ export function upsertSearchResult(input: SearchResultInput): number {
   const now = new Date();
 
   if (existing) {
-    const hasStructuredPayload = Object.keys(existing.rawPayload).length > 0;
+    const hasStructuredEvidence = isVerifiedJobListing(existing.evidence);
+    const publishedSalary = extractAnnualSalaryFromText(normalized.description);
     db.update(jobs)
       .set({
         boardId: input.boardId ?? existing.boardId,
-        companyName: hasStructuredPayload
+        companyName: hasStructuredEvidence
           ? existing.companyName
           : normalized.companyName ||
             existing.companyName ||
             board?.companyName ||
             board?.slug ||
             "",
-        title: hasStructuredPayload
+        title: hasStructuredEvidence
           ? existing.title
           : normalized.title.slice(0, 500) || input.externalId || "Untitled job",
-        locationText: hasStructuredPayload
+        locationText: hasStructuredEvidence
           ? existing.locationText
           : (normalized.locationText || input.locationHint || "").slice(0, 500),
-        description: hasStructuredPayload ? existing.description : normalized.description,
+        description: hasStructuredEvidence ? existing.description : normalized.description,
+        salaryCurrency: hasStructuredEvidence
+          ? existing.salaryCurrency
+          : (publishedSalary?.currency ?? ""),
+        salaryMin: hasStructuredEvidence ? existing.salaryMin : (publishedSalary?.min ?? null),
+        salaryMax: hasStructuredEvidence ? existing.salaryMax : (publishedSalary?.max ?? null),
         lastSeenAt: now,
         isActive: true,
       })
@@ -100,6 +110,7 @@ export function upsertSearchResult(input: SearchResultInput): number {
     return 1;
   }
 
+  const publishedSalary = extractAnnualSalaryFromText(normalized.description);
   db.insert(jobs)
     .values({
       boardId: input.boardId,
@@ -115,6 +126,10 @@ export function upsertSearchResult(input: SearchResultInput): number {
           ? [normalized.locationText || input.locationHint || ""]
           : [],
       description: normalized.description,
+      salaryCurrency: publishedSalary?.currency ?? "",
+      salaryMin: publishedSalary?.min ?? null,
+      salaryMax: publishedSalary?.max ?? null,
+      evidence: "search-lead",
       firstSeenAt: now,
       lastSeenAt: now,
       isActive: true,
@@ -146,6 +161,10 @@ export function upsertVerifiedSearchJob(rawJob: RawJob): number {
       employmentType: rawJob.employmentType,
       workplaceType: rawJob.workplaceType,
       publishedAt: rawJob.publishedAt,
+      salaryCurrency: rawJob.publishedSalary?.currency ?? "",
+      salaryMin: rawJob.publishedSalary?.min ?? null,
+      salaryMax: rawJob.publishedSalary?.max ?? null,
+      evidence: rawJob.evidence,
       firstSeenAt: now,
       lastSeenAt: now,
       isActive: true,
@@ -165,6 +184,10 @@ export function upsertVerifiedSearchJob(rawJob: RawJob): number {
         employmentType: rawJob.employmentType,
         workplaceType: rawJob.workplaceType,
         publishedAt: rawJob.publishedAt,
+        salaryCurrency: rawJob.publishedSalary?.currency ?? "",
+        salaryMin: rawJob.publishedSalary?.min ?? null,
+        salaryMax: rawJob.publishedSalary?.max ?? null,
+        evidence: rawJob.evidence,
         lastSeenAt: now,
         isActive: true,
         rawPayload: rawJob.rawPayload,

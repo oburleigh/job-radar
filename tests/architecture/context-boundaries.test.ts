@@ -17,93 +17,116 @@ describe("context boundaries", () => {
   });
 
   it("keeps every declared context concrete", () => {
-    const contexts = readdirSync(contextsRoot, { withFileTypes: true }).filter((entry) =>
-      entry.isDirectory(),
-    );
+    const contexts = contextDirectories();
 
-    expect(contexts.map((context) => context.name)).toContain("discovery");
-    for (const context of contexts) {
-      const contextRoot = path.join(contextsRoot, context.name);
-      expect(existsSync(path.join(contextRoot, "CONTEXT.md")), context.name).toBe(true);
-      for (const role of ["domain", "application", "infrastructure", "presentation"]) {
-        expect(sourceFiles(path.join(contextRoot, role)), `${context.name}/${role}`).not.toEqual(
-          [],
-        );
+    expect(contexts.map((context) => path.basename(context))).toContain("discovery");
+    for (const contextRoot of contexts) {
+      expect(existsSync(path.join(contextRoot, "CONTEXT.md")), contextRoot).toBe(true);
+      for (const role of [
+        "domain",
+        "application",
+        "infrastructure",
+        "presentation",
+        "composition",
+      ]) {
+        expect(
+          sourceFiles(path.join(contextRoot, role)),
+          `${path.basename(contextRoot)}/${role}`,
+        ).not.toEqual([]);
       }
-      expect(existsSync(path.join(contextRoot, "hexagon")), context.name).toBe(false);
-      expect(existsSync(path.join(contextRoot, "adapters")), context.name).toBe(false);
+      expect(existsSync(path.join(contextRoot, "hexagon")), contextRoot).toBe(false);
+      expect(existsSync(path.join(contextRoot, "adapters")), contextRoot).toBe(false);
     }
   });
 
   it("keeps domain code inside its provider-free boundary", () => {
     for (const domainRoot of roleDirectories("domain")) {
       for (const file of sourceFiles(domainRoot)) {
-        for (const specifier of importSpecifiers(file)) {
-          expect(isProviderModule(specifier), `${relativePath(file)} imports ${specifier}`).toBe(
-            false,
-          );
-          expect(
-            isRelativeImportInside(file, specifier, domainRoot),
-            `${relativePath(file)} crosses the domain boundary through ${specifier}`,
-          ).toBe(true);
-        }
+        assertNoProductionProviderImport(file);
+        assertInternalImportsStayInside(file, [domainRoot]);
       }
     }
   });
 
-  it("keeps application code dependent only on its own application and domain", () => {
+  it("keeps application code dependent only on its application, domain, and test support", () => {
     for (const applicationRoot of roleDirectories("application")) {
       const contextRoot = path.dirname(applicationRoot);
       for (const file of sourceFiles(applicationRoot)) {
-        for (const specifier of importSpecifiers(file)) {
-          expect(isProviderModule(specifier), `${relativePath(file)} imports ${specifier}`).toBe(
-            false,
-          );
-          expect(
-            isRelativeImportInside(file, specifier, applicationRoot) ||
-              isRelativeImportInside(file, specifier, path.join(contextRoot, "domain")),
-            `${relativePath(file)} crosses the application boundary through ${specifier}`,
-          ).toBe(true);
-        }
+        assertNoProductionProviderImport(file);
+        assertInternalImportsStayInside(file, [
+          applicationRoot,
+          path.join(contextRoot, "domain"),
+          path.join(contextRoot, "test-support"),
+        ]);
       }
     }
   });
 
-  it("keeps infrastructure independent from presentation", () => {
+  it("keeps infrastructure independent from presentation and composition", () => {
     for (const infrastructureRoot of roleDirectories("infrastructure")) {
+      const contextRoot = path.dirname(infrastructureRoot);
       for (const file of sourceFiles(infrastructureRoot)) {
-        for (const specifier of importSpecifiers(file)) {
-          expect(
-            specifier.includes("/presentation/"),
-            `${relativePath(file)} imports an outward layer through ${specifier}`,
-          ).toBe(false);
-        }
+        assertInternalImportsStayInside(file, [
+          infrastructureRoot,
+          path.join(contextRoot, "application"),
+          path.join(contextRoot, "domain"),
+          path.join(contextRoot, "test-support"),
+        ]);
       }
     }
   });
 
-  it("keeps presentation independent from concrete context infrastructure", () => {
+  it("keeps presentation independent from infrastructure and composition", () => {
     for (const presentationRoot of roleDirectories("presentation")) {
+      const contextRoot = path.dirname(presentationRoot);
       for (const file of sourceFiles(presentationRoot)) {
+        assertInternalImportsStayInside(file, [
+          presentationRoot,
+          path.join(contextRoot, "application"),
+          path.join(contextRoot, "domain"),
+        ]);
+      }
+    }
+  });
+
+  it("uses composition only as the outward wiring layer", () => {
+    for (const contextRoot of contextDirectories()) {
+      const compositionRoot = path.join(contextRoot, "composition");
+      for (const role of ["domain", "application", "infrastructure", "presentation"]) {
+        for (const file of sourceFiles(path.join(contextRoot, role))) {
+          for (const specifier of importSpecifiers(file)) {
+            const target = internalTarget(file, specifier);
+            expect(
+              target !== null && isInside(target, compositionRoot),
+              `${relativePath(file)} imports outward composition through ${specifier}`,
+            ).toBe(false);
+          }
+        }
+      }
+      for (const file of sourceFiles(compositionRoot)) {
         for (const specifier of importSpecifiers(file)) {
-          expect(
-            specifier.includes("/infrastructure/"),
-            `${relativePath(file)} imports a concrete adapter through ${specifier}`,
-          ).toBe(false);
+          const target = internalTarget(file, specifier);
+          if (target && isInside(target, contextsRoot)) {
+            expect(
+              isInside(target, contextRoot),
+              `${relativePath(file)} wires another context through ${specifier}`,
+            ).toBe(true);
+          }
         }
       }
     }
   });
 
-  it("keeps test support out of production source", () => {
-    for (const file of sourceFiles(sourceRoot)) {
+  it("keeps production code independent from test support", () => {
+    for (const file of sourceFiles(sourceRoot).filter((candidate) => !isTestFile(candidate))) {
       if (file.includes(`${path.sep}test-support${path.sep}`)) {
         continue;
       }
       for (const specifier of importSpecifiers(file)) {
+        const target = internalTarget(file, specifier);
         expect(
-          specifier.includes("/test-support/") || specifier.endsWith("/test-support"),
-          `${relativePath(file)} imports test support ${specifier}`,
+          target?.includes(`${path.sep}test-support${path.sep}`) ?? false,
+          `${relativePath(file)} imports test support through ${specifier}`,
         ).toBe(false);
       }
     }
@@ -111,14 +134,11 @@ describe("context boundaries", () => {
 
   it("keeps shared platform mechanisms independent from contexts", () => {
     const platformRoot = path.join(sourceRoot, "platform");
-    if (!existsSync(platformRoot)) {
-      return;
-    }
-
     for (const file of sourceFiles(platformRoot)) {
       for (const specifier of importSpecifiers(file)) {
+        const target = internalTarget(file, specifier);
         expect(
-          specifier.startsWith("@/contexts/") || specifier.includes("/contexts/"),
+          target !== null && isInside(target, contextsRoot),
           `${relativePath(file)} imports context code through ${specifier}`,
         ).toBe(false);
       }
@@ -126,10 +146,37 @@ describe("context boundaries", () => {
   });
 });
 
-function roleDirectories(role: string): string[] {
+function assertNoProductionProviderImport(file: string): void {
+  if (isTestFile(file)) {
+    return;
+  }
+  for (const specifier of importSpecifiers(file)) {
+    expect(isProviderModule(specifier), `${relativePath(file)} imports ${specifier}`).toBe(false);
+  }
+}
+
+function assertInternalImportsStayInside(file: string, allowedRoots: readonly string[]): void {
+  for (const specifier of importSpecifiers(file)) {
+    const target = internalTarget(file, specifier);
+    if (!target || !isInside(target, contextsRoot)) {
+      continue;
+    }
+    expect(
+      allowedRoots.some((allowedRoot) => isInside(target, allowedRoot)),
+      `${relativePath(file)} crosses its boundary through ${specifier}`,
+    ).toBe(true);
+  }
+}
+
+function contextDirectories(): string[] {
   return readdirSync(contextsRoot, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
-    .map((entry) => path.join(contextsRoot, entry.name, role))
+    .map((entry) => path.join(contextsRoot, entry.name));
+}
+
+function roleDirectories(role: string): string[] {
+  return contextDirectories()
+    .map((contextRoot) => path.join(contextRoot, role))
     .filter(existsSync);
 }
 
@@ -137,25 +184,33 @@ function sourceFiles(directory: string): string[] {
   if (!existsSync(directory)) {
     return [];
   }
-
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const entryPath = path.join(directory, entry.name);
     if (entry.isDirectory()) {
       return sourceFiles(entryPath);
     }
-    return /\.[cm]?[jt]sx?$/.test(entry.name) && !entry.name.includes(".test.") ? [entryPath] : [];
+    return /\.[cm]?[jt]sx?$/.test(entry.name) ? [entryPath] : [];
   });
 }
 
 function importSpecifiers(file: string): string[] {
   const source = readFileSync(file, "utf8");
-  const imports = source.matchAll(
+  const patterns = [
     /\bimport\s+(?:type\s+)?(?:[^;"']*?\s+from\s+)?["']([^"']+)["']/g,
-  );
-  const exports = source.matchAll(
     /\bexport\s+(?:type\s+)?(?:\*|\{[^}]*\})\s+from\s+["']([^"']+)["']/g,
+    /\bimport\s*\(\s*["']([^"']+)["']\s*\)/g,
+    /\brequire\s*\(\s*["']([^"']+)["']\s*\)/g,
+  ];
+  return patterns.flatMap((pattern) =>
+    [...source.matchAll(pattern)].map((match) => match[1]).filter((value) => value !== undefined),
   );
-  return [...imports, ...exports].map((match) => match[1]).filter((value) => value !== undefined);
+}
+
+function internalTarget(file: string, specifier: string): string | null {
+  if (specifier.startsWith("@/")) {
+    return path.resolve(sourceRoot, specifier.slice(2));
+  }
+  return specifier.startsWith(".") ? path.resolve(path.dirname(file), specifier) : null;
 }
 
 function isProviderModule(specifier: string): boolean {
@@ -164,12 +219,12 @@ function isProviderModule(specifier: string): boolean {
   );
 }
 
-function isRelativeImportInside(file: string, specifier: string, allowedRoot: string): boolean {
-  if (!specifier.startsWith(".")) {
-    return false;
-  }
-  const target = path.resolve(path.dirname(file), specifier);
-  return target === allowedRoot || target.startsWith(`${allowedRoot}${path.sep}`);
+function isInside(target: string, root: string): boolean {
+  return target === root || target.startsWith(`${root}${path.sep}`);
+}
+
+function isTestFile(file: string): boolean {
+  return /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(file);
 }
 
 function relativePath(file: string): string {

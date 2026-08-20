@@ -11,12 +11,14 @@
       "!**/dist",
       "!**/node_modules",
       "!**/playwright-report",
+      "!**/reports",
       "!**/test-results",
       "!**/storybook-static",
+      "!**/.impeccable",
       "!**/.agents/skills",
       "!**/.claude/skills",
       "!**/.codex",
-      "!**/.impeccable",
+      "!drizzle/meta",
       "!public"
     ]
   },
@@ -43,8 +45,21 @@
         "noTsIgnore": "error"
       },
       "style": {
+        "noCommonJs": "error",
         "noEnum": "error",
-        "noNonNullAssertion": "error"
+        "noHexColors": "error",
+        "noNonNullAssertion": "error",
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "patterns": [
+              {
+                "group": ["../**"],
+                "message": "Use the @/ application alias for imports outside the current directory. Shared workspaces must use their package name."
+              }
+            ]
+          }
+        }
       }
     }
   },
@@ -53,5 +68,17 @@
       "quoteStyle": "double",
       "trailingCommas": "all"
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["packages/design-tokens/src/theme.css"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noImportantStyles": "off"
+          }
+        }
+      }
+    }
+  ]
 }

@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 
-import type { SourceCoverageStore } from "../../application/source-coverage/set-enabled/port";
+import type { SourceCoverageStore } from "@/contexts/discovery/application/source-coverage/set-enabled/port";
 import type { db } from "./database";
 import { companyBoards, sourceDomains } from "./schema";
 

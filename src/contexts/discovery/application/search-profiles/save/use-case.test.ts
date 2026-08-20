@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
-import type { SearchProfileDefinition } from "../../../domain/search-profile";
+import { currencyFrom } from "@/contexts/discovery/domain/currency";
+import { type SearchProfileId, searchProfileIdFrom } from "@/contexts/discovery/domain/identifiers";
+import {
+  createSearchProfileDefinition,
+  type SearchProfileDefinition,
+  type SearchProfileDraft,
+} from "@/contexts/discovery/domain/search-profile";
 import {
   createInMemorySearchProfileRepository,
   type StoredSearchProfile,
-} from "../../../test-support/in-memory-search-profile-repository";
+} from "@/contexts/discovery/test-support/in-memory-search-profile-repository";
 import { createSaveSearchProfile } from "./use-case";
 
 const timestamp = new Date("2026-08-20T09:00:00.000Z");
@@ -33,7 +39,7 @@ describe("save search profile", () => {
     const saveSearchProfile = createSaveSearchProfile({ profiles, now: () => timestamp });
 
     const result = saveSearchProfile({
-      id: 8,
+      id: profileId(8),
       profile: profileDefinition({ name: "Existing profile" }),
     });
 
@@ -51,7 +57,7 @@ describe("save search profile", () => {
     const saveSearchProfile = createSaveSearchProfile({ profiles, now: () => timestamp });
     const updatedProfile = profileDefinition({ minimumScore: 82 });
 
-    const result = saveSearchProfile({ id: 7, profile: updatedProfile });
+    const result = saveSearchProfile({ id: profileId(7), profile: updatedProfile });
 
     expect(result).toEqual({ status: "saved", id: 7, created: false });
     expect(profiles.records).toEqual([
@@ -65,10 +71,8 @@ describe("save search profile", () => {
   });
 });
 
-function profileDefinition(
-  overrides: Partial<SearchProfileDefinition> = {},
-): SearchProfileDefinition {
-  return {
+function profileDefinition(overrides: Partial<SearchProfileDraft> = {}): SearchProfileDefinition {
+  const result = createSearchProfileDefinition({
     name: "UAE engineering leadership",
     targetTitles: ["VP Engineering", "Head of Engineering"],
     targetLocations: ["Dubai", "Abu Dhabi"],
@@ -79,14 +83,18 @@ function profileDefinition(
     includeRemote: true,
     includeUnverified: false,
     salaryPreference: {
-      currency: "GBP",
+      currency: currencyFrom("GBP"),
       minimumAnnual: 100_000,
       maximumAnnual: 150_000,
     },
     maximumAgeDays: 30,
     minimumScore: 70,
     ...overrides,
-  };
+  });
+  if (result.status === "invalid") {
+    throw new Error(`Invalid profile fixture: ${result.reason}`);
+  }
+  return result.profile;
 }
 
 function storedProfile({
@@ -98,5 +106,13 @@ function storedProfile({
   readonly profile: SearchProfileDefinition;
   readonly timestamp?: Date;
 }): StoredSearchProfile {
-  return { id, profile, createdAt: timestamp, updatedAt: timestamp };
+  return { id: profileId(id), profile, createdAt: timestamp, updatedAt: timestamp };
+}
+
+function profileId(value: number): SearchProfileId {
+  const id = searchProfileIdFrom(value);
+  if (id === null) {
+    throw new Error(`Invalid search profile fixture identifier: ${value}`);
+  }
+  return id;
 }

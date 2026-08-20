@@ -1,25 +1,32 @@
-import { extractAnnualSalary, formatAnnualSalary } from "./annual-salary";
-import type { MatchableJob, MatchingPolicy, MatchProfile, MatchResult } from "./job-match";
+import { compareAnnualSalary } from "./annual-salary";
+import type {
+  ExclusionReason,
+  JobMatchingCriteria,
+  MatchableJob,
+  MatchingPolicy,
+  MatchReason,
+  MatchResult,
+} from "./job-match";
 
 export function evaluateJob(
   job: MatchableJob,
-  profile: MatchProfile,
+  profile: JobMatchingCriteria,
   policy: MatchingPolicy,
-  now = new Date(),
+  now: Date,
 ): MatchResult {
   const stopWords = new Set(policy.stopWords);
   const genericTitleTerms = new Set(policy.genericTitleTerms.map((term) => normalize(term)));
   const title = normalize(job.title);
   const description = normalize(job.description);
-  const exclusionReasons: string[] = [];
+  const exclusionReasons: ExclusionReason[] = [];
 
   if (!profile.includeUnverified && !job.verified) {
-    exclusionReasons.push("Web-search lead is not verified by an ATS feed");
+    exclusionReasons.push({ code: "unverified-lead" });
   }
 
   const excludedTitle = firstContained(title, profile.excludedTitleTerms);
   if (excludedTitle) {
-    exclusionReasons.push(`Excluded title term: ${excludedTitle}`);
+    exclusionReasons.push({ code: "excluded-title", term: excludedTitle });
   }
 
   const excludedDescription = firstContained(
@@ -27,7 +34,7 @@ export function evaluateJob(
     profile.excludedDescriptionTerms,
   );
   if (excludedDescription) {
-    exclusionReasons.push(`Excluded description term: ${excludedDescription}`);
+    exclusionReasons.push({ code: "excluded-description", term: excludedDescription });
   }
 
   const requiredJobTerm = firstContained(
@@ -35,18 +42,18 @@ export function evaluateJob(
     profile.requiredJobTerms,
   );
   if (profile.requiredJobTerms.length > 0 && !requiredJobTerm) {
-    exclusionReasons.push("Missing a required job keyword");
+    exclusionReasons.push({ code: "missing-required-job-term" });
   }
 
   const titleMatch = titleScore(title, profile.titleTerms, stopWords, genericTitleTerms, policy);
   if (titleMatch.score === 0) {
-    exclusionReasons.push("Title does not match a target role");
+    exclusionReasons.push({ code: "title-mismatch" });
   }
 
   const locationText = normalize([job.locationText, ...job.locations].join(" "));
   const excludedLocation = firstContained(locationText, profile.excludedLocationTerms);
   if (excludedLocation) {
-    exclusionReasons.push(`Excluded location term: ${excludedLocation}`);
+    exclusionReasons.push({ code: "excluded-location", term: excludedLocation });
   }
   const locationTerm = firstContained(locationText, profile.locationTerms);
   const remoteText = normalize(`${job.locationText} ${job.workplaceType}`);
@@ -61,20 +68,26 @@ export function evaluateJob(
       isUnrestrictedRemoteLocation(locationText, policy.remoteTerms));
 
   if (!locationTerm && !(profile.includeRemote && isLocationAgnosticRemote)) {
-    exclusionReasons.push("Location does not match the profile");
+    exclusionReasons.push({ code: "location-mismatch" });
   }
 
   if (job.publishedAt) {
     const ageMs = now.getTime() - job.publishedAt.getTime();
     if (ageMs > profile.maxAgeDays * 86_400_000) {
-      exclusionReasons.push(`Posted more than ${profile.maxAgeDays} days ago`);
+      exclusionReasons.push({ code: "stale-listing", maximumAgeDays: profile.maxAgeDays });
     }
   }
 
-  const publishedSalary = extractAnnualSalary(job.description, job.rawPayload ?? {});
-  const salaryExclusion = salaryExclusionReason(publishedSalary, profile);
-  if (salaryExclusion) {
-    exclusionReasons.push(salaryExclusion);
+  const salaryRelation = compareAnnualSalary(job.publishedSalary, {
+    currency: profile.salaryCurrency,
+    min: profile.salaryMin,
+    max: profile.salaryMax,
+  });
+  if (salaryRelation === "below" && job.publishedSalary) {
+    exclusionReasons.push({ code: "salary-below", salary: job.publishedSalary });
+  }
+  if (salaryRelation === "above" && job.publishedSalary) {
+    exclusionReasons.push({ code: "salary-above", salary: job.publishedSalary });
   }
 
   if (exclusionReasons.length > 0) {
@@ -87,24 +100,24 @@ export function evaluateJob(
   }
 
   let score = titleMatch.score;
-  const reasons = [`Title matches ${titleMatch.term}`];
+  const reasons: MatchReason[] = [{ code: "title-match", term: titleMatch.term }];
   if (requiredJobTerm) {
-    reasons.push(`Job context matches ${requiredJobTerm}`);
+    reasons.push({ code: "job-context-match", term: requiredJobTerm });
   }
   if (
-    publishedSalary &&
-    publishedSalary.currency === profile.salaryCurrency &&
+    job.publishedSalary &&
+    salaryRelation === "overlaps" &&
     (profile.salaryMin !== null || profile.salaryMax !== null)
   ) {
-    reasons.push(`Salary ${formatAnnualSalary(publishedSalary)} overlaps the profile preference`);
+    reasons.push({ code: "salary-overlap", salary: job.publishedSalary });
   }
 
   if (locationTerm) {
     score += policy.locationScore;
-    reasons.push(`Location matches ${locationTerm}`);
+    reasons.push({ code: "location-match", term: locationTerm });
   } else {
     score += policy.remoteScore;
-    reasons.push("Remote role allowed by profile");
+    reasons.push({ code: "remote-allowed" });
   }
 
   if (job.publishedAt) {
@@ -116,10 +129,10 @@ export function evaluateJob(
       policy.freshnessMaxScore - Math.floor(ageDays / policy.freshnessStepDays),
       policy.freshnessMinimumScore,
     );
-    reasons.push(`Posted ${ageDays} day${ageDays === 1 ? "" : "s"} ago`);
+    reasons.push({ code: "posted-age", days: ageDays });
   } else {
     score += policy.unknownDateScore;
-    reasons.push("Posting date unavailable");
+    reasons.push({ code: "posting-date-unknown" });
   }
 
   if (score < profile.minScore) {
@@ -127,7 +140,7 @@ export function evaluateJob(
       status: "excluded",
       score,
       reasons,
-      exclusionReasons: [`Score is below ${profile.minScore}`],
+      exclusionReasons: [{ code: "score-below", minimumScore: profile.minScore }],
     };
   }
 
@@ -144,29 +157,13 @@ export function evaluateJob(
  * function-shaped interface for callers that only own a profile and a job.
  */
 export function createJobMatcher(policy: MatchingPolicy) {
-  return (job: MatchableJob, profile: MatchProfile, now = new Date()) =>
+  return (job: MatchableJob, profile: JobMatchingCriteria, now: Date) =>
     evaluateJob(job, profile, policy, now);
-}
-
-function salaryExclusionReason(
-  salary: ReturnType<typeof extractAnnualSalary>,
-  profile: MatchProfile,
-): string {
-  if (!salary || !profile.salaryCurrency || salary.currency !== profile.salaryCurrency) {
-    return "";
-  }
-  if (profile.salaryMin !== null && salary.max !== null && salary.max < profile.salaryMin) {
-    return `Salary ${formatAnnualSalary(salary)} is below the preferred range`;
-  }
-  if (profile.salaryMax !== null && salary.min !== null && salary.min > profile.salaryMax) {
-    return `Salary ${formatAnnualSalary(salary)} is above the preferred range`;
-  }
-  return "";
 }
 
 function titleScore(
   title: string,
-  rawTerms: string[],
+  rawTerms: readonly string[],
   stopWords: Set<string>,
   genericTitleTerms: Set<string>,
   policy: MatchingPolicy,
@@ -212,7 +209,7 @@ function titleScore(
   return best;
 }
 
-function firstContained(haystack: string, terms: string[]): string {
+function firstContained(haystack: string, terms: readonly string[]): string {
   return terms.find((term) => contains(haystack, normalize(term))) ?? "";
 }
 
@@ -257,7 +254,10 @@ function orderedOverlapCount(titleTokens: string[], termTokens: string[]): numbe
   return matches;
 }
 
-function isUnrestrictedRemoteLocation(locationText: string, remoteTerms: string[]): boolean {
+function isUnrestrictedRemoteLocation(
+  locationText: string,
+  remoteTerms: readonly string[],
+): boolean {
   if (!locationText) {
     return true;
   }

@@ -1,4 +1,5 @@
 import { getJobRadarConfig } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
+import { extractAnnualSalaryFromText } from "@/contexts/discovery/infrastructure/job-sources/annual-salary-parser";
 import type {
   AtsType,
   RawJob,
@@ -75,6 +76,7 @@ export async function fetchStructuredJobPage(
     ...jobLocations,
     ...(remote && applicantLocations.length === 0 && jobLocations.length === 0 ? ["Remote"] : []),
   ]);
+  const description = stripHtml(stringValue(posting.description));
 
   return {
     status: "verified",
@@ -86,11 +88,13 @@ export async function fetchStructuredJobPage(
       title,
       companyName,
       locations,
-      description: stripHtml(stringValue(posting.description)),
+      description,
       department: stringValue(posting.industry),
       employmentType: stringArray(posting.employmentType).join(", "),
       workplaceType: remote ? "remote" : "",
       publishedAt: parseDate(posting.datePosted),
+      publishedSalary: extractAnnualSalaryFromText(description),
+      evidence: "structured",
       rawPayload: {
         ...posting,
         verifiedAt: now.toISOString(),

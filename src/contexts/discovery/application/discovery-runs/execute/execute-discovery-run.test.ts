@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { DiscoverJobsCommand, ForDiscoveringJobs } from "../discover/discover-jobs";
-import type { DiscoveryRunExecution } from "../ports/discovery-run";
+import type {
+  DiscoverJobsCommand,
+  ForDiscoveringJobs,
+} from "@/contexts/discovery/application/discovery-runs/discover/discover-jobs";
+import type { DiscoveryRunExecution } from "@/contexts/discovery/application/discovery-runs/ports/discovery-run";
 import { createDiscoveryRunExecution } from "./execute-discovery-run";
 
 const execution: DiscoveryRunExecution = {

@@ -1,6 +1,12 @@
 import { z } from "zod";
 
-import type { SaveSearchProfileCommand } from "../../../application/search-profiles/save/command";
+import type { SaveSearchProfileCommand } from "@/contexts/discovery/application/search-profiles/save/command";
+import { currencyFrom } from "@/contexts/discovery/domain/currency";
+import { searchProfileIdFrom } from "@/contexts/discovery/domain/identifiers";
+import {
+  createSearchProfileDefinition,
+  type SearchProfileDefinitionResult,
+} from "@/contexts/discovery/domain/search-profile";
 
 export type ProfileRequestResult =
   | { readonly ok: true; readonly command: SaveSearchProfileCommand }
@@ -27,8 +33,19 @@ const profileSchema = z
       .string()
       .trim()
       .transform((value) => value.toUpperCase())
-      .refine((value) => value === "" || /^[A-Z]{3}$/.test(value), {
-        message: "Salary currency must be a three-letter code such as GBP.",
+      .transform((value, context) => {
+        if (value === "") {
+          return null;
+        }
+        const currency = currencyFrom(value);
+        if (currency === null) {
+          context.addIssue({
+            code: "custom",
+            message: "Salary currency must be a three-letter code such as GBP.",
+          });
+          return z.NEVER;
+        }
+        return currency;
       }),
     salaryMin: optionalSalaryAmount,
     salaryMax: optionalSalaryAmount,
@@ -36,7 +53,10 @@ const profileSchema = z
     minScore: z.coerce.number().int().min(0).max(100),
   })
   .superRefine((profile, context) => {
-    if ((profile.salaryMin !== null || profile.salaryMax !== null) && !profile.salaryCurrency) {
+    if (
+      (profile.salaryMin !== null || profile.salaryMax !== null) &&
+      profile.salaryCurrency === null
+    ) {
       context.addIssue({
         code: "custom",
         path: ["salaryCurrency"],
@@ -83,30 +103,55 @@ export function parseProfileRequest(formData: FormData): ProfileRequestResult {
   }
 
   const values = parsed.data;
+  const definition = createSearchProfileDefinition({
+    name: values.name,
+    targetTitles: values.titleTerms,
+    targetLocations: values.locationTerms,
+    requiredJobTerms: values.requiredJobTerms,
+    excludedTitleTerms: values.excludedTitleTerms,
+    excludedLocationTerms: values.excludedLocationTerms,
+    excludedDescriptionTerms: values.excludedDescriptionTerms,
+    includeRemote: values.includeRemote,
+    includeUnverified: values.includeUnverified,
+    salaryPreference: {
+      currency: values.salaryCurrency,
+      minimumAnnual: values.salaryMin,
+      maximumAnnual: values.salaryMax,
+    },
+    maximumAgeDays: values.maxAgeDays,
+    minimumScore: values.minScore,
+  });
+  if (definition.status === "invalid") {
+    return { ok: false, message: profileDefinitionError(definition) };
+  }
   return {
     ok: true,
     command: {
-      id: values.id,
-      profile: {
-        name: values.name,
-        targetTitles: values.titleTerms,
-        targetLocations: values.locationTerms,
-        requiredJobTerms: values.requiredJobTerms,
-        excludedTitleTerms: values.excludedTitleTerms,
-        excludedLocationTerms: values.excludedLocationTerms,
-        excludedDescriptionTerms: values.excludedDescriptionTerms,
-        includeRemote: values.includeRemote,
-        includeUnverified: values.includeUnverified,
-        salaryPreference: {
-          currency: values.salaryCurrency,
-          minimumAnnual: values.salaryMin,
-          maximumAnnual: values.salaryMax,
-        },
-        maximumAgeDays: values.maxAgeDays,
-        minimumScore: values.minScore,
-      },
+      id: values.id === undefined ? undefined : (searchProfileIdFrom(values.id) ?? undefined),
+      profile: definition.profile,
     },
   };
+}
+
+function profileDefinitionError(
+  result: Extract<SearchProfileDefinitionResult, { status: "invalid" }>,
+): string {
+  switch (result.reason) {
+    case "invalid-name":
+      return "Profile name must be between 2 and 120 characters.";
+    case "missing-target-title":
+      return "Add at least one target job title.";
+    case "missing-target-location":
+      return "Add at least one target location.";
+    case "salary-currency-required":
+      return "Add a salary currency when setting a salary range.";
+    case "invalid-salary-range":
+      return "Enter a valid annual salary range.";
+    case "invalid-maximum-age":
+      return "Maximum age must be between 1 and 365 days.";
+    case "invalid-minimum-score":
+      return "Minimum score must be between 0 and 100.";
+  }
 }
 
 function splitLines(value: string): string[] {

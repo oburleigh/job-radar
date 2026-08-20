@@ -1,8 +1,13 @@
 packages:
+  - "apps/**"
   - "packages/**"
 
 disallowWorkspaceCycles: true
 
+packageExtensions:
+  '@stryker-mutator/core@10.0.0':
+    dependencies:
+      typescript: 6.0.3
 allowBuilds:
   better-sqlite3: true
   esbuild: true

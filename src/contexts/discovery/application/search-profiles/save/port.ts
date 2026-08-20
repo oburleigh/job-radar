@@ -1,7 +1,8 @@
-import type { SearchProfileDefinition } from "../../../domain/search-profile";
+import type { SearchProfileId } from "@/contexts/discovery/domain/identifiers";
+import type { SearchProfileDefinition } from "@/contexts/discovery/domain/search-profile";
 
 export interface SearchProfileRepository {
-  findIdByName(name: string): number | undefined;
-  insert(profile: SearchProfileDefinition, timestamp: Date): number;
-  update(id: number, profile: SearchProfileDefinition, timestamp: Date): void;
+  findIdByName(name: string): SearchProfileId | undefined;
+  insert(profile: SearchProfileDefinition, timestamp: Date): SearchProfileId;
+  update(id: SearchProfileId, profile: SearchProfileDefinition, timestamp: Date): void;
 }

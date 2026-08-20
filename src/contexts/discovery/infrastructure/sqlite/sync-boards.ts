@@ -6,15 +6,14 @@ import type {
   BoardInput,
   RawJob,
 } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
+import { fetchBoardJobs } from "@/contexts/discovery/infrastructure/job-sources/connectors";
+import { makeDedupeKey } from "@/contexts/discovery/infrastructure/job-sources/urls";
 import { db } from "@/contexts/discovery/infrastructure/sqlite/database";
 import {
   companyBoards,
   jobs,
   searchProfiles,
 } from "@/contexts/discovery/infrastructure/sqlite/schema";
-
-import { fetchBoardJobs } from "../job-sources/connectors";
-import { makeDedupeKey } from "../job-sources/urls";
 import { evaluateAndStore } from "./store-matches";
 
 export interface SyncResult {
@@ -109,6 +108,10 @@ function upsertRawJob(board: BoardInput, rawJob: RawJob): "created" | "updated" 
       employmentType: rawJob.employmentType,
       workplaceType: rawJob.workplaceType,
       publishedAt: rawJob.publishedAt,
+      salaryCurrency: rawJob.publishedSalary?.currency ?? "",
+      salaryMin: rawJob.publishedSalary?.min ?? null,
+      salaryMax: rawJob.publishedSalary?.max ?? null,
+      evidence: rawJob.evidence,
       firstSeenAt: now,
       lastSeenAt: now,
       isActive: true,
@@ -130,6 +133,10 @@ function upsertRawJob(board: BoardInput, rawJob: RawJob): "created" | "updated" 
         employmentType: rawJob.employmentType,
         workplaceType: rawJob.workplaceType,
         publishedAt: rawJob.publishedAt,
+        salaryCurrency: rawJob.publishedSalary?.currency ?? "",
+        salaryMin: rawJob.publishedSalary?.min ?? null,
+        salaryMax: rawJob.publishedSalary?.max ?? null,
+        evidence: rawJob.evidence,
         lastSeenAt: now,
         isActive: true,
         rawPayload: rawJob.rawPayload,

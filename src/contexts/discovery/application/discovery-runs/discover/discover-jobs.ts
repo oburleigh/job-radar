@@ -1,10 +1,16 @@
-import { planBoardDiscoveryQueries, planSearchQueries } from "../planning/plan-search-queries";
-import type { DiscoveryRunExecution } from "../ports/discovery-run";
-import type { DiscoveryRunJournal, DiscoveryRunProgress } from "../ports/discovery-run-journal";
-import type { DiscoverySetupReader } from "../ports/discovery-setup";
-import type { JobDiscoveryCatalog } from "../ports/job-discovery-catalog";
-import type { JobMatchEvaluator } from "../ports/job-match-evaluator";
-import type { SearchProviderDirectory } from "../ports/search-provider-directory";
+import {
+  planBoardDiscoveryQueries,
+  planSearchQueries,
+} from "@/contexts/discovery/application/discovery-runs/planning/plan-search-queries";
+import type { DiscoveryRunExecution } from "@/contexts/discovery/application/discovery-runs/ports/discovery-run";
+import type {
+  DiscoveryRunJournal,
+  DiscoveryRunProgress,
+} from "@/contexts/discovery/application/discovery-runs/ports/discovery-run-journal";
+import type { DiscoverySetupReader } from "@/contexts/discovery/application/discovery-runs/ports/discovery-setup";
+import type { JobDiscoveryCatalog } from "@/contexts/discovery/application/discovery-runs/ports/job-discovery-catalog";
+import type { JobMatchEvaluator } from "@/contexts/discovery/application/discovery-runs/ports/job-match-evaluator";
+import type { SearchProviderDirectory } from "@/contexts/discovery/application/discovery-runs/ports/search-provider-directory";
 
 export type DiscoverJobsCommand = Omit<DiscoveryRunExecution, "runId"> & {
   readonly runId?: number;

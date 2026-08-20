@@ -1,5 +1,5 @@
-import type { ForDiscoveringJobs } from "../discover/discover-jobs";
-import type { DiscoveryRunExecution } from "../ports/discovery-run";
+import type { ForDiscoveringJobs } from "@/contexts/discovery/application/discovery-runs/discover/discover-jobs";
+import type { DiscoveryRunExecution } from "@/contexts/discovery/application/discovery-runs/ports/discovery-run";
 
 export type ExecuteDiscoveryRunResult =
   | { readonly status: "completed" }

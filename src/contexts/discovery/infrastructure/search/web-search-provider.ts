@@ -1,9 +1,29 @@
+import { z } from "zod";
 import type {
   SearchProvider,
   SearchRequest,
   SearchResult,
 } from "@/contexts/discovery/application/discovery-runs/ports/search-provider";
 import { getJobRadarConfig } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
+
+const braveResultSchema = z.looseObject({
+  title: z.string(),
+  description: z.string().optional().default(""),
+  url: z.url(),
+});
+const googleResultSchema = z.looseObject({
+  title: z.string(),
+  snippet: z.string().optional().default(""),
+  link: z.url(),
+});
+const braveResponseSchema = z.looseObject({
+  web: z.looseObject({ results: z.array(braveResultSchema) }),
+});
+const serpApiResponseSchema = z.looseObject({
+  organic_results: z.array(googleResultSchema),
+});
+const serperResponseSchema = z.looseObject({ organic: z.array(googleResultSchema) });
+const providerErrorSchema = z.looseObject({ message: z.string().optional() });
 
 export class BraveSearchProvider implements SearchProvider {
   readonly name = "brave";
@@ -46,12 +66,15 @@ export class BraveSearchProvider implements SearchProvider {
       throw new Error(`Brave Search returned HTTP ${response.status}`);
     }
 
-    const payload = asRecord(await response.json());
-    const web = asRecord(payload.web);
-    return recordArray(web.results).map((result) => ({
-      title: stringValue(result.title),
-      url: stringValue(result.url),
-      snippet: stringValue(result.description),
+    const payload = parseProviderResponse(
+      "Brave Search",
+      braveResponseSchema,
+      await response.json(),
+    );
+    return payload.web.results.map((result) => ({
+      title: result.title,
+      url: result.url,
+      snippet: result.description,
     }));
   }
 }
@@ -92,11 +115,11 @@ export class SerpApiSearchProvider implements SearchProvider {
       throw new Error(`SerpAPI returned HTTP ${response.status}`);
     }
 
-    const payload = asRecord(await response.json());
-    return recordArray(payload.organic_results).map((result) => ({
-      title: stringValue(result.title),
-      url: stringValue(result.link),
-      snippet: stringValue(result.snippet),
+    const payload = parseProviderResponse("SerpAPI", serpApiResponseSchema, await response.json());
+    return payload.organic_results.map((result) => ({
+      title: result.title,
+      url: result.link,
+      snippet: result.snippet,
     }));
   }
 }
@@ -133,16 +156,20 @@ export class SerperSearchProvider implements SearchProvider {
       signal: AbortSignal.timeout(config.network.timeoutMs),
     });
     if (!response.ok) {
-      const payload = asRecord(await response.json().catch(() => ({})));
-      const detail = stringValue(payload.message);
+      const parsedError = providerErrorSchema.safeParse(await response.json().catch(() => ({})));
+      const detail = parsedError.success ? (parsedError.data.message ?? "") : "";
       throw new Error(`Serper.dev returned HTTP ${response.status}${detail ? `: ${detail}` : ""}`);
     }
 
-    const payload = asRecord(await response.json());
-    return recordArray(payload.organic).map((result) => ({
-      title: stringValue(result.title),
-      url: stringValue(result.link),
-      snippet: stringValue(result.snippet),
+    const payload = parseProviderResponse(
+      "Serper.dev",
+      serperResponseSchema,
+      await response.json(),
+    );
+    return payload.organic.map((result) => ({
+      title: result.title,
+      url: result.link,
+      snippet: result.snippet,
     }));
   }
 }
@@ -199,18 +226,18 @@ function requireProviderConfig(name: string) {
   return provider;
 }
 
-function asRecord(value: unknown): Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
-}
-
-function recordArray(value: unknown): Record<string, unknown>[] {
-  return Array.isArray(value) ? value.map(asRecord) : [];
-}
-
-function stringValue(value: unknown): string {
-  return typeof value === "string" ? value : "";
+function parseProviderResponse<Output>(
+  provider: string,
+  schema: z.ZodType<Output>,
+  payload: unknown,
+): Output {
+  const parsed = schema.safeParse(payload);
+  if (parsed.success) {
+    return parsed.data;
+  }
+  throw new Error(`${provider} returned an invalid response: ${z.prettifyError(parsed.error)}`, {
+    cause: parsed.error,
+  });
 }
 
 function dateRange(maxAgeDays: number, now: Date): string {

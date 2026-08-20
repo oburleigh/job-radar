@@ -1,4 +1,4 @@
-import type { BoardSynchronizer } from "../../application/source-coverage/sync/port";
+import type { BoardSynchronizer } from "@/contexts/discovery/application/source-coverage/sync/port";
 import { syncEnabledBoards } from "./sync-boards";
 
 export const sqliteBoardSynchronizer: BoardSynchronizer = {

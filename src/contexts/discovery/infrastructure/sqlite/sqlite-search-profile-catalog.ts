@@ -1,6 +1,6 @@
 import { eq, ne } from "drizzle-orm";
 
-import type { SearchProfileCatalog } from "../../application/search-profiles/delete/port";
+import type { SearchProfileCatalog } from "@/contexts/discovery/application/search-profiles/delete/port";
 import type { db } from "./database";
 import { searchProfiles } from "./schema";
 

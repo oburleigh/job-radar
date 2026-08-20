@@ -32,7 +32,7 @@ describe("repository tooling", () => {
     expect(existsSync(path.join(repositoryRoot, "postcss.config.mjs"))).toBe(false);
   });
 
-  it("keeps the web framework inside the Discovery presentation adapter", () => {
+  it("keeps the web framework inside the Discovery composition adapter", () => {
     expect(packageJson.dependencies).not.toHaveProperty("next");
     expect(packageJson.scripts?.dev).toBe("react-router dev");
     expect(existsSync(path.join(repositoryRoot, "src", "app"))).toBe(false);
@@ -43,7 +43,7 @@ describe("repository tooling", () => {
           "src",
           "contexts",
           "discovery",
-          "presentation",
+          "composition",
           "web",
           "routes.ts",
         ),

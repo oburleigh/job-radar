@@ -1,4 +1,5 @@
 import type { RuntimeSettingsCommand } from "./command";
+import { findInvalidRuntimeSetting } from "./constraints";
 import type { RuntimeSettingsStore } from "./port";
 import type { SaveRuntimeSettingsResult } from "./result";
 
@@ -14,6 +15,10 @@ export function createSaveRuntimeSettings({
   now,
 }: SaveRuntimeSettingsDependencies): SaveRuntimeSettings {
   return (command) => {
+    const invalidField = findInvalidRuntimeSetting(command);
+    if (invalidField) {
+      return { status: "rejected", reason: "invalid-setting", field: invalidField };
+    }
     settings.replace(command, now());
     return { status: "saved" };
   };

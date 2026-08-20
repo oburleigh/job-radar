@@ -1,5 +1,8 @@
-import type { DiscoveryRunExecution, StartDiscoveryRunCommand } from "../ports/discovery-run";
-import type { DiscoveryRunRegistry } from "../ports/discovery-run-registry";
+import type {
+  DiscoveryRunExecution,
+  StartDiscoveryRunCommand,
+} from "@/contexts/discovery/application/discovery-runs/ports/discovery-run";
+import type { DiscoveryRunRegistry } from "@/contexts/discovery/application/discovery-runs/ports/discovery-run-registry";
 
 export interface DiscoveryRunScheduler {
   schedule(execution: DiscoveryRunExecution): void;

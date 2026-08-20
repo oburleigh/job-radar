@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { SaveAtsIntegrationCommand } from "../../../application/ats-integrations/save/command";
+import type { SaveAtsIntegrationCommand } from "@/contexts/discovery/application/ats-integrations/save/command";
 
 export type AtsIntegrationRequestResult =
   | { readonly ok: true; readonly command: SaveAtsIntegrationCommand }

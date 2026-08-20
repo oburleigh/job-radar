@@ -3,26 +3,23 @@ import "dotenv/config";
 import { setImmediate as yieldToEventLoop } from "node:timers/promises";
 
 import { eq } from "drizzle-orm";
-import { createJobDiscovery } from "../src/contexts/discovery/application/discovery-runs/discover/discover-jobs";
+import { createJobDiscovery } from "@/contexts/discovery/application/discovery-runs/discover/discover-jobs";
 import {
   planBoardDiscoveryQueries,
   planSearchQueries,
-} from "../src/contexts/discovery/application/discovery-runs/planning/plan-search-queries";
+} from "@/contexts/discovery/application/discovery-runs/planning/plan-search-queries";
 import {
   getJobRadarConfig,
   supportsBoardSync,
-} from "../src/contexts/discovery/infrastructure/configuration/job-radar-config";
-import { createSqliteDiscoverySetup } from "../src/contexts/discovery/infrastructure/configuration/sqlite-discovery-setup";
-import { getSearchProviderOptions } from "../src/contexts/discovery/infrastructure/search/web-search-provider";
-import { createWebSearchProviderDirectory } from "../src/contexts/discovery/infrastructure/search/web-search-provider-directory";
-import { db } from "../src/contexts/discovery/infrastructure/sqlite/database";
-import { createSqliteDiscoveryRunJournal } from "../src/contexts/discovery/infrastructure/sqlite/discovery-run-journal";
-import {
-  searchProfiles,
-  sourceDomains,
-} from "../src/contexts/discovery/infrastructure/sqlite/schema";
-import { createSqliteJobDiscoveryCatalog } from "../src/contexts/discovery/infrastructure/sqlite/sqlite-job-discovery-catalog";
-import { createSqliteJobMatchEvaluator } from "../src/contexts/discovery/infrastructure/sqlite/sqlite-job-match-evaluator";
+} from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
+import { createSqliteDiscoverySetup } from "@/contexts/discovery/infrastructure/configuration/sqlite-discovery-setup";
+import { getSearchProviderOptions } from "@/contexts/discovery/infrastructure/search/web-search-provider";
+import { createWebSearchProviderDirectory } from "@/contexts/discovery/infrastructure/search/web-search-provider-directory";
+import { db } from "@/contexts/discovery/infrastructure/sqlite/database";
+import { createSqliteDiscoveryRunJournal } from "@/contexts/discovery/infrastructure/sqlite/discovery-run-journal";
+import { searchProfiles, sourceDomains } from "@/contexts/discovery/infrastructure/sqlite/schema";
+import { createSqliteJobDiscoveryCatalog } from "@/contexts/discovery/infrastructure/sqlite/sqlite-job-discovery-catalog";
+import { createSqliteJobMatchEvaluator } from "@/contexts/discovery/infrastructure/sqlite/sqlite-job-match-evaluator";
 
 async function main() {
   const args = process.argv.slice(2);

@@ -1,41 +1,54 @@
 import { z } from "zod";
-import type { MatchingPolicy } from "@/contexts/discovery/domain/job-match";
+import {
+  runtimeSettingConstraints,
+  runtimeTextConstraints,
+} from "@/contexts/discovery/application/runtime-settings/save/constraints";
+import type { RuntimeSettings } from "@/contexts/discovery/application/runtime-settings/settings";
 import { ATS_TYPES } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
 import { db } from "@/contexts/discovery/infrastructure/sqlite/database";
 import { appSettings, atsIntegrations } from "@/contexts/discovery/infrastructure/sqlite/schema";
 
+const integer = (constraint: { readonly min: number; readonly max: number }) =>
+  z.number().int().min(constraint.min).max(constraint.max);
+const number = (constraint: { readonly min: number; readonly max: number }) =>
+  z.number().min(constraint.min).max(constraint.max);
+
 const networkSchema = z.object({
-  timeoutMs: z.number().int().positive(),
-  userAgent: z.string().min(1),
+  timeoutMs: integer(runtimeSettingConstraints.timeoutMs),
+  userAgent: z
+    .string()
+    .trim()
+    .min(runtimeTextConstraints.userAgent.minLength)
+    .max(runtimeTextConstraints.userAgent.maxLength),
 });
 
 const discoverySchema = z.object({
-  resultsPerQuery: z.number().int().positive(),
-  boardJobLimit: z.number().int().positive(),
-  searchFreshnessDays: z.number().int().nonnegative(),
-  workYieldBatchSize: z.number().int().positive(),
-  runHistoryLimit: z.number().int().positive(),
+  resultsPerQuery: integer(runtimeSettingConstraints.resultsPerQuery),
+  boardJobLimit: integer(runtimeSettingConstraints.boardJobLimit),
+  searchFreshnessDays: integer(runtimeSettingConstraints.searchFreshnessDays),
+  workYieldBatchSize: integer(runtimeSettingConstraints.workYieldBatchSize),
+  runHistoryLimit: integer(runtimeSettingConstraints.runHistoryLimit),
   titleSearchMode: z.enum(["title", "anywhere"]),
   structuredVerificationSources: z.array(z.string().min(1)),
   closedListingMarkers: z.array(z.string().min(1)),
 });
 
 const uiSchema = z.object({
-  discoveryPollIntervalMs: z.number().int().min(1000).max(60000),
-  discoveryStaleAfterMs: z.number().int().min(60000).max(3600000),
+  discoveryPollIntervalMs: integer(runtimeSettingConstraints.discoveryPollIntervalMs),
+  discoveryStaleAfterMs: integer(runtimeSettingConstraints.discoveryStaleAfterMs),
 });
 
 const matchingSchema = z.object({
-  exactTitleScore: z.number().int().nonnegative(),
-  fullTokenScore: z.number().int().nonnegative(),
-  partialTokenScore: z.number().int().nonnegative(),
-  partialTokenThreshold: z.number().min(0).max(1),
-  locationScore: z.number().int().nonnegative(),
-  remoteScore: z.number().int().nonnegative(),
-  unknownDateScore: z.number().int().nonnegative(),
-  freshnessMaxScore: z.number().int().nonnegative(),
-  freshnessMinimumScore: z.number().int().nonnegative(),
-  freshnessStepDays: z.number().int().positive(),
+  exactTitleScore: integer(runtimeSettingConstraints.exactTitleScore),
+  fullTokenScore: integer(runtimeSettingConstraints.fullTokenScore),
+  partialTokenScore: integer(runtimeSettingConstraints.partialTokenScore),
+  partialTokenThreshold: number(runtimeSettingConstraints.partialTokenThreshold),
+  locationScore: integer(runtimeSettingConstraints.locationScore),
+  remoteScore: integer(runtimeSettingConstraints.remoteScore),
+  unknownDateScore: integer(runtimeSettingConstraints.unknownDateScore),
+  freshnessMaxScore: integer(runtimeSettingConstraints.freshnessMaxScore),
+  freshnessMinimumScore: integer(runtimeSettingConstraints.freshnessMinimumScore),
+  freshnessStepDays: integer(runtimeSettingConstraints.freshnessStepDays),
   stopWords: z.array(z.string().min(1)),
   genericTitleTerms: z.array(z.string().min(1)),
   remoteTerms: z.array(z.string().min(1)),
@@ -45,7 +58,7 @@ const matchingSchema = z.object({
 const providerSchema = z.object({
   label: z.string().min(1),
   endpoint: z.url(),
-  maxResults: z.number().int().positive(),
+  maxResults: integer(runtimeSettingConstraints.providerMaxResults),
   parameters: z.record(z.string(), z.string()),
   apiKeyEnv: z.string().regex(/^[A-Z][A-Z0-9_]*$/),
   enabled: z.boolean(),
@@ -70,23 +83,18 @@ const integrationSchema = z.object({
 });
 
 const integrationPolicySchema = z.object({
-  customPriority: z.number().int().min(0).max(10000),
+  customPriority: integer(runtimeSettingConstraints.customIntegrationPriority),
 });
 
 const profileDefaultsSchema = z.object({
-  maximumAgeDays: z.number().int().min(1).max(365),
-  minimumScore: z.number().int().min(0).max(100),
-  salaryCurrency: z.string().refine((value) => value === "" || /^[A-Z]{3}$/.test(value)),
+  maximumAgeDays: integer(runtimeSettingConstraints.maximumAgeDays),
+  minimumScore: integer(runtimeSettingConstraints.minimumScore),
+  salaryCurrency: z
+    .string()
+    .refine((value) => value === "" || runtimeTextConstraints.salaryCurrency.pattern.test(value)),
 });
 
-export interface JobRadarConfig {
-  network: z.infer<typeof networkSchema>;
-  discovery: z.infer<typeof discoverySchema>;
-  ui: z.infer<typeof uiSchema>;
-  matching: MatchingPolicy;
-  searchProviders: z.infer<typeof searchProvidersSchema>;
-  integrationPolicy: z.infer<typeof integrationPolicySchema>;
-  profileDefaults: z.infer<typeof profileDefaultsSchema>;
+export interface JobRadarConfig extends RuntimeSettings {
   ats: Record<string, z.infer<typeof integrationSchema>>;
 }
 

@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 
-import type { AtsIntegrationRegistry } from "../../application/ats-integrations/save/port";
-import { isBuiltInAtsType } from "../job-sources/ats-integration";
+import type { AtsIntegrationRegistry } from "@/contexts/discovery/application/ats-integrations/save/port";
+import { isBuiltInAtsType } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
 import type { db } from "./database";
 import { atsIntegrations, sourceDomains } from "./schema";
 

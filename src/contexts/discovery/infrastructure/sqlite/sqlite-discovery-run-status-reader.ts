@@ -1,6 +1,6 @@
 import { desc, eq, inArray } from "drizzle-orm";
 
-import type { DiscoveryRunStatusReader } from "../../application/discovery-runs/status/port";
+import type { DiscoveryRunStatusReader } from "@/contexts/discovery/application/discovery-runs/status/port";
 import type { db } from "./database";
 import { discoveryRuns, searchProfiles } from "./schema";
 

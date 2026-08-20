@@ -1,7 +1,11 @@
 import { relations } from "drizzle-orm";
 import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
-
+import {
+  JOB_LISTING_EVIDENCE,
+  type JobListingEvidence,
+} from "@/contexts/discovery/domain/job-listing-provenance";
 import { JOB_LISTING_STATES } from "@/contexts/discovery/domain/job-listing-state";
+import type { ExclusionReason, MatchReason } from "@/contexts/discovery/domain/job-match";
 import type {
   AtsType,
   BoardConfig,
@@ -192,6 +196,13 @@ export const jobs = sqliteTable(
     employmentType: text("employment_type").notNull().default(""),
     workplaceType: text("workplace_type").notNull().default(""),
     publishedAt: timestamp("published_at"),
+    salaryCurrency: text("salary_currency").notNull().default(""),
+    salaryMin: integer("salary_min"),
+    salaryMax: integer("salary_max"),
+    evidence: text("evidence", { enum: JOB_LISTING_EVIDENCE })
+      .$type<JobListingEvidence>()
+      .notNull()
+      .default("search-lead"),
     firstSeenAt: timestamp("first_seen_at").notNull(),
     lastSeenAt: timestamp("last_seen_at").notNull(),
     isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
@@ -215,8 +226,10 @@ export const jobMatches = sqliteTable(
       .references(() => jobs.id, { onDelete: "cascade" }),
     status: text("status", { enum: ["matched", "excluded"] }).notNull(),
     score: integer("score").notNull().default(0),
-    reasons: text("reasons", { mode: "json" }).$type<string[]>().notNull(),
-    exclusionReasons: text("exclusion_reasons", { mode: "json" }).$type<string[]>().notNull(),
+    reasons: text("reasons", { mode: "json" }).$type<readonly MatchReason[]>().notNull(),
+    exclusionReasons: text("exclusion_reasons", { mode: "json" })
+      .$type<readonly ExclusionReason[]>()
+      .notNull(),
     updatedAt: timestamp("updated_at").notNull(),
   },
   (table) => [

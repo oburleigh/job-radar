@@ -1,4 +1,4 @@
-import type { JobListingStateStore } from "../../application/job-listings/change-state/port";
+import type { JobListingStateStore } from "@/contexts/discovery/application/job-listings/change-state/port";
 import type { db } from "./database";
 import { jobStates } from "./schema";
 

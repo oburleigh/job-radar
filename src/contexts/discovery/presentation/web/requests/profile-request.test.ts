@@ -47,7 +47,7 @@ describe("profile request", () => {
     const result = parseProfileRequest(profileForm());
 
     expect(result.ok && result.command.profile.salaryPreference).toEqual({
-      currency: "",
+      currency: null,
       minimumAnnual: null,
       maximumAnnual: null,
     });

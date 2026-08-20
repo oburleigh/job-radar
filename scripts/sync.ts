@@ -1,6 +1,6 @@
 import "dotenv/config";
 
-import { syncEnabledBoards } from "../src/contexts/discovery/infrastructure/sqlite/sync-boards";
+import { syncEnabledBoards } from "@/contexts/discovery/infrastructure/sqlite/sync-boards";
 
 async function main() {
   const sourceValue = valueAfter(process.argv.slice(2), "--source");

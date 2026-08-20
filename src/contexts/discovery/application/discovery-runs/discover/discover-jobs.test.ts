@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { createJobDiscovery } from "../discover/discover-jobs";
-import type { DiscoveryRunJournal } from "../ports/discovery-run-journal";
-import type { DiscoverySetupReader } from "../ports/discovery-setup";
-import type { JobDiscoveryCatalog } from "../ports/job-discovery-catalog";
-import type { SearchProvider } from "../ports/search-provider";
-import type { SearchProviderDirectory } from "../ports/search-provider-directory";
+import { createJobDiscovery } from "@/contexts/discovery/application/discovery-runs/discover/discover-jobs";
+import type { DiscoveryRunJournal } from "@/contexts/discovery/application/discovery-runs/ports/discovery-run-journal";
+import type { DiscoverySetupReader } from "@/contexts/discovery/application/discovery-runs/ports/discovery-setup";
+import type { JobDiscoveryCatalog } from "@/contexts/discovery/application/discovery-runs/ports/job-discovery-catalog";
+import type { SearchProvider } from "@/contexts/discovery/application/discovery-runs/ports/search-provider";
+import type { SearchProviderDirectory } from "@/contexts/discovery/application/discovery-runs/ports/search-provider-directory";
 
 const timestamp = new Date("2026-08-20T12:00:00.000Z");
 

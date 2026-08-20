@@ -1,4 +1,4 @@
-import type { PlannedSearchQuery } from "../planning/plan-search-queries";
+import type { PlannedSearchQuery } from "@/contexts/discovery/application/discovery-runs/planning/plan-search-queries";
 
 export type DiscoveryRunProgress = {
   readonly hitCount: number;

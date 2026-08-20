@@ -1,30 +1,42 @@
 import { z } from "zod";
+import type { RuntimeSettingsCommand } from "@/contexts/discovery/application/runtime-settings/save/command";
+import {
+  runtimeSettingConstraints,
+  runtimeTextConstraints,
+} from "@/contexts/discovery/application/runtime-settings/save/constraints";
 
-import type { RuntimeSettingsCommand } from "../../../application/runtime-settings/save/command";
+const integer = (constraint: { readonly min: number; readonly max: number }) =>
+  z.coerce.number().int().min(constraint.min).max(constraint.max);
+const number = (constraint: { readonly min: number; readonly max: number }) =>
+  z.coerce.number().min(constraint.min).max(constraint.max);
 
 const runtimeSettingsSchema = z.object({
-  timeoutMs: z.coerce.number().int().min(1000).max(120000),
-  userAgent: z.string().trim().min(3).max(200),
-  resultsPerQuery: z.coerce.number().int().min(1).max(100),
-  boardJobLimit: z.coerce.number().int().min(1).max(2000),
-  searchFreshnessDays: z.coerce.number().int().min(0).max(365),
-  workYieldBatchSize: z.coerce.number().int().min(1).max(1000),
-  runHistoryLimit: z.coerce.number().int().min(1).max(1000),
+  timeoutMs: integer(runtimeSettingConstraints.timeoutMs),
+  userAgent: z
+    .string()
+    .trim()
+    .min(runtimeTextConstraints.userAgent.minLength)
+    .max(runtimeTextConstraints.userAgent.maxLength),
+  resultsPerQuery: integer(runtimeSettingConstraints.resultsPerQuery),
+  boardJobLimit: integer(runtimeSettingConstraints.boardJobLimit),
+  searchFreshnessDays: integer(runtimeSettingConstraints.searchFreshnessDays),
+  workYieldBatchSize: integer(runtimeSettingConstraints.workYieldBatchSize),
+  runHistoryLimit: integer(runtimeSettingConstraints.runHistoryLimit),
   titleSearchMode: z.enum(["title", "anywhere"]),
   structuredVerificationSources: z.string().transform(splitLines),
   closedListingMarkers: z.string().transform(splitLines).pipe(z.array(z.string()).min(1)),
-  discoveryPollIntervalMs: z.coerce.number().int().min(1000).max(60000),
-  discoveryStaleAfterMs: z.coerce.number().int().min(60000).max(3600000),
-  exactTitleScore: z.coerce.number().int().min(0).max(100),
-  fullTokenScore: z.coerce.number().int().min(0).max(100),
-  partialTokenScore: z.coerce.number().int().min(0).max(100),
-  partialTokenThreshold: z.coerce.number().min(0).max(1),
-  locationScore: z.coerce.number().int().min(0).max(100),
-  remoteScore: z.coerce.number().int().min(0).max(100),
-  unknownDateScore: z.coerce.number().int().min(0).max(100),
-  freshnessMaxScore: z.coerce.number().int().min(0).max(100),
-  freshnessMinimumScore: z.coerce.number().int().min(0).max(100),
-  freshnessStepDays: z.coerce.number().int().min(1).max(365),
+  discoveryPollIntervalMs: integer(runtimeSettingConstraints.discoveryPollIntervalMs),
+  discoveryStaleAfterMs: integer(runtimeSettingConstraints.discoveryStaleAfterMs),
+  exactTitleScore: integer(runtimeSettingConstraints.exactTitleScore),
+  fullTokenScore: integer(runtimeSettingConstraints.fullTokenScore),
+  partialTokenScore: integer(runtimeSettingConstraints.partialTokenScore),
+  partialTokenThreshold: number(runtimeSettingConstraints.partialTokenThreshold),
+  locationScore: integer(runtimeSettingConstraints.locationScore),
+  remoteScore: integer(runtimeSettingConstraints.remoteScore),
+  unknownDateScore: integer(runtimeSettingConstraints.unknownDateScore),
+  freshnessMaxScore: integer(runtimeSettingConstraints.freshnessMaxScore),
+  freshnessMinimumScore: integer(runtimeSettingConstraints.freshnessMinimumScore),
+  freshnessStepDays: integer(runtimeSettingConstraints.freshnessStepDays),
   stopWords: z.string().transform(splitLines),
   genericTitleTerms: z.string().transform(splitLines).pipe(z.array(z.string()).min(1)),
   remoteTerms: z.string().transform(splitLines).pipe(z.array(z.string()).min(1)),
@@ -33,18 +45,18 @@ const runtimeSettingsSchema = z.object({
     z.string().min(1),
     z.object({
       endpoint: z.url(),
-      maxResults: z.coerce.number().int().min(1).max(100),
+      maxResults: integer(runtimeSettingConstraints.providerMaxResults),
       titleSearchMode: z.union([z.literal(""), z.enum(["title", "anywhere"])]),
     }),
   ),
-  customIntegrationPriority: z.coerce.number().int().min(0).max(10000),
-  maximumAgeDays: z.coerce.number().int().min(1).max(365),
-  minimumScore: z.coerce.number().int().min(0).max(100),
+  customIntegrationPriority: integer(runtimeSettingConstraints.customIntegrationPriority),
+  maximumAgeDays: integer(runtimeSettingConstraints.maximumAgeDays),
+  minimumScore: integer(runtimeSettingConstraints.minimumScore),
   salaryCurrency: z
     .string()
     .trim()
     .transform((value) => value.toUpperCase())
-    .refine((value) => value === "" || /^[A-Z]{3}$/.test(value), {
+    .refine((value) => value === "" || runtimeTextConstraints.salaryCurrency.pattern.test(value), {
       message: "Default salary currency must be a three-letter code such as GBP.",
     }),
 });

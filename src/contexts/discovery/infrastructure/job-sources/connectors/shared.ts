@@ -1,4 +1,6 @@
+import type { AnnualSalaryRange } from "@/contexts/discovery/domain/annual-salary";
 import { getJobRadarConfig } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
+import { extractAnnualSalaryFromText } from "@/contexts/discovery/infrastructure/job-sources/annual-salary-parser";
 import type {
   AtsType,
   BoardInput,
@@ -23,6 +25,7 @@ type RawJobFields = {
   readonly employmentType?: string;
   readonly workplaceType?: string;
   readonly publishedAt?: Date | null;
+  readonly publishedSalary?: AnnualSalaryRange | null;
 };
 
 export function rawJob(
@@ -31,6 +34,7 @@ export function rawJob(
   payload: Record<string, unknown>,
   fields: RawJobFields,
 ): RawJob {
+  const description = fields.description ?? "";
   return {
     atsType,
     externalId: fields.externalId,
@@ -39,11 +43,16 @@ export function rawJob(
     title: fields.title,
     companyName: fields.companyName ?? (board.companyName || board.slug),
     locations: unique(fields.locations ?? []),
-    description: fields.description ?? "",
+    description,
     department: fields.department ?? "",
     employmentType: fields.employmentType ?? "",
     workplaceType: fields.workplaceType ?? "",
     publishedAt: fields.publishedAt ?? null,
+    publishedSalary:
+      fields.publishedSalary === undefined
+        ? extractAnnualSalaryFromText(description)
+        : fields.publishedSalary,
+    evidence: "structured",
     rawPayload: payload,
   };
 }

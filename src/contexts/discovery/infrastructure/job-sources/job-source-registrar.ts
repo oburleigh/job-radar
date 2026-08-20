@@ -1,13 +1,17 @@
 import { eq } from "drizzle-orm";
 
-import type { JobSourceRegistrar } from "../../application/source-coverage/add/port";
+import type { JobSourceRegistrar } from "@/contexts/discovery/application/source-coverage/add/port";
 import {
   getAtsIntegration,
   getJobRadarConfig,
   supportsBoardSync,
-} from "../configuration/job-radar-config";
-import type { db } from "../sqlite/database";
-import { atsIntegrations, companyBoards, sourceDomains } from "../sqlite/schema";
+} from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
+import type { db } from "@/contexts/discovery/infrastructure/sqlite/database";
+import {
+  atsIntegrations,
+  companyBoards,
+  sourceDomains,
+} from "@/contexts/discovery/infrastructure/sqlite/schema";
 import { isBuiltInAtsType } from "./ats-integration";
 import { suggestSearchIntegration } from "./custom-integration";
 import { classifyUrl } from "./urls";

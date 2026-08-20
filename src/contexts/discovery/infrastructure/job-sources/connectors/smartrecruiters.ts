@@ -1,8 +1,9 @@
+import { z } from "zod";
 import {
   endpoint,
   getAtsIntegration,
 } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
-
+import { optionalVendorTextValue, parseVendorResponse } from "./response-schema";
 import {
   asRecord,
   type BoardConnector,
@@ -14,6 +15,27 @@ import {
   stringValue,
 } from "./shared";
 
+const smartRecruitersJobSchema = z.looseObject({
+  id: optionalVendorTextValue,
+  uuid: optionalVendorTextValue,
+  name: z.string().trim().min(1),
+  location: z
+    .looseObject({
+      city: optionalVendorTextValue,
+      region: optionalVendorTextValue,
+      country: optionalVendorTextValue,
+      remote: z.boolean().optional(),
+    })
+    .optional(),
+  company: z.looseObject({ name: optionalVendorTextValue }).optional(),
+  department: z.looseObject({ label: optionalVendorTextValue }).optional(),
+  typeOfEmployment: z.looseObject({ label: optionalVendorTextValue }).optional(),
+  releasedDate: z.unknown().optional(),
+});
+const smartRecruitersResponseSchema = z.looseObject({
+  content: z.array(smartRecruitersJobSchema),
+});
+
 export const fetchSmartRecruiters: BoardConnector = async (board, limit, fetcher) => {
   const results = [];
   let offset = 0;
@@ -21,16 +43,20 @@ export const fetchSmartRecruiters: BoardConnector = async (board, limit, fetcher
   while (results.length < limit) {
     const pageSize = getAtsIntegration("smartrecruiters").pageSize ?? limit;
     const pageLimit = Math.min(pageSize, limit - results.length);
-    const payload = await requestJson(
-      endpoint("smartrecruiters", "jobs", {
-        slug: board.slug,
-        offset,
-        limit: pageLimit,
-      }),
-      {},
-      fetcher,
+    const payload = parseVendorResponse(
+      "SmartRecruiters",
+      smartRecruitersResponseSchema,
+      await requestJson(
+        endpoint("smartrecruiters", "jobs", {
+          slug: board.slug,
+          offset,
+          limit: pageLimit,
+        }),
+        {},
+        fetcher,
+      ),
     );
-    const rows = recordArray(asRecord(payload).content);
+    const rows = recordArray(payload.content);
     if (rows.length === 0) {
       break;
     }

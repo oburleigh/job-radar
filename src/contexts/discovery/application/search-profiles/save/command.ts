@@ -1,6 +1,7 @@
-import type { SearchProfileDefinition } from "../../../domain/search-profile";
+import type { SearchProfileId } from "@/contexts/discovery/domain/identifiers";
+import type { SearchProfileDefinition } from "@/contexts/discovery/domain/search-profile";
 
 export interface SaveSearchProfileCommand {
-  readonly id: number | undefined;
+  readonly id: SearchProfileId | undefined;
   readonly profile: SearchProfileDefinition;
 }

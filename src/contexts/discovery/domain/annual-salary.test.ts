@@ -1,66 +1,94 @@
 import { describe, expect, it } from "vitest";
 
-import { extractAnnualSalary, formatAnnualSalary } from "./annual-salary";
+import { compareAnnualSalary, createAnnualSalaryRange } from "./annual-salary";
+import { currencyFrom } from "./currency";
 
-describe("annual salary extraction", () => {
-  it("reads an annual salary range from job text", () => {
-    expect(
-      extractAnnualSalary("The base salary range for this role is £110,000 - £145,000 per year."),
-    ).toEqual({
+describe("annual salary", () => {
+  it("normalizes currency and reverses an inverted range", () => {
+    expect(createAnnualSalaryRange("gbp", 145_000, 110_000)).toEqual({
       currency: "GBP",
       min: 110_000,
       max: 145_000,
     });
   });
 
-  it("supports abbreviated amounts and trailing currency codes", () => {
-    expect(extractAnnualSalary("Annual compensation: 400k to 550k AED.")).toEqual({
-      currency: "AED",
-      min: 400_000,
-      max: 550_000,
-    });
-  });
+  it("compares only salaries published in the preferred currency", () => {
+    const salary = createAnnualSalaryRange("GBP", 90_000, 120_000);
 
-  it("uses Ashby annual salary components instead of bonus or equity", () => {
     expect(
-      extractAnnualSalary("", {
-        compensation: {
-          summaryComponents: [
-            {
-              compensationType: "EquityPercentage",
-              interval: "NONE",
-              currencyCode: null,
-              minValue: 0.5,
-              maxValue: 1.5,
-            },
-            {
-              compensationType: "Salary",
-              interval: "1 YEAR",
-              currencyCode: "USD",
-              minValue: 180_000,
-              maxValue: 220_000,
-            },
-          ],
-        },
+      compareAnnualSalary(salary, {
+        currency: currencyFrom("GBP"),
+        min: 100_000,
+        max: 150_000,
       }),
-    ).toEqual({
+    ).toBe("overlaps");
+    expect(
+      compareAnnualSalary(salary, {
+        currency: currencyFrom("USD"),
+        min: 100_000,
+        max: 150_000,
+      }),
+    ).toBe("not-comparable");
+  });
+
+  it.each([
+    ["", 100_000, null],
+    ["GBP", null, null],
+    ["GBP", 9_999, null],
+    ["GBP", null, 100_000_001],
+    ["GBP", 10_000.5, null],
+  ] as const)("rejects an invalid range", (currency, min, max) => {
+    expect(createAnnualSalaryRange(currency, min, max)).toBeNull();
+  });
+
+  it("supports valid one-sided ranges at the accepted boundaries", () => {
+    expect(createAnnualSalaryRange("USD", 10_000, null)).toEqual({
       currency: "USD",
-      min: 180_000,
-      max: 220_000,
+      min: 10_000,
+      max: null,
+    });
+    expect(createAnnualSalaryRange("USD", null, 100_000_000)).toEqual({
+      currency: "USD",
+      min: null,
+      max: 100_000_000,
     });
   });
 
-  it("does not treat hourly pay as an annual salary", () => {
-    expect(extractAnnualSalary("The pay range is $70,000 - $90,000 per hour.")).toBeNull();
-  });
+  it("distinguishes salaries below, above, and overlapping the preference", () => {
+    const preference = {
+      currency: currencyFrom("GBP"),
+      min: 100_000,
+      max: 150_000,
+    };
 
-  it("returns no range when salary is absent", () => {
-    expect(extractAnnualSalary("Benefits include private healthcare and a pension.")).toBeNull();
-  });
-
-  it("formats a range for matching explanations", () => {
-    expect(formatAnnualSalary({ currency: "GBP", min: 100_000, max: 140_000 })).toBe(
-      "GBP 100,000-140,000",
+    expect(compareAnnualSalary(createAnnualSalaryRange("GBP", 80_000, 99_999), preference)).toBe(
+      "below",
     );
+    expect(compareAnnualSalary(createAnnualSalaryRange("GBP", 150_001, 180_000), preference)).toBe(
+      "above",
+    );
+    expect(compareAnnualSalary(createAnnualSalaryRange("GBP", null, 120_000), preference)).toBe(
+      "overlaps",
+    );
+    expect(compareAnnualSalary(createAnnualSalaryRange("GBP", 140_000, null), preference)).toBe(
+      "overlaps",
+    );
+  });
+
+  it("cannot compare absent salary or preference currency", () => {
+    expect(
+      compareAnnualSalary(null, {
+        currency: currencyFrom("GBP"),
+        min: 100_000,
+        max: null,
+      }),
+    ).toBe("not-comparable");
+    expect(
+      compareAnnualSalary(createAnnualSalaryRange("GBP", 100_000, null), {
+        currency: null,
+        min: 100_000,
+        max: null,
+      }),
+    ).toBe("not-comparable");
   });
 });

@@ -1,5 +1,6 @@
+import { z } from "zod";
 import { endpoint } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
-
+import { optionalVendorTextValue, parseVendorResponse } from "./response-schema";
 import {
   asRecord,
   type BoardConnector,
@@ -10,14 +11,32 @@ import {
   stringValue,
 } from "./shared";
 
+const bambooLocationSchema = z.looseObject({
+  city: optionalVendorTextValue,
+  state: optionalVendorTextValue,
+  country: optionalVendorTextValue,
+  addressCountry: optionalVendorTextValue,
+});
+const bambooJobSchema = z.looseObject({
+  id: optionalVendorTextValue,
+  jobOpeningName: z.string().trim().min(1),
+  location: bambooLocationSchema.optional(),
+  atsLocation: bambooLocationSchema.optional(),
+  locationType: optionalVendorTextValue,
+  isRemote: z.boolean().optional(),
+  departmentLabel: optionalVendorTextValue,
+  employmentStatusLabel: optionalVendorTextValue,
+});
+const bambooResponseSchema = z.looseObject({ result: z.array(bambooJobSchema) });
+
 export const fetchBambooHr: BoardConnector = async (board, limit, fetcher) => {
-  const payload = await requestJson(
-    endpoint("bamboohr", "jobs", { slug: board.slug }),
-    {},
-    fetcher,
+  const payload = parseVendorResponse(
+    "BambooHR",
+    bambooResponseSchema,
+    await requestJson(endpoint("bamboohr", "jobs", { slug: board.slug }), {}, fetcher),
   );
 
-  return recordArray(asRecord(payload).result)
+  return recordArray(payload.result)
     .slice(0, limit)
     .filter((row) => stringValue(row.jobOpeningName))
     .map((row) => {

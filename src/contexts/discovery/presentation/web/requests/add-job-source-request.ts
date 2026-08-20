@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { AddJobSourceCommand } from "../../../application/source-coverage/add/command";
+import type { AddJobSourceCommand } from "@/contexts/discovery/application/source-coverage/add/command";
 
 const addJobSourceSchema = z.object({
   url: z.url(),

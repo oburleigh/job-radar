@@ -13,6 +13,30 @@ const greenhouseBoard: BoardInput = {
 };
 
 describe("ATS connectors", () => {
+  it("rejects a malformed vendor response at the connector boundary", async () => {
+    await expect(
+      fetchBoardJobs(greenhouseBoard, {
+        fetcher: async () => Response.json({ results: [] }),
+      }),
+    ).rejects.toThrow("Greenhouse returned an invalid response");
+  });
+
+  it("reports JSON connector HTTP failures", async () => {
+    await expect(
+      fetchBoardJobs(greenhouseBoard, {
+        fetcher: async () => new Response("unavailable", { status: 503 }),
+      }),
+    ).rejects.toThrow("ATS request returned HTTP 503");
+  });
+
+  it("reports HTML connector HTTP failures", async () => {
+    await expect(
+      fetchBoardJobs(board("jobvite", "https://jobs.jobvite.com/acme"), {
+        fetcher: async () => new Response("unavailable", { status: 502 }),
+      }),
+    ).rejects.toThrow("ATS request returned HTTP 502");
+  });
+
   it("normalizes a Greenhouse response", async () => {
     const fetcher = async () =>
       Response.json({
@@ -57,6 +81,17 @@ describe("ATS connectors", () => {
               location: "Dubai",
               jobUrl: "https://jobs.ashbyhq.com/acme/ashby-1",
               isListed: true,
+              compensation: {
+                summaryComponents: [
+                  {
+                    compensationType: "Salary",
+                    interval: "1 YEAR",
+                    currencyCode: "USD",
+                    minValue: 180_000,
+                    maxValue: 220_000,
+                  },
+                ],
+              },
             },
           ],
         }),
@@ -67,6 +102,11 @@ describe("ATS connectors", () => {
       externalId: "ashby-1",
       title: "VP Engineering",
       locations: ["Dubai"],
+      publishedSalary: {
+        currency: "USD",
+        min: 180_000,
+        max: 220_000,
+      },
     });
   });
 

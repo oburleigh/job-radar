@@ -1,4 +1,4 @@
-import type { RuntimeSettingsStore } from "../../application/runtime-settings/save/port";
+import type { RuntimeSettingsStore } from "@/contexts/discovery/application/runtime-settings/save/port";
 import type { db } from "./database";
 import { appSettings } from "./schema";
 

@@ -1,3 +1,6 @@
+import type { AnnualSalaryRange } from "@/contexts/discovery/domain/annual-salary";
+import type { JobListingEvidence } from "@/contexts/discovery/domain/job-listing-provenance";
+
 export const ATS_TYPES = [
   "ashby",
   "greenhouse",
@@ -58,5 +61,7 @@ export interface RawJob {
   employmentType: string;
   workplaceType: string;
   publishedAt: Date | null;
+  publishedSalary: AnnualSalaryRange | null;
+  evidence: JobListingEvidence;
   rawPayload: Record<string, unknown>;
 }

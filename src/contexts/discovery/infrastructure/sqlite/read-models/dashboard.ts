@@ -1,6 +1,11 @@
 import { and, desc, eq } from "drizzle-orm";
-import { extractAnnualSalary, formatAnnualSalary } from "@/contexts/discovery/domain/annual-salary";
+import { createAnnualSalaryRange } from "@/contexts/discovery/domain/annual-salary";
+import {
+  isVerifiedJobListing,
+  shouldPreferListingCandidate,
+} from "@/contexts/discovery/domain/job-listing-provenance";
 import type { JobListingState } from "@/contexts/discovery/domain/job-listing-state";
+import type { ExclusionReason } from "@/contexts/discovery/domain/job-match";
 import type { AtsType } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
 import { db } from "@/contexts/discovery/infrastructure/sqlite/database";
 import {
@@ -65,6 +70,10 @@ export function getDashboardData(filters: JobFilters = {}) {
       description: jobs.description,
       publishedAt: jobs.publishedAt,
       firstSeenAt: jobs.firstSeenAt,
+      salaryCurrency: jobs.salaryCurrency,
+      salaryMin: jobs.salaryMin,
+      salaryMax: jobs.salaryMax,
+      evidence: jobs.evidence,
       rawPayload: jobs.rawPayload,
       score: jobMatches.score,
       reasons: jobMatches.reasons,
@@ -85,8 +94,8 @@ export function getDashboardData(filters: JobFilters = {}) {
     .all()
     .map((row) => ({
       ...row,
-      verified: Object.keys(row.rawPayload).length > 0,
-      salary: formatPublishedSalary(row.description, row.rawPayload),
+      verified: isVerifiedJobListing(row.evidence),
+      salary: createAnnualSalaryRange(row.salaryCurrency, row.salaryMin, row.salaryMax),
       state: row.state ?? ("new" as const),
     }));
   const activeRows = dedupeCrossSourceMatches(matchedRows.filter((row) => row.state !== "hidden"));
@@ -110,14 +119,12 @@ export function getDashboardData(filters: JobFilters = {}) {
   const excludedReasons = excludedRows.flatMap((row) => row.reasons);
   const screened = {
     total: excludedRows.length,
-    title: countReason(excludedReasons, "Title does not match"),
-    location:
-      countReason(excludedReasons, "Location does not match") +
-      countReason(excludedReasons, "Excluded location term"),
-    stale: countReason(excludedReasons, "Posted more than"),
-    unverified: countReason(excludedReasons, "Web-search lead"),
-    context: countReason(excludedReasons, "Missing a required job keyword"),
-    salary: countReason(excludedReasons, "Salary "),
+    title: countReasons(excludedReasons, ["title-mismatch", "excluded-title"]),
+    location: countReasons(excludedReasons, ["location-mismatch", "excluded-location"]),
+    stale: countReasons(excludedReasons, ["stale-listing"]),
+    unverified: countReasons(excludedReasons, ["unverified-lead"]),
+    context: countReasons(excludedReasons, ["missing-required-job-term"]),
+    salary: countReasons(excludedReasons, ["salary-above", "salary-below"]),
   };
 
   const counts = {
@@ -176,13 +183,11 @@ export function getDashboardData(filters: JobFilters = {}) {
   };
 }
 
-function countReason(reasons: string[], prefix: string): number {
-  return reasons.filter((reason) => reason.startsWith(prefix)).length;
-}
-
-function formatPublishedSalary(description: string, rawPayload: Record<string, unknown>): string {
-  const salary = extractAnnualSalary(description, rawPayload);
-  return salary ? formatAnnualSalary(salary) : "";
+function countReasons(
+  reasons: readonly ExclusionReason[],
+  codes: ReadonlyArray<ExclusionReason["code"]>,
+): number {
+  return reasons.filter((reason) => codes.includes(reason.code)).length;
 }
 
 function dedupeCrossSourceMatches<
@@ -190,6 +195,7 @@ function dedupeCrossSourceMatches<
     title: string;
     companyName: string;
     atsType: AtsType;
+    evidence: "search-lead" | "structured";
   },
 >(rows: T[]): T[] {
   const result: T[] = [];
@@ -205,12 +211,22 @@ function dedupeCrossSourceMatches<
     }
 
     const existing = result[position];
-    if (existing && existing.atsType === "linkedin" && row.atsType !== "linkedin") {
+    if (
+      existing &&
+      shouldPreferListingCandidate(
+        { evidence: existing.evidence, authority: authorityFor(existing.atsType) },
+        { evidence: row.evidence, authority: authorityFor(row.atsType) },
+      )
+    ) {
       result[position] = row;
     }
   }
 
   return result;
+}
+
+function authorityFor(atsType: AtsType): "primary" | "secondary" {
+  return atsType === "linkedin" ? "secondary" : "primary";
 }
 
 function normalizeDedupeText(value: string): string {

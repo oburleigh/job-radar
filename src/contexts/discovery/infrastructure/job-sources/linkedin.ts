@@ -2,6 +2,7 @@ import {
   endpoint,
   getJobRadarConfig,
 } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
+import { extractAnnualSalaryFromText } from "@/contexts/discovery/infrastructure/job-sources/annual-salary-parser";
 import type { RawJob } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
 
 export type LinkedInLookup =
@@ -44,6 +45,7 @@ export async function fetchLinkedInJob(
   if (!title || !companyName || !location) {
     return { status: "unavailable" };
   }
+  const description = extractClassContent(html, "show-more-less-html__markup", "div");
 
   return {
     status: "verified",
@@ -55,11 +57,13 @@ export async function fetchLinkedInJob(
       title,
       companyName,
       locations: [location],
-      description: extractClassContent(html, "show-more-less-html__markup", "div"),
+      description,
       department: "",
       employmentType: "",
       workplaceType: location.toLowerCase().includes("remote") ? "remote" : "",
       publishedAt: parseRelativeDate(postedText, now),
+      publishedSalary: extractAnnualSalaryFromText(description),
+      evidence: "structured",
       rawPayload: {
         source: "linkedin-public-job",
         postedText,

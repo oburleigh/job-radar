@@ -1,19 +1,19 @@
 import { setImmediate as yieldToEventLoop } from "node:timers/promises";
 
-import { createJobDiscovery } from "../application/discovery-runs/discover/discover-jobs";
-import { createDiscoveryRunExecution } from "../application/discovery-runs/execute/execute-discovery-run";
-import { createDiscoveryRunStarter } from "../application/discovery-runs/start/start-discovery-run";
-import { createAfterResponseDiscoveryRunScheduler } from "../infrastructure/background/after-response-discovery-run-scheduler";
-import { getJobRadarConfig } from "../infrastructure/configuration/job-radar-config";
-import { createSqliteDiscoverySetup } from "../infrastructure/configuration/sqlite-discovery-setup";
-import { createSearchProvider } from "../infrastructure/search/web-search-provider";
-import { createWebSearchProviderDirectory } from "../infrastructure/search/web-search-provider-directory";
-import { db } from "../infrastructure/sqlite/database";
-import { createSqliteDiscoveryRunJournal } from "../infrastructure/sqlite/discovery-run-journal";
-import { createSqliteDiscoveryRunRegistry } from "../infrastructure/sqlite/discovery-run-registry";
-import { createSqliteDiscoveryRunStatusReader } from "../infrastructure/sqlite/sqlite-discovery-run-status-reader";
-import { createSqliteJobDiscoveryCatalog } from "../infrastructure/sqlite/sqlite-job-discovery-catalog";
-import { createSqliteJobMatchEvaluator } from "../infrastructure/sqlite/sqlite-job-match-evaluator";
+import { createJobDiscovery } from "@/contexts/discovery/application/discovery-runs/discover/discover-jobs";
+import { createDiscoveryRunExecution } from "@/contexts/discovery/application/discovery-runs/execute/execute-discovery-run";
+import { createDiscoveryRunStarter } from "@/contexts/discovery/application/discovery-runs/start/start-discovery-run";
+import { createAfterResponseDiscoveryRunScheduler } from "@/contexts/discovery/infrastructure/background/after-response-discovery-run-scheduler";
+import { getJobRadarConfig } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
+import { createSqliteDiscoverySetup } from "@/contexts/discovery/infrastructure/configuration/sqlite-discovery-setup";
+import { createSearchProvider } from "@/contexts/discovery/infrastructure/search/web-search-provider";
+import { createWebSearchProviderDirectory } from "@/contexts/discovery/infrastructure/search/web-search-provider-directory";
+import { db } from "@/contexts/discovery/infrastructure/sqlite/database";
+import { createSqliteDiscoveryRunJournal } from "@/contexts/discovery/infrastructure/sqlite/discovery-run-journal";
+import { createSqliteDiscoveryRunRegistry } from "@/contexts/discovery/infrastructure/sqlite/discovery-run-registry";
+import { createSqliteDiscoveryRunStatusReader } from "@/contexts/discovery/infrastructure/sqlite/sqlite-discovery-run-status-reader";
+import { createSqliteJobDiscoveryCatalog } from "@/contexts/discovery/infrastructure/sqlite/sqlite-job-discovery-catalog";
+import { createSqliteJobMatchEvaluator } from "@/contexts/discovery/infrastructure/sqlite/sqlite-job-match-evaluator";
 
 const registry = createSqliteDiscoveryRunRegistry(db, {
   now: () => new Date(),

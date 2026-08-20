@@ -3,6 +3,16 @@ import { describe, expect, it } from "vitest";
 import { BraveSearchProvider, SerperSearchProvider } from "./web-search-provider";
 
 describe("Brave search provider", () => {
+  it("rejects a malformed provider response at the HTTP boundary", async () => {
+    const provider = new BraveSearchProvider("test-key", async () =>
+      Response.json({ results: [] }),
+    );
+
+    await expect(provider.search("engineering")).rejects.toThrow(
+      "Brave Search returned an invalid response",
+    );
+  });
+
   it("applies the profile age window as a freshness filter", async () => {
     let requestedUrl: URL | undefined;
     const fetcher: typeof fetch = async (input) => {

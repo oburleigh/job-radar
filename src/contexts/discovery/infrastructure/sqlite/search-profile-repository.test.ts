@@ -4,10 +4,13 @@ import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-
+import { currencyFrom } from "@/contexts/discovery/domain/currency";
+import {
+  createSearchProfileDefinition,
+  type SearchProfileDefinition,
+  type SearchProfileDraft,
+} from "@/contexts/discovery/domain/search-profile";
 import * as schema from "@/contexts/discovery/infrastructure/sqlite/schema";
-
-import type { SearchProfileDefinition } from "../../domain/search-profile";
 import { createSqliteSearchProfileRepository } from "./search-profile-repository";
 
 describe("SQLite search profile repository", () => {
@@ -64,7 +67,7 @@ describe("SQLite search profile repository", () => {
       id,
       profileDefinition({
         name: "Updated leadership search",
-        salaryPreference: { currency: "", minimumAnnual: null, maximumAnnual: null },
+        salaryPreference: { currency: null, minimumAnnual: null, maximumAnnual: null },
       }),
       updatedAt,
     );
@@ -87,10 +90,8 @@ describe("SQLite search profile repository", () => {
   });
 });
 
-function profileDefinition(
-  overrides: Partial<SearchProfileDefinition> = {},
-): SearchProfileDefinition {
-  return {
+function profileDefinition(overrides: Partial<SearchProfileDraft> = {}): SearchProfileDefinition {
+  const result = createSearchProfileDefinition({
     name: "UAE engineering leadership",
     targetTitles: ["VP Engineering", "Head of Engineering"],
     targetLocations: ["Dubai", "Abu Dhabi"],
@@ -101,12 +102,16 @@ function profileDefinition(
     includeRemote: true,
     includeUnverified: false,
     salaryPreference: {
-      currency: "GBP",
+      currency: currencyFrom("GBP"),
       minimumAnnual: 100_000,
       maximumAnnual: 150_000,
     },
     maximumAgeDays: 30,
     minimumScore: 70,
     ...overrides,
-  };
+  });
+  if (result.status === "invalid") {
+    throw new Error(`Invalid profile fixture: ${result.reason}`);
+  }
+  return result.profile;
 }

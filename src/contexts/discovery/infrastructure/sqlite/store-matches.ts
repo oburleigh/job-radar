@@ -1,6 +1,9 @@
 import { setImmediate as yieldToEventLoop } from "node:timers/promises";
 import { eq } from "drizzle-orm";
+import { createAnnualSalaryRange } from "@/contexts/discovery/domain/annual-salary";
+import { currencyFrom } from "@/contexts/discovery/domain/currency";
 import { evaluateJob } from "@/contexts/discovery/domain/evaluate-job";
+import { isVerifiedJobListing } from "@/contexts/discovery/domain/job-listing-provenance";
 import { getJobRadarConfig } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
 import { db } from "@/contexts/discovery/infrastructure/sqlite/database";
 import {
@@ -37,9 +40,10 @@ export async function evaluateAndStore(
     const result = evaluateJob(
       {
         ...job,
-        verified: Object.keys(job.rawPayload).length > 0,
+        verified: isVerifiedJobListing(job.evidence),
+        publishedSalary: createAnnualSalaryRange(job.salaryCurrency, job.salaryMin, job.salaryMax),
       },
-      profile,
+      { ...profile, salaryCurrency: currencyFrom(profile.salaryCurrency) },
       config.matching,
       now,
     );

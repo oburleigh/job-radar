@@ -6,7 +6,8 @@ import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 
-import * as schema from "../../src/contexts/discovery/infrastructure/sqlite/schema";
+import { bootstrapJobRadar } from "@/contexts/discovery/infrastructure/configuration/bootstrap-job-radar";
+import * as schema from "@/contexts/discovery/infrastructure/sqlite/schema";
 
 export default function setupVitestDatabase() {
   const directory = mkdtempSync(path.join(tmpdir(), "job-radar-vitest-"));
@@ -16,6 +17,7 @@ export default function setupVitestDatabase() {
   const sqlite = new Database(databasePath);
   const database = drizzle(sqlite, { schema });
   migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+  bootstrapJobRadar(database);
   sqlite.close();
 
   return () => {

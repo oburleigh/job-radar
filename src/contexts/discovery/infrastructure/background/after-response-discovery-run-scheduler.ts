@@ -1,5 +1,5 @@
-import type { ForExecutingDiscoveryRuns } from "../../application/discovery-runs/execute/execute-discovery-run";
-import type { DiscoveryRunScheduler } from "../../application/discovery-runs/start/start-discovery-run";
+import type { ForExecutingDiscoveryRuns } from "@/contexts/discovery/application/discovery-runs/execute/execute-discovery-run";
+import type { DiscoveryRunScheduler } from "@/contexts/discovery/application/discovery-runs/start/start-discovery-run";
 
 type AfterResponse = (callback: () => Promise<void>) => void;
 
