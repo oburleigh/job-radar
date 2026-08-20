@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { SearchProvider } from "@/application/discovery/types";
+import type { SearchProvider } from "../../../hexagon/application/search-provider";
 
 import { createDiscoveryRunnerSearch } from "./discovery-runner-search";
 

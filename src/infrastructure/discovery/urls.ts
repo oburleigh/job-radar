@@ -1,7 +1,11 @@
 import { createHash } from "node:crypto";
 
-import type { AtsType, BoardIdentity, ClassifiedUrl } from "@/application/discovery/types";
-import { isBuiltInAtsType } from "@/application/discovery/types";
+import type {
+  AtsType,
+  BoardIdentity,
+  ClassifiedUrl,
+} from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
+import { isBuiltInAtsType } from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
 import {
   getAtsIntegration,
   getJobRadarConfig,

@@ -2,7 +2,7 @@ import "server-only";
 
 import { and, asc, desc, eq } from "drizzle-orm";
 
-import type { AtsType } from "@/application/discovery/types";
+import type { AtsType } from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
 import {
   extractAnnualSalary,
   formatAnnualSalary,

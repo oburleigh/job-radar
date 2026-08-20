@@ -6,7 +6,10 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { ATS_TYPES, isBuiltInAtsType } from "@/application/discovery/types";
+import {
+  ATS_TYPES,
+  isBuiltInAtsType,
+} from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
 import { createSqliteSearchProfileRepository } from "@/contexts/discovery/adapters/driven/sqlite/search-profile-repository";
 import { createSaveProfileAction } from "@/contexts/discovery/adapters/driving/web/save-profile-action";
 import { createSaveSearchProfile } from "@/contexts/discovery/hexagon/application/save-search-profile";

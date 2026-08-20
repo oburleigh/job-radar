@@ -1,7 +1,7 @@
 import { Bookmark, BriefcaseBusiness, CheckCircle2, Radar, Waypoints } from "lucide-react";
 import Link from "next/link";
 
-import type { AtsType } from "@/application/discovery/types";
+import type { AtsType } from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
 import { getAtsLabels } from "@/infrastructure/discovery/catalog";
 import { getSearchProviderOptions } from "@/infrastructure/discovery/search";
 import { getDashboardData, type JobState } from "@/infrastructure/read-models/radar";

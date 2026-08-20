@@ -5,11 +5,10 @@ import path from "node:path";
 import { eq } from "drizzle-orm";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-
-import type { SearchProvider } from "@/application/discovery/types";
 import { createSqliteSearchProfileRepository } from "@/contexts/discovery/adapters/driven/sqlite/search-profile-repository";
 import { createSaveProfileAction } from "@/contexts/discovery/adapters/driving/web/save-profile-action";
 import { createSaveSearchProfile } from "@/contexts/discovery/hexagon/application/save-search-profile";
+import type { SearchProvider } from "@/contexts/discovery/hexagon/application/search-provider";
 
 const testDirectory = mkdtempSync(path.join(tmpdir(), "job-radar-runner-concurrency-"));
 const previousDatabasePath = process.env.DB_PATH;

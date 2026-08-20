@@ -1,4 +1,7 @@
-import type { AtsType, RawJob } from "@/application/discovery/types";
+import type {
+  AtsType,
+  RawJob,
+} from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
 import { getJobRadarConfig } from "@/infrastructure/config/job-radar";
 
 export type StructuredJobPageLookup =

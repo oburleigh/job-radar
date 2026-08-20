@@ -1,7 +1,11 @@
 import { setImmediate as yieldToEventLoop } from "node:timers/promises";
 import { and, eq, ne } from "drizzle-orm";
 
-import type { AtsType, BoardInput, RawJob } from "@/application/discovery/types";
+import type {
+  AtsType,
+  BoardInput,
+  RawJob,
+} from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
 import { getJobRadarConfig } from "@/infrastructure/config/job-radar";
 import { db } from "@/infrastructure/database/client";
 import { companyBoards, jobs, searchProfiles } from "@/infrastructure/database/schema";

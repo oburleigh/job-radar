@@ -5,13 +5,15 @@ import {
   type AtsType,
   type BoardIdentity,
   isBuiltInAtsType,
-  type SearchHit,
-  type SearchProvider,
-} from "@/application/discovery/types";
+} from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
 import {
   planBoardDiscoveryQueries,
   planSearchQueries,
 } from "@/contexts/discovery/hexagon/application/plan-search-queries";
+import type {
+  SearchProvider,
+  SearchResult,
+} from "@/contexts/discovery/hexagon/application/search-provider";
 import { getJobRadarConfig, supportsBoardSync } from "@/infrastructure/config/job-radar";
 import { db } from "@/infrastructure/database/client";
 import {
@@ -170,7 +172,7 @@ export async function runDiscovery(
         .set({ status: "running", startedAt: new Date() })
         .where(eq(discoveryQueries.id, query.id))
         .run();
-      let results: SearchHit[];
+      let results: ReadonlyArray<SearchResult>;
       let queryFailed = false;
       try {
         results = await provider.search(query.text, {

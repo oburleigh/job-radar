@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { BoardInput } from "@/application/discovery/types";
+import type { BoardInput } from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
 import { fetchBoardJobs } from "./connectors";
 
 const greenhouseBoard: BoardInput = {

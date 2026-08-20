@@ -1,6 +1,9 @@
 import { and, eq, isNull } from "drizzle-orm";
 
-import type { AtsType, RawJob } from "@/application/discovery/types";
+import type {
+  AtsType,
+  RawJob,
+} from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
 import { db } from "@/infrastructure/database/client";
 import { companyBoards, jobs } from "@/infrastructure/database/schema";
 

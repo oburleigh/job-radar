@@ -1,4 +1,4 @@
-import type { AtsType } from "@/application/discovery/types";
+import type { AtsType } from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
 
 export interface NormalizedSearchResult {
   title: string;

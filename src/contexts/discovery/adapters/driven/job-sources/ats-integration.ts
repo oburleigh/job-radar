@@ -35,22 +35,6 @@ export interface ClassifiedUrl {
   board: BoardIdentity | null;
 }
 
-export interface SearchHit {
-  title: string;
-  url: string;
-  snippet: string;
-}
-
-export interface SearchProvider {
-  readonly name: string;
-  search(query: string, options?: SearchOptions): Promise<SearchHit[]>;
-}
-
-export interface SearchOptions {
-  count?: number;
-  maxAgeDays?: number;
-}
-
 export interface BoardInput {
   id: number;
   atsType: AtsType;
@@ -76,10 +60,3 @@ export interface RawJob {
   publishedAt: Date | null;
   rawPayload: Record<string, unknown>;
 }
-
-export type {
-  MatchableJob,
-  MatchingPolicy,
-  MatchProfile,
-  MatchResult,
-} from "@/contexts/discovery/hexagon/domain/job-match";

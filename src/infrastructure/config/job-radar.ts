@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ATS_TYPES } from "@/application/discovery/types";
+import { ATS_TYPES } from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
 import type { MatchingPolicy } from "@/contexts/discovery/hexagon/domain/job-match";
 import { db } from "@/infrastructure/database/client";
 import { appSettings, atsIntegrations } from "@/infrastructure/database/schema";

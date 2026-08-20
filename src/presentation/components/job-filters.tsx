@@ -4,7 +4,7 @@ import { Search, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { type SyntheticEvent, useState, useTransition } from "react";
 
-import type { AtsType } from "@/application/discovery/types";
+import type { AtsType } from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
 
 interface ProfileOption {
   id: number;

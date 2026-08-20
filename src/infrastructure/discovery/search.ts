@@ -1,4 +1,8 @@
-import type { SearchHit, SearchOptions, SearchProvider } from "@/application/discovery/types";
+import type {
+  SearchProvider,
+  SearchRequest,
+  SearchResult,
+} from "@/contexts/discovery/hexagon/application/search-provider";
 import { getJobRadarConfig } from "@/infrastructure/config/job-radar";
 
 export class BraveSearchProvider implements SearchProvider {
@@ -13,7 +17,7 @@ export class BraveSearchProvider implements SearchProvider {
     }
   }
 
-  async search(query: string, options: SearchOptions = {}): Promise<SearchHit[]> {
+  async search(query: string, options: SearchRequest = {}): Promise<SearchResult[]> {
     const config = getJobRadarConfig();
     const providerConfig = requireProviderConfig(this.name);
     const url = new URL(providerConfig.endpoint);
@@ -64,7 +68,7 @@ export class SerpApiSearchProvider implements SearchProvider {
     }
   }
 
-  async search(query: string, options: SearchOptions = {}): Promise<SearchHit[]> {
+  async search(query: string, options: SearchRequest = {}): Promise<SearchResult[]> {
     const config = getJobRadarConfig();
     const providerConfig = requireProviderConfig(this.name);
     const url = new URL(providerConfig.endpoint);
@@ -109,7 +113,7 @@ export class SerperSearchProvider implements SearchProvider {
     }
   }
 
-  async search(query: string, options: SearchOptions = {}): Promise<SearchHit[]> {
+  async search(query: string, options: SearchRequest = {}): Promise<SearchResult[]> {
     const config = getJobRadarConfig();
     const providerConfig = requireProviderConfig(this.name);
     const body = {
@@ -146,9 +150,9 @@ export class SerperSearchProvider implements SearchProvider {
 export class JsonSearchProvider implements SearchProvider {
   readonly name = "json";
 
-  constructor(private readonly hits: SearchHit[]) {}
+  constructor(private readonly hits: SearchResult[]) {}
 
-  async search(_query: string, options: SearchOptions = {}): Promise<SearchHit[]> {
+  async search(_query: string, options: SearchRequest = {}): Promise<SearchResult[]> {
     return this.hits.slice(0, options.count ?? getJobRadarConfig().discovery.resultsPerQuery);
   }
 }

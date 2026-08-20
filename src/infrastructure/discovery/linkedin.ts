@@ -1,4 +1,4 @@
-import type { RawJob } from "@/application/discovery/types";
+import type { RawJob } from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
 import { endpoint, getJobRadarConfig } from "@/infrastructure/config/job-radar";
 
 export type LinkedInLookup =

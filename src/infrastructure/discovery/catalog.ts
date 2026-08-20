@@ -1,4 +1,4 @@
-import type { AtsType } from "@/application/discovery/types";
+import type { AtsType } from "@/contexts/discovery/adapters/driven/job-sources/ats-integration";
 import { getJobRadarConfig } from "@/infrastructure/config/job-radar";
 
 export function getAtsLabels(): Record<AtsType, string> {
