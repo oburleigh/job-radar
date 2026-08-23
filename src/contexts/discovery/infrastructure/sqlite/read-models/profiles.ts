@@ -1,8 +1,10 @@
 import { db } from "@/contexts/discovery/infrastructure/sqlite/database";
 import { searchProfiles } from "@/contexts/discovery/infrastructure/sqlite/schema";
 
-export function getProfiles() {
-  return db
+type Database = typeof db;
+
+export function getProfiles(database: Database = db) {
+  return database
     .select({
       id: searchProfiles.id,
       name: searchProfiles.name,

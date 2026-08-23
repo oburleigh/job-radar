@@ -19,6 +19,8 @@ import {
 
 import { getProfiles } from "./profiles";
 
+type Database = typeof db;
+
 export interface JobFilters {
   profileId?: number;
   atsType?: AtsType;
@@ -26,8 +28,8 @@ export interface JobFilters {
   query?: string;
 }
 
-export function getDashboardData(filters: JobFilters = {}) {
-  const profiles = getProfiles();
+export function getDashboardData(filters: JobFilters = {}, database: Database = db) {
+  const profiles = getProfiles(database);
   const profile =
     profiles.find((item) => item.id === filters.profileId) ??
     profiles.find((item) => item.enabled) ??
@@ -55,7 +57,7 @@ export function getDashboardData(filters: JobFilters = {}) {
     };
   }
 
-  const matchedRows = db
+  const matchedRows = database
     .select({
       id: jobs.id,
       title: jobs.title,
@@ -104,7 +106,7 @@ export function getDashboardData(filters: JobFilters = {}) {
       ? dedupeCrossSourceMatches(matchedRows.filter((row) => row.state === "hidden"))
       : activeRows;
 
-  const excludedRows = db
+  const excludedRows = database
     .select({ reasons: jobMatches.exclusionReasons })
     .from(jobMatches)
     .innerJoin(jobs, eq(jobs.id, jobMatches.jobId))
@@ -145,18 +147,18 @@ export function getDashboardData(filters: JobFilters = {}) {
     )
     .slice(0, 250);
 
-  const activeSources = db
+  const activeSources = database
     .select({ id: sourceDomains.id })
     .from(sourceDomains)
     .where(eq(sourceDomains.enabled, true))
     .all().length;
-  const activeBoards = db
+  const activeBoards = database
     .select({ id: companyBoards.id })
     .from(companyBoards)
     .where(eq(companyBoards.enabled, true))
     .all().length;
   const lastRun =
-    db
+    database
       .select({
         id: discoveryRuns.id,
         provider: discoveryRuns.provider,

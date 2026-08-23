@@ -17,6 +17,7 @@ import { getSearchProviderOptions } from "@/contexts/discovery/infrastructure/se
 import { createWebSearchProviderDirectory } from "@/contexts/discovery/infrastructure/search/web-search-provider-directory";
 import { db } from "@/contexts/discovery/infrastructure/sqlite/database";
 import { createSqliteDiscoveryRunJournal } from "@/contexts/discovery/infrastructure/sqlite/discovery-run-journal";
+import { readDiscoveryBenchmark } from "@/contexts/discovery/infrastructure/sqlite/read-models/discovery-benchmark";
 import { searchProfiles, sourceDomains } from "@/contexts/discovery/infrastructure/sqlite/schema";
 import { createSqliteJobDiscoveryCatalog } from "@/contexts/discovery/infrastructure/sqlite/sqlite-job-discovery-catalog";
 import { createSqliteJobMatchEvaluator } from "@/contexts/discovery/infrastructure/sqlite/sqlite-job-match-evaluator";
@@ -27,6 +28,7 @@ async function main() {
   const profileId = Number.parseInt(valueAfter(args, "--profile") ?? "1", 10);
   const sourceValue = valueAfter(args, "--source");
   const source = sourceValue || undefined;
+  const benchmarkUrl = valueAfter(args, "--benchmark-url");
   const dryRun = args.includes("--dry-run");
 
   const profile = db.select().from(searchProfiles).where(eq(searchProfiles.id, profileId)).get();
@@ -84,6 +86,31 @@ async function main() {
     providerName,
     ...(source ? { source } : {}),
   });
+  if (benchmarkUrl) {
+    const config = getJobRadarConfig();
+    console.log(
+      JSON.stringify(
+        readDiscoveryBenchmark(db, {
+          runId: summary.runId,
+          profileId,
+          knownRoleUrl: benchmarkUrl,
+          benchmarkedAt: new Date(),
+          policy: {
+            resultsPerQuery: config.discovery.resultsPerQuery,
+            boardJobLimit: config.discovery.boardJobLimit,
+            searchFreshnessDays: config.discovery.searchFreshnessDays,
+            titleSearchMode:
+              config.searchProviders[providerName]?.titleSearchMode ??
+              config.discovery.titleSearchMode,
+            matching: config.matching,
+          },
+        }),
+        null,
+        2,
+      ),
+    );
+    return;
+  }
   console.log(summary);
 }
 
