@@ -15,6 +15,7 @@
 /playwright-report/
 /reports/
 /test-results/
+/.stryker-tmp
 
 # generated web build and route types
 /build
@@ -48,6 +49,7 @@ yarn-error.log*
 # local agent and design-tool state
 /AGENTS.md
 /CLAUDE.md
+/.handoff/
 /.agents/
 /.claude/
 /.codex/
