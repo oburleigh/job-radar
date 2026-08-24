@@ -14,7 +14,7 @@ import {
 
 const greenhouseJobSchema = z.looseObject({
   id: optionalVendorTextValue,
-  internal_job_id: optionalVendorTextValue,
+  internal_job_id: optionalVendorTextValue.nullable(),
   title: z.string().trim().min(1),
   company_name: optionalVendorTextValue,
   absolute_url: optionalVendorTextValue,
@@ -35,7 +35,11 @@ export const fetchGreenhouse: BoardConnector = async (board, limit, fetcher) => 
 
   return recordArray(payload.jobs)
     .slice(0, limit)
-    .filter((row) => stringValue(row.title))
+    .filter(
+      (row) =>
+        Boolean(stringValue(row.title)) &&
+        Boolean(stringValue(row.id) || stringValue(row.internal_job_id)),
+    )
     .map((row) => {
       const externalId = stringValue(row.id) || stringValue(row.internal_job_id);
       const location = asRecord(row.location);

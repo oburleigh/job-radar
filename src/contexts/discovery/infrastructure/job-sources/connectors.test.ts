@@ -43,6 +43,7 @@ describe("ATS connectors", () => {
         jobs: [
           {
             id: 123,
+            internal_job_id: null,
             title: "Head of Engineering",
             company_name: "Acme",
             absolute_url: "https://boards.greenhouse.io/acme/jobs/123",
@@ -67,6 +68,41 @@ describe("ATS connectors", () => {
       locations: ["Dubai"],
       description: "Lead the engineering team.",
       department: "Engineering",
+    });
+  });
+
+  it("omits a Greenhouse job without a usable identifier", async () => {
+    const result = await fetchBoardJobs(greenhouseBoard, {
+      fetcher: async () =>
+        Response.json({
+          jobs: [
+            {
+              internal_job_id: null,
+              title: "Head of Engineering",
+            },
+          ],
+        }),
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  it("uses a Greenhouse internal identifier when the public identifier is absent", async () => {
+    const result = await fetchBoardJobs(greenhouseBoard, {
+      fetcher: async () =>
+        Response.json({
+          jobs: [
+            {
+              internal_job_id: 456,
+              title: "Head of Engineering",
+            },
+          ],
+        }),
+    });
+
+    expect(result[0]).toMatchObject({
+      externalId: "456",
+      canonicalUrl: "https://boards.greenhouse.io/acme/jobs/456",
     });
   });
 
