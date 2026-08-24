@@ -147,6 +147,62 @@ describe("ATS connectors", () => {
     });
   });
 
+  it("accepts Ashby identity from either a vendor id or a job URL", async () => {
+    const result = await fetchBoardJobs(board("ashby", "https://jobs.ashbyhq.com/acme"), {
+      fetcher: async () =>
+        Response.json({
+          jobs: [
+            { id: "id-only", title: "VP Engineering" },
+            {
+              title: "Director of Platform",
+              jobUrl: "https://jobs.ashbyhq.com/acme/url-only",
+            },
+          ],
+        }),
+    });
+
+    expect(result.map((job) => job.externalId)).toEqual(["id-only", "url-only"]);
+  });
+
+  it("omits an unlisted Ashby posting from accepted jobs", async () => {
+    const result = await fetchBoardJobsWithDiagnostics(
+      board("ashby", "https://jobs.ashbyhq.com/acme"),
+      {
+        fetcher: async () =>
+          Response.json({
+            jobs: [
+              {
+                id: "unlisted",
+                title: "Former VP Engineering",
+                isListed: false,
+              },
+            ],
+          }),
+      },
+    );
+
+    expect(result).toMatchObject({ jobs: [], acceptedCount: 0, rejectedCount: 0 });
+  });
+
+  it("keeps the Ashby response envelope strict", async () => {
+    await expect(
+      fetchBoardJobs(board("ashby", "https://jobs.ashbyhq.com/acme"), {
+        fetcher: async () => Response.json({ results: [] }),
+      }),
+    ).rejects.toThrow("Ashby returned an invalid response");
+  });
+
+  it("rejects a whitespace-only Ashby title", async () => {
+    const result = await fetchBoardJobsWithDiagnostics(
+      board("ashby", "https://jobs.ashbyhq.com/acme"),
+      {
+        fetcher: async () => Response.json({ jobs: [{ id: "blank-title", title: "   " }] }),
+      },
+    );
+
+    expect(result).toMatchObject({ acceptedCount: 0, rejectedCount: 1 });
+  });
+
   it("preserves valid Ashby jobs and reports one malformed record", async () => {
     const result = await fetchBoardJobsWithDiagnostics(
       board("ashby", "https://jobs.ashbyhq.com/acme"),
@@ -324,6 +380,32 @@ describe("ATS connectors", () => {
     );
 
     expect(result).toMatchObject({ acceptedCount: 1, rejectedCount: 0 });
+  });
+
+  it("bounds Workable rejection diagnostics to the requested ingestion window", async () => {
+    const result = await fetchBoardJobsWithDiagnostics(
+      board("workable", "https://apply.workable.com/acme"),
+      {
+        limit: 1,
+        fetcher: async () =>
+          Response.json({
+            jobs: [
+              { shortcode: "within-limit", title: "Engineering Director" },
+              { shortcode: "outside-limit", title: null },
+            ],
+          }),
+      },
+    );
+
+    expect(result).toMatchObject({ acceptedCount: 1, rejectedCount: 0 });
+  });
+
+  it("keeps the Workable response envelope strict", async () => {
+    await expect(
+      fetchBoardJobs(board("workable", "https://apply.workable.com/acme"), {
+        fetcher: async () => Response.json({ results: [] }),
+      }),
+    ).rejects.toThrow("Workable returned an invalid response");
   });
 
   it("preserves URL-only Workable identity semantics", async () => {

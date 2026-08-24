@@ -136,6 +136,24 @@ describe("company site health", () => {
       detail: lastWarning,
     });
   });
+
+  it("classifies a failed refresh and gives errors precedence over warnings", () => {
+    expect(
+      getCompanySiteHealth(board({ lastError: "Refresh failed", lastWarning: "Skipped 1 record" })),
+    ).toEqual({
+      label: "Needs attention",
+      className: "health health-error",
+      detail: "Refresh failed",
+    });
+  });
+
+  it("classifies a clean sync as ready without detail", () => {
+    expect(getCompanySiteHealth(board({}))).toEqual({
+      label: "Ready",
+      className: "health health-ok",
+      detail: "",
+    });
+  });
 });
 
 function board(overrides: Partial<CompanySiteBoard>): CompanySiteBoard {
