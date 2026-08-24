@@ -84,6 +84,7 @@ jobs:
       - run: pnpm test:coverage
       - run: pnpm storybook:build
       - run: pnpm build
+      - run: pnpm performance:size
       - name: Install Playwright browsers
         id: playwright-install-verify
         continue-on-error: true

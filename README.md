@@ -824,6 +824,10 @@ Coverage has enforced thresholds. Stryker mutates the Discovery domain and appli
 fails below the configured mutation score. Use `pnpm format` and `pnpm lint:fix` to apply safe local
 fixes.
 
+Run `pnpm test:performance:size` to build the production client and check its compressed JavaScript
+and CSS asset budgets. [`PERFORMANCE.md`](PERFORMANCE.md) records the measured surface, thresholds,
+and the CI check.
+
 Vitest and Playwright migrate their own SQLite databases under the operating
 system temporary directory and remove them after the run. The test suites do
 not read or modify the database named by your normal `DB_PATH`.
