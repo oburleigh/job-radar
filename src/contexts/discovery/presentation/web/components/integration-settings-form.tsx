@@ -4,6 +4,7 @@ import { useFetcher } from "react-router";
 import type { ActionState } from "@/contexts/discovery/presentation/web/action-state";
 
 interface IntegrationSettingsFormProps {
+  formAction: string;
   integration: {
     atsType: string;
     label: string;
@@ -22,6 +23,7 @@ interface IntegrationSettingsFormProps {
 const initialState: ActionState = { ok: false, message: "" };
 
 export function IntegrationSettingsForm({
+  formAction,
   integration,
   isNew = false,
   canConfigureSync = true,
@@ -33,7 +35,7 @@ export function IntegrationSettingsForm({
   return (
     <fetcher.Form
       method="post"
-      action="/settings"
+      action={formAction}
       className="profile-form"
       key={integration.atsType}
     >

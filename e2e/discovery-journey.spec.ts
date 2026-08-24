@@ -65,6 +65,23 @@ test("completes discovery and triage while profile editing remains responsive", 
   await page.getByRole("combobox", { name: "Profile" }).selectOption(String(profileId));
 
   await configureSerperEndpoint(page, `${fixtureUrl}/serper/success`);
+  await page.getByRole("link", { name: /Greenhouse/ }).click();
+  await expectUrlSelection(page, profileId, "serper", { ats: "greenhouse" });
+
+  await page.getByRole("link", { name: "New integration" }).click();
+  await expectUrlSelection(page, profileId, "serper", { new: "1" });
+  const integrationId = `e2e-${crypto.randomUUID().slice(0, 8)}`;
+  const integrationHost = `${integrationId}.example.com`;
+  await page.getByRole("textbox", { name: /^Integration ID\b/ }).fill(integrationId);
+  await page.getByLabel("Display name").fill(`E2E ${integrationId}`);
+  await page.getByLabel("Source patterns, one per line").fill(integrationHost);
+  await page.getByLabel("Exact hostnames").fill(integrationHost);
+  await page.getByRole("button", { name: "Add integration" }).click();
+  await expectUrlSelection(page, profileId, "serper", { ats: integrationId });
+  await expect(
+    page.getByRole("heading", { level: 2, name: `E2E ${integrationId}` }).first(),
+  ).toBeVisible();
+
   await page.getByRole("link", { name: "Opportunities", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`[?&]profile=${profileId}(?:&|$).*provider=serper`));
   await expect(page.getByRole("combobox", { name: "Profile" })).toHaveValue(String(profileId));
@@ -243,6 +260,18 @@ async function configureSerperEndpoint(page: Page, endpoint: string): Promise<vo
   await page.getByLabel("Google via Serper.dev endpoint").fill(endpoint);
   await page.getByRole("button", { name: "Save runtime settings" }).click();
   await expect(page.getByText("Runtime settings saved to SQLite.")).toBeVisible();
+}
+
+async function expectUrlSelection(
+  page: Page,
+  profileId: number,
+  provider: string,
+  extra: Record<string, string> = {},
+): Promise<void> {
+  const expected = { profile: String(profileId), provider, ...extra };
+  for (const [key, value] of Object.entries(expected)) {
+    await expect.poll(() => new URL(page.url()).searchParams.get(key)).toBe(value);
+  }
 }
 
 async function createProfile(

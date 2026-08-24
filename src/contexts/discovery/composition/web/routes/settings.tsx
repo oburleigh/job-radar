@@ -7,11 +7,16 @@ import { IntegrationSettingsForm } from "@/contexts/discovery/presentation/web/c
 import { RuntimeSettingsForm } from "@/contexts/discovery/presentation/web/components/runtime-settings-form";
 import { parseAtsIntegrationRequest } from "@/contexts/discovery/presentation/web/requests/ats-integration-request";
 import { parseRuntimeSettingsRequest } from "@/contexts/discovery/presentation/web/requests/runtime-settings-request";
+import {
+  resolveSettingsSelection,
+  settingsUrl,
+} from "@/contexts/discovery/presentation/web/settings-selection";
 import { assertLocalHost } from "@/platform/http/require-local-request";
 
 export function loader({ request }: { readonly request: Request }) {
   const data = discoveryWeb.getSettingsData();
   const searchParams = new URL(request.url).searchParams;
+  const selection = validatedSelection(searchParams);
   const requested = searchParams.get("ats") ?? undefined;
   const createMode = searchParams.get("new") === "1";
   const selectedType = data.integrations.some((integration) => integration.atsType === requested)
@@ -41,6 +46,7 @@ export function loader({ request }: { readonly request: Request }) {
     createMode,
     data,
     editorIntegration,
+    selection,
     selected,
   };
 }
@@ -70,7 +76,8 @@ export async function action({ request }: ActionFunctionArgs) {
       return { ok: false, message: integrationRejectionMessage(result) };
     }
     if (result.created) {
-      return redirect(`/settings?ats=${encodeURIComponent(result.atsType)}`);
+      const selection = validatedSelection(new URL(request.url).searchParams);
+      return redirect(settingsUrl(selection, { ats: result.atsType }));
     }
     return { ok: true, message: `${result.label} settings saved to SQLite.` };
   }
@@ -94,8 +101,16 @@ function integrationRejectionMessage(
   }
 }
 
+function validatedSelection(searchParams: URLSearchParams) {
+  return resolveSettingsSelection(
+    searchParams,
+    discoveryWeb.getProfiles(),
+    discoveryWeb.getSearchProviderOptions(),
+  );
+}
+
 export default function SettingsPage() {
-  const { canConfigureSync, createMode, data, editorIntegration, selected } =
+  const { canConfigureSync, createMode, data, editorIntegration, selected, selection } =
     useLoaderData<typeof loader>();
 
   return (
@@ -110,7 +125,7 @@ export default function SettingsPage() {
               <Database size={16} />
               SQLite backed
             </span>
-            <Link {...buttonAttributes("primary")} to="/settings?new=1">
+            <Link {...buttonAttributes("primary")} to={settingsUrl(selection, { create: true })}>
               <Plus size={17} />
               New integration
             </Link>
@@ -149,7 +164,7 @@ export default function SettingsPage() {
             {data.integrations.map((integration) => (
               <Link
                 key={integration.atsType}
-                to={`/settings?ats=${integration.atsType}`}
+                to={settingsUrl(selection, { ats: integration.atsType })}
                 className={
                   !createMode && integration.atsType === selected?.atsType
                     ? "profile-link active"
@@ -174,6 +189,7 @@ export default function SettingsPage() {
                   integration={editorIntegration}
                   isNew={createMode}
                   canConfigureSync={canConfigureSync}
+                  formAction={settingsUrl(selection)}
                 />
               </>
             ) : (
