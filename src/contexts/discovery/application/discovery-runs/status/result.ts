@@ -9,6 +9,7 @@ export interface DiscoveryRunStatusDto {
   readonly matchesFound: number;
   readonly queryErrorCount: number;
   readonly syncErrorCount: number;
+  readonly errorSummary: string;
 }
 
 export interface DiscoveryRunStatusesDto {

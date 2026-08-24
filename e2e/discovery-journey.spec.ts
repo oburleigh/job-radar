@@ -73,7 +73,10 @@ test("completes discovery and triage while profile editing remains responsive", 
   const failedStart = (await failedStartResponse.json()) as { runId: number };
 
   const failedNotice = page.getByRole("alert").filter({ hasText: "Discovery failed" });
-  await expect(failedNotice).toContainText(`${profileName} did not finish`, { timeout: 30_000 });
+  await expect(failedNotice).toContainText(
+    "Serper.dev: Deterministic provider failure. Try again or review run history for details.",
+    { timeout: 30_000 },
+  );
   await failedNotice.getByRole("link", { name: "Run history" }).click();
   await page.getByRole("link", { name: new RegExp(`#${failedStart.runId}`) }).click();
   await expect(

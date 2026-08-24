@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useRevalidator } from "react-router";
 
 import { DISCOVERY_RUN_STARTED_EVENT } from "@/contexts/discovery/presentation/web/client-events";
+import { formatDiscoveryFailure } from "@/contexts/discovery/presentation/web/formatters/discovery-failure";
 
 const PENDING_RUNS_KEY = "job-radar.pending-discovery-runs";
 
@@ -18,6 +19,7 @@ interface DiscoveryRunStatus {
   matchesFound: number;
   queryErrorCount: number;
   syncErrorCount: number;
+  errorSummary: string;
 }
 
 interface StatusResponse {
@@ -182,7 +184,7 @@ export function DiscoveryNotifications({ pollIntervalMs }: DiscoveryNotification
               <strong>{failed ? "Discovery failed" : "Discovery completed"}</strong>
               <p>
                 {failed
-                  ? `${run.profileName} did not finish. Review the run history for details.`
+                  ? formatDiscoveryFailure(run)
                   : `${run.profileName}: ${run.matchesFound} current profile match${
                       run.matchesFound === 1 ? "" : "es"
                     } after processing ${run.hitCount} search result${

@@ -9,7 +9,7 @@ type Database = typeof db;
 export function createSqliteDiscoveryRunStatusReader(database: Database): DiscoveryRunStatusReader {
   return {
     read(query) {
-      const runs = database
+      const rows = database
         .select({
           id: discoveryRuns.id,
           profileId: discoveryRuns.profileId,
@@ -21,6 +21,7 @@ export function createSqliteDiscoveryRunStatusReader(database: Database): Discov
           matchesFound: discoveryRuns.matchesFound,
           queryErrorCount: discoveryRuns.queryErrorCount,
           syncErrorCount: discoveryRuns.syncErrorCount,
+          error: discoveryRuns.error,
         })
         .from(discoveryRuns)
         .innerJoin(searchProfiles, eq(searchProfiles.id, discoveryRuns.profileId))
@@ -31,6 +32,10 @@ export function createSqliteDiscoveryRunStatusReader(database: Database): Discov
         )
         .orderBy(desc(discoveryRuns.startedAt))
         .all();
+      const runs = rows.map(({ error, ...run }) => ({
+        ...run,
+        errorSummary: error.split("\n", 1)[0]?.trim().slice(0, 500) ?? "",
+      }));
       const foundIds = new Set(runs.map((run) => run.id));
       return {
         runs,
