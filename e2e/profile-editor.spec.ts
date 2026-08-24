@@ -92,6 +92,24 @@ test("selects a country-aware default currency in runtime settings", async ({ pa
   await expect(currency).toHaveValue("CAD");
 });
 
+test("presents shared currencies without assigning them to an arbitrary country", async ({
+  page,
+}) => {
+  await page.goto("/profiles?new=1");
+  await page.waitForLoadState("networkidle");
+
+  const currency = page.getByRole("combobox", { name: "Salary currency" });
+  await currency.fill("USD");
+  const usdOption = page.getByRole("option").filter({ hasText: "USD" });
+  await expect(usdOption).toBeVisible();
+  await expect(usdOption).not.toContainText("American Samoa");
+
+  await currency.fill("EUR");
+  const eurOption = page.getByRole("option").filter({ hasText: "EUR" });
+  await expect(eurOption).toBeVisible();
+  await expect(eurOption).not.toContainText("Andorra");
+});
+
 for (const theme of ["light", "dark"] as const) {
   test(`has no automated accessibility violations in the profile editor in ${theme} mode`, async ({
     page,

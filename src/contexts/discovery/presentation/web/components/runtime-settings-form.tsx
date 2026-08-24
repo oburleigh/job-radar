@@ -25,7 +25,7 @@ export function RuntimeSettingsForm({ settings }: RuntimeSettingsFormProps) {
     !state.ok && state.message.toLowerCase().includes("currency") ? state.message : undefined;
 
   return (
-    <fetcher.Form method="post" action="/settings" className="profile-form">
+    <fetcher.Form method="post" action="/settings" className="profile-form runtime-settings-form">
       <input type="hidden" name="intent" value="save-runtime-settings" />
       <section className="form-section">
         <div className="form-section-copy">

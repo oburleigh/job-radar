@@ -1,4 +1,5 @@
-import { Button } from "@job-radar/design-ui";
+import { IconButton } from "@job-radar/design-ui";
+import { X } from "lucide-react";
 import { useId, useMemo, useRef, useState } from "react";
 
 import { type CountryCurrencyOption, countryOptionsMatching } from "./country-currency-catalogue";
@@ -93,15 +94,15 @@ export function LocationCombobox({
       <div className="token-combobox-input">
         {values.map((location) => (
           <span className="location-token" key={location}>
-            {location}
-            <Button
-              aria-label={`Remove ${location}`}
+            <span className="location-token-label">{location}</span>
+            <IconButton
               className="location-token-remove"
+              label={`Remove ${location}`}
               onClick={() => removeLocation(location)}
               onMouseDown={(event) => event.preventDefault()}
             >
-              ×
-            </Button>
+              <X aria-hidden="true" size={15} strokeWidth={2.25} />
+            </IconButton>
           </span>
         ))}
         <input

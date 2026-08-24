@@ -118,10 +118,8 @@ export function CurrencyCombobox({ error, name, onChange, value }: CurrencyCombo
                 role="option"
                 tabIndex={-1}
               >
-                <span>
-                  <strong>{option.currencyCode}</strong> {option.currencyName}
-                </span>
-                {option.countryNames[0] ? <small>{option.countryNames[0]}</small> : null}
+                <strong className="currency-option-code">{option.currencyCode}</strong>
+                <span className="currency-option-name">{option.currencyName}</span>
               </div>
             ))
           : null}
