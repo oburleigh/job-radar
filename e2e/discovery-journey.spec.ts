@@ -58,7 +58,9 @@ test("completes discovery and triage while profile editing remains responsive", 
 
   await configureSerperEndpoint(page, `${fixtureUrl}/serper/failure`);
   await page.getByRole("link", { name: "Opportunities", exact: true }).click();
-  await page.getByLabel("Profile").selectOption(String(profileId));
+  await page
+    .getByRole("combobox", { name: "Profile", exact: true })
+    .selectOption(String(profileId));
 
   const failedResponse = page.waitForResponse(
     (candidate) =>
