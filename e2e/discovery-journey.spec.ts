@@ -126,6 +126,7 @@ test("completes discovery and triage while profile editing remains responsive", 
   await expect(
     page.getByLabel("Ranked opportunities").getByText("Greenhouse", { exact: true }),
   ).toBeVisible();
+  await verifyJobActionsVisualLayout(page);
   await page.getByRole("button", { name: "Save job" }).click();
   await expect(page.getByRole("button", { name: "Remove saved status" })).toBeVisible();
 
@@ -321,6 +322,63 @@ async function expectUrlSelection(
   for (const [key, value] of Object.entries(expected)) {
     await expect.poll(() => new URL(page.url()).searchParams.get(key)).toBe(value);
   }
+}
+
+async function verifyJobActionsVisualLayout(page: Page): Promise<void> {
+  const jobCard = page.locator("article.job-card").first();
+  const actions = jobCard.locator("fieldset.job-actions");
+  const themeToggle = page.getByRole("button", { name: /^Theme: system\./ });
+  await themeToggle.click();
+  await expect(page.getByRole("button", { name: /^Theme: light\./ })).toBeVisible();
+
+  for (const width of [1440, 1240, 980]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(await page.evaluate(() => window.innerWidth)).toBe(width);
+    await jobCard.scrollIntoViewIfNeeded();
+
+    for (const name of ["Save job", "Mark as applied", "Hide job"]) {
+      const button = actions.getByRole("button", { name });
+      await button.hover();
+      const [actionsBox, buttonBox, scrollMetrics] = await Promise.all([
+        actions.boundingBox(),
+        button.boundingBox(),
+        actions.evaluate((element) => ({
+          clientWidth: element.clientWidth,
+          scrollWidth: element.scrollWidth,
+        })),
+      ]);
+
+      expect(actionsBox).not.toBeNull();
+      expect(buttonBox).not.toBeNull();
+      if (!actionsBox || !buttonBox) {
+        continue;
+      }
+      const tolerance = 0.5;
+      expect(buttonBox.x).toBeGreaterThanOrEqual(actionsBox.x - tolerance);
+      expect(buttonBox.x + buttonBox.width).toBeLessThanOrEqual(
+        actionsBox.x + actionsBox.width + tolerance,
+      );
+      expect(scrollMetrics.scrollWidth).toBe(scrollMetrics.clientWidth);
+    }
+
+    const screenshotBuffer = { top: 8, right: 20, bottom: 8, left: 8 };
+    const clip = await jobCard.evaluate((element, buffer) => {
+      const box = element.getBoundingClientRect();
+      const x = Math.max(0, Math.floor(window.scrollX + box.left - buffer.left));
+      const y = Math.max(0, Math.floor(window.scrollY + box.top - buffer.top));
+      const right = Math.ceil(window.scrollX + box.right + buffer.right);
+      const bottom = Math.ceil(window.scrollY + box.bottom + buffer.bottom);
+      return { x, y, width: right - x, height: bottom - y };
+    }, screenshotBuffer);
+    const screenshot = await page.screenshot({
+      animations: "disabled",
+      caret: "hide",
+      clip,
+    });
+    expect(screenshot).toMatchSnapshot(`job-actions-${width}.png`);
+  }
+
+  await page.setViewportSize({ width: 1280, height: 720 });
 }
 
 async function createProfile(

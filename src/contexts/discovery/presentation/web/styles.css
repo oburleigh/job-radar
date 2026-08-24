@@ -674,7 +674,7 @@ table td a:hover {
   min-width: 0;
   grid-template-columns:
     44px minmax(250px, 1.2fr) minmax(235px, 1fr) minmax(125px, 0.55fr)
-    minmax(220px, 0.9fr) 128px;
+    minmax(220px, 0.9fr) 170px;
   align-items: stretch;
   background: var(--jr-color-surface);
   border-top: 1px solid var(--jr-color-border);
@@ -1757,7 +1757,7 @@ td a {
   .job-card {
     grid-template-columns:
       42px minmax(230px, 1.15fr) minmax(210px, 1fr)
-      112px minmax(190px, 0.85fr) 116px;
+      112px minmax(190px, 0.85fr) 170px;
   }
 
   .settings-number-grid {
@@ -1812,7 +1812,7 @@ td a {
   }
 
   .job-card {
-    grid-template-columns: 42px minmax(260px, 1.1fr) minmax(230px, 1fr) 120px;
+    grid-template-columns: 42px minmax(260px, 1.1fr) minmax(230px, 1fr) 170px;
   }
 
   .job-tags {
