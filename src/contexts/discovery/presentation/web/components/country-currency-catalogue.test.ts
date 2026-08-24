@@ -36,6 +36,18 @@ describe("country and currency catalogue", () => {
     expect(new Set(countryCurrencyOptions.map((option) => option.countryCode)).size).toBe(249);
   });
 
+  it("orders country choices by their displayed English name", () => {
+    const options = countryOptionsMatching("");
+    const alphabeticallySorted = [...options].sort(
+      (left, right) =>
+        left.countryName.localeCompare(right.countryName, "en") ||
+        left.countryCode.localeCompare(right.countryCode),
+    );
+
+    expect(options).toEqual(alphabeticallySorted);
+    expect(options[0]?.countryName).toBe("Afghanistan");
+  });
+
   it("matches currency choices by ISO code, currency display name, and country name", () => {
     expect(currencyOptionsMatching("gbp").map((option) => option.currencyCode)).toContain("GBP");
     expect(currencyOptionsMatching("pound").map((option) => option.currencyCode)).toContain("GBP");

@@ -20,6 +20,7 @@ const excludedCountryCodes = new Set([
 
 const countryNames = new Intl.DisplayNames("en", { type: "region" });
 const currencyNames = new Intl.DisplayNames("en", { type: "currency" });
+const countryNameCollator = new Intl.Collator("en");
 const supportedCurrencyCodes = new Set(Intl.supportedValuesOf("currency"));
 
 export const countryCurrencyOptions: readonly CountryCurrencyOption[] = Object.entries(
@@ -31,7 +32,12 @@ export const countryCurrencyOptions: readonly CountryCurrencyOption[] = Object.e
     countryName: countryNames.of(countryCode) ?? countryCode,
     currencyCode,
     currencyName: currencyNames.of(currencyCode) ?? currencyCode,
-  }));
+  }))
+  .sort(
+    (left, right) =>
+      countryNameCollator.compare(left.countryName, right.countryName) ||
+      left.countryCode.localeCompare(right.countryCode),
+  );
 
 export const currencyOptions: readonly CurrencyOption[] = Intl.supportedValuesOf("currency")
   .map((currencyCode) => ({

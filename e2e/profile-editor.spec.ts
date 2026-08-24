@@ -162,6 +162,7 @@ test("browses complete currency and location catalogues beyond the initial viewp
   const locationListbox = page.locator(`#${locationListboxId}`);
   await expect(locationListbox).toBeVisible();
   expect(await locationListbox.getByRole("option").count()).toBeGreaterThan(10);
+  await expect(locationListbox.getByRole("option").first()).toHaveText("AfghanistanAFN");
 
   const zambia = locationListbox.getByRole("option", { name: "Zambia ZMW" });
   await zambia.scrollIntoViewIfNeeded();
