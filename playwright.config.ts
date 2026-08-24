@@ -28,6 +28,7 @@ export default defineConfig({
     {
       name: "clean-start",
       testMatch: "**/onboarding.spec.ts",
+      retries: 0,
       use: {
         ...devices["Desktop Chrome"],
         ...(useSystemChrome ? { channel: "chrome" } : {}),

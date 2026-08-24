@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { setupPrerequisiteErrors } from "./check-prerequisites";
+import {
+  SUPPORTED_NODE_MAJOR,
+  SUPPORTED_PNPM_MAJOR,
+  setupPrerequisiteErrors,
+} from "./check-prerequisites";
 
 const validSetup = {
-  nodeVersion: "24.15.0",
-  pnpmVersion: "11.1.3",
+  nodeVersion: `${SUPPORTED_NODE_MAJOR}.15.0`,
+  pnpmVersion: `${SUPPORTED_PNPM_MAJOR}.1.3`,
   environmentFileExists: true,
   providerKeys: {
     BRAVE_SEARCH_API_KEY: "",
@@ -66,6 +70,23 @@ describe("setup prerequisites", () => {
         ...validSetup,
         environmentFileExists: false,
       }),
+    ).toEqual([]);
+  });
+
+  it("keeps database setup independent of provider credentials", () => {
+    expect(
+      setupPrerequisiteErrors(
+        {
+          ...validSetup,
+          environmentFileExists: false,
+          providerKeys: {
+            BRAVE_SEARCH_API_KEY: undefined,
+            SERPAPI_KEY: undefined,
+            SERPER_API_KEY: undefined,
+          },
+        },
+        { requireProviderKey: false },
+      ),
     ).toEqual([]);
   });
 });

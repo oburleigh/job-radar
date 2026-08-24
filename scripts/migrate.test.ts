@@ -74,14 +74,22 @@ describe("database setup command", () => {
 function runDatabaseSetup(databasePath: string) {
   execFileSync(pnpmExecutable, ["db:setup"], {
     cwd: repositoryRoot,
-    env: {
-      ...process.env,
-      DB_PATH: databasePath,
-      SERPER_API_KEY: "clean-start-test-key",
-    },
+    env: databaseSetupEnvironment(databasePath),
     shell: process.platform === "win32",
     stdio: "pipe",
   });
+}
+
+function databaseSetupEnvironment(databasePath: string): NodeJS.ProcessEnv {
+  const environment: NodeJS.ProcessEnv = {
+    ...process.env,
+    DB_PATH: databasePath,
+    DOTENV_CONFIG_PATH: path.join(path.dirname(databasePath), "missing.env"),
+  };
+  delete environment.BRAVE_SEARCH_API_KEY;
+  delete environment.SERPAPI_KEY;
+  delete environment.SERPER_API_KEY;
+  return environment;
 }
 
 function count(sqlite: Database.Database, table: string): number {

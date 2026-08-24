@@ -144,10 +144,10 @@ See the upstream
 and [`node-gyp` requirements](https://github.com/nodejs/node-gyp#installation) for
 native build failures.
 
-GitHub Actions runs the clean database setup and its focused tests on
-`ubuntu-latest`, `macos-latest`, and `windows-latest`. The browser journey runs
-against an isolated SQLite database and checks the untouched workspace before
-creating a profile.
+GitHub Actions runs the clean database setup, focused tests, production build,
+and browser journey on `ubuntu-latest`, `macos-latest`, and `windows-latest`.
+The browser journey uses an isolated SQLite database and checks the untouched
+workspace before creating a profile.
 
 ### Start another empty dataset
 

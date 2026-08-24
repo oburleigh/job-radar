@@ -11,7 +11,7 @@
   "scripts": {
     "dev": "react-router dev",
     "build": "pnpm packages:build && react-router build",
-    "start": "pnpm setup:check && cross-env HOST=127.0.0.1 react-router-serve build/server/index.js",
+    "start": "pnpm setup:check && cross-env HOST=127.0.0.1 NODE_OPTIONS=--import=dotenv/config react-router-serve build/server/index.js",
     "lint": "biome check --error-on-warnings .",
     "lint:fix": "biome check --write --error-on-warnings .",
     "typecheck": "pnpm packages:build && react-router typegen && tsc --noEmit",
@@ -30,7 +30,7 @@
     "setup:check": "tsx scripts/check-prerequisites.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
-    "db:setup": "pnpm setup:check && pnpm db:migrate",
+    "db:setup": "pnpm setup:check --database-only && pnpm db:migrate",
     "discover": "tsx scripts/discover.ts",
     "reindex": "tsx scripts/reindex.ts",
     "sync": "tsx scripts/sync.ts",

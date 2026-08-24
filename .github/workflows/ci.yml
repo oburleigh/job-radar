@@ -46,6 +46,11 @@ jobs:
           scripts/migrate.test.ts
           tests/architecture/schema-only-migrations.test.ts
           src/contexts/discovery/infrastructure/configuration/bootstrap-job-radar.test.ts
+      - run: pnpm exec playwright install --with-deps chromium
+        if: runner.os == 'Linux'
+      - run: pnpm exec playwright install chromium
+        if: runner.os != 'Linux'
+      - run: pnpm test:e2e e2e/onboarding.spec.ts
 
   verify:
     name: Repository gates
