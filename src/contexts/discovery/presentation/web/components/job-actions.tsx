@@ -26,7 +26,7 @@ export function JobActions({ profileId, jobId, initialState }: JobActionsProps) 
           jobId: String(jobId),
           status: nextState,
         },
-        { method: "post", action: "/" },
+        { method: "post", action: "/?index" },
       );
     });
   }
