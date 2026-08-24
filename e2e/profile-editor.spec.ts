@@ -110,6 +110,66 @@ test("presents shared currencies without assigning them to an arbitrary country"
   await expect(eurOption).not.toContainText("Andorra");
 });
 
+test("browses complete currency and location catalogues beyond the initial viewport", async ({
+  page,
+}) => {
+  await page.goto("/profiles?new=1");
+  await page.waitForLoadState("networkidle");
+
+  const currency = page.getByRole("combobox", { name: "Salary currency" });
+  await currency.fill("");
+  await currency.focus();
+  const currencyListboxId = (await currency.getAttribute("aria-controls")) ?? "";
+  const currencyListbox = page.locator(`#${currencyListboxId}`);
+  await expect(currencyListbox).toBeVisible();
+  expect(await currencyListbox.getByRole("option").count()).toBeGreaterThan(10);
+
+  for (let index = 0; index < 12; index += 1) {
+    await currency.press("ArrowDown");
+  }
+  const activeCurrencyId = (await currency.getAttribute("aria-activedescendant")) ?? "";
+  const activeCurrency = page.locator(`#${activeCurrencyId}`);
+  await expect(activeCurrency).toContainText("BBD");
+  const currencyScroll = await currencyListbox.evaluate((listbox, activeId) => {
+    const active = document.getElementById(activeId);
+    if (!active) {
+      return { activeIsVisible: false, scrollTop: listbox.scrollTop };
+    }
+    const listboxBounds = listbox.getBoundingClientRect();
+    const activeBounds = active.getBoundingClientRect();
+    return {
+      activeIsVisible:
+        activeBounds.top >= listboxBounds.top && activeBounds.bottom <= listboxBounds.bottom,
+      scrollTop: listbox.scrollTop,
+    };
+  }, activeCurrencyId);
+  expect(currencyScroll.scrollTop).toBeGreaterThan(0);
+  expect(currencyScroll.activeIsVisible).toBe(true);
+  await currency.press("Escape");
+  await expect(currency).not.toHaveAttribute("aria-activedescendant");
+  await page.getByLabel("Preferred salary minimum").focus();
+  await currency.focus();
+  await expect(currency).not.toHaveAttribute("aria-activedescendant");
+  await currency.press("ArrowUp");
+  const lastCurrencyId = (await currency.getAttribute("aria-activedescendant")) ?? "";
+  await expect(page.locator(`#${lastCurrencyId}`)).toContainText("ZWL");
+  await currency.press("Escape");
+
+  const locations = page.getByRole("combobox", { name: "Target locations" });
+  await locations.fill("");
+  await locations.focus();
+  const locationListboxId = (await locations.getAttribute("aria-controls")) ?? "";
+  const locationListbox = page.locator(`#${locationListboxId}`);
+  await expect(locationListbox).toBeVisible();
+  expect(await locationListbox.getByRole("option").count()).toBeGreaterThan(10);
+
+  const zambia = locationListbox.getByRole("option", { name: "Zambia ZMW" });
+  await zambia.scrollIntoViewIfNeeded();
+  expect(await locationListbox.evaluate((listbox) => listbox.scrollTop)).toBeGreaterThan(0);
+  await zambia.click();
+  await expect(page.getByRole("button", { name: "Remove Zambia" })).toBeVisible();
+});
+
 for (const theme of ["light", "dark"] as const) {
   test(`has no automated accessibility violations in the profile editor in ${theme} mode`, async ({
     page,
@@ -118,9 +178,29 @@ for (const theme of ["light", "dark"] as const) {
       window.localStorage.setItem("job-radar-theme", selectedTheme);
     }, theme);
     await page.goto("/profiles?new=1");
+    await page.waitForLoadState("networkidle");
 
-    const results = await new AxeBuilder({ page }).analyze();
+    const currency = page.getByRole("combobox", { name: "Salary currency" });
+    await currency.fill("");
+    await currency.press("ArrowDown");
+    await expect(currency).toHaveAttribute("aria-expanded", "true");
+    const currencyListboxId = (await currency.getAttribute("aria-controls")) ?? "";
+    const currencyActiveId = (await currency.getAttribute("aria-activedescendant")) ?? "";
+    await expect(page.locator(`#${currencyListboxId}`)).toBeVisible();
+    await expect(page.locator(`#${currencyActiveId}`)).toHaveRole("option");
+    const currencyResults = await new AxeBuilder({ page }).analyze();
+    expect(currencyResults.violations).toEqual([]);
+    await currency.press("Escape");
+    await expect(currency).not.toHaveAttribute("aria-activedescendant");
 
-    expect(results.violations).toEqual([]);
+    const locations = page.getByRole("combobox", { name: "Target locations" });
+    await locations.press("ArrowDown");
+    await expect(locations).toHaveAttribute("aria-expanded", "true");
+    const locationListboxId = (await locations.getAttribute("aria-controls")) ?? "";
+    const locationActiveId = (await locations.getAttribute("aria-activedescendant")) ?? "";
+    await expect(page.locator(`#${locationListboxId}`)).toBeVisible();
+    await expect(page.locator(`#${locationActiveId}`)).toHaveRole("option");
+    const locationResults = await new AxeBuilder({ page }).analyze();
+    expect(locationResults.violations).toEqual([]);
   });
 }

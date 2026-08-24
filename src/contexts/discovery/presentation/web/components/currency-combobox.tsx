@@ -19,7 +19,7 @@ export function CurrencyCombobox({ error, name, onChange, value }: CurrencyCombo
   const [activeIndex, setActiveIndex] = useState(-1);
   const [announcement, setAnnouncement] = useState("");
   const suggestions = useMemo(
-    () => (hasInteracted ? currencyOptionsMatching(query).slice(0, 8) : []),
+    () => (hasInteracted ? currencyOptionsMatching(query) : []),
     [hasInteracted, query],
   );
   const isPopupVisible = open && suggestions.length > 0;
@@ -28,6 +28,15 @@ export function CurrencyCombobox({ error, name, onChange, value }: CurrencyCombo
   useEffect(() => {
     setQuery(value);
   }, [value]);
+
+  useEffect(() => {
+    if (!isPopupVisible || activeIndex < 0) {
+      return;
+    }
+    document
+      .getElementById(`${listboxId}-${activeIndex}`)
+      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [activeIndex, isPopupVisible, listboxId]);
 
   function selectCurrency(option: CurrencyOption) {
     onChange(option.currencyCode);
@@ -72,6 +81,7 @@ export function CurrencyCombobox({ error, name, onChange, value }: CurrencyCombo
         id={inputId}
         onBlur={() => {
           setQuery(value);
+          setActiveIndex(-1);
           setOpen(false);
         }}
         onChange={(event) => {
@@ -97,6 +107,7 @@ export function CurrencyCombobox({ error, name, onChange, value }: CurrencyCombo
             }
             selectCurrency(activeOption);
           } else if (event.key === "Escape") {
+            setActiveIndex(-1);
             setOpen(false);
           }
         }}

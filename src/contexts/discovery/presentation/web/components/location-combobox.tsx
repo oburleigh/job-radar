@@ -1,6 +1,6 @@
 import { IconButton } from "@job-radar/design-ui";
 import { X } from "lucide-react";
-import { useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { type CountryCurrencyOption, countryOptionsMatching } from "./country-currency-catalogue";
 
@@ -29,11 +29,20 @@ export function LocationCombobox({
   const [activeIndex, setActiveIndex] = useState(-1);
   const [announcement, setAnnouncement] = useState("");
   const suggestions = useMemo(
-    () => (hasInteracted ? countryOptionsMatching(inputValue).slice(0, 8) : []),
+    () => (hasInteracted ? countryOptionsMatching(inputValue) : []),
     [hasInteracted, inputValue],
   );
   const isPopupVisible = open && suggestions.length > 0;
   const activeOption = isPopupVisible && activeIndex >= 0 ? suggestions[activeIndex] : undefined;
+
+  useEffect(() => {
+    if (!isPopupVisible || activeIndex < 0) {
+      return;
+    }
+    document
+      .getElementById(`${listboxId}-${activeIndex}`)
+      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [activeIndex, isPopupVisible, listboxId]);
 
   function addLocation(value: string, country?: CountryCurrencyOption) {
     const location = value.trim();
@@ -114,7 +123,10 @@ export function LocationCombobox({
           aria-autocomplete="list"
           autoComplete="off"
           id={inputId}
-          onBlur={() => setOpen(false)}
+          onBlur={() => {
+            setActiveIndex(-1);
+            setOpen(false);
+          }}
           onChange={(event) => {
             setHasInteracted(true);
             setInputValue(event.target.value);
@@ -140,6 +152,7 @@ export function LocationCombobox({
               addActiveOrTypedValue();
               queueMicrotask(() => focusNextControl(inputRef.current));
             } else if (event.key === "Escape") {
+              setActiveIndex(-1);
               setOpen(false);
             } else if (event.key === "Backspace" && inputValue === "" && values.length > 0) {
               removeLocation(values.at(-1) ?? "");
