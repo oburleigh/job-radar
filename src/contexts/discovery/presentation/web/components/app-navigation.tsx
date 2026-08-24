@@ -11,7 +11,7 @@ import {
   Waypoints,
 } from "lucide-react";
 import { useSyncExternalStore } from "react";
-import { Link, useLocation } from "react-router";
+import { Link, useLocation, useSearchParams } from "react-router";
 
 type ThemeMode = "system" | "light" | "dark";
 
@@ -71,7 +71,20 @@ const navigation = [
 
 export function AppNavigation() {
   const { pathname } = useLocation();
+  const [searchParams] = useSearchParams();
   const theme = useSyncExternalStore(subscribeToTheme, getThemeSnapshot, getServerThemeSnapshot);
+
+  function withSelection(href: string) {
+    const selection = new URLSearchParams();
+    for (const key of ["profile", "provider"] as const) {
+      const value = searchParams.get(key);
+      if (value) {
+        selection.set(key, value);
+      }
+    }
+    const suffix = selection.toString();
+    return suffix ? `${href}?${suffix}` : href;
+  }
 
   function cycleTheme() {
     const next: ThemeMode = theme === "system" ? "light" : theme === "light" ? "dark" : "system";
@@ -89,7 +102,7 @@ export function AppNavigation() {
 
   return (
     <header className="masthead">
-      <Link className="brand" to="/" aria-label="Job Radar opportunities">
+      <Link className="brand" to={withSelection("/")} aria-label="Job Radar opportunities">
         <span className="brand-mark" aria-hidden="true">
           <Radar size={21} strokeWidth={2.4} />
         </span>
@@ -106,7 +119,7 @@ export function AppNavigation() {
           return (
             <Link
               key={item.href}
-              to={item.href}
+              to={withSelection(item.href)}
               className={`nav-link${active ? " nav-link-active" : ""}`}
               aria-current={active ? "page" : undefined}
             >

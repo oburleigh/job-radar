@@ -9,17 +9,81 @@ test("completes discovery and triage while profile editing remains responsive", 
   test.setTimeout(90_000);
   expect((await request.post(`${fixtureUrl}/control/reset-success`)).ok()).toBe(true);
   await configureDiscoveryFixtures(page);
+  const otherProfile = await createProfile(page);
   const { id: profileId, name: profileName } = await createProfile(page);
 
-  await page.goto(`/?profile=${profileId}`);
+  await page.goto("/");
+  await expect(page).toHaveURL(/[?&]profile=\d+.*[?&]provider=[^&]+/);
+
+  await page.goto("/?profile=999999&provider=missing");
+  const canonicalUrl = new URL(page.url());
+  await expect(page.getByRole("combobox", { name: "Profile" })).toHaveValue(
+    canonicalUrl.searchParams.get("profile") ?? "",
+  );
+  await expect(page.getByRole("combobox", { name: "Search provider" })).toHaveValue(
+    canonicalUrl.searchParams.get("provider") ?? "",
+  );
+  expect(canonicalUrl.searchParams.get("profile")).not.toBe("999999");
+  expect(canonicalUrl.searchParams.get("provider")).not.toBe("missing");
+
+  await page.goto(`/?profile=${profileId}&provider=serper`);
+  const discoveryControls = page.getByRole("region", {
+    name: "Discovery controls",
+  });
+  await expect(discoveryControls.getByText(profileName, { exact: true })).toBeVisible();
+
+  let releaseProviderNavigation = () => {};
+  let providerNavigationIntercepted = false;
+  const providerNavigationGate = new Promise<void>((resolve) => {
+    releaseProviderNavigation = resolve;
+  });
+  await page.route("**/*provider=brave*", async (route) => {
+    if (route.request().resourceType() !== "fetch") {
+      await route.continue();
+      return;
+    }
+    providerNavigationIntercepted = true;
+    await providerNavigationGate;
+    await route.continue();
+  });
+  const selectBrave = page.getByLabel("Search provider").selectOption("brave");
+  try {
+    await expect.poll(() => providerNavigationIntercepted).toBe(true);
+    await expect(page.getByRole("button", { name: "Run discovery" })).toBeDisabled();
+  } finally {
+    releaseProviderNavigation();
+  }
+  await selectBrave;
+  await page.unroute("**/*provider=brave*");
+  await expect(page).toHaveURL(new RegExp(`[?&]profile=${profileId}(?:&|$).*provider=brave`));
   await page.getByLabel("Search provider").selectOption("serper");
+  await expect(page).toHaveURL(new RegExp(`[?&]profile=${profileId}(?:&|$).*provider=serper`));
+  await page.getByRole("combobox", { name: "Profile" }).selectOption(String(otherProfile.id));
+  await expect(page).toHaveURL(
+    new RegExp(`[?&]profile=${otherProfile.id}(?:&|$).*provider=serper`),
+  );
+  await page.getByRole("combobox", { name: "Profile" }).selectOption(String(profileId));
+
+  await configureSerperEndpoint(page, `${fixtureUrl}/serper/success`);
+  await page.getByRole("link", { name: "Opportunities", exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`[?&]profile=${profileId}(?:&|$).*provider=serper`));
+  await expect(page.getByRole("combobox", { name: "Profile" })).toHaveValue(String(profileId));
+  await expect(page.getByRole("combobox", { name: "Search provider" })).toHaveValue("serper");
 
   const startedResponse = page.waitForResponse(
     (response) =>
       response.request().method() === "POST" &&
       new URL(response.url()).pathname === "/api/discovery-runs",
   );
+  const startedRequest = page.waitForRequest(
+    (request) =>
+      request.method() === "POST" && new URL(request.url()).pathname === "/api/discovery-runs",
+  );
   await page.getByRole("button", { name: "Run discovery" }).click();
+  expect((await startedRequest).postDataJSON()).toEqual({
+    profileId,
+    provider: "serper",
+  });
   const response = await startedResponse;
   expect(response.status()).toBe(202);
   const started = (await response.json()) as { runId: number };

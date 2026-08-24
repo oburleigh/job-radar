@@ -1,12 +1,16 @@
 import { Button, IconButton } from "@job-radar/design-ui";
 import { Play, RefreshCw } from "lucide-react";
 import { useState, useTransition } from "react";
-import { useFetcher } from "react-router";
+import { useFetcher, useLocation, useNavigate, useNavigation, useSearchParams } from "react-router";
 import type { ActionState } from "@/contexts/discovery/presentation/web/action-state";
 import { DISCOVERY_RUN_STARTED_EVENT } from "@/contexts/discovery/presentation/web/client-events";
 
 interface RunControlsProps {
-  profileId: number;
+  profile: {
+    id: number;
+    name: string;
+  };
+  provider: string;
   providers: {
     name: string;
     label: string;
@@ -14,13 +18,21 @@ interface RunControlsProps {
   }[];
 }
 
-export function RunControls({ profileId, providers }: RunControlsProps) {
+export function RunControls({ profile, provider, providers }: RunControlsProps) {
   const syncFetcher = useFetcher<ActionState>();
-  const [provider, setProvider] = useState(
-    providers.find((item) => item.configured)?.name ?? providers[0]?.name ?? "",
-  );
+  const navigate = useNavigate();
+  const navigation = useNavigation();
+  const { pathname } = useLocation();
+  const [searchParams] = useSearchParams();
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
+  const isSelectionPending = navigation.state !== "idle";
+
+  function selectProvider(value: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("provider", value);
+    void navigate(`${pathname}?${params.toString()}`, { replace: true });
+  }
 
   function runDiscovery() {
     setMessage("Starting discovery...");
@@ -29,7 +41,7 @@ export function RunControls({ profileId, providers }: RunControlsProps) {
         const response = await fetch("/api/discovery-runs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ profileId, provider }),
+          body: JSON.stringify({ profileId: profile.id, provider }),
         });
         const result = (await response.json()) as {
           ok: boolean;
@@ -63,15 +75,16 @@ export function RunControls({ profileId, providers }: RunControlsProps) {
   }
 
   return (
-    <div className="run-controls">
+    <section className="run-controls" aria-label="Discovery controls">
       <span className="run-control-label">02 · Run discovery</span>
+      <strong className="run-control-profile">{profile.name}</strong>
       <div className="run-action-row">
         <label className="compact-select">
           <span className="sr-only">Search provider</span>
           <select
             value={provider}
-            onChange={(event) => setProvider(event.target.value)}
-            disabled={isPending}
+            onChange={(event) => selectProvider(event.target.value)}
+            disabled={isPending || isSelectionPending}
           >
             {providers.map((item) => (
               <option key={item.name} value={item.name}>
@@ -82,18 +95,18 @@ export function RunControls({ profileId, providers }: RunControlsProps) {
           </select>
         </label>
         <Button
-          busy={isPending}
+          busy={isPending || isSelectionPending}
           onClick={runDiscovery}
-          disabled={isPending || !provider}
+          disabled={isPending || isSelectionPending || !provider}
           variant="primary"
         >
           <Play size={16} fill="currentColor" />
           {isPending ? "Working..." : "Run discovery"}
         </Button>
         <IconButton
-          busy={isPending}
+          busy={isPending || isSelectionPending}
           onClick={refreshBoards}
-          disabled={isPending}
+          disabled={isPending || isSelectionPending}
           label="Refresh known boards"
           title="Refresh known boards"
         >
@@ -101,6 +114,6 @@ export function RunControls({ profileId, providers }: RunControlsProps) {
         </IconButton>
       </div>
       {message ? <p className="action-message">{message}</p> : null}
-    </div>
+    </section>
   );
 }

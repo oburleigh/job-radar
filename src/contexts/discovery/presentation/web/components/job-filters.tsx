@@ -40,7 +40,13 @@ export function JobFilters({ profiles, currentProfileId, atsLabels }: JobFilters
 
   function reset() {
     setQuery("");
-    startTransition(() => void navigate(pathname, { replace: true }));
+    const params = new URLSearchParams(current.toString());
+    params.delete("ats");
+    params.delete("state");
+    params.delete("q");
+    startTransition(() => {
+      void navigate(`${pathname}?${params.toString()}`, { replace: true });
+    });
   }
 
   return (

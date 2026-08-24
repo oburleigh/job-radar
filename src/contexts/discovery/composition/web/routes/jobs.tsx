@@ -1,6 +1,6 @@
 import { buttonAttributes, PageHeader } from "@job-radar/design-ui";
 import { Bookmark, BriefcaseBusiness, CheckCircle2, Radar, Waypoints } from "lucide-react";
-import { type ActionFunctionArgs, Link, useLoaderData } from "react-router";
+import { type ActionFunctionArgs, Link, redirect, useLoaderData } from "react-router";
 import { discoveryWeb } from "@/contexts/discovery/composition/discovery-web.server";
 import {
   isJobListingState,
@@ -10,10 +10,12 @@ import { JobCard } from "@/contexts/discovery/presentation/web/components/job-ca
 import { JobFilters } from "@/contexts/discovery/presentation/web/components/job-filters";
 import { RunControls } from "@/contexts/discovery/presentation/web/components/run-controls";
 import { parseJobListingStateRequest } from "@/contexts/discovery/presentation/web/requests/job-listing-state-request";
+import { resolveJobSelection } from "@/contexts/discovery/presentation/web/resolve-job-selection";
 import { assertLocalHost } from "@/platform/http/require-local-request";
 
 export function loader({ request }: { readonly request: Request }) {
-  const searchParams = new URL(request.url).searchParams;
+  const requestUrl = new URL(request.url);
+  const searchParams = requestUrl.searchParams;
   const atsLabels = discoveryWeb.getAtsLabels();
   const profileId = positiveInteger(searchParams.get("profile") ?? "");
   const atsType = validAtsType(searchParams.get("ats") ?? "", atsLabels);
@@ -25,7 +27,13 @@ export function loader({ request }: { readonly request: Request }) {
     ...(state ? { state } : {}),
     ...(query ? { query } : {}),
   });
-  return { atsLabels, dashboard, searchProviders: discoveryWeb.getSearchProviderOptions() };
+  const searchProviders = discoveryWeb.getSearchProviderOptions();
+  requestUrl.pathname = "/";
+  const selection = resolveJobSelection(requestUrl, dashboard.profile?.id, searchProviders);
+  if (selection.redirectTo) {
+    throw redirect(selection.redirectTo);
+  }
+  return { atsLabels, dashboard, searchProviders, selectedProvider: selection.provider ?? "" };
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -43,7 +51,12 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function JobsPage() {
-  const { atsLabels, dashboard: data, searchProviders } = useLoaderData<typeof loader>();
+  const {
+    atsLabels,
+    dashboard: data,
+    searchProviders,
+    selectedProvider,
+  } = useLoaderData<typeof loader>();
 
   return (
     <div className="page">
@@ -53,7 +66,11 @@ export default function JobsPage() {
         description="Search widely, then use explicit rules to keep the shortlist focused."
         actions={
           data.profile ? (
-            <RunControls profileId={data.profile.id} providers={searchProviders} />
+            <RunControls
+              profile={{ id: data.profile.id, name: data.profile.name }}
+              provider={selectedProvider}
+              providers={searchProviders}
+            />
           ) : null
         }
       />
