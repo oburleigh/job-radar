@@ -3,14 +3,73 @@ import { describe, expect, it } from "vitest";
 import { BraveSearchProvider, SerperSearchProvider } from "./web-search-provider";
 
 describe("Brave search provider", () => {
-  it("rejects a malformed provider response at the HTTP boundary", async () => {
+  it("maps a successful response without web results to an empty list", async () => {
     const provider = new BraveSearchProvider("test-key", async () =>
-      Response.json({ results: [] }),
+      Response.json({
+        type: "search",
+        query: { original: "engineering" },
+        mixed: { type: "mixed", main: [] },
+      }),
+    );
+
+    await expect(provider.search("engineering")).resolves.toEqual([]);
+  });
+
+  it("maps every web result", async () => {
+    const provider = new BraveSearchProvider("test-key", async () =>
+      Response.json({
+        web: {
+          results: [
+            {
+              title: "Head of Engineering",
+              description: "London, United Kingdom",
+              url: "https://boards.greenhouse.io/acme/jobs/123",
+            },
+            {
+              title: "Director of Engineering",
+              description: "Remote",
+              url: "https://jobs.ashbyhq.com/example/456",
+            },
+          ],
+        },
+      }),
+    );
+
+    await expect(provider.search("engineering")).resolves.toEqual([
+      {
+        title: "Head of Engineering",
+        url: "https://boards.greenhouse.io/acme/jobs/123",
+        snippet: "London, United Kingdom",
+      },
+      {
+        title: "Director of Engineering",
+        url: "https://jobs.ashbyhq.com/example/456",
+        snippet: "Remote",
+      },
+    ]);
+  });
+
+  it("rejects malformed result entries at the HTTP boundary", async () => {
+    const provider = new BraveSearchProvider("test-key", async () =>
+      Response.json({
+        web: {
+          results: [{ title: "Head of Engineering", url: "not-a-url" }],
+        },
+      }),
     );
 
     await expect(provider.search("engineering")).rejects.toThrow(
       "Brave Search returned an invalid response",
     );
+  });
+
+  it("rejects non-success HTTP responses", async () => {
+    const provider = new BraveSearchProvider(
+      "test-key",
+      async () => new Response(null, { status: 429 }),
+    );
+
+    await expect(provider.search("engineering")).rejects.toThrow("Brave Search returned HTTP 429");
   });
 
   it("applies the profile age window as a freshness filter", async () => {

@@ -16,9 +16,20 @@ const googleResultSchema = z.looseObject({
   snippet: z.string().optional().default(""),
   link: z.url(),
 });
-const braveResponseSchema = z.looseObject({
-  web: z.looseObject({ results: z.array(braveResultSchema) }),
-});
+const braveResponseSchema = z.union([
+  z
+    .looseObject({
+      web: z.looseObject({ results: z.array(braveResultSchema) }),
+    })
+    .transform((payload) => payload.web.results),
+  z
+    .looseObject({
+      type: z.string(),
+      query: z.looseObject({}),
+      mixed: z.looseObject({}),
+    })
+    .transform(() => [] as z.infer<typeof braveResultSchema>[]),
+]);
 const serpApiResponseSchema = z.looseObject({
   organic_results: z.array(googleResultSchema),
 });
@@ -66,12 +77,12 @@ export class BraveSearchProvider implements SearchProvider {
       throw new Error(`Brave Search returned HTTP ${response.status}`);
     }
 
-    const payload = parseProviderResponse(
+    const results = parseProviderResponse(
       "Brave Search",
       braveResponseSchema,
       await response.json(),
     );
-    return payload.web.results.map((result) => ({
+    return results.map((result) => ({
       title: result.title,
       url: result.url,
       snippet: result.description,
