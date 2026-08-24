@@ -1,4 +1,5 @@
 import { createSaveAtsIntegration } from "@/contexts/discovery/application/ats-integrations/save/use-case";
+import { createDiagnoseKnownRole } from "@/contexts/discovery/application/discovery-runs/diagnose-known-role/use-case";
 import { createChangeJobListingState } from "@/contexts/discovery/application/job-listings/change-state/use-case";
 import { createSaveRuntimeSettings } from "@/contexts/discovery/application/runtime-settings/save/use-case";
 import type { RuntimeSettings } from "@/contexts/discovery/application/runtime-settings/settings";
@@ -25,6 +26,7 @@ import { createSqliteSearchProfileRepository } from "@/contexts/discovery/infras
 import { createSqliteAtsIntegrationRegistry } from "@/contexts/discovery/infrastructure/sqlite/sqlite-ats-integration-registry";
 import { sqliteBoardSynchronizer } from "@/contexts/discovery/infrastructure/sqlite/sqlite-board-synchronizer";
 import { createSqliteJobListingStateStore } from "@/contexts/discovery/infrastructure/sqlite/sqlite-job-listing-state-store";
+import { createSqliteKnownRoleDiagnostics } from "@/contexts/discovery/infrastructure/sqlite/sqlite-known-role-diagnostics";
 import { createSqliteRuntimeSettingsStore } from "@/contexts/discovery/infrastructure/sqlite/sqlite-runtime-settings-store";
 import { createSqliteSearchProfileCatalog } from "@/contexts/discovery/infrastructure/sqlite/sqlite-search-profile-catalog";
 import { createSqliteSourceCoverageStore } from "@/contexts/discovery/infrastructure/sqlite/sqlite-source-coverage-store";
@@ -56,10 +58,14 @@ const addJobSource = createAddJobSource({
   sources: createJobSourceRegistrar(db),
   now: () => new Date(),
 });
+const diagnoseKnownRole = createDiagnoseKnownRole({
+  diagnostics: createSqliteKnownRoleDiagnostics(db),
+});
 
 export const discoveryWeb = {
   addJobSource,
   changeJobListingState,
+  diagnoseKnownRole,
   canConfigureBoardSync: isBuiltInAtsType,
   getAtsLabels,
   getDashboardData,

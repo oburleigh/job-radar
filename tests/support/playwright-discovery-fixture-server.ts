@@ -47,6 +47,20 @@ const server = createServer(async (request, response) => {
     return;
   }
 
+  if (request.method === "POST" && url.pathname === "/serper/location-mismatch") {
+    await consumeRequest(request);
+    sendJson(response, 200, {
+      organic: [
+        {
+          title: "Head of Engineering · Acme Toronto Fixture",
+          snippet: "Lead the platform engineering organisation in Toronto.",
+          link: "https://boards.greenhouse.io/acme-mismatch/jobs/67890",
+        },
+      ],
+    });
+    return;
+  }
+
   if (request.method === "GET" && url.pathname === "/greenhouse/acme-fixture/jobs") {
     sendJson(response, 200, {
       jobs: [
@@ -57,6 +71,25 @@ const server = createServer(async (request, response) => {
           company_name: "Acme Fixture",
           absolute_url: "https://boards.greenhouse.io/acme-fixture/jobs/12345",
           location: { name: "Dubai" },
+          content: "<p>Lead the platform engineering organisation.</p>",
+          departments: [{ name: "Engineering" }],
+          first_published: new Date().toISOString(),
+        },
+      ],
+    });
+    return;
+  }
+
+  if (request.method === "GET" && url.pathname === "/greenhouse/acme-mismatch/jobs") {
+    sendJson(response, 200, {
+      jobs: [
+        {
+          id: 67890,
+          internal_job_id: null,
+          title: "Head of Engineering",
+          company_name: "Acme Toronto Fixture",
+          absolute_url: "https://boards.greenhouse.io/acme-mismatch/jobs/67890",
+          location: { name: "Toronto" },
           content: "<p>Lead the platform engineering organisation.</p>",
           departments: [{ name: "Engineering" }],
           first_published: new Date().toISOString(),

@@ -76,12 +76,52 @@ test("completes discovery and triage while profile editing remains responsive", 
   await expect(page.getByText("failed", { exact: true }).first()).toBeVisible();
 });
 
-async function configureDiscoveryFixtures(page: Page): Promise<void> {
+test("explains that a returned role was excluded by location", async ({ page }) => {
+  test.setTimeout(90_000);
+  await configureDiscoveryFixtures(page, `${fixtureUrl}/serper/location-mismatch`);
+  const { id: profileId } = await createProfile(page);
+
+  await page.goto(`/?profile=${profileId}`);
+  await page.getByLabel("Search provider").selectOption("serper");
+  const startedResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname === "/api/discovery-runs",
+  );
+  await page.getByRole("button", { name: "Run discovery" }).click();
+  const started = (await (await startedResponse).json()) as { runId: number };
+  await expect(page.getByRole("status").filter({ hasText: "Discovery completed" })).toBeVisible({
+    timeout: 30_000,
+  });
+
+  await page.getByRole("link", { name: /Discovery runs/i }).click();
+  await page.getByRole("link", { name: new RegExp(`#${started.runId}`) }).click();
+  await page
+    .getByLabel("Public job URL")
+    .fill("https://boards.greenhouse.io/acme-mismatch/jobs/67890");
+  await page.getByRole("button", { name: "Explain this role" }).click();
+
+  const diagnostic = page.getByRole("region", { name: "Known role diagnostic" });
+  await expect(diagnostic).toContainText("Provider returned this URL at rank 1");
+  await expect(diagnostic).toContainText("Classified as Greenhouse");
+  await expect(diagnostic).toContainText("Verified from structured ATS data");
+  await expect(diagnostic).toContainText("Excluded from this profile");
+  await expect(diagnostic).toContainText("Location does not match the profile");
+  await expect(diagnostic.getByRole("link", { name: "Open stored listing" })).toHaveAttribute(
+    "href",
+    "https://boards.greenhouse.io/acme-mismatch/jobs/67890",
+  );
+});
+
+async function configureDiscoveryFixtures(
+  page: Page,
+  serperEndpoint = `${fixtureUrl}/serper/success`,
+): Promise<void> {
   await page.goto("/settings?ats=greenhouse");
   await page.getByLabel("Run status polling (ms)").fill("1000");
   await page.getByLabel("Requested web results per query").fill("1");
   await page.getByLabel("Background work batch size").fill("1");
-  await page.getByLabel("Google via Serper.dev endpoint").fill(`${fixtureUrl}/serper/success`);
+  await page.getByLabel("Google via Serper.dev endpoint").fill(serperEndpoint);
   await page.getByRole("button", { name: "Save runtime settings" }).click();
   await expect(page.getByText("Runtime settings saved to SQLite.")).toBeVisible();
 

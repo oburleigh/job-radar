@@ -1,15 +1,26 @@
-import { buttonAttributes, PageHeader } from "@job-radar/design-ui";
+import { Button, buttonAttributes, PageHeader } from "@job-radar/design-ui";
 import { ArrowLeft, CheckCircle2, CircleAlert, LoaderCircle } from "lucide-react";
-import { Link, useLoaderData } from "react-router";
+import { Form, Link, type LoaderFunctionArgs, useLoaderData } from "react-router";
 import { discoveryWeb } from "@/contexts/discovery/composition/discovery-web.server";
+import { KnownRoleDiagnostic } from "@/contexts/discovery/presentation/web/components/known-role-diagnostic";
+import { parseKnownRoleDiagnosticRequest } from "@/contexts/discovery/presentation/web/requests/known-role-diagnostic-request";
 
-export function loader({ params }: { readonly params: Record<string, string | undefined> }) {
+export function loader({ params, request }: LoaderFunctionArgs) {
   const runId = Number.parseInt(params.runId ?? "", 10);
   const data = Number.isInteger(runId) ? discoveryWeb.getRunDetail(runId) : null;
   if (!data) {
     throw new Response("Run not found", { status: 404 });
   }
-  return data;
+  const requestedJobUrl = new URL(request.url).searchParams.get("jobUrl");
+  const parsed = parseKnownRoleDiagnosticRequest(requestedJobUrl, runId);
+  const diagnostic =
+    parsed.status === "valid" ? discoveryWeb.diagnoseKnownRole(parsed.command) : null;
+  return {
+    ...data,
+    requestedJobUrl: requestedJobUrl ?? "",
+    diagnostic: diagnostic?.status === "diagnosed" ? diagnostic : null,
+    diagnosticError: parsed.status === "invalid" ? parsed.message : null,
+  };
 }
 
 export default function RunDetailPage() {
@@ -29,6 +40,38 @@ export default function RunDetailPage() {
           </Link>
         }
       />
+
+      <section className="panel run-panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Known role check</p>
+            <h2>Explain a missed role</h2>
+          </div>
+          <span>Trace one public URL through this run</span>
+        </div>
+        <Form method="get" className="known-role-form">
+          <label htmlFor="known-role-url">
+            <span>Public job URL</span>
+            <input
+              id="known-role-url"
+              name="jobUrl"
+              type="url"
+              defaultValue={data.requestedJobUrl}
+              placeholder="https://jobs.example.com/company/role"
+              required
+            />
+          </label>
+          <Button type="submit" variant="primary">
+            Explain this role
+          </Button>
+          <p className="field-help">
+            Shows query planning, provider return, classification, verification, and the final
+            profile decision without exposing provider settings.
+          </p>
+          {data.diagnosticError ? <p role="alert">{data.diagnosticError}</p> : null}
+        </Form>
+        {data.diagnostic ? <KnownRoleDiagnostic diagnostic={data.diagnostic} /> : null}
+      </section>
 
       <section className="panel run-panel">
         <div className="section-heading">
@@ -86,7 +129,7 @@ export default function RunDetailPage() {
               </thead>
               <tbody>
                 {queries.map((query) => (
-                  <tr key={query.id}>
+                  <tr key={query.id} id={`query-${query.id}`}>
                     <td>
                       <span
                         className={`run-status run-${
