@@ -12,6 +12,7 @@ export default defineConfig({
     environment: "node",
     globalSetup: ["./tests/support/setup-vitest-database.ts"],
     include: [
+      "scripts/**/*.test.ts",
       "src/**/*.test.ts",
       "src/**/*.test.tsx",
       "packages/**/*.test.ts",

@@ -50,9 +50,14 @@ rule-based and does not call an LLM.
 ## Requirements
 
 - Node.js 24
-- pnpm 11 through Corepack
+- pnpm 11 through Corepack (the repository pins 11.1.3)
 - One supported web search API key
 - Network access to the selected search provider and public ATS endpoints
+
+The contributor setup is checked on Linux, macOS, and Windows PowerShell. The
+application uses `better-sqlite3`, which ships prebuilt binaries for common
+platforms. A machine that must compile the native module also needs Python and
+the platform's C/C++ build tools.
 
 The app is built with React Router 8, Vite 8, React 19, TypeScript, SQLite, Drizzle ORM, Zod, and
 Vitest. Zod validates web input, vendor and search-provider responses, and runtime configuration at
@@ -60,17 +65,26 @@ the adapter that receives each value.
 
 ## Start with a clean database
 
-1. Install the locked dependencies.
+1. Check Node.js, enable Corepack, and install the locked dependencies. Corepack
+   reads the pinned pnpm version from `package.json`.
 
    ```bash
+   node --version
    corepack enable
+   pnpm --version
    pnpm install --frozen-lockfile
    ```
 
-2. Copy the environment template.
+2. Copy the environment template. On Linux or macOS, run:
 
    ```bash
    cp .env.example .env
+   ```
+
+   On Windows PowerShell, run:
+
+   ```powershell
+   Copy-Item .env.example .env
    ```
 
 3. Add at least one search provider key to `.env`.
@@ -83,19 +97,25 @@ the adapter that receives each value.
    ALLOW_REMOTE_UI=0
    ```
 
-4. Create the SQLite database and apply every migration.
+4. Check the required versions and provider configuration.
+
+   ```bash
+   pnpm setup:check
+   ```
+
+5. Create the SQLite database and apply every migration.
 
    ```bash
    pnpm db:setup
    ```
 
-5. Start the development server.
+6. Start the development server.
 
    ```bash
    pnpm dev
    ```
 
-6. Open `http://localhost:3000`.
+7. Open `http://localhost:3000`.
 
 On a clean setup, the Jobs page asks you to create a profile. The Sources page
 contains 15 built-in search patterns, including Web3 Career, Cryptocurrency
@@ -104,6 +124,30 @@ history are empty.
 
 The `data/` directory and every `.env` file except `.env.example` are ignored by
 Git. Cloning the repository does not copy another user's database or secrets.
+
+### Platform notes
+
+The setup commands are the same on Linux, macOS, and Windows PowerShell except
+for copying `.env`. Run all commands from the repository root.
+
+- On Windows, use PowerShell and `Copy-Item` as shown above. If
+  `better-sqlite3` falls back to a native build, install Python and Visual
+  Studio's `Desktop development with C++` workload. The Node.js Windows
+  installer can add these tools from its `Tools for Native Modules` option.
+- On macOS, install the Xcode Command Line Tools with
+  `xcode-select --install` if a native build asks for a compiler.
+- On Linux, install Python, `make`, and a C/C++ compiler if a native build is
+  required. Minimal distributions may also need `libatomic`.
+
+See the upstream
+[`better-sqlite3` troubleshooting guide](https://github.com/WiseLibs/better-sqlite3/blob/master/docs/troubleshooting.md)
+and [`node-gyp` requirements](https://github.com/nodejs/node-gyp#installation) for
+native build failures.
+
+GitHub Actions runs the clean database setup and its focused tests on
+`ubuntu-latest`, `macos-latest`, and `windows-latest`. The browser journey runs
+against an isolated SQLite database and checks the untouched workspace before
+creating a profile.
 
 ### Start another empty dataset
 
@@ -549,6 +593,20 @@ from the normal active list.
 
 ## Troubleshooting
 
+### The setup prerequisite check fails
+
+Read every line printed by `pnpm setup:check`. It reports the detected Node.js
+or pnpm version and tells you when no provider key is configured. The supported
+versions are Node.js 24.x and pnpm 11.x.
+
+If `pnpm` is unavailable after installing Node.js 24, run `corepack enable`
+again. Corepack uses the `packageManager` value in `package.json`, so a separate
+global pnpm install is not needed.
+
+If `pnpm install` fails while building `better-sqlite3`, install the native
+build prerequisites in [Platform notes](#platform-notes), then rerun the locked
+install.
+
 ### A provider is marked "key missing"
 
 Add its key to `.env` and restart the Job Radar process. Environment variables are
@@ -652,6 +710,7 @@ should only be used behind access controls you operate.
 corepack enable
 pnpm install --frozen-lockfile
 cp .env.example .env
+pnpm setup:check
 pnpm db:setup
 pnpm build
 pnpm start

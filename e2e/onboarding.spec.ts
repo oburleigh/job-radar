@@ -3,6 +3,23 @@ import { expect, test } from "@playwright/test";
 
 test.describe
   .serial("clean-start onboarding", () => {
+    test("shows product defaults without personal workspace records", async ({ page }) => {
+      await page.goto("/");
+      await expect(
+        page.getByRole("heading", { level: 2, name: "Create a search profile first" }),
+      ).toBeVisible();
+
+      await page.goto("/sources");
+      await expect(page.getByText("15 active", { exact: true })).toBeVisible();
+      await expect(page.getByText("0 discovered", { exact: true })).toBeVisible();
+      await expect(
+        page.getByText("Add a known ATS URL or run discovery to populate this registry."),
+      ).toBeVisible();
+
+      await page.goto("/runs");
+      await expect(page.getByRole("heading", { level: 2, name: "No runs recorded" })).toBeVisible();
+    });
+
     test("creates a salary-aware profile from an empty database", async ({ page }) => {
       await page.goto("/profiles?new=1");
 

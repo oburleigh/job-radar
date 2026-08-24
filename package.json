@@ -5,13 +5,13 @@
   "type": "module",
   "packageManager": "pnpm@11.1.3",
   "engines": {
-    "node": ">=24",
-    "pnpm": ">=11"
+    "node": ">=24 <25",
+    "pnpm": ">=11 <12"
   },
   "scripts": {
     "dev": "react-router dev",
     "build": "pnpm packages:build && react-router build",
-    "start": "cross-env HOST=127.0.0.1 react-router-serve build/server/index.js",
+    "start": "pnpm setup:check && cross-env HOST=127.0.0.1 react-router-serve build/server/index.js",
     "lint": "biome check --error-on-warnings .",
     "lint:fix": "biome check --write --error-on-warnings .",
     "typecheck": "pnpm packages:build && react-router typegen && tsc --noEmit",
@@ -27,9 +27,10 @@
     "storybook": "pnpm --filter @job-radar/web-docs storybook",
     "storybook:build": "pnpm --filter @job-radar/web-docs build",
     "prepare": "lefthook install",
+    "setup:check": "tsx scripts/check-prerequisites.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
-    "db:setup": "pnpm db:migrate",
+    "db:setup": "pnpm setup:check && pnpm db:migrate",
     "discover": "tsx scripts/discover.ts",
     "reindex": "tsx scripts/reindex.ts",
     "sync": "tsx scripts/sync.ts",

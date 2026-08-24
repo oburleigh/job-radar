@@ -9,7 +9,46 @@ permissions:
   contents: read
 
 jobs:
+  clean-start:
+    name: Clean start (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    env:
+      DB_PATH: ${{ runner.temp }}/job-radar-clean-start.sqlite
+      SERPER_API_KEY: clean-start-ci-key
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v6.0.10
+        with:
+          run_install: false
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Copy environment template on Linux and macOS
+        if: runner.os != 'Windows'
+        run: cp .env.example .env
+      - name: Copy environment template on Windows PowerShell
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Copy-Item .env.example .env
+      - run: pnpm setup:check
+      - run: pnpm db:setup
+      - run: pnpm db:setup
+      - name: Verify clean-start database behavior
+        run: >-
+          pnpm exec vitest run
+          scripts/check-prerequisites.test.ts
+          scripts/migrate.test.ts
+          tests/architecture/schema-only-migrations.test.ts
+          src/contexts/discovery/infrastructure/configuration/bootstrap-job-radar.test.ts
+
   verify:
+    name: Repository gates
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
@@ -21,6 +60,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: cp .env.example .env
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test:coverage
