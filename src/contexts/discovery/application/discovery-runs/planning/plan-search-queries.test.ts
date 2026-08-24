@@ -52,6 +52,19 @@ describe("search query planning", () => {
         worldwideRemoteTerms,
       ),
     ).toEqual([]);
+
+    expect(
+      planSearchQueries(
+        {
+          titleTerms: ["Head of Engineering"],
+          locationTerms: [],
+          includeRemote: false,
+        },
+        [{ atsType: "ashby", pattern: "jobs.ashbyhq.com" }],
+        "title",
+        worldwideRemoteTerms,
+      ),
+    ).toEqual([]);
   });
 
   it("keeps regional and worldwide remote searches separate", () => {
@@ -89,10 +102,74 @@ describe("search query planning", () => {
       worldwideRemoteTerms,
     );
 
-    expect(queries).toHaveLength(2);
-    expect(queries[0]?.text).toContain('("AI Platform Engineer")');
-    expect(queries[0]?.text).not.toContain("Forward Deployed Engineer");
-    expect(queries[1]?.text).toContain('("Forward Deployed Engineer")');
+    expect(queries).toEqual([
+      {
+        atsType: "ashby",
+        sourcePattern: "jobs.ashbyhq.com",
+        titleTerm: "AI Platform Engineer",
+        text: 'site:jobs.ashbyhq.com ("AI Platform Engineer") ("London")',
+      },
+      {
+        atsType: "ashby",
+        sourcePattern: "jobs.ashbyhq.com",
+        titleTerm: "Forward Deployed Engineer",
+        text: 'site:jobs.ashbyhq.com ("Forward Deployed Engineer") ("London")',
+      },
+    ]);
+  });
+
+  it("normalizes surrounding whitespace, embedded quotes, blanks, and duplicate terms", () => {
+    const queries = planSearchQueries(
+      {
+        titleTerms: ['  Staff "Platform"   Engineer  ', 'Staff "Platform"   Engineer'],
+        locationTerms: [" London ", "", "London", 'UK"'],
+        includeRemote: false,
+      },
+      [{ atsType: "greenhouse", pattern: "boards.greenhouse.io" }],
+      "title",
+      worldwideRemoteTerms,
+    );
+
+    expect(queries).toEqual([
+      {
+        atsType: "greenhouse",
+        sourcePattern: "boards.greenhouse.io",
+        titleTerm: 'Staff "Platform"   Engineer',
+        text: 'site:boards.greenhouse.io (intitle:"Staff" intitle:"Platform" intitle:"Engineer") ("London" OR "UK")',
+      },
+    ]);
+  });
+
+  it("keeps one allocation for each title when worldwide remote queries are enabled", () => {
+    const queries = planSearchQueries(
+      {
+        titleTerms: ["Platform Engineer", "Security Engineer"],
+        locationTerms: ["London"],
+        includeRemote: true,
+      },
+      [{ atsType: "ashby", pattern: "jobs.ashbyhq.com" }],
+      "title",
+      ["remote"],
+    );
+
+    expect(queries.map(({ titleTerm, text }) => ({ titleTerm, text }))).toEqual([
+      {
+        titleTerm: "Platform Engineer",
+        text: 'site:jobs.ashbyhq.com (intitle:"Platform" intitle:"Engineer") ("London")',
+      },
+      {
+        titleTerm: "Platform Engineer (worldwide remote)",
+        text: 'site:jobs.ashbyhq.com (intitle:"Platform" intitle:"Engineer") ("remote")',
+      },
+      {
+        titleTerm: "Security Engineer",
+        text: 'site:jobs.ashbyhq.com (intitle:"Security" intitle:"Engineer") ("London")',
+      },
+      {
+        titleTerm: "Security Engineer (worldwide remote)",
+        text: 'site:jobs.ashbyhq.com (intitle:"Security" intitle:"Engineer") ("remote")',
+      },
+    ]);
   });
 
   it("builds one location-led board query per sync source", () => {
@@ -113,6 +190,28 @@ describe("search query planning", () => {
         sourcePattern: "boards.greenhouse.io",
         titleTerm: BOARD_DISCOVERY_TITLE,
         text: 'site:boards.greenhouse.io ("Dubai" OR "UAE")',
+      },
+    ]);
+  });
+
+  it("returns no board queries without locations and deduplicates repeated sources", () => {
+    expect(
+      planBoardDiscoveryQueries({ locationTerms: [] }, [
+        { atsType: "ashby", pattern: "jobs.ashbyhq.com" },
+      ]),
+    ).toEqual([]);
+
+    expect(
+      planBoardDiscoveryQueries({ locationTerms: [" London ", "London"] }, [
+        { atsType: "ashby", pattern: "jobs.ashbyhq.com" },
+        { atsType: "ashby", pattern: "jobs.ashbyhq.com" },
+      ]),
+    ).toEqual([
+      {
+        atsType: "ashby",
+        sourcePattern: "jobs.ashbyhq.com",
+        titleTerm: BOARD_DISCOVERY_TITLE,
+        text: 'site:jobs.ashbyhq.com ("London")',
       },
     ]);
   });
