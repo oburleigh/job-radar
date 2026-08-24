@@ -61,6 +61,20 @@ const server = createServer(async (request, response) => {
     return;
   }
 
+  if (request.method === "POST" && url.pathname === "/serper/web3-lead") {
+    await consumeRequest(request);
+    sendJson(response, 200, {
+      organic: [
+        {
+          title: "Head of Engineering at Example Labs",
+          snippet: "Lead the platform engineering organisation in Dubai.",
+          link: "https://web3.career/head-of-engineering-example-labs/153058",
+        },
+      ],
+    });
+    return;
+  }
+
   if (request.method === "GET" && url.pathname === "/greenhouse/acme-fixture/jobs") {
     sendJson(response, 200, {
       jobs: [

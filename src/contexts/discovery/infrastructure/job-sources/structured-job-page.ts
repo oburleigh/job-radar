@@ -7,7 +7,17 @@ import type {
 
 export type StructuredJobPageLookup =
   | { status: "verified"; job: RawJob }
-  | { status: "closed" | "not_found" | "unavailable" };
+  | { status: "closed"; reason: "closed-marker" | "expired" }
+  | { status: "not_found"; reason: "not-found" }
+  | {
+      status: "unavailable";
+      reason:
+        | "missing-external-id"
+        | "protected"
+        | "request-failed"
+        | "unsupported-source"
+        | "unstructured";
+    };
 
 export function supportsStructuredJobPage(atsType: AtsType): boolean {
   return getJobRadarConfig().discovery.structuredVerificationSources.includes(atsType);
@@ -20,8 +30,11 @@ export async function fetchStructuredJobPage(
   fetcher: typeof fetch = fetch,
   now = new Date(),
 ): Promise<StructuredJobPageLookup> {
-  if (!supportsStructuredJobPage(atsType) || !externalId) {
-    return { status: "unavailable" };
+  if (!supportsStructuredJobPage(atsType)) {
+    return { status: "unavailable", reason: "unsupported-source" };
+  }
+  if (!externalId) {
+    return { status: "unavailable", reason: "missing-external-id" };
   }
 
   const config = getJobRadarConfig();
@@ -35,35 +48,49 @@ export async function fetchStructuredJobPage(
       signal: AbortSignal.timeout(config.network.timeoutMs),
     });
   } catch {
-    return { status: "unavailable" };
+    return { status: "unavailable", reason: "request-failed" };
   }
   if (response.status === 404 || response.status === 410) {
-    return { status: "not_found" };
+    return { status: "not_found", reason: "not-found" };
+  }
+  if (response.status === 401 || response.status === 403 || response.status === 429) {
+    return { status: "unavailable", reason: "protected" };
   }
   if (!response.ok) {
-    return { status: "unavailable" };
+    return { status: "unavailable", reason: "request-failed" };
   }
 
   const html = await response.text();
   const normalizedPage = stripHtml(html).toLowerCase();
-  if (config.discovery.closedListingMarkers.some((marker) => normalizedPage.includes(marker))) {
-    return { status: "closed" };
-  }
+  const hasClosedMarker = config.discovery.closedListingMarkers.some((marker) =>
+    normalizedPage.includes(marker),
+  );
 
   const posting = extractJobPosting(html);
   if (!posting) {
-    return { status: "unavailable" };
+    return hasClosedMarker
+      ? { status: "closed", reason: "closed-marker" }
+      : { status: "unavailable", reason: "unstructured" };
   }
   const validThrough = parseDate(posting.validThrough);
   if (validThrough && validThrough.getTime() < now.getTime()) {
-    return { status: "closed" };
+    return { status: "closed", reason: "expired" };
+  }
+  if (hasClosedMarker) {
+    return { status: "closed", reason: "closed-marker" };
   }
 
   const title = stringValue(posting.title);
   const organization = asRecord(posting.hiringOrganization);
   const companyName = stringValue(organization.name);
   if (!title || !companyName) {
-    return { status: "unavailable" };
+    const missingFields = [
+      ...(!title ? ["title"] : []),
+      ...(!companyName ? ["hiringOrganization.name"] : []),
+    ];
+    throw new Error(
+      `Invalid schema.org JobPosting at ${canonicalUrl}: missing ${missingFields.join(", ")}`,
+    );
   }
 
   const remote = stringArray(posting.jobLocationType).some(

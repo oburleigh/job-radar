@@ -17,6 +17,7 @@ import type { db } from "./database";
 import { companyBoards, discoveryHits } from "./schema";
 import {
   deactivateSearchJob,
+  recordStructuredJobPageOutcome,
   upsertSearchResult,
   upsertVerifiedSearchJob,
 } from "./store-search-result";
@@ -24,7 +25,15 @@ import { syncBoard } from "./sync-boards";
 
 type Database = typeof db;
 
-export function createSqliteJobDiscoveryCatalog(database: Database): JobDiscoveryCatalog {
+interface SqliteJobDiscoveryCatalogDependencies {
+  readonly lookupStructuredJobPage?: typeof fetchStructuredJobPage;
+}
+
+export function createSqliteJobDiscoveryCatalog(
+  database: Database,
+  dependencies: SqliteJobDiscoveryCatalogDependencies = {},
+): JobDiscoveryCatalog {
+  const lookupStructuredJobPage = dependencies.lookupStructuredJobPage ?? fetchStructuredJobPage;
   const checkedLinkedInJobs = new Set<string>();
   const checkedStructuredJobPages = new Set<string>();
 
@@ -52,7 +61,7 @@ export function createSqliteJobDiscoveryCatalog(database: Database): JobDiscover
       let jobsWritten = 0;
 
       if (classified) {
-        jobsWritten += upsertSearchResult({
+        const searchResult = {
           atsType: classified.atsType,
           canonicalUrl: classified.canonicalUrl,
           externalId: classified.externalId,
@@ -68,7 +77,35 @@ export function createSqliteJobDiscoveryCatalog(database: Database): JobDiscover
                 }),
               }
             : {}),
-        });
+        };
+        const shouldLookupStructuredPage =
+          !isBuiltInAtsType(classified.atsType) &&
+          Boolean(classified.externalId) &&
+          supportsStructuredJobPage(classified.atsType) &&
+          !checkedStructuredJobPages.has(classified.canonicalUrl);
+
+        if (shouldLookupStructuredPage) {
+          checkedStructuredJobPages.add(classified.canonicalUrl);
+          const lookup = await lookupStructuredJobPage(
+            classified.atsType,
+            classified.externalId,
+            classified.canonicalUrl,
+          );
+          if (lookup.status === "verified") {
+            jobsWritten += upsertVerifiedSearchJob(lookup.job);
+          } else {
+            jobsWritten += upsertSearchResult(searchResult);
+            recordStructuredJobPageOutcome(
+              classified.atsType,
+              classified.externalId,
+              lookup,
+              recordedAt,
+            );
+          }
+        } else {
+          jobsWritten += upsertSearchResult(searchResult);
+        }
+
         if (
           classified.atsType === "linkedin" &&
           classified.externalId &&
@@ -80,23 +117,6 @@ export function createSqliteJobDiscoveryCatalog(database: Database): JobDiscover
             jobsWritten += upsertVerifiedSearchJob(lookup.job);
           } else if (lookup.status === "closed" || lookup.status === "not_found") {
             deactivateSearchJob("linkedin", classified.externalId);
-          }
-        } else if (
-          !isBuiltInAtsType(classified.atsType) &&
-          classified.externalId &&
-          supportsStructuredJobPage(classified.atsType) &&
-          !checkedStructuredJobPages.has(classified.canonicalUrl)
-        ) {
-          checkedStructuredJobPages.add(classified.canonicalUrl);
-          const lookup = await fetchStructuredJobPage(
-            classified.atsType,
-            classified.externalId,
-            classified.canonicalUrl,
-          );
-          if (lookup.status === "verified") {
-            jobsWritten += upsertVerifiedSearchJob(lookup.job);
-          } else if (lookup.status === "closed" || lookup.status === "not_found") {
-            deactivateSearchJob(classified.atsType, classified.externalId);
           }
         }
       }

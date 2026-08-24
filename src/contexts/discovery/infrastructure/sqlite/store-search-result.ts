@@ -7,6 +7,7 @@ import type {
   RawJob,
 } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
 import { normalizeSearchResult } from "@/contexts/discovery/infrastructure/job-sources/search-result";
+import type { StructuredJobPageLookup } from "@/contexts/discovery/infrastructure/job-sources/structured-job-page";
 import {
   canonicalizeUrl,
   makeDedupeKey,
@@ -203,4 +204,36 @@ export function deactivateSearchJob(atsType: AtsType, externalId: string): void 
     .set({ isActive: false, lastSeenAt: new Date() })
     .where(and(eq(jobs.atsType, atsType), eq(jobs.externalId, externalId)))
     .run();
+}
+
+export function recordStructuredJobPageOutcome(
+  atsType: AtsType,
+  externalId: string,
+  outcome: Exclude<StructuredJobPageLookup, { status: "verified" }>,
+  checkedAt: Date,
+): void {
+  const matchingJobs = db
+    .select({ id: jobs.id, isActive: jobs.isActive, rawPayload: jobs.rawPayload })
+    .from(jobs)
+    .where(and(eq(jobs.atsType, atsType), eq(jobs.externalId, externalId)))
+    .all();
+  const remainsActive = outcome.status === "unavailable";
+
+  for (const job of matchingJobs) {
+    db.update(jobs)
+      .set({
+        isActive: remainsActive ? job.isActive : false,
+        lastSeenAt: checkedAt,
+        rawPayload: {
+          ...job.rawPayload,
+          verification: {
+            status: outcome.status,
+            reason: outcome.reason,
+            checkedAt: checkedAt.toISOString(),
+          },
+        },
+      })
+      .where(eq(jobs.id, job.id))
+      .run();
+  }
 }

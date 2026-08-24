@@ -41,6 +41,10 @@ test("completes discovery and triage while profile editing remains responsive", 
   await completedNotice.getByRole("link", { name: "View results" }).click();
 
   await expect(page.getByRole("heading", { level: 2, name: "Head of Engineering" })).toBeVisible();
+  await expect(page.getByText("Live listing", { exact: true })).toBeVisible();
+  await expect(
+    page.getByLabel("Ranked opportunities").getByText("Greenhouse", { exact: true }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Save job" }).click();
   await expect(page.getByRole("button", { name: "Remove saved status" })).toBeVisible();
 
@@ -74,6 +78,39 @@ test("completes discovery and triage while profile editing remains responsive", 
     page.getByRole("heading", { level: 1, name: `Run #${failedStart.runId}` }),
   ).toBeVisible();
   await expect(page.getByText("failed", { exact: true }).first()).toBeVisible();
+});
+
+test("shows a Web3 source and search-lead state after opted-in discovery", async ({ page }) => {
+  test.setTimeout(90_000);
+  await configureDiscoveryFixtures(page, `${fixtureUrl}/serper/web3-lead`);
+  await page
+    .getByLabel("Structured verification source IDs")
+    .fill(["cryptocurrencyjobs", "cryptojobslist"].join("\n"));
+  await page.getByRole("button", { name: "Save runtime settings" }).click();
+  await expect(page.getByText("Runtime settings saved to SQLite.")).toBeVisible();
+  const { id: profileId } = await createProfile(page, { includeUnverified: true });
+
+  await page.goto(`/?profile=${profileId}`);
+  await page.getByLabel("Search provider").selectOption("serper");
+  const startedResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname === "/api/discovery-runs",
+  );
+  await page.getByRole("button", { name: "Run discovery" }).click();
+  expect((await startedResponse).status()).toBe(202);
+
+  const completedNotice = page.getByRole("status").filter({ hasText: "Discovery completed" });
+  await expect(completedNotice).toBeVisible({ timeout: 30_000 });
+  await completedNotice.getByRole("link", { name: "View results" }).click();
+
+  await expect(
+    page.getByRole("heading", { level: 2, name: "Head of Engineering at Example Labs" }),
+  ).toBeVisible();
+  await expect(page.getByText("Search lead", { exact: true })).toBeVisible();
+  await expect(
+    page.getByLabel("Ranked opportunities").getByText("Web3 Career", { exact: true }),
+  ).toBeVisible();
 });
 
 test("explains that a returned role was excluded by location", async ({ page }) => {
@@ -139,13 +176,19 @@ async function configureSerperEndpoint(page: Page, endpoint: string): Promise<vo
   await expect(page.getByText("Runtime settings saved to SQLite.")).toBeVisible();
 }
 
-async function createProfile(page: Page): Promise<{ id: number; name: string }> {
+async function createProfile(
+  page: Page,
+  options: { includeUnverified?: boolean } = {},
+): Promise<{ id: number; name: string }> {
   const name = `ADM-18 ${crypto.randomUUID()}`;
   await page.goto("/profiles?new=1");
   await page.getByLabel("Profile name").fill(name);
   await page.getByLabel("Minimum score").fill("60");
   await page.getByLabel("Target job titles").fill("Head of Engineering");
   await page.getByLabel("Target locations").fill("Dubai");
+  if (options.includeUnverified) {
+    await page.getByLabel("Include unverified web-search leads").check();
+  }
   await page.getByRole("button", { name: "Save profile" }).click();
   await expect(page).toHaveURL(/\/profiles\?profile=\d+$/);
   await expect(page.getByRole("heading", { level: 2, name })).toBeVisible();
