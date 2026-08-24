@@ -2,7 +2,11 @@ import { IconButton } from "@job-radar/design-ui";
 import { X } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
-import { type CountryCurrencyOption, countryOptionsMatching } from "./country-currency-catalogue";
+import {
+  type CountryCurrencyOption,
+  countryOptionFor,
+  countryOptionsMatching,
+} from "./country-currency-catalogue";
 
 interface LocationComboboxProps {
   readonly error?: string | undefined;
@@ -28,12 +32,23 @@ export function LocationCombobox({
   const [hasInteracted, setHasInteracted] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [announcement, setAnnouncement] = useState("");
+  const [selectionError, setSelectionError] = useState("");
   const suggestions = useMemo(
     () => (hasInteracted ? countryOptionsMatching(inputValue) : []),
     [hasInteracted, inputValue],
   );
   const isPopupVisible = open && suggestions.length > 0;
   const activeOption = isPopupVisible && activeIndex >= 0 ? suggestions[activeIndex] : undefined;
+  const selectedCountries = values.flatMap((value) => {
+    const option = countryOptionFor(value);
+    return option ? [{ option, value }] : [];
+  });
+  const legacyValues = values.filter((value) => countryOptionFor(value) === undefined);
+  const legacyError =
+    legacyValues.length > 0
+      ? "Replace saved target locations that are not in the location catalogue."
+      : undefined;
+  const visibleError = selectionError || error || legacyError;
 
   useEffect(() => {
     if (!isPopupVisible || activeIndex < 0) {
@@ -44,11 +59,8 @@ export function LocationCombobox({
       ?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [activeIndex, isPopupVisible, listboxId]);
 
-  function addLocation(value: string, country?: CountryCurrencyOption) {
-    const location = value.trim();
-    if (location === "") {
-      return;
-    }
+  function addCountry(country: CountryCurrencyOption) {
+    const location = country.countryName;
     if (
       values.some(
         (existing) => existing.localeCompare(location, undefined, { sensitivity: "accent" }) === 0,
@@ -59,10 +71,9 @@ export function LocationCombobox({
       onChange([...values, location]);
       setAnnouncement(`${location} added.`);
     }
-    if (country) {
-      onCountrySelected?.(country);
-    }
+    onCountrySelected?.(country);
     setInputValue("");
+    setSelectionError("");
     setActiveIndex(-1);
     setOpen(false);
   }
@@ -86,12 +97,22 @@ export function LocationCombobox({
     });
   }
 
-  function addActiveOrTypedValue() {
-    if (activeOption) {
-      addLocation(activeOption.countryName, activeOption);
-      return;
+  function resolveInput(): CountryCurrencyOption | undefined {
+    return activeOption ?? countryOptionFor(inputValue);
+  }
+
+  function addSelectedCountry(): boolean {
+    const country = resolveInput();
+    if (country) {
+      addCountry(country);
+      return true;
     }
-    addLocation(inputValue);
+    if (inputValue.trim() !== "") {
+      const message = "Choose a target location from the suggestions.";
+      setSelectionError(message);
+      setAnnouncement(message);
+    }
+    return false;
   }
 
   return (
@@ -99,10 +120,31 @@ export function LocationCombobox({
       <label htmlFor={inputId}>
         <span>Target locations</span>
       </label>
-      <input name={name} type="hidden" value={values.join("\n")} readOnly />
+      <input
+        name={name}
+        type="hidden"
+        value={selectedCountries.map(({ option }) => option.countryName).join("\n")}
+        readOnly
+      />
+      {legacyValues.length > 0 ? (
+        <input name="legacyLocationTerms" type="hidden" value={legacyValues.join("\n")} readOnly />
+      ) : null}
       <div className="token-combobox-input">
-        {values.map((location) => (
-          <span className="location-token" key={location}>
+        {selectedCountries.map(({ option, value }) => (
+          <span className="location-token" key={value}>
+            <span className="location-token-label">{option.countryName}</span>
+            <IconButton
+              className="location-token-remove"
+              label={`Remove ${option.countryName}`}
+              onClick={() => removeLocation(value)}
+              onMouseDown={(event) => event.preventDefault()}
+            >
+              <X aria-hidden="true" size={15} strokeWidth={2.25} />
+            </IconButton>
+          </span>
+        ))}
+        {legacyValues.map((location) => (
+          <span className="location-token location-token-invalid" key={location}>
             <span className="location-token-label">{location}</span>
             <IconButton
               className="location-token-remove"
@@ -117,19 +159,23 @@ export function LocationCombobox({
         <input
           aria-activedescendant={activeOption ? `${listboxId}-${activeIndex}` : undefined}
           aria-controls={listboxId}
-          aria-describedby={error ? errorId : undefined}
+          aria-describedby={visibleError ? errorId : undefined}
           aria-expanded={isPopupVisible}
-          aria-invalid={Boolean(error)}
+          aria-invalid={Boolean(visibleError)}
           aria-autocomplete="list"
           autoComplete="off"
           id={inputId}
           onBlur={() => {
+            if (inputValue.trim() !== "" && countryOptionFor(inputValue) === undefined) {
+              setSelectionError("Choose a target location from the suggestions.");
+            }
             setActiveIndex(-1);
             setOpen(false);
           }}
           onChange={(event) => {
             setHasInteracted(true);
             setInputValue(event.target.value);
+            setSelectionError("");
             setActiveIndex(-1);
             setOpen(true);
           }}
@@ -146,11 +192,16 @@ export function LocationCombobox({
               moveActive(-1);
             } else if (event.key === "Enter") {
               event.preventDefault();
-              addActiveOrTypedValue();
-            } else if (event.key === "Tab" && activeOption) {
-              event.preventDefault();
-              addActiveOrTypedValue();
-              queueMicrotask(() => focusNextControl(inputRef.current));
+              addSelectedCountry();
+            } else if (event.key === "Tab") {
+              const country = resolveInput();
+              if (country) {
+                event.preventDefault();
+                addCountry(country);
+                queueMicrotask(() => focusNextControl(inputRef.current));
+              } else if (inputValue.trim() !== "") {
+                addSelectedCountry();
+              }
             } else if (event.key === "Escape") {
               setActiveIndex(-1);
               setOpen(false);
@@ -159,7 +210,7 @@ export function LocationCombobox({
             }
           }}
           placeholder={
-            values.length === 0 ? "Dubai or United Arab Emirates" : "Add another location"
+            values.length === 0 ? "United Arab Emirates or China" : "Add another location"
           }
           ref={inputRef}
           role="combobox"
@@ -175,7 +226,7 @@ export function LocationCombobox({
                 key={option.countryCode}
                 onMouseDown={(event) => {
                   event.preventDefault();
-                  addLocation(option.countryName, option);
+                  addCountry(option);
                 }}
                 role="option"
                 tabIndex={-1}
@@ -186,9 +237,9 @@ export function LocationCombobox({
             ))
           : null}
       </div>
-      {error ? (
+      {visibleError ? (
         <p className="field-error" id={errorId}>
-          {error}
+          {visibleError}
         </p>
       ) : null}
       <p className="sr-only" role="status">

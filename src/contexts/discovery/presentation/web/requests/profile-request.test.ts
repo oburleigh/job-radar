@@ -8,7 +8,7 @@ describe("profile request", () => {
       profileForm({
         name: "  UAE engineering leadership  ",
         titleTerms: "VP Engineering\nHead of Engineering\nVP Engineering",
-        locationTerms: "Dubai, Abu Dhabi",
+        locationTerms: "united arab emirates, china",
         includeRemote: "on",
         includeUnverified: "on",
         salaryCurrency: "gbp",
@@ -24,7 +24,7 @@ describe("profile request", () => {
         profile: {
           name: "UAE engineering leadership",
           targetTitles: ["VP Engineering", "Head of Engineering"],
-          targetLocations: ["Dubai", "Abu Dhabi"],
+          targetLocations: ["United Arab Emirates", "China"],
           requiredJobTerms: [],
           excludedTitleTerms: [],
           excludedLocationTerms: [],
@@ -67,6 +67,27 @@ describe("profile request", () => {
     });
   });
 
+  it("rejects a target location that is not selected from the catalogue", () => {
+    expect(parseProfileRequest(profileForm({ locationTerms: "oli" }))).toEqual({
+      ok: false,
+      message: "Choose each target location from the suggestions.",
+    });
+  });
+
+  it("requires unmatched saved locations to be replaced before saving", () => {
+    expect(
+      parseProfileRequest(
+        profileForm({
+          locationTerms: "China",
+          legacyLocationTerms: "Dubai",
+        }),
+      ),
+    ).toEqual({
+      ok: false,
+      message: "Replace saved target locations that are not in the location catalogue.",
+    });
+  });
+
   it("rejects a three-letter value that is not an ISO 4217 currency", () => {
     expect(parseProfileRequest(profileForm({ salaryCurrency: "ZZZ" }))).toEqual({
       ok: false,
@@ -91,7 +112,8 @@ function profileForm(overrides: Record<string, string> = {}): FormData {
   const values = {
     name: "UAE engineering leadership",
     titleTerms: "VP Engineering",
-    locationTerms: "Dubai",
+    locationTerms: "United Arab Emirates",
+    legacyLocationTerms: "",
     requiredJobTerms: "",
     excludedTitleTerms: "",
     excludedLocationTerms: "",

@@ -7,15 +7,29 @@ import { LocationCombobox } from "./location-combobox";
 describe("profile editor comboboxes", () => {
   it("renders an input-backed target-location combobox with removable values", () => {
     const markup = renderToStaticMarkup(
-      <LocationCombobox name="locationTerms" onChange={() => undefined} values={["Dubai"]} />,
+      <LocationCombobox name="locationTerms" onChange={() => undefined} values={["China"]} />,
     );
 
     expect(markup).toContain('role="combobox"');
     expect(markup).toContain("aria-controls=");
     expect(markup).toContain('aria-expanded="false"');
     expect(markup).toContain('name="locationTerms"');
-    expect(markup).toContain('aria-label="Remove Dubai"');
+    expect(markup).toContain('aria-label="Remove China"');
     expect(markup).not.toContain('role="option"');
+  });
+
+  it("keeps an unmatched saved location visible and marks it for replacement", () => {
+    const markup = renderToStaticMarkup(
+      <LocationCombobox name="locationTerms" onChange={() => undefined} values={["Dubai"]} />,
+    );
+
+    expect(markup).toContain('name="legacyLocationTerms"');
+    expect(markup).toContain('aria-invalid="true"');
+    expect(markup).toContain("aria-describedby=");
+    expect(markup).toContain(
+      "Replace saved target locations that are not in the location catalogue.",
+    );
+    expect(markup).toContain('aria-label="Remove Dubai"');
   });
 
   it("does not server-render localized currency options while the popup is closed", () => {

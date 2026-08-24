@@ -7,7 +7,10 @@ import {
   createSearchProfileDefinition,
   type SearchProfileDefinitionResult,
 } from "@/contexts/discovery/domain/search-profile";
-import { isIso4217Currency } from "@/contexts/discovery/presentation/web/components/country-currency-catalogue";
+import {
+  countryOptionFor,
+  isIso4217Currency,
+} from "@/contexts/discovery/presentation/web/components/country-currency-catalogue";
 
 export type ProfileRequestResult =
   | { readonly ok: true; readonly command: SaveSearchProfileCommand }
@@ -23,7 +26,23 @@ const profileSchema = z
     id: z.coerce.number().int().positive().optional(),
     name: z.string().trim().min(2).max(120),
     titleTerms: z.string().transform(splitLines).pipe(z.array(z.string()).min(1)),
-    locationTerms: z.string().transform(splitLines),
+    locationTerms: z.string().transform((value, context) => {
+      const locations = splitLines(value);
+      const countryNames: string[] = [];
+      for (const location of locations) {
+        const country = countryOptionFor(location);
+        if (!country) {
+          context.addIssue({
+            code: "custom",
+            message: "Choose each target location from the suggestions.",
+          });
+          return z.NEVER;
+        }
+        countryNames.push(country.countryName);
+      }
+      return countryNames;
+    }),
+    legacyLocationTerms: z.string().transform(splitLines),
     requiredJobTerms: z.string().transform(splitLines),
     excludedTitleTerms: z.string().transform(splitLines),
     excludedLocationTerms: z.string().transform(splitLines),
@@ -54,6 +73,12 @@ const profileSchema = z
     minScore: z.coerce.number().int().min(0).max(100),
   })
   .superRefine((profile, context) => {
+    if (profile.legacyLocationTerms.length > 0) {
+      context.addIssue({
+        code: "custom",
+        message: "Replace saved target locations that are not in the location catalogue.",
+      });
+    }
     if (
       (profile.salaryMin !== null || profile.salaryMax !== null) &&
       profile.salaryCurrency === null
@@ -83,6 +108,7 @@ export function parseProfileRequest(formData: FormData): ProfileRequestResult {
     name: formData.get("name"),
     titleTerms: formData.get("titleTerms"),
     locationTerms: formData.get("locationTerms"),
+    legacyLocationTerms: formData.get("legacyLocationTerms") ?? "",
     requiredJobTerms: formData.get("requiredJobTerms") ?? "",
     excludedTitleTerms: formData.get("excludedTitleTerms") ?? "",
     excludedLocationTerms: formData.get("excludedLocationTerms") ?? "",

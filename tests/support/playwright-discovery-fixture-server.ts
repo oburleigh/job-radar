@@ -20,7 +20,7 @@ const server = createServer(async (request, response) => {
       organic: [
         {
           title: "Head of Engineering · Acme Fixture",
-          snippet: "Lead the platform engineering organisation in Dubai.",
+          snippet: "Lead the platform engineering organisation in Dubai, United Arab Emirates.",
           link: "https://boards.greenhouse.io/acme-fixture/jobs/12345",
         },
       ],
@@ -67,7 +67,7 @@ const server = createServer(async (request, response) => {
       organic: [
         {
           title: "Head of Engineering at Example Labs",
-          snippet: "Lead the platform engineering organisation in Dubai.",
+          snippet: "Lead the platform engineering organisation in Dubai, United Arab Emirates.",
           link: "https://web3.career/head-of-engineering-example-labs/153058",
         },
       ],
@@ -84,7 +84,7 @@ const server = createServer(async (request, response) => {
           title: "Head of Engineering",
           company_name: "Acme Fixture",
           absolute_url: "https://boards.greenhouse.io/acme-fixture/jobs/12345",
-          location: { name: "Dubai" },
+          location: { name: "Dubai, United Arab Emirates" },
           content: "<p>Lead the platform engineering organisation.</p>",
           departments: [{ name: "Engineering" }],
           first_published: new Date().toISOString(),

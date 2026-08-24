@@ -60,6 +60,14 @@ export function countryOptionsMatching(value: string): readonly CountryCurrencyO
   );
 }
 
+export function countryOptionFor(value: string): CountryCurrencyOption | undefined {
+  const candidate = normalize(value);
+  if (candidate === "") {
+    return undefined;
+  }
+  return countryCurrencyOptions.find((option) => normalize(option.countryName) === candidate);
+}
+
 export function currencyOptionsMatching(value: string): readonly CurrencyOption[] {
   const query = normalize(value);
   return currencyOptions.filter(

@@ -1197,6 +1197,17 @@ table td a:hover {
   line-height: 1.2;
 }
 
+.location-token-invalid {
+  color: var(--jr-color-danger);
+  background: var(--jr-color-danger-subtle);
+  border-color: var(--jr-color-danger);
+}
+
+.location-token-invalid > .location-token-remove {
+  color: var(--jr-color-danger);
+  border-left-color: var(--jr-color-danger);
+}
+
 .location-token-label {
   min-width: 0;
   padding: 0 var(--jr-space-3);

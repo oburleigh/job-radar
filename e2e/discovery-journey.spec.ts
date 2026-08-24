@@ -63,6 +63,7 @@ test("completes discovery and triage while profile editing remains responsive", 
     new RegExp(`[?&]profile=${otherProfile.id}(?:&|$).*provider=serper`),
   );
   await page.getByRole("combobox", { name: "Profile" }).selectOption(String(profileId));
+  await expect(page).toHaveURL(new RegExp(`[?&]profile=${profileId}(?:&|$).*provider=serper`));
 
   await configureSerperEndpoint(page, `${fixtureUrl}/serper/success`);
   await page.getByRole("link", { name: /Greenhouse/ }).click();
@@ -391,7 +392,7 @@ async function createProfile(
   await page.getByLabel("Minimum score").fill("60");
   await page.getByLabel("Target job titles").fill("Head of Engineering");
   const locations = page.getByRole("combobox", { name: "Target locations" });
-  await locations.fill("Dubai");
+  await locations.fill("United Arab Emirates");
   await locations.press("Enter");
   if (options.includeUnverified) {
     await page.getByLabel("Include unverified web-search leads").check();

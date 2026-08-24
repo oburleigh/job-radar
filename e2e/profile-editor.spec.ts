@@ -44,18 +44,39 @@ test("edits profile locations and salary currency through keyboard comboboxes", 
   await expect(page.getByRole("button", { name: "Remove Canada" })).toBeVisible();
   await expect(page.getByLabel("Include remote roles")).toBeFocused();
 
-  await locations.fill("Free text location");
-  await locations.press("Escape");
-  await expect(locations).toHaveValue("Free text location");
-  await expect(locations).toHaveAttribute("aria-expanded", "false");
+  await locations.fill("china");
   await locations.press("Enter");
-  await expect(page.getByRole("button", { name: "Remove Free text location" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Remove China" })).toBeVisible();
+  await expect(locations).toHaveValue("");
 
+  await locations.fill("oli");
+  await locations.press("Enter");
+  await expect(page.getByRole("button", { name: "Remove oli" })).toHaveCount(0);
+  await expect(locations).toHaveValue("oli");
+  await expect(locations).toHaveAttribute("aria-invalid", "true");
+  await expect(page.locator(`#${await locations.getAttribute("aria-describedby")}`)).toHaveText(
+    "Choose a target location from the suggestions.",
+  );
+
+  await locations.fill("");
   await locations.press("Backspace");
-  await expect(page.getByRole("button", { name: "Remove Free text location" })).toHaveCount(0);
-  await expect(
-    page.getByRole("status").filter({ hasText: "Free text location removed" }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Remove China" })).toHaveCount(0);
+  await expect(page.getByRole("status").filter({ hasText: "China removed" })).toBeVisible();
+});
+
+test("adds the active target-location suggestion with Tab from an empty query", async ({
+  page,
+}) => {
+  await page.goto("/profiles?new=1");
+
+  const locations = page.getByRole("combobox", { name: "Target locations" });
+  await locations.focus();
+  await locations.press("ArrowDown");
+  await locations.press("Tab");
+
+  await expect(page.getByRole("button", { name: "Remove Afghanistan" })).toBeVisible();
+  await expect(page.getByRole("combobox", { name: "Salary currency" })).toHaveValue("AFN");
+  await expect(page.getByLabel("Include remote roles")).toBeFocused();
 });
 
 test("shows the target-location validation error on an empty profile submission", async ({

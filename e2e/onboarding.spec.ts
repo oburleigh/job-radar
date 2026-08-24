@@ -28,7 +28,6 @@ test.describe
       await page.getByLabel("Preferred salary minimum").fill("500000");
       await page.getByLabel("Preferred salary maximum").fill("750000");
       await page.getByLabel("Target job titles").fill("VP Engineering\nHead of Engineering");
-      await addLocation(page, "Dubai");
       await chooseComboboxOption(page, "Target locations", "United Arab Emirates");
       await page.getByLabel("Include remote roles").check();
       await page.getByRole("button", { name: "Save profile" }).click();
@@ -138,11 +137,5 @@ async function chooseComboboxOption(
   const input = page.getByRole("combobox", { name: label });
   await input.fill(value);
   await input.press("ArrowDown");
-  await input.press("Enter");
-}
-
-async function addLocation(page: import("@playwright/test").Page, value: string) {
-  const input = page.getByRole("combobox", { name: "Target locations" });
-  await input.fill(value);
   await input.press("Enter");
 }
