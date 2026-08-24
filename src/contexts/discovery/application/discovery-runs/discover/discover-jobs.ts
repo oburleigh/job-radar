@@ -45,6 +45,14 @@ type JobDiscoveryDependencies = {
   readonly yieldControl: () => Promise<void>;
 };
 
+function throwIfCancelled(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) {
+    throw signal.reason instanceof Error
+      ? signal.reason
+      : new DOMException("The discovery run was cancelled", "AbortError");
+  }
+}
+
 export function createJobDiscovery({
   setup,
   runs,
@@ -56,6 +64,7 @@ export function createJobDiscovery({
 }: JobDiscoveryDependencies): ForDiscoveringJobs {
   return {
     async discoverJobs(command) {
+      throwIfCancelled(command.signal);
       const { profile, sources, policy } = setup.load(command);
       const provider = providers.get(command.providerName);
       const searchMaxAgeDays =
@@ -73,6 +82,7 @@ export function createJobDiscovery({
         sources.filter((source) => source.supportsBoardSync),
       );
       const plannedQueries = [...roleQueries, ...boardQueries];
+      throwIfCancelled(command.signal);
       const run = runs.prepare({
         ...(command.runId === undefined ? {} : { runId: command.runId }),
         profileId: command.profileId,
@@ -98,16 +108,22 @@ export function createJobDiscovery({
       try {
         const queries = runs.planQueries(run.id, plannedQueries);
         for (const query of queries) {
+          throwIfCancelled(command.signal);
           activeQueryId = query.id;
           runs.startQuery(query.id, now());
           let results = [] as Awaited<ReturnType<typeof provider.search>>;
           let queryFailed = false;
           try {
+            throwIfCancelled(command.signal);
             results = await provider.search(query.text, {
               count: command.resultsPerQuery ?? policy.resultsPerQuery,
               maxAgeDays: searchMaxAgeDays,
+              ...(command.signal ? { signal: command.signal } : {}),
             });
           } catch (error) {
+            if (command.signal?.aborted) {
+              throw error;
+            }
             const message = errorMessage(error);
             queryErrors.push(`${query.sourcePattern} / ${query.titleTerm}: ${message}`);
             queryFailed = true;
@@ -115,6 +131,7 @@ export function createJobDiscovery({
           }
 
           for (const [index, result] of results.entries()) {
+            throwIfCancelled(command.signal);
             const recorded = await jobs.recordHit({
               runId: run.id,
               query: query.text,
@@ -130,8 +147,10 @@ export function createJobDiscovery({
             }
             if ((index + 1) % policy.workYieldBatchSize === 0) {
               await yieldControl();
+              throwIfCancelled(command.signal);
             }
           }
+          throwIfCancelled(command.signal);
           if (!queryFailed) {
             runs.completeQuery(query.id, results.length, now());
           }
@@ -141,6 +160,7 @@ export function createJobDiscovery({
 
         if (command.syncBoards !== false) {
           for (const boardId of boardIds) {
+            throwIfCancelled(command.signal);
             const result = await jobs.synchronizeBoard(
               boardId,
               command.boardJobLimit ?? policy.boardJobLimit,
@@ -151,10 +171,15 @@ export function createJobDiscovery({
           }
         }
 
+        throwIfCancelled(command.signal);
         matchesFound = (
-          await matches.evaluate(command.profileId, () => {
-            runs.recordProgress(run.id, progress(), now());
-          })
+          await matches.evaluate(
+            command.profileId,
+            () => {
+              runs.recordProgress(run.id, progress(), now());
+            },
+            () => throwIfCancelled(command.signal),
+          )
         ).matched;
         runs.complete({
           runId: run.id,
@@ -167,6 +192,9 @@ export function createJobDiscovery({
           finishedAt: now(),
         });
       } catch (error) {
+        if (command.signal?.aborted) {
+          throw error;
+        }
         const message = errorMessage(error);
         if (activeQueryId !== undefined) {
           runs.failQuery(activeQueryId, message, now());

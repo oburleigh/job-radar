@@ -1,6 +1,7 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { z } from "zod";
 import { discoveryRunsWeb } from "@/contexts/discovery/composition/discovery-runs.server";
+import { createCancelDiscoveryRunRoute } from "@/contexts/discovery/presentation/web/http/cancel-discovery-run";
 import { createStartDiscoveryRunRoute } from "@/contexts/discovery/presentation/web/http/start-discovery-run";
 import { assertLocalHost } from "@/platform/http/require-local-request";
 
@@ -9,6 +10,10 @@ const startDiscoveryRun = createStartDiscoveryRunRoute({
   isProviderConfigured: discoveryRunsWeb.isProviderConfigured,
   assertProviderReady: discoveryRunsWeb.assertProviderReady,
   discoveryRuns: { startDiscoveryRun: discoveryRunsWeb.startDiscoveryRun },
+});
+const cancelDiscoveryRun = createCancelDiscoveryRunRoute({
+  assertLocalRequest: (request) => assertLocalHost(request.headers.get("host") ?? ""),
+  discoveryRuns: { cancelDiscoveryRun: discoveryRunsWeb.cancelDiscoveryRun },
 });
 
 const idsSchema = z
@@ -45,5 +50,5 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export async function action({ request }: ActionFunctionArgs) {
-  return startDiscoveryRun(request);
+  return request.method === "DELETE" ? cancelDiscoveryRun(request) : startDiscoveryRun(request);
 }

@@ -92,6 +92,23 @@ describe("Brave search provider", () => {
       /^\d{4}-\d{2}-\d{2}to\d{4}-\d{2}-\d{2}$/,
     );
   });
+
+  it("combines a caller cancellation signal with the provider timeout", async () => {
+    let requestSignal: AbortSignal | undefined;
+    const fetcher: typeof fetch = async (_input, init) => {
+      requestSignal = init?.signal as AbortSignal | undefined;
+      return Response.json({ web: { results: [] } });
+    };
+    const provider = new BraveSearchProvider("test-key", fetcher);
+    const controller = new AbortController();
+
+    await provider.search("engineering", { signal: controller.signal });
+
+    expect(requestSignal).toBeDefined();
+    expect(requestSignal).not.toBe(controller.signal);
+    controller.abort();
+    expect(requestSignal?.aborted).toBe(true);
+  });
 });
 
 describe("Serper.dev search provider", () => {

@@ -16,6 +16,7 @@ export function createSqliteDiscoveryRunJournal(database: Database): DiscoveryRu
               id: discoveryRuns.id,
               profileId: discoveryRuns.profileId,
               providerName: discoveryRuns.provider,
+              status: discoveryRuns.status,
             })
             .from(discoveryRuns)
             .where(eq(discoveryRuns.id, runId))
@@ -34,14 +35,20 @@ export function createSqliteDiscoveryRunJournal(database: Database): DiscoveryRu
               id: discoveryRuns.id,
               profileId: discoveryRuns.profileId,
               providerName: discoveryRuns.provider,
+              status: discoveryRuns.status,
             })
             .get();
 
-      if (!run || run.profileId !== profileId || run.providerName !== providerName) {
+      if (
+        !run ||
+        run.profileId !== profileId ||
+        run.providerName !== providerName ||
+        (runId !== undefined && run.status !== "running")
+      ) {
         throw new Error("The reserved discovery run is invalid");
       }
       if (runId) {
-        database
+        const reset = database
           .update(discoveryRuns)
           .set({
             status: "running",
@@ -56,8 +63,11 @@ export function createSqliteDiscoveryRunJournal(database: Database): DiscoveryRu
             heartbeatAt: startedAt,
             finishedAt: null,
           })
-          .where(eq(discoveryRuns.id, run.id))
+          .where(and(eq(discoveryRuns.id, run.id), eq(discoveryRuns.status, "running")))
           .run();
+        if (reset.changes === 0) {
+          throw new Error("The reserved discovery run is no longer running");
+        }
       }
       return run;
     },
@@ -84,21 +94,21 @@ export function createSqliteDiscoveryRunJournal(database: Database): DiscoveryRu
       database
         .update(discoveryQueries)
         .set({ status: "running", startedAt })
-        .where(eq(discoveryQueries.id, queryId))
+        .where(and(eq(discoveryQueries.id, queryId), eq(discoveryQueries.status, "planned")))
         .run();
     },
     completeQuery(queryId, hitCount, finishedAt) {
       database
         .update(discoveryQueries)
         .set({ status: "completed", hitCount, finishedAt })
-        .where(eq(discoveryQueries.id, queryId))
+        .where(and(eq(discoveryQueries.id, queryId), eq(discoveryQueries.status, "running")))
         .run();
     },
     failQuery(queryId, message, finishedAt) {
       database
         .update(discoveryQueries)
         .set({ status: "failed", error: message, finishedAt })
-        .where(eq(discoveryQueries.id, queryId))
+        .where(and(eq(discoveryQueries.id, queryId), eq(discoveryQueries.status, "running")))
         .run();
     },
     recordProgress(runId, progress, recordedAt) {
@@ -128,7 +138,7 @@ export function createSqliteDiscoveryRunJournal(database: Database): DiscoveryRu
           heartbeatAt: finishedAt,
           finishedAt,
         })
-        .where(eq(discoveryRuns.id, runId))
+        .where(and(eq(discoveryRuns.id, runId), eq(discoveryRuns.status, "running")))
         .run();
     },
     fail({ runId, progress, boardsDiscovered, matchesFound, message, finishedAt }) {
@@ -143,7 +153,7 @@ export function createSqliteDiscoveryRunJournal(database: Database): DiscoveryRu
           heartbeatAt: finishedAt,
           finishedAt,
         })
-        .where(eq(discoveryRuns.id, runId))
+        .where(and(eq(discoveryRuns.id, runId), eq(discoveryRuns.status, "running")))
         .run();
     },
   };

@@ -1,5 +1,5 @@
 import { Button, buttonAttributes, PageHeader } from "@job-radar/design-ui";
-import { ArrowLeft, CheckCircle2, CircleAlert, LoaderCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, CircleAlert, CircleX, LoaderCircle } from "lucide-react";
 import { Form, Link, type LoaderFunctionArgs, useLoaderData } from "react-router";
 import { discoveryWeb } from "@/contexts/discovery/composition/discovery-web.server";
 import { KnownRoleDiagnostic } from "@/contexts/discovery/presentation/web/components/known-role-diagnostic";
@@ -141,6 +141,8 @@ export default function RunDetailPage() {
                           <CheckCircle2 size={15} />
                         ) : query.status === "failed" ? (
                           <CircleAlert size={15} />
+                        ) : query.status === "cancelled" ? (
+                          <CircleX size={15} />
                         ) : (
                           <LoaderCircle size={15} />
                         )}

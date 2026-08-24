@@ -22,6 +22,7 @@ export interface EvaluationSummary {
 
 interface EvaluationOptions {
   onBatch?: () => void;
+  beforeBatch?: () => void;
   yieldEvery?: number;
 }
 
@@ -37,6 +38,9 @@ export async function evaluateAndStore(
   const yieldEvery = options.yieldEvery ?? config.discovery.workYieldBatchSize;
 
   for (const [index, job] of activeJobs.entries()) {
+    if (index % yieldEvery === 0) {
+      options.beforeBatch?.();
+    }
     const result = evaluateJob(
       {
         ...job,

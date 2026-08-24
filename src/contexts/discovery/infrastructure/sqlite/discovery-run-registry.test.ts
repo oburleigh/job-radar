@@ -115,6 +115,80 @@ describe("SQLite discovery run registry", () => {
     });
   });
 
+  it("cancels an active run and keeps it terminal across stale cleanup", () => {
+    const profileId = insertProfile(database);
+    const registry = createSqliteDiscoveryRunRegistry(database, {
+      now: () => now,
+      staleAfterMs: () => 300_000,
+    });
+    const reservation = registry.reserve({ profileId, providerName: "serper" });
+    const finishedAt = new Date("2026-08-20T09:01:00.000Z");
+
+    expect(
+      registry.cancel({
+        runId: reservation.runId,
+        message: "Cancelled by user",
+        finishedAt,
+      }),
+    ).toEqual({ status: "cancelled", runId: reservation.runId });
+    expect(registry.failStale()).toBe(0);
+    expect(
+      sqlite
+        .prepare("select status, error, finished_at from discovery_runs where id = ?")
+        .get(reservation.runId),
+    ).toEqual({
+      status: "cancelled",
+      error: "Cancelled by user",
+      finished_at: finishedAt.getTime(),
+    });
+
+    expect(
+      registry.cancel({
+        runId: reservation.runId,
+        message: "Late cancellation",
+        finishedAt: new Date("2026-08-20T09:02:00.000Z"),
+      }),
+    ).toEqual({
+      status: "already-terminal",
+      runId: reservation.runId,
+      terminalStatus: "cancelled",
+    });
+  });
+
+  it("reports a missing run without writing a cancellation", () => {
+    const registry = createSqliteDiscoveryRunRegistry(database, {
+      now: () => now,
+      staleAfterMs: () => 300_000,
+    });
+
+    expect(
+      registry.cancel({
+        runId: 99,
+        message: "Cancelled by user",
+        finishedAt: now,
+      }),
+    ).toEqual({ status: "not-found", runId: 99 });
+  });
+
+  it("allows a replacement run after cancellation", () => {
+    const profileId = insertProfile(database);
+    const registry = createSqliteDiscoveryRunRegistry(database, {
+      now: () => now,
+      staleAfterMs: () => 300_000,
+    });
+    const first = registry.reserve({ profileId, providerName: "serper" });
+    registry.cancel({
+      runId: first.runId,
+      message: "Cancelled by user",
+      finishedAt: now,
+    });
+
+    expect(registry.reserve({ profileId, providerName: "serper" })).toEqual({
+      status: "created",
+      runId: 2,
+    });
+  });
+
   it("rejects a run for a missing search profile", () => {
     const registry = createSqliteDiscoveryRunRegistry(database, {
       now: () => now,

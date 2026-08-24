@@ -59,7 +59,7 @@ describe("discover jobs", () => {
     expect(recordHit).toHaveBeenCalledTimes(2);
     expect(synchronizeBoard).toHaveBeenCalledOnce();
     expect(synchronizeBoard).toHaveBeenCalledWith(11, 200);
-    expect(evaluateMatches).toHaveBeenCalledWith(7, expect.any(Function));
+    expect(evaluateMatches).toHaveBeenCalledWith(7, expect.any(Function), expect.any(Function));
     expect(yieldControl).toHaveBeenCalledTimes(2);
     expect(journal.completed).toEqual([
       expect.objectContaining({
@@ -137,6 +137,88 @@ describe("discover jobs", () => {
     expect(journal.failed).toEqual([
       expect.objectContaining({ runId: 41, message: "Could not store search result" }),
     ]);
+  });
+
+  it("stops before starting another provider batch after cancellation", async () => {
+    const controller = new AbortController();
+    const journal = recordingJournal();
+    const search = vi.fn(async (_query: string, request?: { signal?: AbortSignal }) => {
+      expect(request?.signal).toBe(controller.signal);
+      return [
+        {
+          title: "VP Engineering",
+          url: "https://jobs.example.com/vp-engineering",
+          snippet: "Engineering leadership in Dubai",
+        },
+      ];
+    });
+    const recordHit = vi.fn(async () => ({
+      inserted: true,
+      jobsWritten: 1,
+    }));
+    const yieldControl = vi.fn(async () => {
+      controller.abort("Cancelled by user");
+    });
+    const discovery = createJobDiscovery({
+      setup: configuredSetup(),
+      runs: journal,
+      jobs: { recordHit, synchronizeBoard: vi.fn() },
+      matches: { evaluate: vi.fn() },
+      providers: providerDirectory(search),
+      now: () => timestamp,
+      yieldControl,
+    });
+
+    await expect(
+      discovery.discoverJobs({
+        profileId: 7,
+        providerName: "serper",
+        runId: 41,
+        syncBoards: false,
+        signal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ name: "AbortError" });
+
+    expect(search).toHaveBeenCalledOnce();
+    expect(recordHit).toHaveBeenCalledOnce();
+    expect(journal.completed).toEqual([]);
+    expect(journal.failed).toEqual([]);
+  });
+
+  it("stops before a later evaluation batch after cancellation", async () => {
+    const controller = new AbortController();
+    const journal = recordingJournal();
+    const discovery = createJobDiscovery({
+      setup: configuredSetup(),
+      runs: journal,
+      jobs: {
+        recordHit: vi.fn(async () => ({ inserted: false, jobsWritten: 0 })),
+        synchronizeBoard: vi.fn(),
+      },
+      matches: {
+        evaluate: async (_profileId, _onBatch, beforeBatch) => {
+          beforeBatch?.();
+          controller.abort("Cancelled by user");
+          beforeBatch?.();
+          return { matched: 0 };
+        },
+      },
+      providers: providerDirectory(async () => []),
+      now: () => timestamp,
+      yieldControl: vi.fn(),
+    });
+
+    await expect(
+      discovery.discoverJobs({
+        profileId: 7,
+        providerName: "serper",
+        runId: 41,
+        syncBoards: false,
+        signal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ name: "AbortError" });
+    expect(journal.completed).toEqual([]);
+    expect(journal.failed).toEqual([]);
   });
 });
 

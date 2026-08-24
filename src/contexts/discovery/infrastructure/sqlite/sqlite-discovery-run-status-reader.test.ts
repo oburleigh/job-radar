@@ -69,6 +69,48 @@ describe("SQLite discovery run status reader", () => {
       }),
     ]);
   });
+
+  it("returns a cancelled run for explicit polling by id", () => {
+    const profileId = database
+      .insert(schema.searchProfiles)
+      .values({
+        name: "Cancelled profile",
+        titleTerms: ["Staff Engineer"],
+        locationTerms: ["Remote"],
+        excludedTitleTerms: [],
+        excludedDescriptionTerms: [],
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning({ id: schema.searchProfiles.id })
+      .get().id;
+    database
+      .insert(schema.discoveryRuns)
+      .values({
+        profileId,
+        provider: "serper",
+        status: "cancelled",
+        error: "Cancelled by user",
+        startedAt: now,
+        heartbeatAt: now,
+        finishedAt: now,
+      })
+      .run();
+    const reader = createSqliteDiscoveryRunStatusReader(database);
+
+    const result = reader.read({ ids: [1], activeOnly: false });
+
+    expect(result).toEqual({
+      runs: [
+        expect.objectContaining({
+          id: 1,
+          status: "cancelled",
+          errorSummary: "Cancelled by user",
+        }),
+      ],
+      missingIds: [],
+    });
+  });
 });
 
 function createDatabase(sqlite: Database.Database) {

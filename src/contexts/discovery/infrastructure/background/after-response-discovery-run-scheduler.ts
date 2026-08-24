@@ -14,14 +14,28 @@ export function createAfterResponseDiscoveryRunScheduler({
   discoveryRuns,
   reportFailure,
 }: AfterResponseDiscoveryRunSchedulerDependencies): DiscoveryRunScheduler {
+  const controllers = new Map<number, AbortController>();
+
   return {
     schedule(execution) {
+      const controller = new AbortController();
+      controllers.set(execution.runId, controller);
       afterResponse(async () => {
-        const result = await discoveryRuns.executeDiscoveryRun(execution);
-        if (result.status === "failed") {
-          reportFailure(`Discovery run ${execution.runId} failed: ${result.message}`);
+        try {
+          const result = await discoveryRuns.executeDiscoveryRun({
+            ...execution,
+            signal: controller.signal,
+          });
+          if (result.status === "failed") {
+            reportFailure(`Discovery run ${execution.runId} failed: ${result.message}`);
+          }
+        } finally {
+          controllers.delete(execution.runId);
         }
       });
+    },
+    cancel(runId) {
+      controllers.get(runId)?.abort("Cancelled by user");
     },
   };
 }

@@ -1,10 +1,15 @@
-import { and, desc, eq, isNull, lt, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt, or } from "drizzle-orm";
 import type {
+  DiscoveryRunCancellation,
   DiscoveryRunRegistry,
   DiscoveryRunReservation,
 } from "@/contexts/discovery/application/discovery-runs/ports/discovery-run-registry";
 import type { db } from "@/contexts/discovery/infrastructure/sqlite/database";
-import { discoveryRuns, searchProfiles } from "@/contexts/discovery/infrastructure/sqlite/schema";
+import {
+  discoveryQueries,
+  discoveryRuns,
+  searchProfiles,
+} from "@/contexts/discovery/infrastructure/sqlite/schema";
 
 type Database = typeof db;
 
@@ -46,6 +51,63 @@ export function createSqliteDiscoveryRunRegistry(
 
   return {
     failStale,
+    cancel({ runId, message, finishedAt }): DiscoveryRunCancellation {
+      return database.transaction((transaction) => {
+        const cancelChildQueries = () =>
+          transaction
+            .update(discoveryQueries)
+            .set({ status: "cancelled", error: message, finishedAt })
+            .where(
+              and(
+                eq(discoveryQueries.runId, runId),
+                inArray(discoveryQueries.status, ["planned", "running"]),
+              ),
+            )
+            .run();
+        const run = transaction
+          .select({ status: discoveryRuns.status })
+          .from(discoveryRuns)
+          .where(eq(discoveryRuns.id, runId))
+          .get();
+        if (!run) {
+          return { status: "not-found", runId };
+        }
+        if (run.status === "completed" || run.status === "failed") {
+          return { status: "already-terminal", runId, terminalStatus: run.status };
+        }
+        if (run.status === "cancelled") {
+          cancelChildQueries();
+          return { status: "already-terminal", runId, terminalStatus: run.status };
+        }
+
+        const cancelled = transaction
+          .update(discoveryRuns)
+          .set({ status: "cancelled", error: message, heartbeatAt: finishedAt, finishedAt })
+          .where(and(eq(discoveryRuns.id, runId), eq(discoveryRuns.status, "running")))
+          .run();
+        if (cancelled.changes === 0) {
+          const current = transaction
+            .select({ status: discoveryRuns.status })
+            .from(discoveryRuns)
+            .where(eq(discoveryRuns.id, runId))
+            .get();
+          if (!current) {
+            return { status: "not-found", runId };
+          }
+          if (
+            current.status === "completed" ||
+            current.status === "failed" ||
+            current.status === "cancelled"
+          ) {
+            return { status: "already-terminal", runId, terminalStatus: current.status };
+          }
+          return { status: "not-found", runId };
+        }
+
+        cancelChildQueries();
+        return { status: "cancelled", runId };
+      });
+    },
     fail({ runId, message, finishedAt }) {
       database
         .update(discoveryRuns)

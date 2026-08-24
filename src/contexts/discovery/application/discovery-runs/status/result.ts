@@ -3,7 +3,7 @@ export interface DiscoveryRunStatusDto {
   readonly profileId: number;
   readonly profileName: string;
   readonly provider: string;
-  readonly status: "running" | "completed" | "failed";
+  readonly status: "running" | "completed" | "failed" | "cancelled";
   readonly hitCount: number;
   readonly jobsUpserted: number;
   readonly matchesFound: number;

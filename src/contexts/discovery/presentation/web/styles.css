@@ -1592,6 +1592,11 @@ td a {
   background: var(--jr-color-danger-subtle);
 }
 
+.run-cancelled {
+  color: var(--jr-color-text-subtle);
+  background: var(--jr-color-surface-subtle);
+}
+
 .run-running {
   color: var(--jr-color-accent-strong);
   background: var(--jr-color-accent-subtle);
@@ -1651,7 +1656,7 @@ td a {
 }
 
 .discovery-running {
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
 }
 
 .discovery-running strong,
@@ -1674,6 +1679,11 @@ td a {
 .discovery-notice.notice-failed {
   background: var(--jr-color-danger);
   border-color: var(--jr-color-danger-bright);
+}
+
+.discovery-notice.notice-cancelled {
+  background: var(--jr-color-surface-subtle);
+  border-color: var(--jr-color-border-strong);
 }
 
 .discovery-notice .jr-icon-button {

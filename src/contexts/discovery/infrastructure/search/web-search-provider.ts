@@ -71,7 +71,7 @@ export class BraveSearchProvider implements SearchProvider {
         Accept: "application/json",
         "X-Subscription-Token": this.apiKey,
       },
-      signal: AbortSignal.timeout(config.network.timeoutMs),
+      signal: requestSignal(options.signal, config.network.timeoutMs),
     });
     if (!response.ok) {
       throw new Error(`Brave Search returned HTTP ${response.status}`);
@@ -120,7 +120,7 @@ export class SerpApiSearchProvider implements SearchProvider {
 
     const response = await this.fetcher(url, {
       headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(config.network.timeoutMs),
+      signal: requestSignal(options.signal, config.network.timeoutMs),
     });
     if (!response.ok) {
       throw new Error(`SerpAPI returned HTTP ${response.status}`);
@@ -164,7 +164,7 @@ export class SerperSearchProvider implements SearchProvider {
         "X-API-KEY": this.apiKey,
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(config.network.timeoutMs),
+      signal: requestSignal(options.signal, config.network.timeoutMs),
     });
     if (!response.ok) {
       const parsedError = providerErrorSchema.safeParse(await response.json().catch(() => ({})));
@@ -235,6 +235,11 @@ function requireProviderConfig(name: string) {
     throw new Error(`Search provider "${name}" is not configured in SQLite`);
   }
   return provider;
+}
+
+function requestSignal(signal: AbortSignal | undefined, timeoutMs: number): AbortSignal {
+  const timeout = AbortSignal.timeout(timeoutMs);
+  return signal ? AbortSignal.any([signal, timeout]) : timeout;
 }
 
 function parseProviderResponse<Output>(

@@ -6,6 +6,7 @@ import type { DiscoveryRunRegistry } from "@/contexts/discovery/application/disc
 
 export interface DiscoveryRunScheduler {
   schedule(execution: DiscoveryRunExecution): void;
+  cancel(runId: number): void;
 }
 
 export type StartDiscoveryRunResult =

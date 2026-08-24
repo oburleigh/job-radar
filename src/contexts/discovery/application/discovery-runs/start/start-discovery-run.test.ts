@@ -8,6 +8,9 @@ describe("start discovery run", () => {
     const started: Array<{ profileId: number; providerName: string; runId: number }> = [];
     const scheduler: DiscoveryRunScheduler = {
       schedule: (execution) => started.push(execution),
+      cancel: () => {
+        throw new Error("must not cancel a run while starting it");
+      },
     };
     const discoveryRuns = createDiscoveryRunStarter({ registry, scheduler });
 
@@ -23,6 +26,9 @@ describe("start discovery run", () => {
       schedule: () => {
         throw new Error("must not start an existing run again");
       },
+      cancel: () => {
+        throw new Error("must not cancel a run while starting it");
+      },
     };
     const discoveryRuns = createDiscoveryRunStarter({ registry, scheduler });
 
@@ -37,6 +43,9 @@ function registryReturning(
 ): DiscoveryRunRegistry {
   return {
     reserve: () => result,
+    cancel: () => {
+      throw new Error("must not cancel a run while starting it");
+    },
     fail: () => {
       throw new Error("must not fail a run while starting it");
     },

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type {
   DiscoverJobsCommand,
   ForDiscoveringJobs,
@@ -39,6 +39,39 @@ describe("execute discovery run", () => {
     const result = await discoveryRuns.executeDiscoveryRun(execution);
 
     expect(result).toEqual({ status: "failed", message: "Search provider timed out" });
+  });
+
+  it("reports cancellation without converting it to a failure", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const discovery: ForDiscoveringJobs = {
+      discoverJobs: async () => {
+        throw new DOMException("The operation was aborted", "AbortError");
+      },
+    };
+    const discoveryRuns = createDiscoveryRunExecution({ discovery });
+
+    const result = await discoveryRuns.executeDiscoveryRun({
+      ...execution,
+      signal: controller.signal,
+    });
+
+    expect(result).toEqual({ status: "cancelled" });
+  });
+
+  it("does not start discovery when cancellation already won", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const discoverJobs = vi.fn<ForDiscoveringJobs["discoverJobs"]>();
+    const discoveryRuns = createDiscoveryRunExecution({ discovery: { discoverJobs } });
+
+    const result = await discoveryRuns.executeDiscoveryRun({
+      ...execution,
+      signal: controller.signal,
+    });
+
+    expect(result).toEqual({ status: "cancelled" });
+    expect(discoverJobs).not.toHaveBeenCalled();
   });
 });
 

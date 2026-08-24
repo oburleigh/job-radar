@@ -199,6 +199,55 @@ test("shows a Web3 source and search-lead state after opted-in discovery", async
   ).toBeVisible();
 });
 
+test("cancels a running discovery without resurrecting a delayed poll", async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(90_000);
+  expect((await request.post(`${fixtureUrl}/control/reset-success`)).ok()).toBe(true);
+  await configureDiscoveryFixtures(page);
+  const { id: profileId } = await createProfile(page);
+
+  let delayedStatus = false;
+  await page.route("**/api/discovery-runs**", async (route) => {
+    const url = new URL(route.request().url());
+    if (route.request().method() !== "GET" || !url.searchParams.has("ids") || delayedStatus) {
+      await route.continue();
+      return;
+    }
+    delayedStatus = true;
+    const response = await route.fetch();
+    await new Promise((resolve) => setTimeout(resolve, 1_500));
+    await route.fulfill({ response });
+  });
+
+  await page.goto(`/?profile=${profileId}`);
+  await page.getByLabel("Search provider").selectOption("serper");
+  const startedResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname === "/api/discovery-runs",
+  );
+  await page.getByRole("button", { name: "Run discovery" }).click();
+  const started = (await (await startedResponse).json()) as { runId: number };
+  const runningMessage = `Discovery #${started.runId} is running in the background`;
+  await expect(page.getByText(runningMessage, { exact: true })).toBeVisible({ timeout: 30_000 });
+
+  const cancelResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "DELETE" &&
+      new URL(response.url()).pathname === "/api/discovery-runs",
+  );
+  await page.getByRole("button", { name: `Cancel discovery #${started.runId}` }).click();
+  expect((await cancelResponse).status()).toBe(200);
+  await expect(page.getByRole("status").filter({ hasText: "Discovery cancelled" })).toBeVisible();
+  await expect(page.getByText(runningMessage, { exact: true })).toBeHidden();
+
+  await new Promise((resolve) => setTimeout(resolve, 1_800));
+  await expect(page.getByText(runningMessage, { exact: true })).toBeHidden();
+  expect((await request.post(`${fixtureUrl}/control/release-success`)).ok()).toBe(true);
+});
+
 test("explains that a returned role was excluded by location", async ({ page }) => {
   test.setTimeout(90_000);
   await configureDiscoveryFixtures(page, `${fixtureUrl}/serper/location-mismatch`);

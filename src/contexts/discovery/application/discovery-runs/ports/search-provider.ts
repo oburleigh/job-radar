@@ -7,6 +7,7 @@ export type SearchResult = {
 export type SearchRequest = {
   readonly count?: number;
   readonly maxAgeDays?: number;
+  readonly signal?: AbortSignal;
 };
 
 export interface SearchProvider {

@@ -5,7 +5,7 @@ export interface DiagnosticQuery {
   readonly atsType: string;
   readonly sourcePattern: string;
   readonly titleTerm: string;
-  readonly status: "planned" | "running" | "completed" | "failed";
+  readonly status: "planned" | "running" | "completed" | "failed" | "cancelled";
   readonly providerResults: number;
 }
 

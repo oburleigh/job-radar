@@ -1,5 +1,5 @@
 import { setImmediate as yieldToEventLoop } from "node:timers/promises";
-
+import { createDiscoveryRunCanceller } from "@/contexts/discovery/application/discovery-runs/cancel/cancel-discovery-run";
 import { createJobDiscovery } from "@/contexts/discovery/application/discovery-runs/discover/discover-jobs";
 import { createDiscoveryRunExecution } from "@/contexts/discovery/application/discovery-runs/execute/execute-discovery-run";
 import { createDiscoveryRunStarter } from "@/contexts/discovery/application/discovery-runs/start/start-discovery-run";
@@ -42,6 +42,11 @@ const scheduler = createAfterResponseDiscoveryRunScheduler({
   reportFailure: (message) => console.error(message),
 });
 const starter = createDiscoveryRunStarter({ registry, scheduler });
+const canceller = createDiscoveryRunCanceller({
+  registry,
+  scheduler,
+  now: () => new Date(),
+});
 const statuses = createSqliteDiscoveryRunStatusReader(db);
 
 export const discoveryRunsWeb = {
@@ -49,5 +54,6 @@ export const discoveryRunsWeb = {
   failStale: () => registry.failStale(),
   isProviderConfigured: (name: string) => Boolean(getJobRadarConfig().searchProviders[name]),
   readStatuses: statuses.read.bind(statuses),
+  cancelDiscoveryRun: canceller.cancelDiscoveryRun.bind(canceller),
   startDiscoveryRun: starter.startDiscoveryRun.bind(starter),
 };

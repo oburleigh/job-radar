@@ -105,7 +105,7 @@ export const discoveryRuns = sqliteTable(
       .references(() => searchProfiles.id, { onDelete: "cascade" }),
     provider: text("provider").notNull(),
     status: text("status", {
-      enum: ["running", "completed", "failed"],
+      enum: ["running", "completed", "failed", "cancelled"],
     })
       .notNull()
       .default("running"),
@@ -139,7 +139,7 @@ export const discoveryQueries = sqliteTable(
     titleTerm: text("title_term").notNull(),
     queryText: text("query_text").notNull(),
     status: text("status", {
-      enum: ["planned", "running", "completed", "failed"],
+      enum: ["planned", "running", "completed", "failed", "cancelled"],
     })
       .notNull()
       .default("planned"),

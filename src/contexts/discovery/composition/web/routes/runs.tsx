@@ -1,5 +1,5 @@
 import { PageHeader } from "@job-radar/design-ui";
-import { CheckCircle2, CircleAlert, Clock3, LoaderCircle } from "lucide-react";
+import { CheckCircle2, CircleAlert, CircleX, Clock3, LoaderCircle } from "lucide-react";
 import { Link, useLoaderData } from "react-router";
 import { discoveryWeb } from "@/contexts/discovery/composition/discovery-web.server";
 
@@ -39,11 +39,18 @@ export default function RunsPage() {
                 {runs.map((run) => (
                   <tr key={run.id}>
                     <td>
-                      <Link to={`/runs/${run.id}`} className={`run-status run-${run.status}`}>
+                      <Link
+                        to={`/runs/${run.id}`}
+                        className={`run-status run-${run.status}`}
+                        aria-label={`Run #${run.id} ${run.status}`}
+                        title={run.status}
+                      >
                         {run.status === "completed" ? (
                           <CheckCircle2 size={15} />
                         ) : run.status === "failed" ? (
                           <CircleAlert size={15} />
+                        ) : run.status === "cancelled" ? (
+                          <CircleX size={15} />
                         ) : (
                           <LoaderCircle size={15} />
                         )}

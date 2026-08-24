@@ -5,6 +5,7 @@ export type StartDiscoveryRunCommand = {
 
 export type DiscoveryRunExecution = StartDiscoveryRunCommand & {
   readonly runId: number;
+  readonly signal?: AbortSignal;
 };
 
 export type DiscoveryRunFailure = {
