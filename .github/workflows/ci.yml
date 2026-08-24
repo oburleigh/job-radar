@@ -85,6 +85,17 @@ jobs:
       - run: pnpm storybook:build
       - run: pnpm build
       - run: pnpm performance:size
+      - name: Run Lighthouse performance budget
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+        run: pnpm performance:lighthouse
+      - name: Upload Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: job-radar-lighthouse
+          path: artifacts/lighthouse
+          if-no-files-found: warn
       - name: Install Playwright browsers
         id: playwright-install-verify
         continue-on-error: true
@@ -117,7 +128,7 @@ jobs:
         run: pnpm test:mutation:focused
       - name: Upload focused mutation report
         if: always()
-        uses: actions/upload-artifact@v4.6.2
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: job-radar-mutation-focused
           path: reports/mutation

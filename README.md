@@ -828,6 +828,9 @@ Run `pnpm test:performance:size` to build the production client and check its co
 and CSS asset budgets. [`PERFORMANCE.md`](PERFORMANCE.md) records the measured surface, thresholds,
 and the CI check.
 
+Run `pnpm test:performance:lighthouse` to collect the production root-page Lighthouse budget against
+its fresh fixture. [`PERFORMANCE.md`](PERFORMANCE.md) records the calibration, threshold, and reports.
+
 Vitest and Playwright migrate their own SQLite databases under the operating
 system temporary directory and remove them after the run. The test suites do
 not read or modify the database named by your normal `DB_PATH`.

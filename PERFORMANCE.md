@@ -42,3 +42,26 @@ config>`. The command must exit nonzero. Remove the temporary files afterward.
 
 Lighthouse, browser-interaction and web-vitals budgets, server-latency checks,
 Autocannon, React Profiler, and React Scan belong to later slices.
+
+## Lighthouse root-page budget
+
+Lighthouse audits `http://127.0.0.1:3300/` after `pnpm build`. The launcher creates a fresh temporary
+SQLite fixture, sets the non-secret `SERPER_API_KEY=lighthouse-fixture-key`, runs the existing database
+setup, and starts the existing production server. It uses neither the port-3000 development server nor
+the user's local database.
+
+The committed check runs Lighthouse three times with the desktop preset and uses the median performance
+category score. The five-run calibration on this fresh fixture scored 1.00 on every run, so its range and
+median were both 1.00. The 0.90 hard threshold leaves 0.10 score headroom for normal local and CI variance
+while rejecting a clear page-load regression.
+
+Run it locally with:
+
+```bash
+pnpm test:performance:lighthouse
+```
+
+CI runs the check after the production build and Size Limit gate. LHCI writes HTML, JSON, and manifest
+diagnostics to `artifacts/lighthouse` using filesystem upload only; GitHub Actions retains that directory
+as an artifact even when the gate fails. A median performance score below 0.90 fails the command. Absolute
+timing metrics remain diagnostic only in this slice because their machine-level variance needs a later policy.

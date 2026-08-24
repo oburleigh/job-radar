@@ -16,6 +16,8 @@
 /reports/
 /test-results/
 /.stryker-tmp
+/.lighthouseci/
+/artifacts/lighthouse/
 
 # generated web build and route types
 /build

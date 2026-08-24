@@ -58,10 +58,11 @@ describe("GitHub Actions quality gates", () => {
   });
 
   it("retains focused mutation reports when the focused gate fails", () => {
-    const focusedMutationStep = findStep(ciWorkflow, (step) =>
+    const focusedMutationSteps = workflowJobSteps(ciWorkflow, "focused-mutation");
+    const focusedMutationStep = findStep(focusedMutationSteps, (step) =>
       step.includes("pnpm test:mutation:focused"),
     );
-    const focusedReportStep = findStep(ciWorkflow, (step) =>
+    const focusedReportStep = findStep(focusedMutationSteps, (step) =>
       step.includes("actions/upload-artifact"),
     );
 
@@ -117,7 +118,7 @@ describe("GitHub Actions quality gates", () => {
     expect(reportStep).toMatch(/name:.*(?:full|mutation).*report/i);
     expect(reportStep).toMatch(/path:.*reports\//);
 
-    const focusedName = findStep(ciWorkflow, (step) =>
+    const focusedName = findStep(workflowJobSteps(ciWorkflow, "focused-mutation"), (step) =>
       step.includes("actions/upload-artifact"),
     ).match(/name:\s*([^\n]+)/i)?.[1];
     const fullName = reportStep.match(/name:\s*([^\n]+)/i)?.[1];
@@ -139,8 +140,18 @@ function workflowSteps(workflow: string): string[] {
   });
 }
 
-function findStep(workflow: string, predicate: (step: string) => boolean): string {
-  const step = workflowSteps(workflow).find(predicate);
+function workflowJobSteps(workflow: string, jobName: string): string[] {
+  const lines = workflow.split("\n");
+  const jobStart = lines.indexOf(`  ${jobName}:`);
+  expect(jobStart, jobName).toBeGreaterThanOrEqual(0);
+
+  const nextJob = lines.findIndex((line, index) => index > jobStart && /^ {2}[\w-]+:$/.test(line));
+  return workflowSteps(lines.slice(jobStart, nextJob === -1 ? undefined : nextJob).join("\n"));
+}
+
+function findStep(workflow: string | string[], predicate: (step: string) => boolean): string {
+  const steps = typeof workflow === "string" ? workflowSteps(workflow) : workflow;
+  const step = steps.find(predicate);
   expect(step).toBeDefined();
   return step ?? "";
 }
