@@ -4,6 +4,7 @@ import {
   runtimeSettingConstraints,
   runtimeTextConstraints,
 } from "@/contexts/discovery/application/runtime-settings/save/constraints";
+import { isIso4217Currency } from "@/contexts/discovery/presentation/web/components/country-currency-catalogue";
 
 const integer = (constraint: { readonly min: number; readonly max: number }) =>
   z.coerce.number().int().min(constraint.min).max(constraint.max);
@@ -56,9 +57,12 @@ const runtimeSettingsSchema = z.object({
     .string()
     .trim()
     .transform((value) => value.toUpperCase())
-    .refine((value) => value === "" || runtimeTextConstraints.salaryCurrency.pattern.test(value), {
-      message: "Default salary currency must be a three-letter code such as GBP.",
-    }),
+    .refine(
+      (value) =>
+        value === "" ||
+        (runtimeTextConstraints.salaryCurrency.pattern.test(value) && isIso4217Currency(value)),
+      { message: "Default salary currency must be a valid ISO 4217 code such as GBP." },
+    ),
 });
 
 export type RuntimeSettingsRequestResult =

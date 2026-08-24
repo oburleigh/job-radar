@@ -30,6 +30,9 @@ importers:
       better-sqlite3:
         specifier: 13.0.3
         version: 13.0.3
+      country-to-currency:
+        specifier: ^3.0.1
+        version: 3.0.1
       dotenv:
         specifier: 17.4.2
         version: 17.4.2
@@ -2270,6 +2273,9 @@ packages:
     peerDependenciesMeta:
       typescript:
         optional: true
+
+  country-to-currency@3.0.1:
+    resolution: {integrity: sha512-FAo2ga8296d0Ra6vj9TB4Kax36AmqrGEc0aoLflCx5ijMtifNwA8lCqQsFfTLP2lRVKHWh/DedSpqI6v9VHyjw==}
 
   cross-env@10.1.0:
     resolution: {integrity: sha512-GsYosgnACZTADcmEyJctkJIoqAhHjttw7RsFrVoJNXbsWWqaq6Ym+7kZjq6mS45O0jij6vtiReppKQEtqWy6Dw==}
@@ -6343,6 +6349,8 @@ snapshots:
       parse-json: 5.2.0
     optionalDependencies:
       typescript: 7.0.2
+
+  country-to-currency@3.0.1: {}
 
   cross-env@10.1.0:
     dependencies:

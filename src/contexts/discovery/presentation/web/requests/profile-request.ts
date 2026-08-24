@@ -7,6 +7,7 @@ import {
   createSearchProfileDefinition,
   type SearchProfileDefinitionResult,
 } from "@/contexts/discovery/domain/search-profile";
+import { isIso4217Currency } from "@/contexts/discovery/presentation/web/components/country-currency-catalogue";
 
 export type ProfileRequestResult =
   | { readonly ok: true; readonly command: SaveSearchProfileCommand }
@@ -22,7 +23,7 @@ const profileSchema = z
     id: z.coerce.number().int().positive().optional(),
     name: z.string().trim().min(2).max(120),
     titleTerms: z.string().transform(splitLines).pipe(z.array(z.string()).min(1)),
-    locationTerms: z.string().transform(splitLines).pipe(z.array(z.string()).min(1)),
+    locationTerms: z.string().transform(splitLines),
     requiredJobTerms: z.string().transform(splitLines),
     excludedTitleTerms: z.string().transform(splitLines),
     excludedLocationTerms: z.string().transform(splitLines),
@@ -38,10 +39,10 @@ const profileSchema = z
           return null;
         }
         const currency = currencyFrom(value);
-        if (currency === null) {
+        if (currency === null || !isIso4217Currency(value)) {
           context.addIssue({
             code: "custom",
-            message: "Salary currency must be a three-letter code such as GBP.",
+            message: "Salary currency must be a valid ISO 4217 code such as GBP.",
           });
           return z.NEVER;
         }

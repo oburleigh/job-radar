@@ -23,6 +23,22 @@ describe("runtime settings request", () => {
       salaryCurrency: "AED",
     });
   });
+
+  it("rejects a default salary currency outside ISO 4217", () => {
+    const result = parseRuntimeSettingsRequest(
+      runtimeSettingsForm({
+        maximumAgeDays: "45",
+        minimumScore: "82",
+        salaryCurrency: "ZZZ",
+      }),
+      currentRuntimeSettings(),
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      message: "Default salary currency must be a valid ISO 4217 code such as GBP.",
+    });
+  });
 });
 
 function currentRuntimeSettings(): RuntimeSettingsCommand {

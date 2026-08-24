@@ -1,8 +1,11 @@
 import { Button } from "@job-radar/design-ui";
 import { Save } from "lucide-react";
+import { useState } from "react";
 import { useFetcher } from "react-router";
 
 import type { ActionState } from "@/contexts/discovery/presentation/web/action-state";
+import { CurrencyCombobox } from "./currency-combobox";
+import { LocationCombobox } from "./location-combobox";
 
 interface ProfileFormProps {
   defaults: {
@@ -35,6 +38,16 @@ export function ProfileForm({ profile, defaults }: ProfileFormProps) {
   const fetcher = useFetcher<ActionState>();
   const state = fetcher.data ?? initialState;
   const pending = fetcher.state !== "idle";
+  const [locationTerms, setLocationTerms] = useState<readonly string[]>(
+    profile?.locationTerms ?? [],
+  );
+  const [salaryCurrency, setSalaryCurrency] = useState(
+    profile?.salaryCurrency ?? defaults.salaryCurrency,
+  );
+  const locationError =
+    !state.ok && state.message.includes("target location") ? state.message : undefined;
+  const salaryCurrencyError =
+    !state.ok && state.message.toLowerCase().includes("currency") ? state.message : undefined;
 
   return (
     <fetcher.Form method="post" action="/profiles" className="profile-form">
@@ -87,16 +100,12 @@ export function ProfileForm({ profile, defaults }: ProfileFormProps) {
           </label>
         </div>
         <div className="form-grid form-grid-three">
-          <label>
-            <span>Salary currency</span>
-            <input
-              name="salaryCurrency"
-              maxLength={3}
-              pattern="[A-Za-z]{3}"
-              defaultValue={profile?.salaryCurrency ?? defaults.salaryCurrency}
-              placeholder="GBP"
-            />
-          </label>
+          <CurrencyCombobox
+            error={salaryCurrencyError}
+            name="salaryCurrency"
+            onChange={setSalaryCurrency}
+            value={salaryCurrency}
+          />
           <label>
             <span>Preferred salary minimum</span>
             <input
@@ -133,7 +142,7 @@ export function ProfileForm({ profile, defaults }: ProfileFormProps) {
           <span className="form-step">02</span>
           <div>
             <h2>Titles and locations</h2>
-            <p>Enter one term per line. Exact phrases score highest.</p>
+            <p>Enter title phrases by line and add each target location separately.</p>
           </div>
         </div>
         <div className="form-grid form-grid-two">
@@ -147,16 +156,17 @@ export function ProfileForm({ profile, defaults }: ProfileFormProps) {
               placeholder={"Head of Engineering\nVP Engineering"}
             />
           </label>
-          <label>
-            <span>Target locations</span>
-            <textarea
-              name="locationTerms"
-              required
-              rows={11}
-              defaultValue={profile?.locationTerms.join("\n") ?? ""}
-              placeholder={"Dubai\nAbu Dhabi\nUnited Arab Emirates"}
-            />
-          </label>
+          <LocationCombobox
+            error={locationError}
+            name="locationTerms"
+            onChange={setLocationTerms}
+            onCountrySelected={(country) => {
+              if (salaryCurrency === "") {
+                setSalaryCurrency(country.currencyCode);
+              }
+            }}
+            values={locationTerms}
+          />
         </div>
         <label className="checkbox-row">
           <input

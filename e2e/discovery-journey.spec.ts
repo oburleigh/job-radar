@@ -390,7 +390,9 @@ async function createProfile(
   await page.getByLabel("Profile name").fill(name);
   await page.getByLabel("Minimum score").fill("60");
   await page.getByLabel("Target job titles").fill("Head of Engineering");
-  await page.getByLabel("Target locations").fill("Dubai");
+  const locations = page.getByRole("combobox", { name: "Target locations" });
+  await locations.fill("Dubai");
+  await locations.press("Enter");
   if (options.includeUnverified) {
     await page.getByLabel("Include unverified web-search leads").check();
   }

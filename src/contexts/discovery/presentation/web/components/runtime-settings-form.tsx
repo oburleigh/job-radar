@@ -1,9 +1,11 @@
 import { Button } from "@job-radar/design-ui";
 import { Save } from "lucide-react";
+import { useState } from "react";
 import { useFetcher } from "react-router";
 import { runtimeSettingConstraints } from "@/contexts/discovery/application/runtime-settings/save/constraints";
 import type { RuntimeSettings } from "@/contexts/discovery/application/runtime-settings/settings";
 import type { ActionState } from "@/contexts/discovery/presentation/web/action-state";
+import { CurrencyCombobox } from "./currency-combobox";
 
 interface RuntimeSettingsFormProps {
   settings: RuntimeSettings;
@@ -18,6 +20,9 @@ export function RuntimeSettingsForm({ settings }: RuntimeSettingsFormProps) {
   const { network, discovery, ui, matching, searchProviders, integrationPolicy, profileDefaults } =
     settings;
   const limits = runtimeSettingConstraints;
+  const [salaryCurrency, setSalaryCurrency] = useState(profileDefaults.salaryCurrency);
+  const salaryCurrencyError =
+    !state.ok && state.message.toLowerCase().includes("currency") ? state.message : undefined;
 
   return (
     <fetcher.Form method="post" action="/settings" className="profile-form">
@@ -292,16 +297,12 @@ export function RuntimeSettingsForm({ settings }: RuntimeSettingsFormProps) {
             min={limits.minimumScore.min}
             max={limits.minimumScore.max}
           />
-          <label>
-            <span>Salary currency</span>
-            <input
-              name="salaryCurrency"
-              maxLength={3}
-              pattern="[A-Za-z]{3}"
-              defaultValue={profileDefaults.salaryCurrency}
-              placeholder="Optional, for example GBP"
-            />
-          </label>
+          <CurrencyCombobox
+            error={salaryCurrencyError}
+            name="salaryCurrency"
+            onChange={setSalaryCurrency}
+            value={salaryCurrency}
+          />
         </div>
       </section>
 

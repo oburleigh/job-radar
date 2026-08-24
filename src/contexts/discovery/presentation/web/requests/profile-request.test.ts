@@ -60,6 +60,20 @@ describe("profile request", () => {
     });
   });
 
+  it("uses the stable target-location message when no location is supplied", () => {
+    expect(parseProfileRequest(profileForm({ locationTerms: " " }))).toEqual({
+      ok: false,
+      message: "Add at least one target location.",
+    });
+  });
+
+  it("rejects a three-letter value that is not an ISO 4217 currency", () => {
+    expect(parseProfileRequest(profileForm({ salaryCurrency: "ZZZ" }))).toEqual({
+      ok: false,
+      message: "Salary currency must be a valid ISO 4217 code such as GBP.",
+    });
+  });
+
   it("rejects an inverted salary range", () => {
     expect(
       parseProfileRequest(
