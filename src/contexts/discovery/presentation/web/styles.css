@@ -1764,6 +1764,19 @@ td a {
   background: var(--jr-color-danger-subtle);
 }
 
+.health-warning {
+  color: var(--jr-color-warning-text);
+  background: var(--jr-color-warning-subtle);
+}
+
+.health-detail {
+  display: block;
+  max-width: 34rem;
+  margin-top: 6px;
+  color: var(--jr-color-text-muted);
+  overflow-wrap: anywhere;
+}
+
 .run-cancelled {
   color: var(--jr-color-text-subtle);
   background: var(--jr-color-surface-subtle);

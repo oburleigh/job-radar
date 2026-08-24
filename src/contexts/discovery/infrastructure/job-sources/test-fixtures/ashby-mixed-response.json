@@ -1,0 +1,24 @@
+{
+  "jobs": [
+    {
+      "id": "ashby-valid-remote",
+      "title": "VP Engineering",
+      "jobUrl": "https://jobs.ashbyhq.com/acme/ashby-valid-remote",
+      "workplaceType": "Remote"
+    },
+    {
+      "id": "ashby-valid-null-workplace",
+      "title": "Director of Platform",
+      "jobUrl": "https://jobs.ashbyhq.com/acme/ashby-valid-null-workplace",
+      "workplaceType": null,
+      "secondaryLocations": null,
+      "compensation": null
+    },
+    {
+      "id": "ashby-invalid-title",
+      "title": { "unexpected": "shape" },
+      "jobUrl": "https://jobs.ashbyhq.com/acme/ashby-invalid-title",
+      "workplaceType": ["Hybrid"]
+    }
+  ]
+}

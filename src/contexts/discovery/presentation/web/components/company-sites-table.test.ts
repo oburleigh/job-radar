@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   type CompanySiteBoard,
   type CompanySitesSort,
+  getCompanySiteHealth,
   getNextCompanySitesSort,
   sortCompanySites,
 } from "./company-sites-table";
@@ -124,6 +125,19 @@ describe("company sites sort selection", () => {
   });
 });
 
+describe("company site health", () => {
+  it("classifies a partial sync warning separately from a failed refresh", () => {
+    const lastWarning =
+      "Skipped 1 invalid vendor record. Ashby ashby:example job-7: title is invalid";
+
+    expect(getCompanySiteHealth(board({ lastWarning }))).toEqual({
+      label: "Partial",
+      className: "health health-warning",
+      detail: lastWarning,
+    });
+  });
+});
+
 function board(overrides: Partial<CompanySiteBoard>): CompanySiteBoard {
   return {
     id: 100,
@@ -134,6 +148,7 @@ function board(overrides: Partial<CompanySiteBoard>): CompanySiteBoard {
     enabled: true,
     lastSyncedAt: null,
     lastError: "",
+    lastWarning: "",
     ...overrides,
   };
 }

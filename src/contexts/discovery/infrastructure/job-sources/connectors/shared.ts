@@ -6,11 +6,13 @@ import type {
   BoardInput,
   RawJob,
 } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
+import type { ReportRejectedVendorRecord } from "./response-schema";
 
 export type BoardConnector = (
   board: BoardInput,
   limit: number,
   fetcher: typeof fetch,
+  reportRejected?: ReportRejectedVendorRecord,
 ) => Promise<RawJob[]>;
 
 type RawJobFields = {

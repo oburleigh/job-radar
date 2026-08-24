@@ -14,6 +14,7 @@ export function getSourcesData() {
         enabled: companyBoards.enabled,
         lastSyncedAt: companyBoards.lastSyncedAt,
         lastError: companyBoards.lastError,
+        lastWarning: companyBoards.lastWarning,
       })
       .from(companyBoards)
       .orderBy(companyBoards.atsType, companyBoards.companyName)

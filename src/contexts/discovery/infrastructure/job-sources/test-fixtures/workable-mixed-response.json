@@ -1,0 +1,33 @@
+{
+  "jobs": [
+    {
+      "shortcode": "workable-valid-null-fields",
+      "title": "Engineering Director",
+      "url": "https://apply.workable.com/acme/j/workable-valid-null-fields",
+      "locations": [
+        {
+          "city": null,
+          "region": null,
+          "country": "Singapore",
+          "coordinates": null
+        }
+      ],
+      "telecommuting": null,
+      "department": null
+    },
+    {
+      "shortcode": "workable-valid-new-fields",
+      "title": "Head of Engineering",
+      "url": "https://apply.workable.com/acme/j/workable-valid-new-fields",
+      "city": "Tokyo",
+      "country": "Japan",
+      "new_optional_field": { "introduced": true }
+    },
+    {
+      "shortcode": "workable-invalid-title",
+      "title": null,
+      "url": "https://apply.workable.com/acme/j/workable-invalid-title",
+      "locations": []
+    }
+  ]
+}

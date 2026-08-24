@@ -1,6 +1,7 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { BoardInput } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
-import { fetchBoardJobs } from "./connectors";
+import { fetchBoardJobs, fetchBoardJobsWithDiagnostics } from "./connectors";
 
 const greenhouseBoard: BoardInput = {
   id: 1,
@@ -146,6 +147,34 @@ describe("ATS connectors", () => {
     });
   });
 
+  it("preserves valid Ashby jobs and reports one malformed record", async () => {
+    const result = await fetchBoardJobsWithDiagnostics(
+      board("ashby", "https://jobs.ashbyhq.com/acme"),
+      {
+        fetcher: async () => Response.json(fixture("ashby-mixed-response.json")),
+      },
+    );
+
+    expect(result.jobs.map((job) => job.externalId)).toEqual([
+      "ashby-valid-remote",
+      "ashby-valid-null-workplace",
+    ]);
+    expect(result.jobs[1]).toMatchObject({
+      workplaceType: "",
+      locations: [],
+      publishedSalary: null,
+    });
+    expect(result).toMatchObject({ acceptedCount: 2, rejectedCount: 1 });
+    expect(result.rejectedRecords).toEqual([
+      {
+        vendor: "Ashby",
+        board: "ashby:acme",
+        recordIdentity: "ashby-invalid-title",
+        reason: expect.stringContaining("title"),
+      },
+    ]);
+  });
+
   it("normalizes a Lever response", async () => {
     const result = await fetchBoardJobs(board("lever", "https://jobs.lever.co/acme"), {
       fetcher: async () =>
@@ -214,6 +243,97 @@ describe("ATS connectors", () => {
       title: "Director of Engineering",
       locations: ["Abu Dhabi, AE"],
     });
+  });
+
+  it("preserves valid Workable jobs and reports one malformed record", async () => {
+    const result = await fetchBoardJobsWithDiagnostics(
+      board("workable", "https://apply.workable.com/acme"),
+      {
+        fetcher: async () => Response.json(fixture("workable-mixed-response.json")),
+      },
+    );
+
+    expect(result.jobs.map((job) => job.externalId)).toEqual([
+      "workable-valid-null-fields",
+      "workable-valid-new-fields",
+    ]);
+    expect(result.jobs).toMatchObject([
+      { locations: ["Singapore"], workplaceType: "", department: "" },
+      { locations: ["Tokyo, Japan"] },
+    ]);
+    expect(result).toMatchObject({ acceptedCount: 2, rejectedCount: 1 });
+    expect(result.rejectedRecords).toEqual([
+      {
+        vendor: "Workable",
+        board: "workable:acme",
+        recordIdentity: "workable-invalid-title",
+        reason: expect.stringContaining("title"),
+      },
+    ]);
+  });
+
+  it("quarantines otherwise valid records without a usable vendor identity", async () => {
+    const ashby = await fetchBoardJobsWithDiagnostics(
+      board("ashby", "https://jobs.ashbyhq.com/acme"),
+      {
+        fetcher: async () => Response.json({ jobs: [{ title: "Engineering Director" }] }),
+      },
+    );
+    const workable = await fetchBoardJobsWithDiagnostics(
+      board("workable", "https://apply.workable.com/acme"),
+      {
+        fetcher: async () => Response.json({ jobs: [{ title: "VP Engineering" }] }),
+      },
+    );
+
+    expect(ashby).toMatchObject({ acceptedCount: 0, rejectedCount: 1 });
+    expect(workable).toMatchObject({ acceptedCount: 0, rejectedCount: 1 });
+    expect(ashby.rejectedRecords[0]).toMatchObject({
+      vendor: "Ashby",
+      board: "ashby:acme",
+      reason: "record: missing a usable job identifier or URL",
+    });
+    expect(workable.rejectedRecords[0]).toMatchObject({
+      vendor: "Workable",
+      board: "workable:acme",
+      reason: "record: missing a usable job identifier or URL",
+    });
+  });
+
+  it("reports rejected records only from the requested ingestion window", async () => {
+    const result = await fetchBoardJobsWithDiagnostics(
+      board("ashby", "https://jobs.ashbyhq.com/acme"),
+      {
+        limit: 1,
+        fetcher: async () =>
+          Response.json({
+            jobs: [
+              {
+                id: "within-limit",
+                title: "Engineering Director",
+                jobUrl: "https://jobs.ashbyhq.com/acme/within-limit",
+              },
+              {
+                id: "outside-limit",
+                title: null,
+                jobUrl: "https://jobs.ashbyhq.com/acme/outside-limit",
+              },
+            ],
+          }),
+      },
+    );
+
+    expect(result).toMatchObject({ acceptedCount: 1, rejectedCount: 0 });
+  });
+
+  it("preserves URL-only Workable identity semantics", async () => {
+    const canonicalUrl = "https://apply.workable.com/acme/j/url-only";
+    const result = await fetchBoardJobs(board("workable", "https://apply.workable.com/acme"), {
+      fetcher: async () =>
+        Response.json({ jobs: [{ title: "VP Engineering", url: canonicalUrl }] }),
+    });
+
+    expect(result[0]).toMatchObject({ externalId: "", canonicalUrl });
   });
 
   it("uses the configured Workday endpoint and normalizes relative dates", async () => {
@@ -377,4 +497,10 @@ function board(atsType: string, baseUrl: string): BoardInput {
     baseUrl,
     config: {},
   };
+}
+
+function fixture(name: string): unknown {
+  return JSON.parse(
+    readFileSync(new URL(`./test-fixtures/${name}`, import.meta.url), "utf8"),
+  ) as unknown;
 }

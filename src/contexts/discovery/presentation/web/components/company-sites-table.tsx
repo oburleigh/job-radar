@@ -13,6 +13,7 @@ export interface CompanySiteBoard {
   readonly enabled: boolean;
   readonly lastSyncedAt: Date | null;
   readonly lastError: string;
+  readonly lastWarning: string;
 }
 
 export type CompanySitesSortKey = "company" | "ats" | "last-refresh" | "health" | "enabled";
@@ -71,7 +72,7 @@ export function CompanySitesTable({ boards, atsLabels }: CompanySitesTableProps)
         <tbody>
           {sortedBoards.map((board) => {
             const companyDisplayName = getCompanyDisplayName(board);
-            const needsAttention = Boolean(board.lastError);
+            const health = getCompanySiteHealth(board);
 
             return (
               <tr key={board.id}>
@@ -84,10 +85,15 @@ export function CompanySitesTable({ boards, atsLabels }: CompanySitesTableProps)
                 <td>{getAtsLabel(board, atsLabels)}</td>
                 <td>{formatDate(board.lastSyncedAt)}</td>
                 <td>
-                  <span className={needsAttention ? "health health-error" : "health health-ok"}>
-                    {needsAttention ? <CircleAlert size={14} /> : <CheckCircle2 size={14} />}
-                    {getHealthLabel(board)}
+                  <span className={health.className}>
+                    {health.label === "Ready" ? (
+                      <CheckCircle2 size={14} />
+                    ) : (
+                      <CircleAlert size={14} />
+                    )}
+                    {health.label}
                   </span>
+                  {health.detail ? <small className="health-detail">{health.detail}</small> : null}
                 </td>
                 <td>
                   <ToggleButton
@@ -222,8 +228,22 @@ function getAtsLabel(board: CompanySiteBoard, atsLabels: Readonly<Record<string,
   return atsLabels[board.atsType] ?? board.atsType;
 }
 
-function getHealthLabel(board: CompanySiteBoard): "Needs attention" | "Ready" {
-  return board.lastError ? "Needs attention" : "Ready";
+export function getCompanySiteHealth(board: CompanySiteBoard): {
+  readonly label: "Needs attention" | "Partial" | "Ready";
+  readonly className: string;
+  readonly detail: string;
+} {
+  if (board.lastError) {
+    return { label: "Needs attention", className: "health health-error", detail: board.lastError };
+  }
+  if (board.lastWarning) {
+    return { label: "Partial", className: "health health-warning", detail: board.lastWarning };
+  }
+  return { label: "Ready", className: "health health-ok", detail: "" };
+}
+
+function getHealthLabel(board: CompanySiteBoard): "Needs attention" | "Partial" | "Ready" {
+  return getCompanySiteHealth(board).label;
 }
 
 function formatDate(value: Date | null): string {

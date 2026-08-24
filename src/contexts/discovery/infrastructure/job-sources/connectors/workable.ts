@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { endpoint } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
-import { optionalVendorTextValue, parseVendorResponse } from "./response-schema";
+import { parseVendorRecords, parseVendorResponse } from "./response-schema";
 import {
   type BoardConnector,
   joinLocation,
@@ -11,39 +11,31 @@ import {
   stringValue,
 } from "./shared";
 
-const workableLocationSchema = z.looseObject({
-  city: optionalVendorTextValue,
-  region: optionalVendorTextValue,
-  country: optionalVendorTextValue,
-});
-const workableJobSchema = z.looseObject({
-  shortcode: optionalVendorTextValue,
-  code: optionalVendorTextValue,
-  title: z.string().trim().min(1),
-  url: optionalVendorTextValue,
-  shortlink: optionalVendorTextValue,
-  application_url: optionalVendorTextValue,
-  locations: z.array(workableLocationSchema).optional(),
-  city: optionalVendorTextValue,
-  state: optionalVendorTextValue,
-  country: optionalVendorTextValue,
-  department: optionalVendorTextValue,
-  employment_type: optionalVendorTextValue,
-  telecommuting: z.boolean().optional(),
-  published_on: z.unknown().optional(),
-  created_at: z.unknown().optional(),
-});
-const workableResponseSchema = z.looseObject({ jobs: z.array(workableJobSchema) });
+const workableJobSchema = z
+  .looseObject({
+    title: z.string().trim().min(1),
+  })
+  .refine(
+    (row) => [row.shortcode, row.code, row.url, row.shortlink].some((value) => stringValue(value)),
+    { message: "missing a usable job identifier or URL" },
+  );
+const workableResponseSchema = z.looseObject({ jobs: z.array(z.unknown()) });
 
-export const fetchWorkable: BoardConnector = async (board, limit, fetcher) => {
+export const fetchWorkable: BoardConnector = async (board, limit, fetcher, reportRejected) => {
   const payload = parseVendorResponse(
     "Workable",
     workableResponseSchema,
     await requestJson(endpoint("workable", "jobs", { slug: board.slug }), {}, fetcher),
   );
 
-  return recordArray(payload.jobs)
-    .slice(0, limit)
+  return parseVendorRecords({
+    vendor: "Workable",
+    board: board.canonicalKey,
+    records: payload.jobs.slice(0, limit),
+    schema: workableJobSchema,
+    identityKeys: ["shortcode", "code", "url", "shortlink"],
+    ...(reportRejected ? { reportRejected } : {}),
+  })
     .filter((row) => stringValue(row.title))
     .map((row) => {
       const externalId = stringValue(row.shortcode) || stringValue(row.code);

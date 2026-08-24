@@ -4,7 +4,7 @@ import {
   createAnnualSalaryRange,
 } from "@/contexts/discovery/domain/annual-salary";
 import { endpoint } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
-import { optionalVendorTextValue, parseVendorResponse } from "./response-schema";
+import { parseVendorRecords, parseVendorResponse } from "./response-schema";
 import {
   asRecord,
   type BoardConnector,
@@ -17,42 +17,30 @@ import {
   stripHtml,
 } from "./shared";
 
-const compensationComponentSchema = z.looseObject({
-  compensationType: optionalVendorTextValue,
-  interval: optionalVendorTextValue,
-  currencyCode: optionalVendorTextValue,
-  minValue: z.number().finite().nullable().optional(),
-  maxValue: z.number().finite().nullable().optional(),
-});
-const ashbyJobSchema = z.looseObject({
-  id: optionalVendorTextValue,
-  title: z.string().trim().min(1),
-  jobUrl: optionalVendorTextValue,
-  applyUrl: optionalVendorTextValue,
-  isListed: z.boolean().optional(),
-  location: optionalVendorTextValue,
-  secondaryLocations: z.array(z.looseObject({ location: optionalVendorTextValue })).optional(),
-  descriptionPlain: optionalVendorTextValue,
-  descriptionHtml: optionalVendorTextValue,
-  department: optionalVendorTextValue,
-  employmentType: optionalVendorTextValue,
-  workplaceType: optionalVendorTextValue,
-  publishedAt: z.unknown().optional(),
-  compensation: z
-    .looseObject({ summaryComponents: z.array(compensationComponentSchema).optional() })
-    .optional(),
-});
-const ashbyResponseSchema = z.looseObject({ jobs: z.array(ashbyJobSchema) });
+const ashbyJobSchema = z
+  .looseObject({
+    title: z.string().trim().min(1),
+  })
+  .refine((row) => [row.id, row.jobUrl].some((value) => stringValue(value)), {
+    message: "missing a usable job identifier or URL",
+  });
+const ashbyResponseSchema = z.looseObject({ jobs: z.array(z.unknown()) });
 
-export const fetchAshby: BoardConnector = async (board, limit, fetcher) => {
+export const fetchAshby: BoardConnector = async (board, limit, fetcher, reportRejected) => {
   const payload = parseVendorResponse(
     "Ashby",
     ashbyResponseSchema,
     await requestJson(endpoint("ashby", "jobs", { slug: board.slug }), {}, fetcher),
   );
 
-  return recordArray(payload.jobs)
-    .slice(0, limit)
+  return parseVendorRecords({
+    vendor: "Ashby",
+    board: board.canonicalKey,
+    records: payload.jobs.slice(0, limit),
+    schema: ashbyJobSchema,
+    identityKeys: ["id", "jobUrl", "applyUrl"],
+    ...(reportRejected ? { reportRejected } : {}),
+  })
     .filter((row) => row.isListed !== false && stringValue(row.title))
     .map((row) => {
       const canonicalUrl = stringValue(row.jobUrl);

@@ -15,6 +15,13 @@
       "when": 1787244209540,
       "tag": "0001_silent_psynapse",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1787606762388,
+      "tag": "0002_wakeful_warlock",
+      "breakpoints": true
     }
   ]
 }

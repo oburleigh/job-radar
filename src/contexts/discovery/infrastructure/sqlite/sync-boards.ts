@@ -6,7 +6,11 @@ import type {
   BoardInput,
   RawJob,
 } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
-import { fetchBoardJobs } from "@/contexts/discovery/infrastructure/job-sources/connectors";
+import {
+  fetchBoardJobsWithDiagnostics,
+  formatRejectedVendorRecords,
+  type RejectedVendorRecord,
+} from "@/contexts/discovery/infrastructure/job-sources/connectors";
 import { makeDedupeKey } from "@/contexts/discovery/infrastructure/job-sources/urls";
 import { db } from "@/contexts/discovery/infrastructure/sqlite/database";
 import {
@@ -20,6 +24,9 @@ export interface SyncResult {
   boardId: number;
   created: number;
   updated: number;
+  rejected: number;
+  rejectedRecords: readonly RejectedVendorRecord[];
+  warning: string;
   error: string;
 }
 
@@ -30,8 +37,8 @@ export async function syncBoard(board: BoardInput, requestedLimit?: number): Pro
   let updated = 0;
 
   try {
-    const rawJobs = await fetchBoardJobs(board, { limit });
-    for (const [index, rawJob] of rawJobs.entries()) {
+    const fetched = await fetchBoardJobsWithDiagnostics(board, { limit });
+    for (const [index, rawJob] of fetched.jobs.entries()) {
       const result = upsertRawJob(board, rawJob);
       created += Number(result === "created");
       updated += Number(result === "updated");
@@ -40,19 +47,36 @@ export async function syncBoard(board: BoardInput, requestedLimit?: number): Pro
       }
     }
 
+    const warning = formatRejectedVendorRecords(fetched.rejectedRecords);
     db.update(companyBoards)
-      .set({ lastSyncedAt: new Date(), lastError: "" })
+      .set({ lastSyncedAt: new Date(), lastError: "", lastWarning: warning })
       .where(eq(companyBoards.id, board.id))
       .run();
 
-    return { boardId: board.id, created, updated, error: "" };
+    return {
+      boardId: board.id,
+      created,
+      updated,
+      rejected: fetched.rejectedCount,
+      rejectedRecords: fetched.rejectedRecords,
+      warning,
+      error: "",
+    };
   } catch (error) {
     const message = errorMessage(error);
     db.update(companyBoards)
-      .set({ lastSyncedAt: new Date(), lastError: message })
+      .set({ lastSyncedAt: new Date(), lastError: message, lastWarning: "" })
       .where(eq(companyBoards.id, board.id))
       .run();
-    return { boardId: board.id, created, updated, error: message };
+    return {
+      boardId: board.id,
+      created,
+      updated,
+      rejected: 0,
+      rejectedRecords: [],
+      warning: "",
+      error: message,
+    };
   }
 }
 

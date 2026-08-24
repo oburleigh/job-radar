@@ -89,6 +89,7 @@ export const companyBoards = sqliteTable(
     discoveredAt: timestamp("discovered_at").notNull(),
     lastSyncedAt: timestamp("last_synced_at"),
     lastError: text("last_error").notNull().default(""),
+    lastWarning: text("last_warning").notNull().default(""),
   },
   (table) => [
     index("company_boards_ats_idx").on(table.atsType),
