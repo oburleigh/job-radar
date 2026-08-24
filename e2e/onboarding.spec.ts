@@ -55,6 +55,53 @@ test.describe
       await expect(page.getByRole("link", { name: /Example/ })).toBeVisible();
     });
 
+    test("sorts known company career sites through accessible column headers", async ({ page }) => {
+      await page.goto("/sources");
+
+      const companyField = page.getByLabel("Company", { exact: true });
+      const urlField = page.getByLabel("Public ATS job, careers, or board URL");
+
+      await companyField.fill("Sort Zebra 8472");
+      await urlField.fill("https://jobs.ashbyhq.com/sort-zebra-8472");
+      await page.getByRole("button", { name: "Add ATS URL" }).click();
+      await expect(page.getByRole("link", { name: "Sort Zebra 8472" })).toBeVisible();
+
+      await companyField.fill("Sort Alpha 8472");
+      await urlField.fill("https://jobs.lever.co/sort-alpha-8472");
+      await page.getByRole("button", { name: "Add ATS URL" }).click();
+
+      const table = page.getByRole("table");
+      const companyLinks = table.getByRole("link", { name: /^Sort (?:Alpha|Zebra) 8472$/ });
+      await expect(companyLinks).toHaveText(["Sort Alpha 8472", "Sort Zebra 8472"]);
+      await expect(
+        table.getByRole("columnheader", { name: /^Sort by Company or slug/ }),
+      ).toHaveAttribute("aria-sort", "ascending");
+
+      const headers = ["Company or slug", "ATS", "Last refresh", "Health", "Enabled"];
+      for (const label of headers) {
+        const button = table.getByRole("button", { name: new RegExp(`^Sort by ${label}`) });
+        const header = table.getByRole("columnheader", {
+          name: new RegExp(`^Sort by ${label}`),
+        });
+
+        await button.click();
+        await expect(header).toHaveAttribute(
+          "aria-sort",
+          label === "Company or slug" ? "descending" : "ascending",
+        );
+
+        if (label === "ATS") {
+          await expect(companyLinks).toHaveText(["Sort Zebra 8472", "Sort Alpha 8472"]);
+        }
+
+        await button.click();
+        await expect(header).toHaveAttribute(
+          "aria-sort",
+          label === "Company or slug" ? "ascending" : "descending",
+        );
+      }
+    });
+
     test("saves runtime settings and keeps the settings page accessible", async ({ page }) => {
       await page.goto("/settings");
 

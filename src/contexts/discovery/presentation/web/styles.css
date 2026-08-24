@@ -1413,6 +1413,31 @@ thead th {
   border-bottom-color: var(--jr-color-border-strong);
 }
 
+.sortable-header-button {
+  display: inline-flex;
+  min-height: 0;
+  align-items: center;
+  gap: 7px;
+  padding: 2px;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+
+.sortable-header-button:hover {
+  color: var(--jr-color-text);
+}
+
+.sort-direction {
+  color: var(--jr-color-accent-strong);
+  font-size: var(--jr-font-size-xs);
+  line-height: 1;
+}
+
 tbody tr:hover {
   background: var(--jr-color-info-subtle);
 }

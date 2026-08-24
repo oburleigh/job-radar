@@ -1,9 +1,10 @@
 import { buttonAttributes, PageHeader } from "@job-radar/design-ui";
-import { CheckCircle2, CircleAlert, DatabaseZap, Plus, Search } from "lucide-react";
+import { DatabaseZap, Plus, Search } from "lucide-react";
 import { type ActionFunctionArgs, Link, useLoaderData } from "react-router";
 import type { AddJobSourceResult } from "@/contexts/discovery/application/source-coverage/add/result";
 import { discoveryWeb } from "@/contexts/discovery/composition/discovery-web.server";
 import { AddBoardForm } from "@/contexts/discovery/presentation/web/components/add-board-form";
+import { CompanySitesTable } from "@/contexts/discovery/presentation/web/components/company-sites-table";
 import { SyncButton } from "@/contexts/discovery/presentation/web/components/sync-button";
 import { ToggleButton } from "@/contexts/discovery/presentation/web/components/toggle-button";
 import { parseAddJobSourceRequest } from "@/contexts/discovery/presentation/web/requests/add-job-source-request";
@@ -131,68 +132,9 @@ export default function SourcesPage() {
 
         <div className="panel">
           <AddBoardForm />
-          {data.boards.length > 0 ? (
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Company or slug</th>
-                    <th>ATS</th>
-                    <th>Last refresh</th>
-                    <th>Health</th>
-                    <th>
-                      <span className="sr-only">Enabled</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.boards.map((board) => (
-                    <tr key={board.id}>
-                      <td>
-                        <a href={board.baseUrl} target="_blank" rel="noreferrer">
-                          {board.companyName || board.slug}
-                        </a>
-                        <small>{board.baseUrl}</small>
-                      </td>
-                      <td>{atsLabels[board.atsType] ?? board.atsType}</td>
-                      <td>{formatDate(board.lastSyncedAt)}</td>
-                      <td>
-                        <span
-                          className={board.lastError ? "health health-error" : "health health-ok"}
-                        >
-                          {board.lastError ? <CircleAlert size={14} /> : <CheckCircle2 size={14} />}
-                          {board.lastError ? "Needs attention" : "Ready"}
-                        </span>
-                      </td>
-                      <td>
-                        <ToggleButton
-                          id={board.id}
-                          enabled={board.enabled}
-                          kind="board"
-                          label={board.companyName || board.slug}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="table-empty">
-              Add a known ATS URL or run discovery to populate this registry.
-            </div>
-          )}
+          <CompanySitesTable boards={data.boards} atsLabels={atsLabels} />
         </div>
       </section>
     </div>
   );
-}
-
-function formatDate(value: Date | null): string {
-  return value
-    ? new Intl.DateTimeFormat("en", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }).format(value)
-    : "Not refreshed";
 }
