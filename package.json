@@ -19,6 +19,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:mutation": "stryker run",
+    "test:mutation:focused": "stryker run stryker.focused.config.mjs",
     "test:e2e": "playwright test",
     "format": "biome format --write .",
     "format:check": "biome format .",

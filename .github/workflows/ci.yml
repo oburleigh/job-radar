@@ -46,15 +46,27 @@ jobs:
           scripts/migrate.test.ts
           tests/architecture/schema-only-migrations.test.ts
           src/contexts/discovery/infrastructure/configuration/bootstrap-job-radar.test.ts
-      - run: pnpm exec playwright install --with-deps chromium
+      - name: Install Playwright browsers on Linux
+        id: playwright-install-linux
+        continue-on-error: true
+        run: pnpm exec playwright install --with-deps chromium
         if: runner.os == 'Linux'
-      - run: pnpm exec playwright install chromium
+      - name: Install Playwright browsers on macOS and Windows
+        id: playwright-install-non-linux
+        continue-on-error: true
+        run: pnpm exec playwright install chromium
         if: runner.os != 'Linux'
-      - run: pnpm test:e2e e2e/onboarding.spec.ts
+      - name: Run clean-start browser journey
+        env:
+          PLAYWRIGHT_USE_SYSTEM_CHROME: ${{ (steps.playwright-install-linux.outcome == 'failure' || steps.playwright-install-non-linux.outcome == 'failure') && '1' || '' }}
+        run: pnpm test:e2e e2e/onboarding.spec.ts
 
   verify:
     name: Repository gates
     runs-on: ubuntu-latest
+    env:
+      DB_PATH: ${{ runner.temp }}/job-radar-verify.sqlite
+      SERPER_API_KEY: verify-ci-key
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: pnpm/action-setup@v6.0.10
@@ -66,10 +78,46 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: cp .env.example .env
+      - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test:coverage
       - run: pnpm storybook:build
       - run: pnpm build
-      - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm test:e2e
+      - name: Install Playwright browsers
+        id: playwright-install-verify
+        continue-on-error: true
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Run browser journeys
+        env:
+          PLAYWRIGHT_USE_SYSTEM_CHROME: ${{ steps.playwright-install-verify.outcome == 'failure' && '1' || '' }}
+        run: pnpm test:e2e
+
+  focused-mutation:
+    name: Focused mutation
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    env:
+      DB_PATH: ${{ runner.temp }}/job-radar-focused-mutation.sqlite
+      SERPER_API_KEY: focused-mutation-ci-key
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v6.0.10
+        with:
+          run_install: false
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Copy environment template
+        run: cp .env.example .env
+      - name: Run focused mutation
+        run: pnpm test:mutation:focused
+      - name: Upload focused mutation report
+        if: always()
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: job-radar-mutation-focused
+          path: reports/mutation
+          if-no-files-found: warn

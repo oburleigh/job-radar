@@ -1,0 +1,38 @@
+name: Full mutation
+
+on:
+  schedule:
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  full-mutation:
+    name: Full mutation
+    runs-on: ubuntu-latest
+    env:
+      DB_PATH: ${{ runner.temp }}/job-radar-full-mutation.sqlite
+      SERPER_API_KEY: full-mutation-ci-key
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v6.0.10
+        with:
+          run_install: false
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Copy environment template
+        run: cp .env.example .env
+      - name: Run full mutation
+        run: pnpm test:mutation
+      - name: Upload full mutation report
+        if: always()
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: job-radar-mutation-full
+          path: reports/mutation
+          if-no-files-found: warn
