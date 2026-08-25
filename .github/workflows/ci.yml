@@ -100,6 +100,17 @@ jobs:
         id: playwright-install-verify
         continue-on-error: true
         run: pnpm exec playwright install --with-deps chromium
+      - name: Run browser interaction performance budget
+        env:
+          PLAYWRIGHT_USE_SYSTEM_CHROME: ${{ steps.playwright-install-verify.outcome == 'failure' && '1' || '' }}
+        run: pnpm performance:browser
+      - name: Upload browser performance reports
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: job-radar-browser-performance
+          path: artifacts/browser-performance
+          if-no-files-found: warn
       - name: Run browser journeys
         env:
           PLAYWRIGHT_USE_SYSTEM_CHROME: ${{ steps.playwright-install-verify.outcome == 'failure' && '1' || '' }}

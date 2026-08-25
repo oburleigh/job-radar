@@ -824,12 +824,10 @@ Coverage has enforced thresholds. Stryker mutates the Discovery domain and appli
 fails below the configured mutation score. Use `pnpm format` and `pnpm lint:fix` to apply safe local
 fixes.
 
-Run `pnpm test:performance:size` to build the production client and check its compressed JavaScript
-and CSS asset budgets. [`PERFORMANCE.md`](PERFORMANCE.md) records the measured surface, thresholds,
-and the CI check.
-
-Run `pnpm test:performance:lighthouse` to collect the production root-page Lighthouse budget against
-its fresh fixture. [`PERFORMANCE.md`](PERFORMANCE.md) records the calibration, threshold, and reports.
+Run `pnpm test:performance` to build once and check every performance surface. The complete suite covers
+client asset size, Lighthouse page-load quality, a three-run browser interaction and Web Vitals gate, and
+HTTP and SQLite latency evidence. [`PERFORMANCE.md`](PERFORMANCE.md) records the fixtures, thresholds,
+failure probes, and reports.
 
 Vitest and Playwright migrate their own SQLite databases under the operating
 system temporary directory and remove them after the run. The test suites do

@@ -8,7 +8,8 @@
     "jsx": "react-jsx",
     "incremental": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "~/*": ["./*"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx", ".react-router/types/**/*.ts", "**/*.mts"],

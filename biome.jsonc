@@ -14,7 +14,7 @@
       "!**/playwright-report",
       "!**/reports",
       "!**/test-results",
-      "!**/artifacts/lighthouse",
+      "!**/artifacts",
       "!**/storybook-static",
       "!**/.impeccable",
       "!**/.agents/skills",

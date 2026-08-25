@@ -25,5 +25,6 @@ minimumReleaseAgeExclude:
   - storybook@10.5.10
 overrides:
   esbuild: 0.28.2
+  'hyperid>uuid': 11.1.1
   postcss: 8.5.26
   sharp: 0.35.3

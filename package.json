@@ -25,6 +25,13 @@
     "serve:lighthouse": "pnpm exec tsx tests/support/lighthouse-server.ts",
     "performance:lighthouse": "lhci autorun",
     "test:performance:lighthouse": "pnpm build && pnpm performance:lighthouse",
+    "performance:browser": "playwright test --config playwright.performance.config.ts",
+    "test:performance:browser": "pnpm build && pnpm performance:browser",
+    "probe:performance:browser": "cross-env JOB_RADAR_PERFORMANCE_PROBE=slow-interaction pnpm performance:browser",
+    "performance:latency": "tsx scripts/measure-performance-latency.ts",
+    "test:performance:latency": "pnpm build && pnpm performance:latency",
+    "performance:all": "pnpm performance:size && pnpm performance:lighthouse && pnpm performance:browser && pnpm performance:latency",
+    "test:performance": "pnpm build && pnpm performance:all",
     "test:e2e": "playwright test",
     "format": "biome format --write .",
     "format:check": "biome format .",
@@ -76,6 +83,7 @@
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
     "@vitest/coverage-v8": "^4.1.11",
+    "autocannon": "8.0.0",
     "cross-env": "10.1.0",
     "drizzle-kit": "0.31.10",
     "lefthook": "^2.1.10",
@@ -83,7 +91,8 @@
     "tsx": "4.23.12",
     "typescript": "^7.0.2",
     "vite": "8.2.2",
-    "vitest": "4.1.11"
+    "vitest": "4.1.11",
+    "web-vitals": "6.1.1"
   },
   "size-limit": [
     {

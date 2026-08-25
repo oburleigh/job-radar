@@ -18,6 +18,8 @@
 /.stryker-tmp
 /.lighthouseci/
 /artifacts/lighthouse/
+/artifacts/browser-performance/
+/artifacts/latency/
 
 # generated web build and route types
 /build
