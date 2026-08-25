@@ -1,270 +1,180 @@
 # Market-aware discovery design
 
-Status: Accepted on 2026-08-25
+Status: Accepted for planning on 2026-08-25
 
-Job Radar will resolve each saved profile location through one market vocabulary before it plans searches or matches jobs. A profile that contains only `United Arab Emirates` will search and match `United Arab Emirates`, `UAE`, Dubai, and Abu Dhabi. A profile that contains `Dubai` will stay limited to Dubai.
+Job Radar will resolve saved location text through one market vocabulary before retrieval, classification, matching, and exclusion. A profile with only `United Arab Emirates` will search and match the country name, `UAE`, Dubai, and Abu Dhabi. A profile with `Dubai` will stay limited to Dubai.
 
-This design covers the market, query-strategy, provider-geography, adaptive-pagination, and run-evidence work tracked in ADM-100. It preserves existing profile records and keeps unknown location text usable.
+This design covers ADM-100. It keeps existing profile records valid, reduces duplicate requests, and makes every provider request measurable.
 
 ## Decision
 
-Keep `search_profiles.location_terms` and `excluded_location_terms` as user-entered strings. Resolve those strings at the infrastructure boundary into typed `MarketScope` values. Pass the same resolved scopes to application query planning and domain matching.
-
-Add [`iso-3166` version 4.4.0](https://www.npmjs.com/package/iso-3166) as server-side reference data for ISO 3166-1 countries and ISO 3166-2 subdivisions. The package is ESM-only, includes TypeScript declarations, has no dependencies, and uses the MIT license. It is compatible with Job Radar's Node 24 ESM runtime.
-
-The package does not own product policy. SQLite configuration owns common aliases, covered descendants, search languages, provider location labels, and request budgets. ISO data validates codes and supplies standard names. Contract tests pin the country and subdivision records that Job Radar relies on because the package derives its machine-readable data from public sources rather than an ISO feed.
-
-## Current behavior to preserve
-
-The current system has four observable behaviors that will receive characterisation tests before changes begin:
-
-- A profile location is stored as trimmed free text.
-- Query planning places all saved locations in one OR clause for every title and source.
-- Matching accepts a job only when its normalized location contains one saved location string.
-- Unknown location strings work as narrow literal values.
-
-ADM-100 changes the second and third behaviors for configured markets. Storage and literal fallback remain compatible.
-
-## Scope
-
-The change will:
-
-- resolve country, subdivision, city, and literal targets;
-- use one resolved scope for retrieval and matching;
-- plan independent search lanes for each target market;
-- measure role-first, location-first, phrase, and relaxed-title strategies;
-- pass country, language, location, and page through a provider-neutral application contract;
-- continue pagination only while the provider and productivity policy allow it;
-- record market, locale, strategy, page, results, and useful hits for every request;
-- expose the new request evidence in run details and the discovery benchmark;
-- edit market policy through Settings;
-- retain worldwide-remote searches as a separate scope.
-
-The change will not migrate profile rows to market IDs, add geocoding, infer a market from coordinates, or build a global city database. Known-board-first scheduling remains separate work.
-
-## Market language
-
-`MarketScope` is the resolved search and matching boundary. It has this shape:
+Keep `search_profiles.location_terms` and `excluded_location_terms` as user-entered strings. An infrastructure `MarketResolver` maps them to a small domain value:
 
 ```ts
 type MarketScope = {
   readonly key: string;
-  readonly kind: "country" | "subdivision" | "city" | "literal";
   readonly label: string;
-  readonly countryCode: string | null;
-  readonly searchLanguage: string | null;
-  readonly providerLocation: string | null;
-  readonly queryTerms: readonly string[];
-  readonly matchTerms: readonly string[];
+  readonly terms: readonly string[];
 };
 ```
 
-A country scope contains its standard names, configured aliases, and the names and aliases of configured descendants. A subdivision or city scope contains only its own names and aliases. It never inherits its parent's other descendants. A literal scope contains the saved text as its only query and match term, with no country or provider location.
+`terms` is the only expansion used by query rendering, matching, exclusion, classification, and location-hint inference. A country contains its standard names, configured aliases, and configured descendants. A subdivision or city contains only its own label and aliases. Unknown text becomes a literal scope with one term.
 
-The same rule applies to excluded locations. Excluding a configured country excludes its configured descendants. Excluding a city does not exclude sibling cities.
+Add [`iso-3166` 4.4.0](https://www.npmjs.com/package/iso-3166) as server-only reference data. It validates country and subdivision codes and supplies country names. It has TypeScript declarations, no dependencies, and an MIT license. Subdivision and city labels remain explicit configuration because ISO subdivision names may use forms unsuitable for search, such as `Dubayy` for `AE-DU`.
 
-`MarketScope` belongs in the domain because it expresses matching meaning without knowing SQLite, Zod, ISO packages, or provider parameter names. Infrastructure maps validated configuration and ISO records into this type.
+## Market policy stays in SQLite
 
-## SQLite-backed market policy
-
-Runtime settings gain a `marketVocabulary` section. The infrastructure schema validates it with Zod and cross-checks every ISO code against `iso-3166`. Validation rejects duplicate keys, duplicate normalized aliases, missing descendants, descendant cycles, country mismatches, invalid language tags, and unsupported ISO codes.
-
-The initial setting will cover the markets needed by the accepted benchmark. A representative fragment is:
+The `marketVocabulary` runtime setting owns aliases, country coverage, display labels, and search languages. Keys encode their type and code, so the setting does not repeat those fields:
 
 ```json
 {
-  "defaultSearchLanguage": "en",
   "markets": [
     {
       "key": "country:AE",
-      "kind": "country",
-      "countryCode": "AE",
       "aliases": ["UAE"],
       "covers": ["subdivision:AE-AZ", "subdivision:AE-DU"],
-      "searchLanguage": "en",
-      "providerLocation": "United Arab Emirates"
+      "searchLanguage": "en"
     },
     {
       "key": "subdivision:AE-AZ",
-      "kind": "subdivision",
-      "subdivisionCode": "AE-AZ",
-      "aliases": ["Abu Dhabi"],
-      "covers": [],
-      "searchLanguage": "en",
-      "providerLocation": "Abu Dhabi, United Arab Emirates"
+      "label": "Abu Dhabi",
+      "aliases": []
     },
     {
       "key": "subdivision:AE-DU",
-      "kind": "subdivision",
-      "subdivisionCode": "AE-DU",
-      "aliases": ["Dubai"],
-      "covers": [],
-      "searchLanguage": "en",
-      "providerLocation": "Dubai, United Arab Emirates"
+      "label": "Dubai",
+      "aliases": []
     }
   ]
 }
 ```
 
-Standard ISO names are derived rather than copied into configuration. Aliases and coverage are operator-owned product policy.
+Country labels come from ISO data. Subdivisions and cities require an operator label. They derive their country code and search language from their country entry; an unresolved language is null. Country entries may cover subdivisions or cities in the same country; those entries cannot cover other markets. Validation rejects invalid keys or language tags, unknown ISO codes, missing covered markets, cross-country coverage, and duplicate normalized labels or aliases.
 
-A configured city uses a stable operator key, a label, an ISO country code, aliases, and a provider location. Cities are validated against their country relationship but are not treated as ISO subdivisions. This keeps the model open to cities that have no subdivision code without adding a global city dataset.
+Provider location strings stay with provider configuration:
 
-Bootstrap inserts the default setting when it is absent and preserves an existing value. Schema migrations contain only schema changes, so the repository's schema-only migration guard continues to pass.
+```json
+{
+  "marketLocations": {
+    "country:AE": "United Arab Emirates",
+    "subdivision:AE-AZ": "Abu Dhabi, United Arab Emirates",
+    "subdivision:AE-DU": "Dubai, United Arab Emirates"
+  }
+}
+```
 
-Settings will expose the policy in a dedicated JSON editor with its current value, a format example, server-side validation, a field-specific error, pending feedback, and no partial save. This is an operator surface for a local single-user application, not a general place-search interface. ISO data stays on the server and does not enter the client bundle.
+Bootstrap inserts defaults only when a setting is absent. Settings exposes both values as validated JSON and keeps the previous value after a failed save. ISO data never enters the browser bundle.
 
-## Resolution data flow
+## One resolution feeds every consumer
 
-The infrastructure configuration adapter creates a `MarketResolver` from the parsed SQLite policy and ISO reference data. Resolution is deterministic and case-insensitive after the same normalization used by matching.
+`DiscoverySetupReader` returns each target as its `MarketScope`, country code, and search language, and returns exclusions as scopes. The application passes that resolved setup through the full discovery run:
 
-For a discovery run:
+1. The planner uses the scopes to create market-specific search lanes.
+2. Provider adapters render queries from the same terms.
+3. `JobDiscoveryCatalog.recordHit` receives the resolved scope and uses its terms for classification and `inferLocationHint`.
+4. `JobMatchEvaluator` uses the latest resolved target and excluded scopes for final matching.
 
-1. `DiscoverySetupReader` loads the saved profile and resolves target and excluded location strings.
-2. The application receives the original profile criteria plus resolved market scopes.
-3. Query planning builds independent lanes from the target scopes.
-4. `JobMatchEvaluator` resolves the latest saved profile through the same resolver before evaluating jobs.
-5. The domain matcher tests normalized job locations against `MarketScope.matchTerms`.
+This closes the current gap where retrieval, matching, and location-hint inference interpret profile locations separately. Characterisation tests will first pin the existing literal behavior.
 
-The profile may change between retrieval and final matching, as it can today. Both paths still use the same vocabulary contract and current policy.
+## Search lanes express intent
 
-## Provider-free search lanes
-
-The application plan stops carrying a provider-rendered query as its primary contract. It describes intent:
+The application plans one lane per source, market, and strategy. Titles are grouped within a lane instead of multiplying titles by sources.
 
 ```ts
-type SearchLane = {
-  readonly source: QuerySource;
-  readonly market: MarketScope;
-  readonly strategy: SearchStrategy;
-  readonly titleTerms: readonly string[];
-};
-
 type SearchStrategy =
   | "role-first"
   | "location-first"
   | "phrase"
-  | "relaxed-title"
-  | "board-discovery"
-  | "worldwide-remote";
+  | "relaxed-title";
+
+type SearchLaneKind = "role" | "board-discovery" | "worldwide-remote";
+
+type SearchLane = {
+  readonly source: QuerySource;
+  readonly kind: SearchLaneKind;
+  readonly market: MarketScope;
+  readonly countryCode: string | null;
+  readonly searchLanguage: string | null;
+  readonly titleTerms: readonly string[];
+  readonly strategy: SearchStrategy | null;
+};
 ```
 
-One lane groups all profile titles for one source, market, and strategy. This removes the current title-by-source multiplication. The provider adapter renders the query syntax and request parameters from the lane. The application does not select `country`, `gl`, `hl`, `offset`, `start`, or any other vendor field.
+The four role strategies change query ordering or title strictness. Board discovery and worldwide remote are separate lane kinds and do not appear in strategy measurements.
 
-The four measured role strategies differ as follows:
+An ordered `strategies` setting replaces both global and provider `titleSearchMode`. Legacy `title` maps to `role-first`, `location-first`, and `phrase`; legacy `anywhere` maps to `relaxed-title`; a null provider value inherits the global strategies. New defaults and the benchmark enable all four. Settings writes only the new form. Provider `parameters` must reject geography and pagination keys owned by the adapter, so free-form values cannot override lane intent.
 
-| Strategy | Intent |
-| --- | --- |
-| `role-first` | Put grouped role terms before market terms and prefer provider title constraints. |
-| `location-first` | Put market terms before grouped role terms. |
-| `phrase` | Search grouped exact title phrases with market terms. |
-| `relaxed-title` | Search significant title tokens without requiring every token in the page title. |
+## Adapters own provider syntax
 
-`board-discovery` remains location-led and applies only to sources that support board synchronization. `worldwide-remote` remains separate from regional market lanes.
-
-Strategy order, enabled strategies, maximum requests per run, maximum pages per lane, and minimum useful hits required for another page are SQLite-backed discovery settings. These values are visible in Settings.
-
-## Provider adapters own geography and pagination
-
-The application search port accepts a provider-neutral request with the lane, one-based page number, result limit, freshness, and abort signal. The adapter prepares its rendered query. The application journals that prepared request before execution, then asks the adapter to execute it and return:
+The application supplies a lane, one-based page, limit, and freshness. A provider first prepares a request, exposing only the rendered query and an execution function. The application journals the request before calling that function and passes the abort signal at execution.
 
 ```ts
 type SearchPage = {
   readonly results: readonly SearchResult[];
   readonly hasMore: boolean;
 };
+
+type PreparedSearchRequest = {
+  readonly renderedQuery: string;
+  readonly execute: (signal: AbortSignal) => Promise<SearchPage>;
+};
 ```
 
-Adapters map the neutral fields according to their supported contracts:
+`JsonSearchProvider` implements the same contract so fixtures exercise the real planner and journal path. Vendor parameters do not escape the adapter.
 
-| Provider | Geography and language | Pagination evidence |
+| Provider | Geography and language | Page and continuation |
 | --- | --- | --- |
-| Brave | `country`, `search_lang`, and `ui_lang` where configured | `offset` and `query.more_results_available` |
-| SerpAPI | `location`, `gl`, and `hl` | `start` and returned pagination metadata |
-| Serper | Supported country and language request fields | Supported page field and returned page evidence |
+| Brave | `country`, `search_lang`, `ui_lang` | zero-based `offset`; `query.more_results_available` |
+| SerpAPI | `location`, `gl`, `hl` | `start`; returned next-page metadata |
+| Serper | adapter-supported country and language fields | current page field; explicit response evidence when present |
 
-Brave documents a two-character country code, search language, zero-based offset, and `more_results_available` for deciding whether to request another page: <https://api-dashboard.search.brave.com/app/documentation/web-search/get-started>. SerpAPI documents `location`, `gl`, `hl`, `start`, and its pagination links: <https://serpapi.com/search-api>. Serper's adapter will receive focused contract tests for its current request and response fields before production behavior changes.
+Focused adapter tests will pin Serper's current request and response fields before its behavior changes. When a provider omits explicit continuation evidence, the safe fallback is `results.length === requestedLimit`. Missing evidence does not invalidate an otherwise valid response.
 
-When an adapter does not support a neutral field, it omits the vendor parameter but retains market terms in the rendered query. It must not invent a default country that changes the requested market.
+An adapter omits an unsupported geography or language field and never substitutes another market.
 
-## Adaptive execution
+The first page of each lane always runs. Another page is admitted only when `hasMore` is true, the previous page produced at least `minimumUsefulHitsPerPage`, the lane remains below `maxPagesPerLane`, and the run remains below `maxRequestsPerRun`. These budgets are SQLite-backed discovery settings exposed in Settings.
 
-The discovery use case executes the first page of each planned lane. It requests another page only when all of these conditions hold:
+A useful hit is a newly inserted result that creates a supported classified posting, discovers a synchronizable board, or writes a job. Extend `RecordedDiscoveryHit` with `isUseful` so `JobDiscoveryCatalog.recordHit` returns that decision. Lanes run in configured strategy and source order, which makes budget decisions deterministic.
 
-- the provider returned `hasMore: true`;
-- the completed page met `minimumUsefulHitsPerPage`;
-- the lane has not reached `maxPagesPerLane`;
-- the run has not reached `maxRequestsPerRun`;
-- the run has not been cancelled or stopped by provider failure.
+## Journal actual requests
 
-A useful hit is a newly inserted search result that produces a supported classified posting, discovers a synchronizable board, or writes a job. `JobDiscoveryCatalog.recordHit` returns this decision so the application can count it without learning classification or persistence details.
+Each admitted provider request owns one `discovery_queries` row. Keep the existing `hit_count` as the raw result count. Add nullable fields for `market_key`, `country_code`, `search_language`, `lane_kind`, `strategy`, `page`, `useful_hit_count`, and `has_more`.
 
-The global request budget is deterministic. Lanes execute in configured strategy order and source priority. When the budget ends, the run records the budget stop reason and no more requests are admitted. Provider failure keeps the existing fatal/transient behavior and stops remaining work for that provider.
+Replace the journal's up-front `queryCount` and bulk `planQueries` inputs with a run start followed by `admitRequest`; admission increments `discovery_runs.query_count` in the same transaction. `cancelPlannedQueries` narrows to admitted pending rows because unadmitted pages no longer exist. The run summary records a budget stop reason, and the UI will say `requests` instead of `role-title queries`.
 
-## Every request is journaled
+The existing non-null `ats_type` and `source_pattern` columns keep their source metadata. `title_term` stores the grouped title display text and is empty for lanes without titles.
 
-Each provider request, including every page, owns one `discovery_queries` row. The table gains additive columns for:
+Match and exclusion reasons record the actual matched term from `MarketScope.terms`. Run details group request evidence by market, locale, lane, strategy, source, and page.
 
-- market key and label;
-- country code and search language;
-- strategy and page;
-- result count and unique useful hit count;
-- whether the provider reported more results.
+## Benchmark uses the production path
 
-The existing query text, source, status, error, and timing fields remain. `hit_count` becomes the result count exposed by read models, with a compatibility path for old rows.
+The deterministic discovery benchmark will use an in-memory SQLite database and a fixture-backed `SearchProvider` to run the real planner, discovery use case, catalog, and journal. Direct fixture insertion cannot prove the ADM-100 request budget or productivity contract.
 
-The journal will append requests as lanes and pages are admitted rather than inserting every possible page up front. `discovery_runs.query_count` tracks admitted requests. A planned lane skipped by the global budget receives a cancelled request record only when it had already been admitted; the run summary also reports the budget stop reason.
+The checked-in Asia fixture will include the exact profile, sources, and legacy planner inputs that produce the accepted 370-request baseline. Its baseline file records the expected count and the pre-ADM-100 formula used to derive it. The new benchmark must show:
 
-Run details group request evidence by market, strategy, and source. The discovery benchmark reads the same rows to calculate request totals and productive-query rates.
+- every active profile reaches at least 90 percent recall and 80 percent top-20 precision;
+- the Asia run admits no more than 111 requests, a reduction of at least 70 percent;
+- all four role strategies appear in completed journal rows;
+- productive local-market requests are at least 10 percent of completed role-lane requests with a non-null country code.
 
-## Errors remain actionable
-
-Invalid market configuration fails at the configuration boundary with the exact setting path. The Settings action leaves the previous SQLite value intact and returns the error beside the market editor.
-
-An unknown saved profile location does not fail a run. It becomes a literal scope and is journaled with a null country and language when no default language applies.
-
-An adapter response without required pagination evidence is rejected by its Zod response schema. A provider that explicitly reports no continuation ends the lane successfully. Query failures retain their rendered query, market, strategy, page, and error in the journal.
+A productive local-market request has `useful_hit_count > 0`. The report reads request totals and grouping fields from `discovery_queries`, not parallel benchmark counters.
 
 ## Acceptance evidence
 
-The implementation must add tests at each owner boundary.
+Tests must prove country expansion, city isolation, hierarchical exclusions, literal fallback, and the same terms reaching `recordHit`, `inferLocationHint`, and final matching. Application tests must cover grouped titles, every strategy, remote separation, deterministic budgets, productive continuation, unproductive stopping, and cancellation. Infrastructure tests must cover configuration, pinned ISO assumptions, adapter mapping, continuation parsing and fallback, journal persistence, and empty and existing database migration.
 
-Domain tests will prove that a UAE country scope matches `UAE`, `United Arab Emirates`, Dubai, and Abu Dhabi; a Dubai scope rejects Abu Dhabi; exclusions use the same hierarchy; and literal scopes preserve current substring behavior.
+Focused mutation testing covers market resolution, lane planning, and pagination decisions. The final tree must pass:
 
-Application tests will prove that planning groups titles by source and market, emits all four measured strategies, keeps remote work separate, respects deterministic budgets, advances only productive lanes with provider continuation, and stops unproductive or exhausted lanes.
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+PLAYWRIGHT_USE_SYSTEM_CHROME=1 pnpm test:e2e
+pnpm build
+```
 
-Infrastructure tests will prove configuration validation, ISO record assumptions, bootstrap preservation, empty and existing database migration, provider parameter mapping, provider continuation parsing, journal persistence, and run-detail presentation.
+It must also pass the deterministic benchmark and the repository's read-only Claude Opus review.
 
-The deterministic discovery corpus will change its UAE profiles to store only the country target. It will include UAE-labelled, full-country-labelled, Dubai, and Abu Dhabi positives plus a Dubai-only profile with an Abu Dhabi negative. Its report must show:
+## Boundaries
 
-- every active profile meeting at least 90 percent recall and 80 percent top-20 precision;
-- at least 70 percent fewer requests than the 370-query Asia baseline, which means no more than 111 requests;
-- at least 10 percent productive local-market queries for the Asia case;
-- request results grouped by market, locale, strategy, and page.
-
-Focused mutation testing will cover the new market-resolution, planning, and pagination decisions. The final tree must pass the repository's lint, type check, unit tests, browser tests, build, discovery benchmark, and read-only Claude Opus review.
-
-## Delivery slices
-
-Implementation will proceed as small vertical slices:
-
-1. Characterise literal planning and matching.
-2. Add ISO-backed market policy parsing and resolution with literal fallback.
-3. Pass resolved scopes through query planning and matching.
-4. Add semantic strategies and provider geography.
-5. Add adaptive pages and useful-hit accounting.
-6. Persist and present per-request evidence.
-7. Update the benchmark and tune configured budgets against its fixed targets.
-8. Run mutation testing, the full gate, and the required independent review.
-
-Each slice begins with a failing behavior test and ends with its focused checks green.
-
-## Alternatives considered
-
-Migrating profile locations to canonical market IDs would remove resolution at run time, but it requires a data migration, changes the profile editor contract, and risks blocking existing custom values. It is not needed for the accepted behavior.
-
-Using `i18n-iso-countries` would provide country aliases and translations, but it does not provide ISO subdivisions. The chosen `iso-3166` package fits the country and subdivision validation job with no transitive dependencies. Product aliases such as `UAE` still belong in SQLite.
-
-The older `iso-3166-2` package was rejected because its latest npm release is nine years old and npm declares no license. A hand-maintained country and subdivision table was rejected because Job Radar would own standards updates that a maintained package already supplies.
-
-Keeping separate alias expansion in the planner and matcher was rejected because the two paths could disagree. The shared resolved scope is the contract that prevents a retrieved role from being discarded under a narrower vocabulary.
+This work does not migrate profiles to market IDs, add geocoding, build a city database, or implement known-board-first scheduling. `i18n-iso-countries` was rejected because it lacks subdivisions. The old `iso-3166-2` package was rejected because its latest npm release is stale and npm declares no license. A hand-maintained ISO table would make Job Radar responsible for standards updates.
