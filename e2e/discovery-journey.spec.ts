@@ -298,6 +298,127 @@ test("explains that a returned role was excluded by location", async ({ page }) 
   );
 });
 
+test("explains every zero-match funnel state", async ({ page }) => {
+  test.setTimeout(90_000);
+  await configureDiscoveryFixtures(page, `${fixtureUrl}/serper/location-mismatch`);
+  const { id: profileId } = await createProfile(page);
+  await page.goto("/settings");
+  await page.getByLabel("Structured verification source IDs").fill("");
+  await page.getByRole("button", { name: "Save runtime settings" }).click();
+  await expect(page.getByText("Runtime settings saved to SQLite.")).toBeVisible();
+  const cases = [
+    {
+      endpoint: `${fixtureUrl}/serper/location-mismatch`,
+      expected: {
+        providerHits: 1,
+        classified: 1,
+        verified: 1,
+        verificationOnly: 0,
+        staleOnly: 0,
+        otherExclusions: 1,
+        finalMatches: 0,
+      },
+      heading: "Profile rules were the main reason no jobs matched",
+    },
+    {
+      endpoint: `${fixtureUrl}/serper/web3-lead`,
+      expected: {
+        providerHits: 1,
+        classified: 1,
+        verified: 0,
+        verificationOnly: 1,
+        staleOnly: 0,
+        otherExclusions: 0,
+        finalMatches: 0,
+      },
+      heading: "Verification was the main reason no jobs matched",
+    },
+    {
+      endpoint: `${fixtureUrl}/serper/stale`,
+      expected: {
+        providerHits: 1,
+        classified: 1,
+        verified: 1,
+        verificationOnly: 0,
+        staleOnly: 1,
+        otherExclusions: 0,
+        finalMatches: 0,
+      },
+      heading: "Listing age was the main reason no jobs matched",
+    },
+    {
+      endpoint: `${fixtureUrl}/serper/no-hits`,
+      expected: {
+        providerHits: 0,
+        classified: 0,
+        verified: 0,
+        verificationOnly: 0,
+        staleOnly: 0,
+        otherExclusions: 0,
+        finalMatches: 0,
+      },
+      heading: "The provider returned no results",
+      action: { label: "Review query details", href: "#query-details" },
+    },
+    {
+      endpoint: `${fixtureUrl}/serper/unclassified`,
+      expected: {
+        providerHits: 1,
+        classified: 0,
+        verified: 0,
+        verificationOnly: 0,
+        staleOnly: 0,
+        otherExclusions: 0,
+        finalMatches: 0,
+      },
+      heading: "Returned results did not match a supported source",
+      action: { label: "Review source coverage", href: "/sources" },
+    },
+    {
+      endpoint: `${fixtureUrl}/serper/classified-without-job`,
+      expected: {
+        providerHits: 1,
+        classified: 1,
+        verified: 0,
+        verificationOnly: 0,
+        staleOnly: 0,
+        otherExclusions: 0,
+        finalMatches: 0,
+      },
+      heading: "Classified results did not reach a final match",
+      action: { label: "Explain a returned role", href: "#known-role-check" },
+    },
+  ] as const;
+
+  for (const scenario of cases) {
+    await configureSerperEndpoint(page, scenario.endpoint);
+    const runId = await runDiscovery(page, profileId);
+    await page.goto(`/runs/${runId}`);
+
+    const funnel = page.getByRole("region", { name: "Discovery funnel" });
+    const countFor = (label: string) =>
+      funnel.getByText(label, { exact: true }).locator("..").getByRole("definition");
+    await expect(countFor("Provider hits")).toHaveText(String(scenario.expected.providerHits));
+    await expect(countFor("Classified")).toHaveText(String(scenario.expected.classified));
+    await expect(countFor("Verified")).toHaveText(String(scenario.expected.verified));
+    await expect(countFor("Verification only")).toHaveText(
+      String(scenario.expected.verificationOnly),
+    );
+    await expect(countFor("Stale only")).toHaveText(String(scenario.expected.staleOnly));
+    await expect(countFor("Other exclusions")).toHaveText(
+      String(scenario.expected.otherExclusions),
+    );
+    await expect(countFor("Final matches")).toHaveText(String(scenario.expected.finalMatches));
+    await expect(funnel.getByText(scenario.heading, { exact: true })).toBeVisible();
+    if ("action" in scenario) {
+      await expect(funnel.getByRole("link", { name: scenario.action.label })).toHaveAttribute(
+        "href",
+        new RegExp(`${scenario.action.href}$`),
+      );
+    }
+  }
+});
+
 async function configureDiscoveryFixtures(
   page: Page,
   serperEndpoint = `${fixtureUrl}/serper/success`,
@@ -322,6 +443,21 @@ async function configureSerperEndpoint(page: Page, endpoint: string): Promise<vo
   await page.getByLabel("Google via Serper.dev endpoint").fill(endpoint);
   await page.getByRole("button", { name: "Save runtime settings" }).click();
   await expect(page.getByText("Runtime settings saved to SQLite.")).toBeVisible();
+}
+
+async function runDiscovery(page: Page, profileId: number): Promise<number> {
+  await page.goto(`/?profile=${profileId}&provider=serper`);
+  const startedResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname === "/api/discovery-runs",
+  );
+  await page.getByRole("button", { name: "Run discovery" }).click();
+  const started = (await (await startedResponse).json()) as { runId: number };
+  await expect(page.getByRole("status").filter({ hasText: "Discovery completed" })).toBeVisible({
+    timeout: 30_000,
+  });
+  return started.runId;
 }
 
 async function expectUrlSelection(

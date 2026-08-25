@@ -24,6 +24,8 @@ export function formatExclusionReason(reason: ExclusionReason): string {
   switch (reason.code) {
     case "unverified-lead":
       return "Web-search lead is not verified by a structured listing";
+    case "legacy":
+      return reason.detail;
     case "excluded-title":
       return `Excluded title term: ${reason.term}`;
     case "excluded-description":

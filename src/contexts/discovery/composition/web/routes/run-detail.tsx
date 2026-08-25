@@ -2,6 +2,7 @@ import { Button, buttonAttributes, PageHeader } from "@job-radar/design-ui";
 import { ArrowLeft, CheckCircle2, CircleAlert, CircleX, LoaderCircle } from "lucide-react";
 import { Form, Link, type LoaderFunctionArgs, useLoaderData } from "react-router";
 import { discoveryWeb } from "@/contexts/discovery/composition/discovery-web.server";
+import { DiscoveryFunnel } from "@/contexts/discovery/presentation/web/components/discovery-funnel";
 import { KnownRoleDiagnostic } from "@/contexts/discovery/presentation/web/components/known-role-diagnostic";
 import { parseKnownRoleDiagnosticRequest } from "@/contexts/discovery/presentation/web/requests/known-role-diagnostic-request";
 
@@ -67,7 +68,11 @@ export default function RunDetailPage() {
         </section>
       ) : null}
 
-      <section className="panel run-panel">
+      {run.status === "completed" ? (
+        <DiscoveryFunnel counts={data.funnel} profileId={run.profileId} />
+      ) : null}
+
+      <section className="panel run-panel" id="known-role-check">
         <div className="section-heading">
           <div>
             <p className="eyebrow">Known role check</p>
@@ -99,7 +104,7 @@ export default function RunDetailPage() {
         {data.diagnostic ? <KnownRoleDiagnostic diagnostic={data.diagnostic} /> : null}
       </section>
 
-      <section className="panel run-panel">
+      <section className="panel run-panel" id="query-details">
         <div className="section-heading">
           <h2>Queries by ATS</h2>
           <span>{run.hitCount} unique search hits</span>

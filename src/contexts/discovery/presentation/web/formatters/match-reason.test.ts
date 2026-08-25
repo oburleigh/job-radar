@@ -48,6 +48,7 @@ describe("match reason formatting", () => {
     }
     const cases: readonly [ExclusionReason, string][] = [
       [{ code: "unverified-lead" }, "Web-search lead is not verified by a structured listing"],
+      [{ code: "legacy", detail: "Original historical reason" }, "Original historical reason"],
       [{ code: "excluded-title", term: "intern" }, "Excluded title term: intern"],
       [{ code: "excluded-description", term: "clearance" }, "Excluded description term: clearance"],
       [{ code: "missing-required-job-term" }, "Missing a required job keyword"],

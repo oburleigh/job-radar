@@ -53,6 +53,7 @@ export type MatchReason =
 
 export type ExclusionReason =
   | { readonly code: "unverified-lead" }
+  | { readonly code: "legacy"; readonly detail: string }
   | { readonly code: "excluded-title"; readonly term: string }
   | { readonly code: "excluded-description"; readonly term: string }
   | { readonly code: "missing-required-job-term" }

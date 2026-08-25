@@ -75,6 +75,54 @@ const server = createServer(async (request, response) => {
     return;
   }
 
+  if (request.method === "POST" && url.pathname === "/serper/stale") {
+    await consumeRequest(request);
+    sendJson(response, 200, {
+      organic: [
+        {
+          title: "Head of Engineering · Acme Archive Fixture",
+          snippet: "Lead the platform engineering organisation in Dubai, United Arab Emirates.",
+          link: "https://boards.greenhouse.io/acme-stale/jobs/24680",
+        },
+      ],
+    });
+    return;
+  }
+
+  if (request.method === "POST" && url.pathname === "/serper/no-hits") {
+    await consumeRequest(request);
+    sendJson(response, 200, { organic: [] });
+    return;
+  }
+
+  if (request.method === "POST" && url.pathname === "/serper/unclassified") {
+    await consumeRequest(request);
+    sendJson(response, 200, {
+      organic: [
+        {
+          title: "Head of Engineering · Unsupported Fixture",
+          snippet: "Lead the platform engineering organisation in Dubai, United Arab Emirates.",
+          link: "https://example.com/careers/head-of-engineering",
+        },
+      ],
+    });
+    return;
+  }
+
+  if (request.method === "POST" && url.pathname === "/serper/classified-without-job") {
+    await consumeRequest(request);
+    sendJson(response, 200, {
+      organic: [
+        {
+          title: "Head of Engineering · Empty Board Fixture",
+          snippet: "Lead the platform engineering organisation in Dubai, United Arab Emirates.",
+          link: "https://boards.greenhouse.io/acme-empty/jobs/13579",
+        },
+      ],
+    });
+    return;
+  }
+
   if (request.method === "GET" && url.pathname === "/greenhouse/acme-fixture/jobs") {
     sendJson(response, 200, {
       jobs: [
@@ -110,6 +158,30 @@ const server = createServer(async (request, response) => {
         },
       ],
     });
+    return;
+  }
+
+  if (request.method === "GET" && url.pathname === "/greenhouse/acme-stale/jobs") {
+    sendJson(response, 200, {
+      jobs: [
+        {
+          id: 24680,
+          internal_job_id: null,
+          title: "Head of Engineering",
+          company_name: "Acme Archive Fixture",
+          absolute_url: "https://boards.greenhouse.io/acme-stale/jobs/24680",
+          location: { name: "Dubai, United Arab Emirates" },
+          content: "<p>Lead the platform engineering organisation.</p>",
+          departments: [{ name: "Engineering" }],
+          first_published: "2026-01-01T00:00:00.000Z",
+        },
+      ],
+    });
+    return;
+  }
+
+  if (request.method === "GET" && url.pathname === "/greenhouse/acme-empty/jobs") {
+    sendJson(response, 200, { jobs: [] });
     return;
   }
 
