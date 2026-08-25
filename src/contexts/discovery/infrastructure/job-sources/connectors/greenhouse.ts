@@ -1,13 +1,19 @@
 import { z } from "zod";
-import { endpoint } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
+import {
+  endpoint,
+  optionalEndpoint,
+} from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
 import { optionalVendorTextValue, parseVendorResponse } from "./response-schema";
 import {
   asRecord,
   type BoardConnector,
+  lookupPostingInBoard,
+  type PostingLookupConnector,
   parseDate,
   rawJob,
   recordArray,
   requestJson,
+  requestPostingJson,
   stringValue,
   stripHtml,
 } from "./shared";
@@ -40,20 +46,52 @@ export const fetchGreenhouse: BoardConnector = async (board, limit, fetcher) => 
         Boolean(stringValue(row.title)) &&
         Boolean(stringValue(row.id) || stringValue(row.internal_job_id)),
     )
-    .map((row) => {
-      const externalId = stringValue(row.id) || stringValue(row.internal_job_id);
-      const location = asRecord(row.location);
-      const departments = recordArray(row.departments);
-
-      return rawJob("greenhouse", board, row, {
-        externalId,
-        canonicalUrl: stringValue(row.absolute_url) || `${board.baseUrl}/jobs/${externalId}`,
-        title: stringValue(row.title),
-        companyName: stringValue(row.company_name) || board.companyName || board.slug,
-        locations: [stringValue(location.name)].filter(Boolean),
-        description: stripHtml(stringValue(row.content)),
-        department: stringValue(departments[0]?.name),
-        publishedAt: parseDate(row.first_published ?? row.updated_at),
-      });
-    });
+    .map((row) => greenhouseJob(board, row));
 };
+
+export const lookupGreenhousePosting: PostingLookupConnector = async (
+  board,
+  externalId,
+  fetcher,
+) => {
+  const checkedUrl = optionalEndpoint("greenhouse", "posting", {
+    slug: board.slug,
+    externalId,
+  });
+  if (!checkedUrl) {
+    return lookupPostingInBoard(
+      board,
+      externalId,
+      endpoint("greenhouse", "jobs", { slug: board.slug }),
+      fetchGreenhouse,
+      fetcher,
+    );
+  }
+  const response = await requestPostingJson(checkedUrl, fetcher);
+  if (response.status !== "ok") {
+    return response;
+  }
+  try {
+    const payload = parseVendorResponse("Greenhouse", greenhouseJobSchema, response.payload);
+    return { status: "verified", job: greenhouseJob(board, asRecord(payload)) };
+  } catch {
+    return { status: "transient_failure", reason: "invalid-response", checkedUrl };
+  }
+};
+
+function greenhouseJob(board: Parameters<BoardConnector>[0], row: Record<string, unknown>) {
+  const externalId = stringValue(row.id) || stringValue(row.internal_job_id);
+  const location = asRecord(row.location);
+  const departments = recordArray(row.departments);
+
+  return rawJob("greenhouse", board, row, {
+    externalId,
+    canonicalUrl: stringValue(row.absolute_url) || `${board.baseUrl}/jobs/${externalId}`,
+    title: stringValue(row.title),
+    companyName: stringValue(row.company_name) || board.companyName || board.slug,
+    locations: [stringValue(location.name)].filter(Boolean),
+    description: stripHtml(stringValue(row.content)),
+    department: stringValue(departments[0]?.name),
+    publishedAt: parseDate(row.first_published ?? row.updated_at),
+  });
+}

@@ -197,6 +197,7 @@ const atsIntegrationDefaults: AtsIntegrationDefault[] = [
     pageSize: null,
     endpoints: {
       jobs: "https://boards-api.greenhouse.io/v1/boards/{slug}/jobs?content=true",
+      posting: "https://boards-api.greenhouse.io/v1/boards/{slug}/jobs/{externalId}",
     },
   },
   {
@@ -210,6 +211,8 @@ const atsIntegrationDefaults: AtsIntegrationDefault[] = [
     endpoints: {
       jobs: "https://api.lever.co/v0/postings/{slug}?mode=json",
       jobsEu: "https://api.eu.lever.co/v0/postings/{slug}?mode=json",
+      posting: "https://api.lever.co/v0/postings/{slug}/{externalId}?mode=json",
+      postingEu: "https://api.eu.lever.co/v0/postings/{slug}/{externalId}?mode=json",
     },
   },
   {
@@ -368,6 +371,26 @@ export function bootstrapJobRadar(database: Database, now = new Date()): void {
       .values(atsIntegrationDefaults.map((integration) => ({ ...integration, updatedAt: now })))
       .onConflictDoNothing()
       .run();
+    for (const integration of atsIntegrationDefaults) {
+      const existing = transaction
+        .select({ endpoints: atsIntegrations.endpoints })
+        .from(atsIntegrations)
+        .where(eq(atsIntegrations.atsType, integration.atsType))
+        .get();
+      if (!existing) {
+        continue;
+      }
+      const missingEndpoints = Object.fromEntries(
+        Object.entries(integration.endpoints).filter(([name]) => !(name in existing.endpoints)),
+      );
+      if (Object.keys(missingEndpoints).length > 0) {
+        transaction
+          .update(atsIntegrations)
+          .set({ endpoints: { ...existing.endpoints, ...missingEndpoints }, updatedAt: now })
+          .where(eq(atsIntegrations.atsType, integration.atsType))
+          .run();
+      }
+    }
     transaction.insert(sourceDomains).values(sourceDomainDefaults).onConflictDoNothing().run();
   });
 }

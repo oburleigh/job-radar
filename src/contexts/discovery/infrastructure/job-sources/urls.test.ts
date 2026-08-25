@@ -31,6 +31,26 @@ describe("ATS URL classification", () => {
     });
   });
 
+  it("classifies an off-domain numeric Greenhouse identity without guessing a board", () => {
+    expect(classifyUrl("https://careers.coupang.com/jobs/?gh_jid=8124387")).toEqual({
+      atsType: "greenhouse",
+      externalId: "8124387",
+      canonicalUrl: "https://careers.coupang.com/jobs?gh_jid=8124387",
+      board: null,
+    });
+  });
+
+  it("does not infer Greenhouse from an off-domain nonnumeric query value", () => {
+    expect(classifyUrl("https://careers.example.com/jobs/?gh_jid=director-role")).toBeNull();
+  });
+
+  it.each(["8124387x", "x8124387"])(
+    "does not infer Greenhouse from a partially numeric off-domain identity: %s",
+    (externalId) => {
+      expect(classifyUrl(`https://careers.example.com/jobs/?gh_jid=${externalId}`)).toBeNull();
+    },
+  );
+
   it("extracts the Workday host, tenant, and career site", () => {
     const result = classifyUrl(
       "https://acme.wd5.myworkdayjobs.com/en-US/External/job/Dubai/Head-of-Engineering_R-42",

@@ -100,6 +100,18 @@ describe("discovery benchmark evidence", () => {
           matches: 1,
           syncErrors: 0,
         },
+        exactVerification: {
+          supportedHits: 1,
+          outcomesAssigned: 0,
+          outcomeRate: 0,
+          byStatus: {
+            verified: 0,
+            closed: 0,
+            notFound: 0,
+            protected: 0,
+            transientFailure: 0,
+          },
+        },
       },
       inputs: {
         profile: {
@@ -218,6 +230,58 @@ describe("discovery benchmark evidence", () => {
       },
       visibleCard: { visible: false, state: null },
     });
+  });
+
+  it("reports same-run exact outcome coverage for supported ATS hits", () => {
+    const { profileId, runId } = seedRun(database);
+    const statuses = ["verified", "closed", "not_found", "protected", "transient_failure"] as const;
+    for (let index = 1; index <= 20; index += 1) {
+      const verificationStatus = statuses[(index - 1) % statuses.length];
+      database
+        .insert(discoveryHits)
+        .values({
+          runId,
+          query: "site:boards.greenhouse.io engineering",
+          rank: index,
+          title: `Engineering role ${index}`,
+          url: `https://boards.greenhouse.io/acme/jobs/${index}`,
+          snippet: "Engineering role",
+          atsType: "greenhouse",
+          boardId: null,
+          ...(index <= 19
+            ? {
+                verificationStatus,
+                verificationReason: "http-403",
+                verificationUrl: `https://boards-api.greenhouse.io/v1/boards/acme/jobs/${index}`,
+                verificationCheckedAt: benchmarkedAt,
+              }
+            : {}),
+          createdAt: benchmarkedAt,
+        })
+        .run();
+    }
+
+    const report = readDiscoveryBenchmark(database, {
+      runId,
+      profileId,
+      knownRoleUrl: "https://boards.greenhouse.io/acme/jobs/1",
+      benchmarkedAt,
+      policy: policySnapshot(),
+    });
+
+    expect(report.run.exactVerification).toEqual({
+      supportedHits: 20,
+      outcomesAssigned: 19,
+      outcomeRate: 0.95,
+      byStatus: {
+        verified: 4,
+        closed: 4,
+        notFound: 4,
+        protected: 4,
+        transientFailure: 3,
+      },
+    });
+    expect(report.run.exactVerification.outcomeRate).toBeGreaterThanOrEqual(0.95);
   });
 
   it("reports an expected role that never entered the pipeline", () => {

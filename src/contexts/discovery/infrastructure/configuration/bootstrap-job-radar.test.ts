@@ -151,6 +151,64 @@ describe("Job Radar database bootstrap", () => {
     expect(preserved?.value).toMatchObject({ providerExecution });
     expect(preserved?.updatedAt).toEqual(configuredAt);
   });
+
+  it("backfills new exact-posting endpoints without overwriting configured ATS endpoints", () => {
+    const configuredAt = new Date("2026-08-20T00:00:00.000Z");
+    bootstrapJobRadar(database, configuredAt);
+    database
+      .update(atsIntegrations)
+      .set({
+        endpoints: {
+          jobs: "https://greenhouse.example.test/custom/{slug}",
+        },
+        updatedAt: configuredAt,
+      })
+      .where(eq(atsIntegrations.atsType, "greenhouse"))
+      .run();
+    database
+      .update(atsIntegrations)
+      .set({
+        endpoints: {
+          jobs: "https://lever.example.test/custom/{slug}",
+          jobsEu: "https://lever.example.test/custom-eu/{slug}",
+        },
+        updatedAt: configuredAt,
+      })
+      .where(eq(atsIntegrations.atsType, "lever"))
+      .run();
+
+    const backfilledAt = new Date("2026-08-21T00:00:00.000Z");
+    bootstrapJobRadar(database, backfilledAt);
+
+    expect(
+      database
+        .select({ endpoints: atsIntegrations.endpoints, updatedAt: atsIntegrations.updatedAt })
+        .from(atsIntegrations)
+        .where(eq(atsIntegrations.atsType, "greenhouse"))
+        .get(),
+    ).toEqual({
+      endpoints: {
+        jobs: "https://greenhouse.example.test/custom/{slug}",
+        posting: "https://boards-api.greenhouse.io/v1/boards/{slug}/jobs/{externalId}",
+      },
+      updatedAt: backfilledAt,
+    });
+    expect(
+      database
+        .select({ endpoints: atsIntegrations.endpoints, updatedAt: atsIntegrations.updatedAt })
+        .from(atsIntegrations)
+        .where(eq(atsIntegrations.atsType, "lever"))
+        .get(),
+    ).toEqual({
+      endpoints: {
+        jobs: "https://lever.example.test/custom/{slug}",
+        jobsEu: "https://lever.example.test/custom-eu/{slug}",
+        posting: "https://api.lever.co/v0/postings/{slug}/{externalId}?mode=json",
+        postingEu: "https://api.eu.lever.co/v0/postings/{slug}/{externalId}?mode=json",
+      },
+      updatedAt: backfilledAt,
+    });
+  });
 });
 
 function createDatabase(sqlite: Database.Database) {

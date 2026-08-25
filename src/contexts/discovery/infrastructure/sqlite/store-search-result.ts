@@ -15,7 +15,7 @@ import {
 import { db } from "@/contexts/discovery/infrastructure/sqlite/database";
 import { companyBoards, jobs } from "@/contexts/discovery/infrastructure/sqlite/schema";
 
-interface SearchResultInput {
+export interface SearchResultInput {
   atsType: AtsType;
   canonicalUrl: string;
   externalId: string;
@@ -218,6 +218,48 @@ export function recordStructuredJobPageOutcome(
     .where(and(eq(jobs.atsType, atsType), eq(jobs.externalId, externalId)))
     .all();
   const remainsActive = outcome.status === "unavailable";
+
+  for (const job of matchingJobs) {
+    db.update(jobs)
+      .set({
+        isActive: remainsActive ? job.isActive : false,
+        lastSeenAt: checkedAt,
+        rawPayload: {
+          ...job.rawPayload,
+          verification: {
+            status: outcome.status,
+            reason: outcome.reason,
+            checkedAt: checkedAt.toISOString(),
+          },
+        },
+      })
+      .where(eq(jobs.id, job.id))
+      .run();
+  }
+}
+
+export function recordAtsPostingOutcome(
+  atsType: AtsType,
+  externalId: string,
+  boardId: number | null,
+  outcome: {
+    readonly status: "closed" | "not_found" | "protected" | "transient_failure";
+    readonly reason: string;
+  },
+  checkedAt: Date,
+): void {
+  const matchingJobs = db
+    .select({ id: jobs.id, isActive: jobs.isActive, rawPayload: jobs.rawPayload })
+    .from(jobs)
+    .where(
+      and(
+        eq(jobs.atsType, atsType),
+        eq(jobs.externalId, externalId),
+        boardId === null ? isNull(jobs.boardId) : eq(jobs.boardId, boardId),
+      ),
+    )
+    .all();
+  const remainsActive = outcome.status === "protected" || outcome.status === "transient_failure";
 
   for (const job of matchingJobs) {
     db.update(jobs)

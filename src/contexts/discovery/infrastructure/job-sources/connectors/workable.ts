@@ -4,6 +4,8 @@ import { parseVendorRecords, parseVendorResponse } from "./response-schema";
 import {
   type BoardConnector,
   joinLocation,
+  lookupPostingInBoard,
+  type PostingLookupConnector,
   parseDate,
   rawJob,
   recordArray,
@@ -70,3 +72,12 @@ export const fetchWorkable: BoardConnector = async (board, limit, fetcher, repor
       });
     });
 };
+
+export const lookupWorkablePosting: PostingLookupConnector = (board, externalId, fetcher) =>
+  lookupPostingInBoard(
+    board,
+    externalId,
+    endpoint("workable", "jobs", { slug: board.slug }),
+    fetchWorkable,
+    fetcher,
+  );

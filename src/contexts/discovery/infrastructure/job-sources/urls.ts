@@ -45,6 +45,15 @@ export function classifyUrl(value: string): ClassifiedUrl | null {
   const host = url.hostname;
   const parts = url.pathname.split("/").filter(Boolean);
 
+  const greenhousePostingId = url.searchParams.get("gh_jid") ?? "";
+  if (
+    greenhousePostingId &&
+    /^\d+$/.test(greenhousePostingId) &&
+    !hostMatches("greenhouse", host)
+  ) {
+    return classified("greenhouse", canonicalUrl, greenhousePostingId, null);
+  }
+
   if (hostMatches("ashby", host) && parts[0]) {
     return classified(
       "ashby",

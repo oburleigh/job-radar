@@ -15,6 +15,51 @@ export type BoardConnector = (
   reportRejected?: ReportRejectedVendorRecord,
 ) => Promise<RawJob[]>;
 
+export type AtsPostingLookup =
+  | { readonly status: "verified"; readonly job: RawJob }
+  | {
+      readonly status: "closed" | "not_found" | "protected" | "transient_failure";
+      readonly reason: string;
+      readonly checkedUrl: string;
+    };
+
+export type PostingLookupConnector = (
+  board: BoardInput,
+  externalId: string,
+  fetcher: typeof fetch,
+) => Promise<AtsPostingLookup>;
+
+export async function lookupPostingInBoard(
+  board: BoardInput,
+  externalId: string,
+  checkedUrl: string,
+  connector: BoardConnector,
+  fetcher: typeof fetch,
+): Promise<AtsPostingLookup> {
+  let boardJobs: RawJob[];
+  try {
+    boardJobs = await connector(board, Number.MAX_SAFE_INTEGER, fetcher);
+  } catch (error) {
+    if (error instanceof AtsRequestError) {
+      if (error.status === 404 || error.status === 410) {
+        return { status: "not_found", reason: `http-${error.status}`, checkedUrl };
+      }
+      if (error.status === 401 || error.status === 403 || error.status === 429) {
+        return { status: "protected", reason: `http-${error.status}`, checkedUrl };
+      }
+      return { status: "transient_failure", reason: `http-${error.status}`, checkedUrl };
+    }
+    return { status: "transient_failure", reason: "request-failed", checkedUrl };
+  }
+  const job = boardJobs.find(
+    (candidate) =>
+      candidate.externalId === externalId || lastPathPart(candidate.canonicalUrl) === externalId,
+  );
+  return job
+    ? { status: "verified", job }
+    : { status: "not_found", reason: "posting-absent", checkedUrl };
+}
+
 type RawJobFields = {
   readonly externalId: string;
   readonly canonicalUrl: string;
@@ -75,9 +120,54 @@ export async function requestJson(
     signal: AbortSignal.timeout(config.network.timeoutMs),
   });
   if (!response.ok) {
-    throw new Error(`ATS request returned HTTP ${response.status}`);
+    throw new AtsRequestError(response.status);
   }
   return response.json();
+}
+
+class AtsRequestError extends Error {
+  readonly status: number;
+
+  constructor(status: number) {
+    super(`ATS request returned HTTP ${status}`);
+    this.status = status;
+  }
+}
+
+export async function requestPostingJson(
+  input: string,
+  fetcher: typeof fetch,
+): Promise<
+  | { readonly status: "ok"; readonly payload: unknown }
+  | Exclude<AtsPostingLookup, { status: "verified" | "closed" }>
+> {
+  const config = getJobRadarConfig();
+  let response: Response;
+  try {
+    response = await fetcher(input, {
+      headers: {
+        Accept: "application/json",
+        "User-Agent": config.network.userAgent,
+      },
+      signal: AbortSignal.timeout(config.network.timeoutMs),
+    });
+  } catch {
+    return { status: "transient_failure", reason: "request-failed", checkedUrl: input };
+  }
+  if (response.status === 404 || response.status === 410) {
+    return { status: "not_found", reason: `http-${response.status}`, checkedUrl: input };
+  }
+  if (response.status === 401 || response.status === 403 || response.status === 429) {
+    return { status: "protected", reason: `http-${response.status}`, checkedUrl: input };
+  }
+  if (!response.ok) {
+    return { status: "transient_failure", reason: `http-${response.status}`, checkedUrl: input };
+  }
+  try {
+    return { status: "ok", payload: await response.json() };
+  } catch {
+    return { status: "transient_failure", reason: "invalid-response", checkedUrl: input };
+  }
 }
 
 export async function requestText(input: string, fetcher: typeof fetch): Promise<string> {

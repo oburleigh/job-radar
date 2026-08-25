@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import type { MatchingPolicy } from "@/contexts/discovery/domain/job-match";
-import { canonicalizeUrl } from "@/contexts/discovery/infrastructure/job-sources/urls";
+import { supportsAtsPostingLookup } from "@/contexts/discovery/infrastructure/job-sources/connectors";
+import { canonicalizeUrl, classifyUrl } from "@/contexts/discovery/infrastructure/job-sources/urls";
 import type { db } from "@/contexts/discovery/infrastructure/sqlite/database";
 import {
   discoveryHits,
@@ -84,6 +85,11 @@ export function readDiscoveryBenchmark(database: Database, request: DiscoveryBen
       ? hits.find((hit) => hit.boardId === knownJob.boardId)
       : undefined;
   const querySources = [...new Set(queries.map((query) => query.atsType))];
+  const supportedAtsHits = hits.filter((hit) => {
+    const classification = classifyUrl(hit.url);
+    return Boolean(classification?.externalId && supportsAtsPostingLookup(classification.atsType));
+  });
+  const exactOutcomes = supportedAtsHits.filter((hit) => hit.verificationStatus !== null);
   const entry = knownHit
     ? ("direct-search-hit" as const)
     : knownJob?.boardId && hits.some((hit) => hit.boardId === knownJob.boardId)
@@ -111,6 +117,21 @@ export function readDiscoveryBenchmark(database: Database, request: DiscoveryBen
         jobsWritten: run.jobsUpserted,
         matches: run.matchesFound,
         syncErrors: run.syncErrorCount,
+      },
+      exactVerification: {
+        supportedHits: supportedAtsHits.length,
+        outcomesAssigned: exactOutcomes.length,
+        outcomeRate:
+          supportedAtsHits.length === 0 ? null : exactOutcomes.length / supportedAtsHits.length,
+        byStatus: {
+          verified: exactOutcomes.filter((hit) => hit.verificationStatus === "verified").length,
+          closed: exactOutcomes.filter((hit) => hit.verificationStatus === "closed").length,
+          notFound: exactOutcomes.filter((hit) => hit.verificationStatus === "not_found").length,
+          protected: exactOutcomes.filter((hit) => hit.verificationStatus === "protected").length,
+          transientFailure: exactOutcomes.filter(
+            (hit) => hit.verificationStatus === "transient_failure",
+          ).length,
+        },
       },
     },
     inputs: {

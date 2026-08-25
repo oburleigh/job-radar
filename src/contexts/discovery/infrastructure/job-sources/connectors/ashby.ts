@@ -9,6 +9,8 @@ import {
   asRecord,
   type BoardConnector,
   lastPathPart,
+  lookupPostingInBoard,
+  type PostingLookupConnector,
   parseDate,
   rawJob,
   recordArray,
@@ -65,6 +67,15 @@ export const fetchAshby: BoardConnector = async (board, limit, fetcher, reportRe
       });
     });
 };
+
+export const lookupAshbyPosting: PostingLookupConnector = (board, externalId, fetcher) =>
+  lookupPostingInBoard(
+    board,
+    externalId,
+    endpoint("ashby", "jobs", { slug: board.slug }),
+    fetchAshby,
+    fetcher,
+  );
 
 function ashbyAnnualSalary(row: Record<string, unknown>): AnnualSalaryRange | null {
   const compensation = asRecord(row.compensation);

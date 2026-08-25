@@ -4,18 +4,19 @@ import type {
   RawJob,
 } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
 
-import { fetchAshby } from "./ashby";
+import { fetchAshby, lookupAshbyPosting } from "./ashby";
 import { fetchBambooHr } from "./bamboohr";
-import { fetchGreenhouse } from "./greenhouse";
+import { fetchGreenhouse, lookupGreenhousePosting } from "./greenhouse";
 import { fetchJobvite } from "./jobvite";
-import { fetchLever } from "./lever";
+import { fetchLever, lookupLeverPosting } from "./lever";
 import type { RejectedVendorRecord } from "./response-schema";
-import type { BoardConnector } from "./shared";
+import type { BoardConnector, PostingLookupConnector } from "./shared";
 import { fetchSmartRecruiters } from "./smartrecruiters";
-import { fetchWorkable } from "./workable";
+import { fetchWorkable, lookupWorkablePosting } from "./workable";
 import { fetchWorkday } from "./workday";
 
 export { formatRejectedVendorRecords, type RejectedVendorRecord } from "./response-schema";
+export type { AtsPostingLookup } from "./shared";
 
 interface FetchOptions {
   readonly limit?: number;
@@ -29,15 +30,20 @@ export interface BoardFetchResult {
   readonly rejectedRecords: readonly RejectedVendorRecord[];
 }
 
-const connectors: Readonly<Record<string, BoardConnector>> = {
-  ashby: fetchAshby,
-  bamboohr: fetchBambooHr,
-  greenhouse: fetchGreenhouse,
-  jobvite: fetchJobvite,
-  lever: fetchLever,
-  smartrecruiters: fetchSmartRecruiters,
-  workable: fetchWorkable,
-  workday: fetchWorkday,
+interface AtsConnector {
+  readonly fetchBoard: BoardConnector;
+  readonly lookupPosting?: PostingLookupConnector;
+}
+
+const connectors: Readonly<Record<string, AtsConnector>> = {
+  ashby: { fetchBoard: fetchAshby, lookupPosting: lookupAshbyPosting },
+  bamboohr: { fetchBoard: fetchBambooHr },
+  greenhouse: { fetchBoard: fetchGreenhouse, lookupPosting: lookupGreenhousePosting },
+  jobvite: { fetchBoard: fetchJobvite },
+  lever: { fetchBoard: fetchLever, lookupPosting: lookupLeverPosting },
+  smartrecruiters: { fetchBoard: fetchSmartRecruiters },
+  workable: { fetchBoard: fetchWorkable, lookupPosting: lookupWorkablePosting },
+  workday: { fetchBoard: fetchWorkday },
 };
 
 export async function fetchBoardJobs(
@@ -61,7 +67,7 @@ export async function fetchBoardJobsWithDiagnostics(
   }
 
   const rejectedRecords: RejectedVendorRecord[] = [];
-  const jobs = await connector(
+  const jobs = await connector.fetchBoard(
     board,
     options.limit ?? getJobRadarConfig().discovery.boardJobLimit,
     options.fetcher ?? fetch,
@@ -73,4 +79,20 @@ export async function fetchBoardJobsWithDiagnostics(
     rejectedCount: rejectedRecords.length,
     rejectedRecords,
   };
+}
+
+export async function lookupAtsPosting(
+  board: BoardInput,
+  externalId: string,
+  options: Pick<FetchOptions, "fetcher"> = {},
+) {
+  const lookupPosting = connectors[board.atsType]?.lookupPosting;
+  if (!lookupPosting) {
+    throw new Error(`${board.atsType} does not support exact posting lookup`);
+  }
+  return lookupPosting(board, externalId, options.fetcher ?? fetch);
+}
+
+export function supportsAtsPostingLookup(atsType: string): boolean {
+  return connectors[atsType]?.lookupPosting !== undefined;
 }

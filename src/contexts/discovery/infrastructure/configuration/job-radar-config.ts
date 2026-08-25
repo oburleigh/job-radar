@@ -166,9 +166,22 @@ export function endpoint(
   name: string,
   values: Record<string, string | number>,
 ): string {
+  const rendered = optionalEndpoint(atsType, name, values);
+  if (!rendered) {
+    throw new Error(`Missing ${atsType}.${name} endpoint in SQLite config`);
+  }
+
+  return rendered;
+}
+
+export function optionalEndpoint(
+  atsType: string,
+  name: string,
+  values: Record<string, string | number>,
+): string | null {
   const template = getAtsIntegration(atsType).endpoints[name];
   if (!template) {
-    throw new Error(`Missing ${atsType}.${name} endpoint in SQLite config`);
+    return null;
   }
 
   return template.replace(/\{(\w+)\}/g, (_match, key: string) => {

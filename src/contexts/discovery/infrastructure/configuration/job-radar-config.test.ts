@@ -7,6 +7,7 @@ import {
   endpoint,
   getJobRadarConfig,
   hostMatches,
+  optionalEndpoint,
   parseDiscoverySettings,
   supportsBoardSync,
 } from "./job-radar-config";
@@ -49,6 +50,10 @@ describe("SQLite configuration", () => {
         limit: 100,
       }),
     ).toContain("Acme%20Group/postings?offset=0&limit=100");
+  });
+
+  it("returns no optional endpoint when an integration does not configure one", () => {
+    expect(optionalEndpoint("greenhouse", "missing", { slug: "acme" })).toBeNull();
   });
 
   it("uses configured host matching and sync capability", () => {

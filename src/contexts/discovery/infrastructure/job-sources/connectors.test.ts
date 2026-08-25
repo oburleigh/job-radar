@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import * as jobRadarConfig from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
 import type { BoardInput } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
-import { fetchBoardJobs, fetchBoardJobsWithDiagnostics } from "./connectors";
+import { fetchBoardJobs, fetchBoardJobsWithDiagnostics, lookupAtsPosting } from "./connectors";
 
 const greenhouseBoard: BoardInput = {
   id: 1,
@@ -71,6 +72,127 @@ describe("ATS connectors", () => {
       department: "Engineering",
     });
   });
+
+  it("looks up one Greenhouse posting by its exact board and posting identity", async () => {
+    let requestedUrl = "";
+
+    const result = await lookupAtsPosting(greenhouseBoard, "8124387", {
+      fetcher: async (input) => {
+        requestedUrl = String(input);
+        return Response.json({
+          id: 8124387,
+          internal_job_id: 6201042,
+          title: "Director, Back-end Engineering (Rocket Pay)",
+          company_name: "Coupang",
+          absolute_url: "https://careers.coupang.com/jobs/?gh_jid=8124387",
+          location: { name: "Seoul, South Korea" },
+          content: "<p>Lead Rocket Pay back-end engineering.</p>",
+          departments: [{ name: "Engineering" }],
+          first_published: "2026-08-20T00:00:00Z",
+        });
+      },
+    });
+
+    expect(requestedUrl).toBe("https://boards-api.greenhouse.io/v1/boards/acme/jobs/8124387");
+    expect(result).toEqual({
+      status: "verified",
+      job: expect.objectContaining({
+        atsType: "greenhouse",
+        externalId: "8124387",
+        title: "Director, Back-end Engineering (Rocket Pay)",
+        companyName: "Coupang",
+        locations: ["Seoul, South Korea"],
+        evidence: "structured",
+      }),
+    });
+  });
+
+  it("falls back to the configured Greenhouse board endpoint when no posting endpoint exists", async () => {
+    const optionalEndpoint = vi.spyOn(jobRadarConfig, "optionalEndpoint").mockReturnValue(null);
+    let requestedUrl = "";
+
+    try {
+      const result = await lookupAtsPosting(greenhouseBoard, "8124387", {
+        fetcher: async (input) => {
+          requestedUrl = String(input);
+          return Response.json({
+            jobs: [
+              {
+                id: 8124387,
+                title: "Director, Back-end Engineering",
+                absolute_url: "https://careers.coupang.com/jobs/?gh_jid=8124387",
+              },
+            ],
+          });
+        },
+      });
+
+      expect(requestedUrl).toBe(
+        "https://boards-api.greenhouse.io/v1/boards/acme/jobs?content=true",
+      );
+      expect(result).toMatchObject({
+        status: "verified",
+        job: { externalId: "8124387" },
+      });
+    } finally {
+      optionalEndpoint.mockRestore();
+    }
+  });
+
+  it.each([
+    [404, "not_found", "http-404"],
+    [410, "not_found", "http-410"],
+    [401, "protected", "http-401"],
+    [403, "protected", "http-403"],
+    [429, "protected", "http-429"],
+    [503, "transient_failure", "http-503"],
+  ] as const)("classifies Greenhouse posting HTTP %i as %s", async (httpStatus, status, reason) => {
+    const result = await lookupAtsPosting(greenhouseBoard, "8124387", {
+      fetcher: async () => new Response("unavailable", { status: httpStatus }),
+    });
+
+    expect(result).toEqual({
+      status,
+      reason,
+      checkedUrl: "https://boards-api.greenhouse.io/v1/boards/acme/jobs/8124387",
+    });
+  });
+
+  it("classifies a Greenhouse posting network failure as transient", async () => {
+    const result = await lookupAtsPosting(greenhouseBoard, "8124387", {
+      fetcher: async () => {
+        throw new TypeError("fetch failed");
+      },
+    });
+
+    expect(result).toEqual({
+      status: "transient_failure",
+      reason: "request-failed",
+      checkedUrl: "https://boards-api.greenhouse.io/v1/boards/acme/jobs/8124387",
+    });
+  });
+
+  it.each([
+    ["Greenhouse invalid JSON", greenhouseBoard, () => new Response("<html>upstream error</html>")],
+    ["Greenhouse shape drift", greenhouseBoard, () => Response.json({ jobs: [] })],
+    [
+      "Lever shape drift",
+      board("lever", "https://jobs.lever.co/acme"),
+      () => Response.json({ postings: [] }),
+    ],
+  ] as const)(
+    "classifies a successful %s response with an invalid payload as transient",
+    async (_case, postingBoard, response) => {
+      const result = await lookupAtsPosting(postingBoard, "target", {
+        fetcher: async () => response(),
+      });
+
+      expect(result).toMatchObject({
+        status: "transient_failure",
+        reason: "invalid-response",
+      });
+    },
+  );
 
   it("omits a Greenhouse job without a usable identifier", async () => {
     const result = await fetchBoardJobs(greenhouseBoard, {
@@ -252,6 +374,233 @@ describe("ATS connectors", () => {
       department: "Engineering",
     });
   });
+
+  it("looks up one Lever posting by exact identity", async () => {
+    let requestedUrl = "";
+    const leverBoard = board("lever", "https://jobs.lever.co/acme");
+
+    const result = await lookupAtsPosting(leverBoard, "lever-target", {
+      fetcher: async (input) => {
+        requestedUrl = String(input);
+        return Response.json({
+          id: "lever-target",
+          text: "Engineering Director",
+          hostedUrl: "https://jobs.lever.co/acme/lever-target",
+          applyUrl: "https://jobs.lever.co/acme/lever-target/apply",
+          categories: { location: "London", department: "Engineering" },
+        });
+      },
+    });
+
+    expect(requestedUrl).toBe("https://api.lever.co/v0/postings/acme/lever-target?mode=json");
+    expect(result).toEqual({
+      status: "verified",
+      job: expect.objectContaining({
+        atsType: "lever",
+        externalId: "lever-target",
+        title: "Engineering Director",
+        locations: ["London"],
+      }),
+    });
+  });
+
+  it("falls back to the configured Lever board endpoint when no posting endpoint exists", async () => {
+    const optionalEndpoint = vi.spyOn(jobRadarConfig, "optionalEndpoint").mockReturnValue(null);
+    const leverBoard = board("lever", "https://jobs.lever.co/acme");
+    let requestedUrl = "";
+
+    try {
+      const result = await lookupAtsPosting(leverBoard, "lever-target", {
+        fetcher: async (input) => {
+          requestedUrl = String(input);
+          return Response.json([
+            {
+              id: "lever-target",
+              text: "Engineering Director",
+              hostedUrl: "https://jobs.lever.co/acme/lever-target",
+            },
+          ]);
+        },
+      });
+
+      expect(requestedUrl).toBe("https://api.lever.co/v0/postings/acme?mode=json");
+      expect(result).toMatchObject({
+        status: "verified",
+        job: { externalId: "lever-target" },
+      });
+    } finally {
+      optionalEndpoint.mockRestore();
+    }
+  });
+
+  it.each([
+    ["direct", false, "https://api.eu.lever.co/v0/postings/acme/lever-target?mode=json"],
+    ["board fallback", true, "https://api.eu.lever.co/v0/postings/acme?mode=json"],
+  ] as const)("uses the Lever EU %s endpoint family", async (_mode, fallback, expectedUrl) => {
+    const optionalEndpoint = fallback
+      ? vi.spyOn(jobRadarConfig, "optionalEndpoint").mockReturnValue(null)
+      : null;
+    const leverBoard = {
+      ...board("lever", "https://jobs.eu.lever.co/acme"),
+      config: { region: "eu" },
+    };
+    let requestedUrl = "";
+
+    try {
+      const result = await lookupAtsPosting(leverBoard, "lever-target", {
+        fetcher: async (input) => {
+          requestedUrl = String(input);
+          const posting = {
+            id: "lever-target",
+            text: "Engineering Director",
+            hostedUrl: "https://jobs.eu.lever.co/acme/lever-target",
+          };
+          return Response.json(fallback ? [posting] : posting);
+        },
+      });
+
+      expect(requestedUrl).toBe(expectedUrl);
+      expect(result).toMatchObject({ status: "verified", job: { externalId: "lever-target" } });
+    } finally {
+      optionalEndpoint?.mockRestore();
+    }
+  });
+
+  it("selects one Ashby posting from a fresh public board response", async () => {
+    let requestedUrl = "";
+    const ashbyBoard = board("ashby", "https://jobs.ashbyhq.com/acme");
+
+    const result = await lookupAtsPosting(ashbyBoard, "ashby-target", {
+      fetcher: async (input) => {
+        requestedUrl = String(input);
+        return Response.json({
+          jobs: [
+            { id: "other", title: "Other role" },
+            {
+              id: "ashby-target",
+              title: "VP Engineering",
+              location: "Singapore",
+              jobUrl: "https://jobs.ashbyhq.com/acme/ashby-target",
+              isListed: true,
+            },
+          ],
+        });
+      },
+    });
+
+    expect(requestedUrl).toBe(
+      "https://api.ashbyhq.com/posting-api/job-board/acme?includeCompensation=true",
+    );
+    expect(result).toEqual({
+      status: "verified",
+      job: expect.objectContaining({
+        atsType: "ashby",
+        externalId: "ashby-target",
+        title: "VP Engineering",
+        locations: ["Singapore"],
+      }),
+    });
+  });
+
+  it("selects one Workable posting from a fresh public board response", async () => {
+    let requestedUrl = "";
+    const workableBoard = board("workable", "https://apply.workable.com/acme");
+
+    const result = await lookupAtsPosting(workableBoard, "workable-target", {
+      fetcher: async (input) => {
+        requestedUrl = String(input);
+        return Response.json({
+          jobs: [
+            { shortcode: "other", title: "Other role" },
+            {
+              shortcode: "workable-target",
+              title: "Director of Engineering",
+              url: "https://apply.workable.com/acme/j/workable-target",
+              city: "Tokyo",
+              country: "Japan",
+            },
+          ],
+        });
+      },
+    });
+
+    expect(requestedUrl).toBe("https://apply.workable.com/api/v1/widget/accounts/acme");
+    expect(result).toEqual({
+      status: "verified",
+      job: expect.objectContaining({
+        atsType: "workable",
+        externalId: "workable-target",
+        title: "Director of Engineering",
+        locations: ["Tokyo, Japan"],
+      }),
+    });
+  });
+
+  it("returns not found when a fresh Ashby board omits the posting identity", async () => {
+    const result = await lookupAtsPosting(
+      board("ashby", "https://jobs.ashbyhq.com/acme"),
+      "missing",
+      {
+        fetcher: async () => Response.json({ jobs: [{ id: "other", title: "Other role" }] }),
+      },
+    );
+
+    expect(result).toEqual({
+      status: "not_found",
+      reason: "posting-absent",
+      checkedUrl: "https://api.ashbyhq.com/posting-api/job-board/acme?includeCompensation=true",
+    });
+  });
+
+  it("matches a Workable URL-only posting by its stable URL identity", async () => {
+    const result = await lookupAtsPosting(
+      board("workable", "https://apply.workable.com/acme"),
+      "url-target",
+      {
+        fetcher: async () =>
+          Response.json({
+            jobs: [
+              {
+                title: "VP Engineering",
+                url: "https://apply.workable.com/acme/j/url-target",
+              },
+            ],
+          }),
+      },
+    );
+
+    expect(result).toEqual({
+      status: "verified",
+      job: expect.objectContaining({
+        atsType: "workable",
+        canonicalUrl: "https://apply.workable.com/acme/j/url-target",
+      }),
+    });
+  });
+
+  it.each([
+    ["lever", 404, "not_found", "http-404"],
+    ["ashby", 403, "protected", "http-403"],
+    ["workable", 503, "transient_failure", "http-503"],
+  ] as const)(
+    "classifies %s exact lookup HTTP %i as %s",
+    async (atsType, httpStatus, status, reason) => {
+      const result = await lookupAtsPosting(
+        board(
+          atsType,
+          atsType === "lever"
+            ? "https://jobs.lever.co/acme"
+            : atsType === "ashby"
+              ? "https://jobs.ashbyhq.com/acme"
+              : "https://apply.workable.com/acme",
+        ),
+        "target",
+        { fetcher: async () => new Response("unavailable", { status: httpStatus }) },
+      );
+
+      expect(result).toMatchObject({ status, reason });
+    },
+  );
 
   it("normalizes a BambooHR response", async () => {
     const result = await fetchBoardJobs(board("bamboohr", "https://acme.bamboohr.com/careers"), {

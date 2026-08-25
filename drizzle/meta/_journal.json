@@ -22,6 +22,13 @@
       "when": 1787606762388,
       "tag": "0002_wakeful_warlock",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1787647070932,
+      "tag": "0003_steady_cerise",
+      "breakpoints": true
     }
   ]
 }

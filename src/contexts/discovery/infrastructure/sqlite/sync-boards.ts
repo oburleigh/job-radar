@@ -39,7 +39,7 @@ export async function syncBoard(board: BoardInput, requestedLimit?: number): Pro
   try {
     const fetched = await fetchBoardJobsWithDiagnostics(board, { limit });
     for (const [index, rawJob] of fetched.jobs.entries()) {
-      const result = upsertRawJob(board, rawJob);
+      const result = upsertBoardJob(board, rawJob);
       created += Number(result === "created");
       updated += Number(result === "updated");
       if ((index + 1) % discovery.workYieldBatchSize === 0) {
@@ -105,7 +105,7 @@ export async function syncEnabledBoards(
   return results;
 }
 
-function upsertRawJob(board: BoardInput, rawJob: RawJob): "created" | "updated" {
+export function upsertBoardJob(board: BoardInput, rawJob: RawJob): "created" | "updated" {
   const dedupeKey = makeDedupeKey(
     rawJob.atsType,
     rawJob.canonicalUrl,

@@ -171,6 +171,12 @@ export const discoveryHits = sqliteTable(
     boardId: integer("board_id").references(() => companyBoards.id, {
       onDelete: "set null",
     }),
+    verificationStatus: text("verification_status", {
+      enum: ["verified", "closed", "not_found", "protected", "transient_failure"],
+    }),
+    verificationReason: text("verification_reason").notNull().default(""),
+    verificationUrl: text("verification_url").notNull().default(""),
+    verificationCheckedAt: timestamp("verification_checked_at"),
     createdAt: timestamp("created_at").notNull(),
   },
   (table) => [uniqueIndex("discovery_hits_run_url_idx").on(table.runId, table.url)],

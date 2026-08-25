@@ -5,6 +5,10 @@ import {
   type BoardIdentity,
   isBuiltInAtsType,
 } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
+import {
+  type lookupAtsPosting,
+  supportsAtsPostingLookup,
+} from "@/contexts/discovery/infrastructure/job-sources/connectors";
 import { fetchLinkedInJob } from "@/contexts/discovery/infrastructure/job-sources/linkedin";
 import { inferLocationHint } from "@/contexts/discovery/infrastructure/job-sources/search-result";
 import {
@@ -22,11 +26,17 @@ import {
   upsertVerifiedSearchJob,
 } from "./store-search-result";
 import { syncBoard } from "./sync-boards";
+import {
+  type ExactAtsHitOutcome,
+  recordExactAtsHitOutcome,
+  verifyExactAtsPosting,
+} from "./verify-exact-ats-posting";
 
 type Database = typeof db;
 
 interface SqliteJobDiscoveryCatalogDependencies {
   readonly lookupStructuredJobPage?: typeof fetchStructuredJobPage;
+  readonly lookupAtsPosting?: typeof lookupAtsPosting;
 }
 
 export function createSqliteJobDiscoveryCatalog(
@@ -34,6 +44,7 @@ export function createSqliteJobDiscoveryCatalog(
   dependencies: SqliteJobDiscoveryCatalogDependencies = {},
 ): JobDiscoveryCatalog {
   const lookupStructuredJobPage = dependencies.lookupStructuredJobPage ?? fetchStructuredJobPage;
+  const exactAtsPostingOutcomes = new Map<string, ExactAtsHitOutcome>();
   const checkedLinkedInJobs = new Set<string>();
   const checkedStructuredJobPages = new Set<string>();
 
@@ -83,8 +94,47 @@ export function createSqliteJobDiscoveryCatalog(
           Boolean(classified.externalId) &&
           supportsStructuredJobPage(classified.atsType) &&
           !checkedStructuredJobPages.has(classified.canonicalUrl);
+        const exactPostingKey =
+          classified.externalId && supportsAtsPostingLookup(classified.atsType)
+            ? [
+                runId,
+                classified.atsType,
+                boardId ?? classified.board?.canonicalKey ?? "unresolved",
+                classified.externalId,
+              ].join("|")
+            : null;
+        let exactVerification = null;
+        if (exactPostingKey) {
+          const cachedOutcome = exactAtsPostingOutcomes.get(exactPostingKey);
+          if (cachedOutcome) {
+            recordExactAtsHitOutcome(database, {
+              runId,
+              url: result.url,
+              ...cachedOutcome,
+            });
+            exactVerification = { jobsWritten: 0, outcome: cachedOutcome };
+          } else {
+            exactVerification = await verifyExactAtsPosting({
+              database,
+              classification: classified,
+              discoveredBoardId: boardId,
+              searchResult,
+              runId,
+              hitUrl: result.url,
+              checkedAt: recordedAt,
+              ...(dependencies.lookupAtsPosting
+                ? { lookupPosting: dependencies.lookupAtsPosting }
+                : {}),
+            });
+            if (exactVerification) {
+              exactAtsPostingOutcomes.set(exactPostingKey, exactVerification.outcome);
+            }
+          }
+        }
 
-        if (shouldLookupStructuredPage) {
+        if (exactVerification !== null) {
+          jobsWritten += exactVerification.jobsWritten;
+        } else if (shouldLookupStructuredPage) {
           checkedStructuredJobPages.add(classified.canonicalUrl);
           const lookup = await lookupStructuredJobPage(
             classified.atsType,
