@@ -69,6 +69,94 @@ describe("database setup command", () => {
     ).toBe(0);
     rerun.close();
   }, 30_000);
+
+  it("repairs legacy structured board jobs without promoting search-only leads", () => {
+    runDatabaseSetup(databasePath);
+
+    const sqlite = new Database(databasePath);
+    const profileId = seedProfile(sqlite);
+    const boardId = sqlite
+      .prepare(
+        `INSERT INTO company_boards (
+          ats_type, canonical_key, company_name, slug, base_url, config, discovered_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        "greenhouse",
+        "greenhouse:example",
+        "Example",
+        "example",
+        "https://boards.greenhouse.io/example",
+        JSON.stringify({}),
+        Date.parse("2026-08-24T00:00:00.000Z"),
+      ).lastInsertRowid;
+
+    seedJob(sqlite, {
+      boardId,
+      dedupeKey: "legacy-structured",
+      rawPayload: { id: 8124387, title: "Director of Engineering" },
+    });
+    seedJob(sqlite, {
+      boardId,
+      dedupeKey: "search-only",
+      rawPayload: {},
+    });
+    seedJob(sqlite, {
+      boardId,
+      dedupeKey: "verification-only",
+      rawPayload: {
+        verification: {
+          status: "unavailable",
+          reason: "protected",
+          checkedAt: "2026-08-24T00:00:00.000Z",
+        },
+      },
+    });
+    seedJob(sqlite, {
+      boardId: null,
+      dedupeKey: "off-board-vendor-payload",
+      rawPayload: { id: 8124388, title: "Director of Engineering" },
+    });
+    sqlite.close();
+
+    runDatabaseSetup(databasePath);
+
+    const migrated = new Database(databasePath, { readonly: true });
+    expect(readEvidence(migrated, "legacy-structured")).toBe("structured");
+    expect(readEvidence(migrated, "search-only")).toBe("search-lead");
+    expect(readEvidence(migrated, "verification-only")).toBe("search-lead");
+    expect(readEvidence(migrated, "off-board-vendor-payload")).toBe("search-lead");
+    expect(readMatchStatus(migrated, profileId, "legacy-structured")).toBe("matched");
+    expect(readMatchStatus(migrated, profileId, "search-only")).toBe("excluded");
+    expect(readMatchStatus(migrated, profileId, "verification-only")).toBe("excluded");
+    migrated.close();
+
+    const interrupted = new Database(databasePath);
+    interrupted
+      .prepare(
+        `UPDATE job_matches
+         SET status = ?, score = 0, reasons = ?, exclusion_reasons = ?, updated_at = ?
+         WHERE profile_id = ? AND job_id = (
+           SELECT id FROM jobs WHERE dedupe_key = ?
+         )`,
+      )
+      .run(
+        "excluded",
+        JSON.stringify([]),
+        JSON.stringify([{ code: "unverified-lead" }]),
+        Date.parse("2026-08-24T01:00:00.000Z"),
+        profileId,
+        "legacy-structured",
+      );
+    interrupted.close();
+
+    runDatabaseSetup(databasePath);
+
+    const recovered = new Database(databasePath, { readonly: true });
+    expect(readEvidence(recovered, "legacy-structured")).toBe("structured");
+    expect(readMatchStatus(recovered, profileId, "legacy-structured")).toBe("matched");
+    recovered.close();
+  }, 30_000);
 });
 
 function runDatabaseSetup(databasePath: string) {
@@ -94,4 +182,83 @@ function databaseSetupEnvironment(databasePath: string): NodeJS.ProcessEnv {
 
 function count(sqlite: Database.Database, table: string): number {
   return sqlite.prepare(`SELECT count(*) FROM ${table}`).pluck().get() as number;
+}
+
+function seedJob(
+  sqlite: Database.Database,
+  input: {
+    boardId: number | bigint | null;
+    dedupeKey: string;
+    rawPayload: Record<string, unknown>;
+  },
+) {
+  sqlite
+    .prepare(
+      `INSERT INTO jobs (
+        board_id, ats_type, external_id, dedupe_key, canonical_url, title, locations,
+        first_seen_at, last_seen_at, raw_payload, evidence
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      input.boardId,
+      "greenhouse",
+      input.dedupeKey,
+      input.dedupeKey,
+      `https://boards.greenhouse.io/example/jobs/${input.dedupeKey}`,
+      "Director of Engineering",
+      JSON.stringify(["Singapore"]),
+      Date.parse("2026-08-24T00:00:00.000Z"),
+      Date.parse("2026-08-24T00:00:00.000Z"),
+      JSON.stringify(input.rawPayload),
+      "search-lead",
+    );
+}
+
+function seedProfile(sqlite: Database.Database): number | bigint {
+  const recordedAt = Date.parse("2026-08-24T00:00:00.000Z");
+  return sqlite
+    .prepare(
+      `INSERT INTO search_profiles (
+        name, title_terms, location_terms, required_job_terms, excluded_title_terms,
+        excluded_location_terms, excluded_description_terms, include_unverified,
+        max_age_days, min_score, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "Asia leadership repair",
+      JSON.stringify(["Director of Engineering"]),
+      JSON.stringify(["Singapore"]),
+      JSON.stringify([]),
+      JSON.stringify([]),
+      JSON.stringify([]),
+      JSON.stringify([]),
+      0,
+      30,
+      70,
+      recordedAt,
+      recordedAt,
+    ).lastInsertRowid;
+}
+
+function readEvidence(sqlite: Database.Database, dedupeKey: string): string {
+  return sqlite
+    .prepare("SELECT evidence FROM jobs WHERE dedupe_key = ?")
+    .pluck()
+    .get(dedupeKey) as string;
+}
+
+function readMatchStatus(
+  sqlite: Database.Database,
+  profileId: number | bigint,
+  dedupeKey: string,
+): string {
+  return sqlite
+    .prepare(
+      `SELECT job_matches.status
+       FROM job_matches
+       INNER JOIN jobs ON jobs.id = job_matches.job_id
+       WHERE job_matches.profile_id = ? AND jobs.dedupe_key = ?`,
+    )
+    .pluck()
+    .get(profileId, dedupeKey) as string;
 }
