@@ -1,4 +1,5 @@
 import { and, desc, eq } from "drizzle-orm";
+import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { createAnnualSalaryRange } from "@/contexts/discovery/domain/annual-salary";
 import {
   isVerifiedJobListing,
@@ -7,7 +8,7 @@ import {
 import type { JobListingState } from "@/contexts/discovery/domain/job-listing-state";
 import type { ExclusionReason } from "@/contexts/discovery/domain/job-match";
 import type { AtsType } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
-import { db } from "@/contexts/discovery/infrastructure/sqlite/database";
+import type * as schema from "@/contexts/discovery/infrastructure/sqlite/schema";
 import {
   companyBoards,
   discoveryRuns,
@@ -19,7 +20,7 @@ import {
 
 import { getProfiles } from "./profiles";
 
-type Database = typeof db;
+type Database = BetterSQLite3Database<typeof schema>;
 
 export interface JobFilters {
   profileId?: number;
@@ -28,7 +29,7 @@ export interface JobFilters {
   query?: string;
 }
 
-export function getDashboardData(filters: JobFilters = {}, database: Database = db) {
+export function getDashboardData(filters: JobFilters, database: Database) {
   const profiles = getProfiles(database);
   const profile =
     profiles.find((item) => item.id === filters.profileId) ??

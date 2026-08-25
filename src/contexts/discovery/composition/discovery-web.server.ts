@@ -68,8 +68,9 @@ export const discoveryWeb = {
   diagnoseKnownRole,
   canConfigureBoardSync: isBuiltInAtsType,
   getAtsLabels,
-  getDashboardData,
-  getProfiles,
+  getDashboardData: (filters: Parameters<typeof getDashboardData>[0]) =>
+    getDashboardData(filters, db),
+  getProfiles: () => getProfiles(db),
   getRunDetail,
   getRunsData,
   getSearchProviderOptions,

@@ -45,6 +45,7 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "db:setup": "pnpm setup:check --database-only && pnpm db:migrate",
     "discover": "tsx scripts/discover.ts",
+    "evaluate:discovery": "tsx scripts/evaluate-discovery.ts",
     "reindex": "tsx scripts/reindex.ts",
     "sync": "tsx scripts/sync.ts",
     "verify:linkedin": "tsx scripts/verify-linkedin.ts"

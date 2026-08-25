@@ -1,9 +1,10 @@
-import { db } from "@/contexts/discovery/infrastructure/sqlite/database";
+import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import type * as schema from "@/contexts/discovery/infrastructure/sqlite/schema";
 import { searchProfiles } from "@/contexts/discovery/infrastructure/sqlite/schema";
 
-type Database = typeof db;
+type Database = BetterSQLite3Database<typeof schema>;
 
-export function getProfiles(database: Database = db) {
+export function getProfiles(database: Database) {
   return database
     .select({
       id: searchProfiles.id,

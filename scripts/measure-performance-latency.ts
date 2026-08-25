@@ -36,17 +36,18 @@ const server = await startProductionPerformanceServer({ output: "ignore" });
 
 try {
   process.env.DB_PATH = server.databasePath;
-  const { getDashboardData } = await import(
-    "@/contexts/discovery/infrastructure/sqlite/read-models/dashboard"
-  );
+  const [{ getDashboardData }, { db }] = await Promise.all([
+    import("@/contexts/discovery/infrastructure/sqlite/read-models/dashboard"),
+    import("@/contexts/discovery/infrastructure/sqlite/database"),
+  ]);
 
   for (let index = 0; index < 10; index += 1) {
-    getDashboardData({ profileId: server.profileId });
+    getDashboardData({ profileId: server.profileId }, db);
   }
 
   const sqliteSamples = Array.from({ length: sqliteRuns }, () => {
     const startedAt = performance.now();
-    getDashboardData({ profileId: server.profileId });
+    getDashboardData({ profileId: server.profileId }, db);
     return roundMilliseconds(performance.now() - startedAt);
   });
 

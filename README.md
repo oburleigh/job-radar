@@ -812,6 +812,7 @@ Run the complete local check suite:
 ```bash
 pnpm check
 pnpm test:coverage
+pnpm evaluate:discovery
 pnpm test:mutation
 pnpm storybook:build
 pnpm test:e2e
@@ -823,6 +824,13 @@ pnpm audit
 Coverage has enforced thresholds. Stryker mutates the Discovery domain and application layers and
 fails below the configured mutation score. Use `pnpm format` and `pnpm lint:fix` to apply safe local
 fixes.
+
+`pnpm evaluate:discovery` runs the deterministic discovery corpus without provider credentials or
+the database named by `DB_PATH`. Its JSON report shows recall, top-20 precision, and misses grouped
+by provider retrieval, classification, verification, matching, and presentation. The command exits
+with status 1 if a labelled role disappears, a negative example becomes visible, a profile misses
+the 90% recall or 80% top-20 precision target, or required market coverage is absent. CI runs the
+same command as a repository gate.
 
 Run `pnpm test:performance` to build once and check every performance surface. The complete suite covers
 client asset size, Lighthouse page-load quality, a three-run browser interaction and Web Vitals gate, and
