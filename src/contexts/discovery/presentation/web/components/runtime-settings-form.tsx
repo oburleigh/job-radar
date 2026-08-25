@@ -1,6 +1,6 @@
 import { Button } from "@job-radar/design-ui";
 import { Save } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useFetcher } from "react-router";
 import { runtimeSettingConstraints } from "@/contexts/discovery/application/runtime-settings/save/constraints";
 import type { RuntimeSettings } from "@/contexts/discovery/application/runtime-settings/settings";
@@ -21,8 +21,17 @@ export function RuntimeSettingsForm({ settings }: RuntimeSettingsFormProps) {
     settings;
   const limits = runtimeSettingConstraints;
   const [salaryCurrency, setSalaryCurrency] = useState(profileDefaults.salaryCurrency);
-  const salaryCurrencyError =
-    !state.ok && state.message.toLowerCase().includes("currency") ? state.message : undefined;
+  const fieldError = (field: string) =>
+    !state.ok && state.field === field ? state.message : undefined;
+  const salaryCurrencyError = fieldError("salaryCurrency");
+
+  useEffect(() => {
+    if (!state.ok && state.field) {
+      document
+        .querySelector<HTMLElement>(`[name="${CSS.escape(state.field)}"]:not([type="hidden"])`)
+        ?.focus();
+    }
+  }, [state]);
 
   return (
     <fetcher.Form method="post" action="/settings" className="profile-form runtime-settings-form">
@@ -109,6 +118,75 @@ export function RuntimeSettingsForm({ settings }: RuntimeSettingsFormProps) {
             </select>
           </label>
         </div>
+        <fieldset className="form-grid settings-subsection">
+          <legend>Provider execution</legend>
+          <p className="field-help">
+            Bound simultaneous requests, request rate, and transient-failure retries for each search
+            provider.
+          </p>
+          <div className="form-grid form-grid-three settings-subsection-grid">
+            <NumberField
+              label="Provider concurrency"
+              name="providerConcurrency"
+              value={discovery.providerExecution.concurrency}
+              min={limits.providerConcurrency.min}
+              max={limits.providerConcurrency.max}
+              help="Maximum requests running at once for each search provider."
+              error={fieldError("providerConcurrency")}
+            />
+            <NumberField
+              label="Requests per interval"
+              name="providerRequestsPerInterval"
+              value={discovery.providerExecution.requestsPerInterval}
+              min={limits.providerRequestsPerInterval.min}
+              max={limits.providerRequestsPerInterval.max}
+              help="Maximum request starts within the adjacent request interval."
+              error={fieldError("providerRequestsPerInterval")}
+            />
+            <NumberField
+              label="Request interval (ms)"
+              name="providerIntervalMs"
+              value={discovery.providerExecution.intervalMs}
+              min={limits.providerIntervalMs.min}
+              max={limits.providerIntervalMs.max}
+              error={fieldError("providerIntervalMs")}
+            />
+            <NumberField
+              label="Maximum provider attempts"
+              name="providerMaxAttempts"
+              value={discovery.providerExecution.maxAttempts}
+              min={limits.providerMaxAttempts.min}
+              max={limits.providerMaxAttempts.max}
+              help="Includes the first request. Fatal failures always stop after one attempt."
+              error={fieldError("providerMaxAttempts")}
+            />
+            <NumberField
+              label="First retry delay (ms)"
+              name="providerRetryMinDelayMs"
+              value={discovery.providerExecution.retryMinDelayMs}
+              min={limits.providerRetryMinDelayMs.min}
+              max={limits.providerRetryMinDelayMs.max}
+              error={fieldError("providerRetryMinDelayMs")}
+            />
+            <NumberField
+              label="Maximum retry delay (ms)"
+              name="providerRetryMaxDelayMs"
+              value={discovery.providerExecution.retryMaxDelayMs}
+              min={limits.providerRetryMaxDelayMs.min}
+              max={limits.providerRetryMaxDelayMs.max}
+              error={fieldError("providerRetryMaxDelayMs")}
+            />
+            <NumberField
+              label="Maximum retry time (ms)"
+              name="providerRetryMaxTimeMs"
+              value={discovery.providerExecution.retryMaxTimeMs}
+              min={limits.providerRetryMaxTimeMs.min}
+              max={limits.providerRetryMaxTimeMs.max}
+              help="Stops a retry sequence even when attempts remain."
+              error={fieldError("providerRetryMaxTimeMs")}
+            />
+          </div>
+        </fieldset>
         <div className="form-grid form-grid-two settings-text-grid">
           <label>
             <span>Structured verification source IDs</span>
@@ -327,7 +405,12 @@ export function RuntimeSettingsForm({ settings }: RuntimeSettingsFormProps) {
 
       <div className="form-submit-row">
         {state.message ? (
-          <p className={state.ok ? "form-success" : "form-error"}>{state.message}</p>
+          <p
+            className={state.ok ? "form-success" : "form-error"}
+            role={state.ok ? "status" : "alert"}
+          >
+            {state.message}
+          </p>
         ) : (
           <span />
         )}
@@ -348,6 +431,7 @@ interface NumberFieldProps {
   max?: number;
   step?: string;
   help?: string;
+  error?: string | undefined;
 }
 
 function NumberField({
@@ -358,11 +442,21 @@ function NumberField({
   max = 100,
   step = "1",
   help,
+  error,
 }: NumberFieldProps) {
+  const inputId = runtimeSettingFieldId(name);
+  const helpId = `${inputId}-help`;
+  const errorId = `${inputId}-error`;
+  const describedBy = [help ? helpId : undefined, error ? errorId : undefined]
+    .filter(Boolean)
+    .join(" ");
   return (
-    <label>
+    <label htmlFor={inputId}>
       <span>{label}</span>
       <input
+        aria-describedby={describedBy || undefined}
+        aria-invalid={Boolean(error)}
+        id={inputId}
         name={name}
         type="number"
         min={min}
@@ -371,7 +465,20 @@ function NumberField({
         required
         defaultValue={value}
       />
-      {help ? <small className="field-help">{help}</small> : null}
+      {help ? (
+        <small className="field-help" id={helpId}>
+          {help}
+        </small>
+      ) : null}
+      {error ? (
+        <p className="field-error" id={errorId}>
+          {error}
+        </p>
+      ) : null}
     </label>
   );
+}
+
+function runtimeSettingFieldId(name: string): string {
+  return `runtime-setting-${name.replaceAll(/[^a-zA-Z0-9_-]/g, "-")}`;
 }

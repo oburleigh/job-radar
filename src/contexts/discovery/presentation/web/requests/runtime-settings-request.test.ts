@@ -36,7 +36,79 @@ describe("runtime settings request", () => {
 
     expect(result).toEqual({
       ok: false,
+      field: "salaryCurrency",
       message: "Default salary currency must be a valid ISO 4217 code such as GBP.",
+    });
+  });
+
+  it("identifies the provider field when retry delays are inconsistent", () => {
+    const formData = runtimeSettingsForm({
+      maximumAgeDays: "45",
+      minimumScore: "82",
+      salaryCurrency: "AED",
+    });
+    formData.set("providerRetryMinDelayMs", "4000");
+    formData.set("providerRetryMaxDelayMs", "500");
+
+    expect(parseRuntimeSettingsRequest(formData, currentRuntimeSettings())).toEqual({
+      ok: false,
+      field: "providerRetryMaxDelayMs",
+      message: "Maximum retry delay must be at least the first retry delay.",
+    });
+  });
+
+  it("accepts equal first and maximum retry delays", () => {
+    const formData = runtimeSettingsForm({
+      maximumAgeDays: "45",
+      minimumScore: "82",
+      salaryCurrency: "AED",
+    });
+    formData.set("providerRetryMinDelayMs", "500");
+    formData.set("providerRetryMaxDelayMs", "500");
+
+    expect(parseRuntimeSettingsRequest(formData, currentRuntimeSettings())).toMatchObject({
+      ok: true,
+    });
+  });
+
+  it("identifies an invalid provider execution field", () => {
+    const formData = runtimeSettingsForm({
+      maximumAgeDays: "45",
+      minimumScore: "82",
+      salaryCurrency: "AED",
+    });
+    formData.set("providerMaxAttempts", "4");
+
+    expect(parseRuntimeSettingsRequest(formData, currentRuntimeSettings())).toMatchObject({
+      ok: false,
+      field: "providerMaxAttempts",
+    });
+  });
+
+  it("maps provider execution limits into the application command", () => {
+    const formData = runtimeSettingsForm({
+      maximumAgeDays: "45",
+      minimumScore: "82",
+      salaryCurrency: "AED",
+    });
+    formData.set("providerConcurrency", "3");
+    formData.set("providerRequestsPerInterval", "8");
+    formData.set("providerIntervalMs", "2000");
+    formData.set("providerMaxAttempts", "2");
+    formData.set("providerRetryMinDelayMs", "250");
+    formData.set("providerRetryMaxDelayMs", "3000");
+    formData.set("providerRetryMaxTimeMs", "45000");
+
+    const result = parseRuntimeSettingsRequest(formData, currentRuntimeSettings());
+
+    expect(result.ok && result.command.discovery.providerExecution).toEqual({
+      concurrency: 3,
+      requestsPerInterval: 8,
+      intervalMs: 2_000,
+      maxAttempts: 2,
+      retryMinDelayMs: 250,
+      retryMaxDelayMs: 3_000,
+      retryMaxTimeMs: 45_000,
     });
   });
 });
@@ -50,6 +122,15 @@ function currentRuntimeSettings(): RuntimeSettingsCommand {
       searchFreshnessDays: 0,
       workYieldBatchSize: 25,
       runHistoryLimit: 100,
+      providerExecution: {
+        concurrency: 2,
+        requestsPerInterval: 5,
+        intervalMs: 1_000,
+        maxAttempts: 3,
+        retryMinDelayMs: 500,
+        retryMaxDelayMs: 4_000,
+        retryMaxTimeMs: 100_000,
+      },
       titleSearchMode: "title",
       structuredVerificationSources: ["web3-career"],
       closedListingMarkers: ["no longer available"],
@@ -103,6 +184,13 @@ function runtimeSettingsForm(profileDefaults: {
     searchFreshnessDays: String(config.discovery.searchFreshnessDays),
     workYieldBatchSize: String(config.discovery.workYieldBatchSize),
     runHistoryLimit: String(config.discovery.runHistoryLimit),
+    providerConcurrency: String(config.discovery.providerExecution.concurrency),
+    providerRequestsPerInterval: String(config.discovery.providerExecution.requestsPerInterval),
+    providerIntervalMs: String(config.discovery.providerExecution.intervalMs),
+    providerMaxAttempts: String(config.discovery.providerExecution.maxAttempts),
+    providerRetryMinDelayMs: String(config.discovery.providerExecution.retryMinDelayMs),
+    providerRetryMaxDelayMs: String(config.discovery.providerExecution.retryMaxDelayMs),
+    providerRetryMaxTimeMs: String(config.discovery.providerExecution.retryMaxTimeMs),
     titleSearchMode: config.discovery.titleSearchMode,
     structuredVerificationSources: config.discovery.structuredVerificationSources.join("\n"),
     closedListingMarkers: config.discovery.closedListingMarkers.join("\n"),

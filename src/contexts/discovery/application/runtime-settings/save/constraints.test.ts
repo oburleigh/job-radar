@@ -37,6 +37,15 @@ const setNumericSetting: Record<RuntimeNumericSetting, SetNumericSetting> = {
     ...settings,
     discovery: { ...settings.discovery, runHistoryLimit },
   }),
+  providerConcurrency: (settings, concurrency) => withProviderExecution(settings, { concurrency }),
+  providerRequestsPerInterval: (settings, requestsPerInterval) =>
+    withProviderExecution(settings, { requestsPerInterval }),
+  providerIntervalMs: (settings, intervalMs) => withProviderExecution(settings, { intervalMs }),
+  providerMaxAttempts: (settings, maxAttempts) => withProviderExecution(settings, { maxAttempts }),
+  providerRetryMinDelayMs: withProviderRetryMinDelay,
+  providerRetryMaxDelayMs: withProviderRetryMaxDelay,
+  providerRetryMaxTimeMs: (settings, retryMaxTimeMs) =>
+    withProviderExecution(settings, { retryMaxTimeMs }),
   discoveryPollIntervalMs: (settings, discoveryPollIntervalMs) => ({
     ...settings,
     ui: { ...settings.ui, discoveryPollIntervalMs },
@@ -100,6 +109,61 @@ const setNumericSetting: Record<RuntimeNumericSetting, SetNumericSetting> = {
   providerMaxResults: withProviderMaxResults,
 };
 
+function withProviderExecution(
+  settings: RuntimeSettingsCommand,
+  value: Partial<RuntimeSettingsCommand["discovery"]["providerExecution"]>,
+): RuntimeSettingsCommand {
+  return {
+    ...settings,
+    discovery: {
+      ...settings.discovery,
+      providerExecution: { ...settings.discovery.providerExecution, ...value },
+    },
+  };
+}
+
+function withProviderRetryMinDelay(
+  settings: RuntimeSettingsCommand,
+  retryMinDelayMs: number,
+): RuntimeSettingsCommand {
+  const valid =
+    Number.isInteger(retryMinDelayMs) &&
+    retryMinDelayMs >= runtimeSettingConstraints.providerRetryMinDelayMs.min &&
+    retryMinDelayMs <= runtimeSettingConstraints.providerRetryMinDelayMs.max;
+  return withProviderExecution(settings, {
+    retryMinDelayMs,
+    ...(valid
+      ? {
+          retryMaxDelayMs: Math.max(
+            settings.discovery.providerExecution.retryMaxDelayMs,
+            retryMinDelayMs,
+          ),
+        }
+      : {}),
+  });
+}
+
+function withProviderRetryMaxDelay(
+  settings: RuntimeSettingsCommand,
+  retryMaxDelayMs: number,
+): RuntimeSettingsCommand {
+  const valid =
+    Number.isInteger(retryMaxDelayMs) &&
+    retryMaxDelayMs >= runtimeSettingConstraints.providerRetryMaxDelayMs.min &&
+    retryMaxDelayMs <= runtimeSettingConstraints.providerRetryMaxDelayMs.max;
+  return withProviderExecution(settings, {
+    retryMaxDelayMs,
+    ...(valid
+      ? {
+          retryMinDelayMs: Math.min(
+            settings.discovery.providerExecution.retryMinDelayMs,
+            retryMaxDelayMs,
+          ),
+        }
+      : {}),
+  });
+}
+
 function withProviderMaxResults(
   settings: RuntimeSettingsCommand,
   maxResults: number,
@@ -131,6 +195,33 @@ describe("runtime setting constraints", () => {
       ).toBeNull();
     },
   );
+
+  it("requires the maximum retry delay to cover the first retry delay", () => {
+    const settings = runtimeSettings();
+
+    expect(
+      findInvalidRuntimeSetting(
+        withProviderExecution(settings, {
+          retryMinDelayMs: 1_500,
+          retryMaxDelayMs: 1_499,
+        }),
+      ),
+    ).toBe("providerRetryMaxDelayMs");
+    expect(
+      findInvalidRuntimeSetting(
+        withProviderExecution(settings, {
+          retryMinDelayMs: 1_500,
+          retryMaxDelayMs: 1_500,
+        }),
+      ),
+    ).toBeNull();
+  });
+
+  it("rejects fractional provider concurrency independently of constraint metadata", () => {
+    expect(
+      findInvalidRuntimeSetting(withProviderExecution(runtimeSettings(), { concurrency: 1.5 })),
+    ).toBe("providerConcurrency");
+  });
 
   it.each(Object.entries(runtimeSettingConstraints))(
     "rejects %s outside its supported range",
@@ -212,6 +303,15 @@ function runtimeSettings(): RuntimeSettingsCommand {
       searchFreshnessDays: 30,
       workYieldBatchSize: 25,
       runHistoryLimit: 100,
+      providerExecution: {
+        concurrency: 2,
+        requestsPerInterval: 5,
+        intervalMs: 1_000,
+        maxAttempts: 3,
+        retryMinDelayMs: 500,
+        retryMaxDelayMs: 4_000,
+        retryMaxTimeMs: 100_000,
+      },
       titleSearchMode: "title",
       structuredVerificationSources: [],
       closedListingMarkers: ["closed"],

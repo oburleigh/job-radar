@@ -23,6 +23,15 @@ export interface RuntimeSettings {
     readonly workYieldBatchSize: number;
     readonly runHistoryLimit: number;
     readonly titleSearchMode: "title" | "anywhere";
+    readonly providerExecution: {
+      readonly concurrency: number;
+      readonly requestsPerInterval: number;
+      readonly intervalMs: number;
+      readonly maxAttempts: number;
+      readonly retryMinDelayMs: number;
+      readonly retryMaxDelayMs: number;
+      readonly retryMaxTimeMs: number;
+    };
     readonly structuredVerificationSources: readonly string[];
     readonly closedListingMarkers: readonly string[];
   };

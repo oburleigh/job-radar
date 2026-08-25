@@ -109,8 +109,25 @@ test.describe
       await page.getByRole("button", { name: "Save runtime settings" }).click();
 
       await expect(page.getByText("Runtime settings saved to SQLite.")).toBeVisible();
+
+      await page.getByLabel("First retry delay (ms)").fill("4000");
+      const maximumRetryDelay = page.getByLabel("Maximum retry delay (ms)");
+      await maximumRetryDelay.fill("500");
+      await page.getByRole("button", { name: "Save runtime settings" }).click();
+
+      await expect(
+        page.getByRole("alert").filter({
+          hasText: "Maximum retry delay must be at least the first retry delay.",
+        }),
+      ).toBeVisible();
+      await expect(maximumRetryDelay).toBeFocused();
+      await expect(maximumRetryDelay).toHaveAttribute("aria-invalid", "true");
       const results = await new AxeBuilder({ page }).analyze();
       expect(results.violations).toEqual([]);
+
+      await maximumRetryDelay.fill("4000");
+      await page.getByRole("button", { name: "Save runtime settings" }).click();
+      await expect(page.getByText("Runtime settings saved to SQLite.")).toBeVisible();
     });
 
     test("loads every primary workspace route from the clean-start dataset", async ({ page }) => {

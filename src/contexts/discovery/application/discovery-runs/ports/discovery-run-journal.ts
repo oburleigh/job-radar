@@ -32,6 +32,7 @@ export interface DiscoveryRunJournal {
   readonly startQuery: (queryId: number, startedAt: Date) => void;
   readonly completeQuery: (queryId: number, hitCount: number, finishedAt: Date) => void;
   readonly failQuery: (queryId: number, message: string, finishedAt: Date) => void;
+  readonly cancelPlannedQueries: (runId: number, message: string, finishedAt: Date) => void;
   readonly recordProgress: (
     runId: number,
     progress: DiscoveryRunProgress,

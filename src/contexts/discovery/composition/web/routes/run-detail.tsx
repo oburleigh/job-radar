@@ -26,6 +26,16 @@ export function loader({ params, request }: LoaderFunctionArgs) {
 export default function RunDetailPage() {
   const data = useLoaderData<typeof loader>();
   const { run, queries, summary } = data;
+  const outcomeTitle =
+    run.status === "failed"
+      ? "Discovery failed"
+      : run.status === "cancelled"
+        ? "Discovery cancelled"
+        : "Discovery completed with errors";
+  const outcomeSummary =
+    run.status === "cancelled"
+      ? "Run stopped"
+      : `${run.queryErrorCount + run.syncErrorCount} recorded error${run.queryErrorCount + run.syncErrorCount === 1 ? "" : "s"}`;
 
   return (
     <div className="page">
@@ -40,6 +50,22 @@ export default function RunDetailPage() {
           </Link>
         }
       />
+
+      {run.error ? (
+        <section
+          className={`panel run-panel run-outcome run-outcome-${run.status}`}
+          aria-labelledby="run-outcome-heading"
+        >
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Run outcome</p>
+              <h2 id="run-outcome-heading">{outcomeTitle}</h2>
+            </div>
+            <span>{outcomeSummary}</span>
+          </div>
+          <p className="run-outcome-detail">{run.error}</p>
+        </section>
+      ) : null}
 
       <section className="panel run-panel">
         <div className="section-heading">

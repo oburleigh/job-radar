@@ -7,6 +7,7 @@ import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createJobDiscovery } from "@/contexts/discovery/application/discovery-runs/discover/discover-jobs";
 import type { SearchProvider } from "@/contexts/discovery/application/discovery-runs/ports/search-provider";
+import { SearchProviderFailure } from "@/contexts/discovery/application/discovery-runs/ports/search-provider";
 import { createSaveSearchProfile } from "@/contexts/discovery/application/search-profiles/save/use-case";
 import { type SearchProfileId, searchProfileIdFrom } from "@/contexts/discovery/domain/identifiers";
 import { createSearchProfileDefinition } from "@/contexts/discovery/domain/search-profile";
@@ -181,6 +182,52 @@ describe("discovery concurrency", () => {
     ).toEqual([
       expect.objectContaining({ status: "completed", hitCount: 1 }),
       expect.objectContaining({ status: "completed", hitCount: 1 }),
+    ]);
+  });
+
+  it("finishes every planned query record after a fatal provider failure", async () => {
+    const profileId = seedProfile("Fatal provider profile");
+    seedSingleSource();
+    const provider: SearchProvider = {
+      name: "test-provider",
+      search: async () => {
+        throw new SearchProviderFailure({
+          provider: "test-provider",
+          classification: "fatal",
+          code: "credit-exhausted",
+          attempts: 1,
+          message: "Test provider has no credits",
+        });
+      },
+    };
+
+    const summary = await createDiscovery(provider).discoverJobs({
+      profileId,
+      providerName: provider.name,
+      source: "ashby",
+      syncBoards: false,
+    });
+
+    expect(
+      db.select().from(discoveryRuns).where(eq(discoveryRuns.id, summary.runId)).get(),
+    ).toMatchObject({
+      status: "failed",
+      queryCount: 2,
+      queryErrorCount: 1,
+    });
+    expect(
+      db
+        .select({ status: discoveryQueries.status, error: discoveryQueries.error })
+        .from(discoveryQueries)
+        .where(eq(discoveryQueries.runId, summary.runId))
+        .orderBy(discoveryQueries.id)
+        .all(),
+    ).toEqual([
+      { status: "failed", error: "Test provider has no credits" },
+      {
+        status: "cancelled",
+        error: "Skipped because test-provider reported credit-exhausted.",
+      },
     ]);
   });
 });

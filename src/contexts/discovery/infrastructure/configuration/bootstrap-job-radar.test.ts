@@ -18,7 +18,7 @@ import {
   searchProfiles,
   sourceDomains,
 } from "@/contexts/discovery/infrastructure/sqlite/schema";
-import { bootstrapJobRadar } from "./bootstrap-job-radar";
+import { bootstrapJobRadar, defaultProviderExecutionSettings } from "./bootstrap-job-radar";
 
 describe("Job Radar database bootstrap", () => {
   let directory: string;
@@ -79,6 +79,77 @@ describe("Job Radar database bootstrap", () => {
         .where(eq(sourceDomains.pattern, "jobs.ashbyhq.com"))
         .get()?.enabled,
     ).toBe(false);
+  });
+
+  it("backfills provider execution policy without overwriting discovery settings", () => {
+    bootstrapJobRadar(database, new Date("2026-08-20T00:00:00.000Z"));
+    const discovery = database
+      .select({ value: appSettings.value })
+      .from(appSettings)
+      .where(eq(appSettings.key, "discovery"))
+      .get()?.value;
+    if (typeof discovery !== "object" || discovery === null || Array.isArray(discovery)) {
+      throw new Error("The discovery bootstrap fixture must be an object.");
+    }
+    const legacyDiscovery = Object.fromEntries(
+      Object.entries(discovery).filter(([key]) => key !== "providerExecution"),
+    );
+    database
+      .update(appSettings)
+      .set({ value: { ...legacyDiscovery, resultsPerQuery: 37 } })
+      .where(eq(appSettings.key, "discovery"))
+      .run();
+
+    const backfilledAt = new Date("2026-08-21T00:00:00.000Z");
+    bootstrapJobRadar(database, backfilledAt);
+
+    const backfilled = database
+      .select()
+      .from(appSettings)
+      .where(eq(appSettings.key, "discovery"))
+      .get();
+    expect(backfilled?.value).toMatchObject({
+      resultsPerQuery: 37,
+      providerExecution: defaultProviderExecutionSettings,
+    });
+    expect(backfilled?.updatedAt).toEqual(backfilledAt);
+  });
+
+  it("preserves a user-configured provider execution policy", () => {
+    const configuredAt = new Date("2026-08-20T00:00:00.000Z");
+    bootstrapJobRadar(database, configuredAt);
+    const row = database
+      .select({ value: appSettings.value })
+      .from(appSettings)
+      .where(eq(appSettings.key, "discovery"))
+      .get();
+    if (typeof row?.value !== "object" || row.value === null || Array.isArray(row.value)) {
+      throw new Error("The discovery bootstrap fixture must be an object.");
+    }
+    const providerExecution = {
+      concurrency: 4,
+      requestsPerInterval: 9,
+      intervalMs: 2_000,
+      maxAttempts: 2,
+      retryMinDelayMs: 250,
+      retryMaxDelayMs: 3_000,
+      retryMaxTimeMs: 45_000,
+    };
+    database
+      .update(appSettings)
+      .set({ value: { ...row.value, providerExecution }, updatedAt: configuredAt })
+      .where(eq(appSettings.key, "discovery"))
+      .run();
+
+    bootstrapJobRadar(database, new Date("2026-08-21T00:00:00.000Z"));
+
+    const preserved = database
+      .select()
+      .from(appSettings)
+      .where(eq(appSettings.key, "discovery"))
+      .get();
+    expect(preserved?.value).toMatchObject({ providerExecution });
+    expect(preserved?.updatedAt).toEqual(configuredAt);
   });
 });
 

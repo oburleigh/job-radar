@@ -157,13 +157,19 @@ test("completes discovery and triage while profile editing remains responsive", 
 
   const failedNotice = page.getByRole("alert").filter({ hasText: "Discovery failed" });
   await expect(failedNotice).toContainText(
-    "Serper.dev: Deterministic provider failure. Try again or review run history for details.",
+    "Serper.dev was unavailable after 3 attempts. Try again later or choose another provider.",
     { timeout: 30_000 },
   );
   await failedNotice.getByRole("link", { name: "Run history" }).click();
   await page.getByRole("link", { name: new RegExp(`#${failedStart.runId}`) }).click();
   await expect(
     page.getByRole("heading", { level: 1, name: `Run #${failedStart.runId}` }),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Discovery failed" })).toBeVisible();
+  await expect(
+    page.getByText("serper transient server-error after 3 attempts; skipped 26 queries", {
+      exact: true,
+    }),
   ).toBeVisible();
   await expect(page.getByText("failed", { exact: true }).first()).toBeVisible();
 });
@@ -248,6 +254,11 @@ test("cancels a running discovery without resurrecting a delayed poll", async ({
   await new Promise((resolve) => setTimeout(resolve, 1_800));
   await expect(page.getByText(runningMessage, { exact: true })).toBeHidden();
   expect((await request.post(`${fixtureUrl}/control/release-success`)).ok()).toBe(true);
+
+  await page.goto(`/runs/${started.runId}`);
+  await expect(page.getByRole("heading", { level: 2, name: "Discovery cancelled" })).toBeVisible();
+  await expect(page.getByText("Run stopped", { exact: true })).toBeVisible();
+  await expect(page.getByText("Cancelled by user", { exact: true })).toBeVisible();
 });
 
 test("explains that a returned role was excluded by location", async ({ page }) => {

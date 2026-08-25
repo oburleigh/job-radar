@@ -111,6 +111,13 @@ export function createSqliteDiscoveryRunJournal(database: Database): DiscoveryRu
         .where(and(eq(discoveryQueries.id, queryId), eq(discoveryQueries.status, "running")))
         .run();
     },
+    cancelPlannedQueries(runId, message, finishedAt) {
+      database
+        .update(discoveryQueries)
+        .set({ status: "cancelled", error: message, finishedAt })
+        .where(and(eq(discoveryQueries.runId, runId), eq(discoveryQueries.status, "planned")))
+        .run();
+    },
     recordProgress(runId, progress, recordedAt) {
       database
         .update(discoveryRuns)

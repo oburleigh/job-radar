@@ -4,6 +4,7 @@ import type {
   SearchRequest,
   SearchResult,
 } from "@/contexts/discovery/application/discovery-runs/ports/search-provider";
+import { SearchProviderFailure } from "@/contexts/discovery/application/discovery-runs/ports/search-provider";
 import { getJobRadarConfig } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
 
 const braveResultSchema = z.looseObject({
@@ -74,10 +75,16 @@ export class BraveSearchProvider implements SearchProvider {
       signal: requestSignal(options.signal, config.network.timeoutMs),
     });
     if (!response.ok) {
-      throw new Error(`Brave Search returned HTTP ${response.status}`);
+      throw providerHttpFailure(
+        this.name,
+        "Brave Search",
+        response.status,
+        await providerErrorDetail(response),
+      );
     }
 
     const results = parseProviderResponse(
+      this.name,
       "Brave Search",
       braveResponseSchema,
       await response.json(),
@@ -123,10 +130,20 @@ export class SerpApiSearchProvider implements SearchProvider {
       signal: requestSignal(options.signal, config.network.timeoutMs),
     });
     if (!response.ok) {
-      throw new Error(`SerpAPI returned HTTP ${response.status}`);
+      throw providerHttpFailure(
+        this.name,
+        "SerpAPI",
+        response.status,
+        await providerErrorDetail(response),
+      );
     }
 
-    const payload = parseProviderResponse("SerpAPI", serpApiResponseSchema, await response.json());
+    const payload = parseProviderResponse(
+      this.name,
+      "SerpAPI",
+      serpApiResponseSchema,
+      await response.json(),
+    );
     return payload.organic_results.map((result) => ({
       title: result.title,
       url: result.link,
@@ -167,12 +184,16 @@ export class SerperSearchProvider implements SearchProvider {
       signal: requestSignal(options.signal, config.network.timeoutMs),
     });
     if (!response.ok) {
-      const parsedError = providerErrorSchema.safeParse(await response.json().catch(() => ({})));
-      const detail = parsedError.success ? (parsedError.data.message ?? "") : "";
-      throw new Error(`Serper.dev returned HTTP ${response.status}${detail ? `: ${detail}` : ""}`);
+      throw providerHttpFailure(
+        this.name,
+        "Serper.dev",
+        response.status,
+        await providerErrorDetail(response),
+      );
     }
 
     const payload = parseProviderResponse(
+      this.name,
       "Serper.dev",
       serperResponseSchema,
       await response.json(),
@@ -244,6 +265,7 @@ function requestSignal(signal: AbortSignal | undefined, timeoutMs: number): Abor
 
 function parseProviderResponse<Output>(
   provider: string,
+  providerLabel: string,
   schema: z.ZodType<Output>,
   payload: unknown,
 ): Output {
@@ -251,8 +273,79 @@ function parseProviderResponse<Output>(
   if (parsed.success) {
     return parsed.data;
   }
-  throw new Error(`${provider} returned an invalid response: ${z.prettifyError(parsed.error)}`, {
+  throw new SearchProviderFailure({
+    provider,
+    classification: "fatal",
+    code: "invalid-response",
+    attempts: 1,
+    message: `${providerLabel} returned an invalid response: ${z.prettifyError(parsed.error)}`,
     cause: parsed.error,
+  });
+}
+
+async function providerErrorDetail(response: Response): Promise<string> {
+  const parsed = providerErrorSchema.safeParse(await response.json().catch(() => ({})));
+  return parsed.success ? (parsed.data.message ?? "") : "";
+}
+
+function providerHttpFailure(
+  provider: string,
+  providerLabel: string,
+  status: number,
+  detail: string,
+): SearchProviderFailure {
+  const message = `${providerLabel} returned HTTP ${status}${detail ? `: ${detail}` : ""}`;
+  if (/not enough credits|insufficient credits|quota exceeded/i.test(detail)) {
+    return new SearchProviderFailure({
+      provider,
+      classification: "fatal",
+      code: "credit-exhausted",
+      attempts: 1,
+      message,
+    });
+  }
+  if (status === 401 || status === 403) {
+    return new SearchProviderFailure({
+      provider,
+      classification: "fatal",
+      code: "authentication-rejected",
+      attempts: 1,
+      message,
+    });
+  }
+  if (status === 402) {
+    return new SearchProviderFailure({
+      provider,
+      classification: "fatal",
+      code: "payment-required",
+      attempts: 1,
+      message,
+    });
+  }
+  if (status === 429) {
+    return new SearchProviderFailure({
+      provider,
+      classification: "transient",
+      code: "rate-limited",
+      attempts: 1,
+      message,
+    });
+  }
+  if (status === 500 || status === 502 || status === 503 || status === 504) {
+    return new SearchProviderFailure({
+      provider,
+      classification: "transient",
+      code: "server-error",
+      attempts: 1,
+      message,
+    });
+  }
+  return new SearchProviderFailure({
+    provider,
+    classification: "fatal",
+    code: "invalid-request",
+    attempts: 1,
+    message,
   });
 }
 

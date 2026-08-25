@@ -10,6 +10,7 @@ import type {
 import type { DiscoverySetupReader } from "@/contexts/discovery/application/discovery-runs/ports/discovery-setup";
 import type { JobDiscoveryCatalog } from "@/contexts/discovery/application/discovery-runs/ports/job-discovery-catalog";
 import type { JobMatchEvaluator } from "@/contexts/discovery/application/discovery-runs/ports/job-match-evaluator";
+import { SearchProviderFailure } from "@/contexts/discovery/application/discovery-runs/ports/search-provider";
 import type { SearchProviderDirectory } from "@/contexts/discovery/application/discovery-runs/ports/search-provider-directory";
 
 export type DiscoverJobsCommand = Omit<DiscoveryRunExecution, "runId"> & {
@@ -29,6 +30,13 @@ export type DiscoverySummary = {
   readonly matches: number;
   readonly queryErrors: number;
   readonly syncErrors: number;
+  readonly providerFailure?: {
+    readonly provider: string;
+    readonly classification: "fatal" | "transient";
+    readonly code: string;
+    readonly attempts: number;
+    readonly skippedQueries: number;
+  };
 };
 
 export interface ForDiscoveringJobs {
@@ -96,7 +104,9 @@ export function createJobDiscovery({
       let jobsWritten = 0;
       let matchesFound = 0;
       let syncErrors = 0;
+      let querySucceeded = false;
       let activeQueryId: number | undefined;
+      let providerFailure: DiscoverySummary["providerFailure"];
 
       const progress = (): DiscoveryRunProgress => ({
         hitCount,
@@ -107,7 +117,7 @@ export function createJobDiscovery({
 
       try {
         const queries = runs.planQueries(run.id, plannedQueries);
-        for (const query of queries) {
+        for (const [queryIndex, query] of queries.entries()) {
           throwIfCancelled(command.signal);
           activeQueryId = query.id;
           runs.startQuery(query.id, now());
@@ -123,6 +133,27 @@ export function createJobDiscovery({
           } catch (error) {
             if (command.signal?.aborted) {
               throw error;
+            }
+            if (error instanceof SearchProviderFailure) {
+              const skippedQueries = queries.length - queryIndex - 1;
+              const failureSummary = `${error.provider} ${error.classification} ${error.code} after ${error.attempts} ${error.attempts === 1 ? "attempt" : "attempts"}; skipped ${skippedQueries} ${skippedQueries === 1 ? "query" : "queries"}`;
+              queryErrors.push(failureSummary);
+              runs.failQuery(query.id, error.message, now());
+              providerFailure = {
+                provider: error.provider,
+                classification: error.classification,
+                code: error.code,
+                attempts: error.attempts,
+                skippedQueries,
+              };
+              activeQueryId = undefined;
+              runs.recordProgress(run.id, progress(), now());
+              runs.cancelPlannedQueries(
+                run.id,
+                `Skipped because ${error.provider} reported ${error.code}.`,
+                now(),
+              );
+              break;
             }
             const message = errorMessage(error);
             queryErrors.push(`${query.sourcePattern} / ${query.titleTerm}: ${message}`);
@@ -153,6 +184,7 @@ export function createJobDiscovery({
           throwIfCancelled(command.signal);
           if (!queryFailed) {
             runs.completeQuery(query.id, results.length, now());
+            querySucceeded = true;
           }
           activeQueryId = undefined;
           runs.recordProgress(run.id, progress(), now());
@@ -187,8 +219,7 @@ export function createJobDiscovery({
           boardsDiscovered: boardIds.size,
           matchesFound,
           errors: queryErrors,
-          allQueriesFailed:
-            plannedQueries.length > 0 && queryErrors.length === plannedQueries.length,
+          allQueriesFailed: plannedQueries.length > 0 && !querySucceeded,
           finishedAt: now(),
         });
       } catch (error) {
@@ -199,6 +230,11 @@ export function createJobDiscovery({
         if (activeQueryId !== undefined) {
           runs.failQuery(activeQueryId, message, now());
         }
+        runs.cancelPlannedQueries(
+          run.id,
+          `Skipped because the discovery run failed: ${message}`,
+          now(),
+        );
         runs.fail({
           runId: run.id,
           progress: progress(),
@@ -219,6 +255,7 @@ export function createJobDiscovery({
         matches: matchesFound,
         queryErrors: queryErrors.length,
         syncErrors,
+        ...(providerFailure ? { providerFailure } : {}),
       };
     },
   };

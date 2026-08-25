@@ -15,13 +15,20 @@ export function formatDiscoveryFailure({
   }
 
   const providerName = formatProviderName(provider);
-  if (/not enough credits|insufficient credits|quota exceeded/i.test(summary)) {
+  if (/credit-exhausted|not enough credits|insufficient credits|quota exceeded/i.test(summary)) {
     return `${providerName} has no credits remaining. Choose another provider or add credits.`;
   }
-  if (/http 429|rate limit/i.test(summary)) {
+  if (/payment-required/i.test(summary)) {
+    return `${providerName} requires payment. Choose another provider or update its plan.`;
+  }
+  if (/http 429|rate[- ]limit/i.test(summary)) {
     return `${providerName} rate limit reached. Wait before retrying or choose another provider.`;
   }
-  if (/http (401|403)|unauthori[sz]ed|invalid api key/i.test(summary)) {
+  if (/server-error/i.test(summary)) {
+    const attemptPhrase = summary.match(/\bafter \d+ attempts?\b/i)?.[0] ?? "";
+    return `${providerName} was unavailable${attemptPhrase ? ` ${attemptPhrase}` : ""}. Try again later or choose another provider.`;
+  }
+  if (/authentication-rejected|http (401|403)|unauthori[sz]ed|invalid api key/i.test(summary)) {
     return `${providerName} rejected its API key. Check the credential in .env or choose another provider.`;
   }
 

@@ -31,6 +31,13 @@ export const runtimeSettingConstraints = {
   partialTokenScore: integer(0, 100),
   partialTokenThreshold: decimal(0, 1, 0.05),
   providerMaxResults: integer(1, 100),
+  providerConcurrency: integer(1, 10),
+  providerIntervalMs: integer(100, 60_000),
+  providerMaxAttempts: integer(1, 3),
+  providerRequestsPerInterval: integer(1, 100),
+  providerRetryMaxDelayMs: integer(0, 60_000),
+  providerRetryMaxTimeMs: integer(1_000, 300_000),
+  providerRetryMinDelayMs: integer(0, 60_000),
   remoteScore: integer(0, 100),
   resultsPerQuery: integer(1, 100),
   runHistoryLimit: integer(1, 1_000),
@@ -64,6 +71,13 @@ export function findInvalidRuntimeSetting(
     ["searchFreshnessDays", discovery.searchFreshnessDays],
     ["workYieldBatchSize", discovery.workYieldBatchSize],
     ["runHistoryLimit", discovery.runHistoryLimit],
+    ["providerConcurrency", discovery.providerExecution.concurrency],
+    ["providerRequestsPerInterval", discovery.providerExecution.requestsPerInterval],
+    ["providerIntervalMs", discovery.providerExecution.intervalMs],
+    ["providerMaxAttempts", discovery.providerExecution.maxAttempts],
+    ["providerRetryMinDelayMs", discovery.providerExecution.retryMinDelayMs],
+    ["providerRetryMaxDelayMs", discovery.providerExecution.retryMaxDelayMs],
+    ["providerRetryMaxTimeMs", discovery.providerExecution.retryMaxTimeMs],
     ["discoveryPollIntervalMs", ui.discoveryPollIntervalMs],
     ["discoveryStaleAfterMs", ui.discoveryStaleAfterMs],
     ["exactTitleScore", matching.exactTitleScore],
@@ -85,6 +99,9 @@ export function findInvalidRuntimeSetting(
     if (!meetsConstraint(value, runtimeSettingConstraints[field])) {
       return field;
     }
+  }
+  if (discovery.providerExecution.retryMaxDelayMs < discovery.providerExecution.retryMinDelayMs) {
+    return "providerRetryMaxDelayMs";
   }
   for (const provider of Object.values(settings.searchProviders)) {
     if (!meetsConstraint(provider.maxResults, runtimeSettingConstraints.providerMaxResults)) {

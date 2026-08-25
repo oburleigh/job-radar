@@ -62,7 +62,14 @@ export async function action({ request }: ActionFunctionArgs) {
     }
     const result = discoveryWeb.saveRuntimeSettings(parsed.command);
     if (result.status === "rejected") {
-      return { ok: false, message: `Invalid runtime setting: ${result.field}.` };
+      return {
+        ok: false,
+        field: result.field,
+        message:
+          result.field === "providerRetryMaxDelayMs"
+            ? "Maximum retry delay must be at least the first retry delay."
+            : "The highlighted setting is outside its allowed range.",
+      };
     }
     return { ok: true, message: "Runtime settings saved to SQLite." };
   }

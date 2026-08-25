@@ -8,6 +8,8 @@ import { ATS_TYPES } from "@/contexts/discovery/infrastructure/job-sources/ats-i
 import { db } from "@/contexts/discovery/infrastructure/sqlite/database";
 import { appSettings, atsIntegrations } from "@/contexts/discovery/infrastructure/sqlite/schema";
 
+import { defaultProviderExecutionSettings } from "./bootstrap-job-radar";
+
 const integer = (constraint: { readonly min: number; readonly max: number }) =>
   z.number().int().min(constraint.min).max(constraint.max);
 const number = (constraint: { readonly min: number; readonly max: number }) =>
@@ -29,6 +31,21 @@ const discoverySchema = z.object({
   workYieldBatchSize: integer(runtimeSettingConstraints.workYieldBatchSize),
   runHistoryLimit: integer(runtimeSettingConstraints.runHistoryLimit),
   titleSearchMode: z.enum(["title", "anywhere"]),
+  providerExecution: z
+    .object({
+      concurrency: integer(runtimeSettingConstraints.providerConcurrency),
+      requestsPerInterval: integer(runtimeSettingConstraints.providerRequestsPerInterval),
+      intervalMs: integer(runtimeSettingConstraints.providerIntervalMs),
+      maxAttempts: integer(runtimeSettingConstraints.providerMaxAttempts),
+      retryMinDelayMs: integer(runtimeSettingConstraints.providerRetryMinDelayMs),
+      retryMaxDelayMs: integer(runtimeSettingConstraints.providerRetryMaxDelayMs),
+      retryMaxTimeMs: integer(runtimeSettingConstraints.providerRetryMaxTimeMs),
+    })
+    .refine((policy) => policy.retryMaxDelayMs >= policy.retryMinDelayMs, {
+      message: "Maximum retry delay must be at least the first retry delay",
+      path: ["retryMaxDelayMs"],
+    })
+    .default(defaultProviderExecutionSettings),
   structuredVerificationSources: z.array(z.string().min(1)),
   closedListingMarkers: z.array(z.string().min(1)),
 });
@@ -98,6 +115,10 @@ export interface JobRadarConfig extends RuntimeSettings {
   ats: Record<string, z.infer<typeof integrationSchema>>;
 }
 
+export function parseDiscoverySettings(value: unknown): RuntimeSettings["discovery"] {
+  return discoverySchema.parse(value);
+}
+
 export function getJobRadarConfig(): JobRadarConfig {
   const settings = new Map(
     db
@@ -130,7 +151,7 @@ export function getJobRadarConfig(): JobRadarConfig {
 
   return {
     network: networkSchema.parse(requireSetting(settings, "network")),
-    discovery: discoverySchema.parse(requireSetting(settings, "discovery")),
+    discovery: parseDiscoverySettings(requireSetting(settings, "discovery")),
     ui: uiSchema.parse(requireSetting(settings, "ui")),
     matching: matchingSchema.parse(requireSetting(settings, "matching")),
     searchProviders: searchProvidersSchema.parse(requireSetting(settings, "searchProviders")),

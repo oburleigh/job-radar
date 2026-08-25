@@ -8,7 +8,7 @@ import { formatDiscoveryFailure } from "@/contexts/discovery/presentation/web/fo
 
 const PENDING_RUNS_KEY = "job-radar.pending-discovery-runs";
 
-interface DiscoveryRunStatus {
+export interface DiscoveryRunStatus {
   id: number;
   profileId: number;
   profileName: string;
@@ -223,17 +223,18 @@ export function DiscoveryNotifications({ pollIntervalMs }: DiscoveryNotification
         </div>
       ))}
       {notices.map((run) => {
-        const failed = run.status === "failed";
-        const cancelled = run.status === "cancelled";
-        const errorCount = run.queryErrorCount + run.syncErrorCount;
+        const presentation = describeDiscoveryNotice(run);
+        const failed = presentation.kind === "failed";
+        const cancelled = presentation.kind === "cancelled";
+        const partial = presentation.kind === "partial";
         return (
           <div
-            className={`discovery-notice${failed ? " notice-failed" : cancelled ? " notice-cancelled" : ""}`}
+            className={`discovery-notice${failed ? " notice-failed" : cancelled ? " notice-cancelled" : partial ? " notice-partial" : ""}`}
             key={run.id}
-            role={failed ? "alert" : "status"}
+            role={failed || partial ? "alert" : "status"}
           >
             <span className="discovery-notice-icon">
-              {failed ? (
+              {failed || partial ? (
                 <CircleAlert size={20} />
               ) : cancelled ? (
                 <CircleX size={20} />
@@ -242,28 +243,8 @@ export function DiscoveryNotifications({ pollIntervalMs }: DiscoveryNotification
               )}
             </span>
             <div>
-              <strong>
-                {failed
-                  ? "Discovery failed"
-                  : cancelled
-                    ? "Discovery cancelled"
-                    : "Discovery completed"}
-              </strong>
-              <p>
-                {failed
-                  ? formatDiscoveryFailure(run)
-                  : cancelled
-                    ? `${run.profileName}: Discovery #${run.id} was cancelled after processing ${run.hitCount} search result${run.hitCount === 1 ? "" : "s"}.`
-                    : `${run.profileName}: ${run.matchesFound} current profile match${
-                        run.matchesFound === 1 ? "" : "es"
-                      } after processing ${run.hitCount} search result${
-                        run.hitCount === 1 ? "" : "s"
-                      }${
-                        errorCount > 0
-                          ? `, with ${errorCount} error${errorCount === 1 ? "" : "s"}`
-                          : ""
-                      }.`}
-              </p>
+              <strong>{presentation.title}</strong>
+              <p>{presentation.message}</p>
               <div className="discovery-notice-links">
                 {!failed && !cancelled ? (
                   <Link to={`/?profile=${run.profileId}`}>View results</Link>
@@ -300,6 +281,51 @@ function persistPendingRuns(pendingIds: { readonly current: Set<number> }): void
   } catch {
     // Polling still works when storage is unavailable in a restricted browser.
   }
+}
+
+export function describeDiscoveryNotice(run: DiscoveryRunStatus): {
+  readonly kind: "completed" | "partial" | "failed" | "cancelled";
+  readonly title: string;
+  readonly message: string;
+} {
+  if (run.status === "failed") {
+    return {
+      kind: "failed",
+      title: "Discovery failed",
+      message: formatDiscoveryFailure(run),
+    };
+  }
+  if (run.status === "cancelled") {
+    return {
+      kind: "cancelled",
+      title: "Discovery cancelled",
+      message: `${run.profileName}: Discovery #${run.id} was cancelled after processing ${run.hitCount} search result${run.hitCount === 1 ? "" : "s"}.`,
+    };
+  }
+  if (run.queryErrorCount + run.syncErrorCount > 0) {
+    const partialFailure = run.errorSummary.trim()
+      ? formatDiscoveryFailure(run)
+      : `${run.profileName} completed with ${[
+          run.queryErrorCount > 0
+            ? `${run.queryErrorCount} search error${run.queryErrorCount === 1 ? "" : "s"}`
+            : "",
+          run.syncErrorCount > 0
+            ? `${run.syncErrorCount} board synchronization error${run.syncErrorCount === 1 ? "" : "s"}`
+            : "",
+        ]
+          .filter(Boolean)
+          .join(" and ")}.`;
+    return {
+      kind: "partial",
+      title: "Discovery partially completed",
+      message: `${partialFailure} ${run.matchesFound} current profile match${run.matchesFound === 1 ? " was" : "es were"} retained.`,
+    };
+  }
+  return {
+    kind: "completed",
+    title: "Discovery completed",
+    message: `${run.profileName}: ${run.matchesFound} current profile match${run.matchesFound === 1 ? "" : "es"} after processing ${run.hitCount} search result${run.hitCount === 1 ? "" : "s"}.`,
+  };
 }
 
 export function reconcilePendingRunIds(

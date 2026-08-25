@@ -41,6 +41,111 @@ describe("execute discovery run", () => {
     expect(result).toEqual({ status: "failed", message: "Search provider timed out" });
   });
 
+  it("reports a fatal provider stop as failed when no query succeeded", async () => {
+    const discovery: ForDiscoveringJobs = {
+      discoverJobs: async () => ({
+        ...summary,
+        queries: 370,
+        hits: 0,
+        jobs: 0,
+        matches: 0,
+        queryErrors: 1,
+        providerFailure: {
+          provider: "serper",
+          classification: "fatal",
+          code: "credit-exhausted",
+          attempts: 1,
+          skippedQueries: 369,
+        },
+      }),
+    };
+    const discoveryRuns = createDiscoveryRunExecution({ discovery });
+
+    await expect(discoveryRuns.executeDiscoveryRun(execution)).resolves.toEqual({
+      status: "failed",
+      message: "serper fatal credit-exhausted after 1 attempt; skipped 369 queries",
+    });
+  });
+
+  it("reports a provider stop as partial when an earlier query succeeded", async () => {
+    const discovery: ForDiscoveringJobs = {
+      discoverJobs: async () => ({
+        ...summary,
+        queries: 3,
+        queryErrors: 1,
+        providerFailure: {
+          provider: "brave",
+          classification: "fatal",
+          code: "payment-required",
+          attempts: 1,
+          skippedQueries: 1,
+        },
+      }),
+    };
+    const discoveryRuns = createDiscoveryRunExecution({ discovery });
+
+    await expect(discoveryRuns.executeDiscoveryRun(execution)).resolves.toEqual({
+      status: "partial",
+      message: "brave fatal payment-required after 1 attempt; skipped 1 query",
+    });
+  });
+
+  it("reports the plural attempt count for an exhausted transient failure", async () => {
+    const discovery: ForDiscoveringJobs = {
+      discoverJobs: async () => ({
+        ...summary,
+        hits: 0,
+        jobs: 0,
+        matches: 0,
+        queryErrors: 1,
+        providerFailure: {
+          provider: "brave",
+          classification: "transient",
+          code: "rate-limited",
+          attempts: 3,
+          skippedQueries: 0,
+        },
+      }),
+    };
+    const discoveryRuns = createDiscoveryRunExecution({ discovery });
+
+    await expect(discoveryRuns.executeDiscoveryRun(execution)).resolves.toEqual({
+      status: "failed",
+      message: "brave transient rate-limited after 3 attempts; skipped 0 queries",
+    });
+  });
+
+  it("reports cancellation that wins while discovery returns", async () => {
+    const controller = new AbortController();
+    const discovery: ForDiscoveringJobs = {
+      discoverJobs: async () => {
+        controller.abort(new DOMException("Cancelled by user", "AbortError"));
+        return summary;
+      },
+    };
+    const discoveryRuns = createDiscoveryRunExecution({ discovery });
+
+    await expect(
+      discoveryRuns.executeDiscoveryRun({ ...execution, signal: controller.signal }),
+    ).resolves.toEqual({ status: "cancelled" });
+  });
+
+  it("reports cancellation that rejects active discovery", async () => {
+    const controller = new AbortController();
+    const cancellation = new DOMException("Cancelled by user", "AbortError");
+    const discovery: ForDiscoveringJobs = {
+      discoverJobs: async () => {
+        controller.abort(cancellation);
+        throw cancellation;
+      },
+    };
+    const discoveryRuns = createDiscoveryRunExecution({ discovery });
+
+    await expect(
+      discoveryRuns.executeDiscoveryRun({ ...execution, signal: controller.signal }),
+    ).resolves.toEqual({ status: "cancelled" });
+  });
+
   it("reports cancellation without converting it to a failure", async () => {
     const controller = new AbortController();
     controller.abort();

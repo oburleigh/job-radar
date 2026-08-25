@@ -1,6 +1,45 @@
 import { describe, expect, it } from "vitest";
+import type {
+  SearchProvider,
+  SearchProviderFailure,
+} from "@/contexts/discovery/application/discovery-runs/ports/search-provider";
 
-import { BraveSearchProvider, SerperSearchProvider } from "./web-search-provider";
+import {
+  BraveSearchProvider,
+  SerpApiSearchProvider,
+  SerperSearchProvider,
+} from "./web-search-provider";
+
+describe.each([
+  ["brave", (fetcher: typeof fetch) => new BraveSearchProvider("test-key", fetcher)],
+  ["serpapi", (fetcher: typeof fetch) => new SerpApiSearchProvider("test-key", fetcher)],
+  ["serper", (fetcher: typeof fetch) => new SerperSearchProvider("test-key", fetcher)],
+] satisfies ReadonlyArray<readonly [string, (fetcher: typeof fetch) => SearchProvider]>)(
+  "%s provider failure contract",
+  (providerName, createProvider) => {
+    it("classifies rate limits with its provider identity", async () => {
+      const provider = createProvider(async () => new Response(null, { status: 429 }));
+
+      await expect(provider.search("engineering")).rejects.toMatchObject({
+        provider: providerName,
+        classification: "transient",
+        code: "rate-limited",
+        attempts: 1,
+      } satisfies Partial<SearchProviderFailure>);
+    });
+
+    it("classifies malformed successful responses with its provider identity", async () => {
+      const provider = createProvider(async () => Response.json({}));
+
+      await expect(provider.search("engineering")).rejects.toMatchObject({
+        provider: providerName,
+        classification: "fatal",
+        code: "invalid-response",
+        attempts: 1,
+      } satisfies Partial<SearchProviderFailure>);
+    });
+  },
+);
 
 describe("Brave search provider", () => {
   it("maps a successful response without web results to an empty list", async () => {
@@ -58,18 +97,40 @@ describe("Brave search provider", () => {
       }),
     );
 
-    await expect(provider.search("engineering")).rejects.toThrow(
-      "Brave Search returned an invalid response",
-    );
+    const failure = await provider.search("engineering").catch((error: unknown) => error);
+
+    expect(failure).toMatchObject({
+      classification: "fatal",
+      code: "invalid-response",
+      attempts: 1,
+    } satisfies Partial<SearchProviderFailure>);
+    expect(failure).toHaveProperty("name", "SearchProviderFailure");
+    expect(failure).toHaveProperty("cause", expect.any(Error));
   });
 
-  it("rejects non-success HTTP responses", async () => {
+  it.each([
+    [401, "fatal", "authentication-rejected"],
+    [403, "fatal", "authentication-rejected"],
+    [402, "fatal", "payment-required"],
+    [429, "transient", "rate-limited"],
+    [500, "transient", "server-error"],
+    [502, "transient", "server-error"],
+    [503, "transient", "server-error"],
+    [504, "transient", "server-error"],
+    [501, "fatal", "invalid-request"],
+    [400, "fatal", "invalid-request"],
+  ] as const)("classifies HTTP %i as a %s %s failure", async (status, classification, code) => {
     const provider = new BraveSearchProvider(
       "test-key",
-      async () => new Response(null, { status: 429 }),
+      async () => new Response(null, { status }),
     );
 
-    await expect(provider.search("engineering")).rejects.toThrow("Brave Search returned HTTP 429");
+    await expect(provider.search("engineering")).rejects.toMatchObject({
+      provider: "brave",
+      classification,
+      code,
+      attempts: 1,
+    } satisfies Partial<SearchProviderFailure>);
   });
 
   it("applies the profile age window as a freshness filter", async () => {
@@ -152,5 +213,18 @@ describe("Serper.dev search provider", () => {
         snippet: "London, United Kingdom",
       },
     ]);
+  });
+
+  it("classifies an exhausted-credit response as fatal", async () => {
+    const provider = new SerperSearchProvider("test-key", async () =>
+      Response.json({ message: "Not enough credits" }, { status: 400 }),
+    );
+
+    await expect(provider.search("engineering")).rejects.toMatchObject({
+      provider: "serper",
+      classification: "fatal",
+      code: "credit-exhausted",
+      attempts: 1,
+    } satisfies Partial<SearchProviderFailure>);
   });
 });

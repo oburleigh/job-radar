@@ -1,9 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import { createJobDiscovery } from "@/contexts/discovery/application/discovery-runs/discover/discover-jobs";
-import type { DiscoveryRunJournal } from "@/contexts/discovery/application/discovery-runs/ports/discovery-run-journal";
+import type {
+  DiscoveryRunJournal,
+  DiscoveryRunProgress,
+} from "@/contexts/discovery/application/discovery-runs/ports/discovery-run-journal";
 import type { DiscoverySetupReader } from "@/contexts/discovery/application/discovery-runs/ports/discovery-setup";
 import type { JobDiscoveryCatalog } from "@/contexts/discovery/application/discovery-runs/ports/job-discovery-catalog";
 import type { SearchProvider } from "@/contexts/discovery/application/discovery-runs/ports/search-provider";
+import { SearchProviderFailure } from "@/contexts/discovery/application/discovery-runs/ports/search-provider";
 import type { SearchProviderDirectory } from "@/contexts/discovery/application/discovery-runs/ports/search-provider-directory";
 
 const timestamp = new Date("2026-08-20T12:00:00.000Z");
@@ -61,6 +65,7 @@ describe("discover jobs", () => {
     expect(synchronizeBoard).toHaveBeenCalledWith(11, 200);
     expect(evaluateMatches).toHaveBeenCalledWith(7, expect.any(Function), expect.any(Function));
     expect(yieldControl).toHaveBeenCalledTimes(2);
+    expect(journal.progressRecords).toHaveLength(4);
     expect(journal.completed).toEqual([
       expect.objectContaining({
         runId: 41,
@@ -109,6 +114,193 @@ describe("discover jobs", () => {
     ]);
   });
 
+  it("does not call an empty query plan a failed search", async () => {
+    const journal = recordingJournal();
+    const search = vi.fn();
+    const discovery = createJobDiscovery({
+      setup: {
+        load: (command) => ({ ...configuredSetup().load(command), sources: [] }),
+      },
+      runs: journal,
+      jobs: { recordHit: vi.fn(), synchronizeBoard: vi.fn() },
+      matches: { evaluate: vi.fn(async () => ({ matched: 0 })) },
+      providers: providerDirectory(search),
+      now: () => timestamp,
+      yieldControl: vi.fn(),
+    });
+
+    await discovery.discoverJobs({
+      profileId: 7,
+      providerName: "serper",
+      runId: 41,
+      syncBoards: false,
+    });
+
+    expect(search).not.toHaveBeenCalled();
+    expect(journal.completed).toEqual([expect.objectContaining({ allQueriesFailed: false })]);
+  });
+
+  it.each([
+    ["serper", "credit-exhausted"],
+    ["brave", "payment-required"],
+  ] as const)("stops 370 %s queries after one fatal %s response", async (providerName, code) => {
+    const baseJournal = recordingJournal();
+    const journal: DiscoveryRunJournal & typeof baseJournal = {
+      ...baseJournal,
+      planQueries: (_runId, queries) => {
+        const firstQuery = queries[0];
+        if (!firstQuery) {
+          throw new Error("The fatal-provider test requires one planned query.");
+        }
+        return Array.from({ length: 370 }, (_, index) => ({
+          ...firstQuery,
+          id: index + 1,
+        }));
+      },
+    };
+    const search = vi.fn(async () => {
+      throw new SearchProviderFailure({
+        provider: providerName,
+        classification: "fatal",
+        code,
+        attempts: 1,
+        message: `${providerName} cannot continue`,
+      });
+    });
+    const discovery = createJobDiscovery({
+      setup: configuredSetup(),
+      runs: journal,
+      jobs: { recordHit: vi.fn(), synchronizeBoard: vi.fn() },
+      matches: { evaluate: vi.fn(async () => ({ matched: 0 })) },
+      providers: providerDirectory(search),
+      now: () => timestamp,
+      yieldControl: vi.fn(),
+    });
+
+    const summary = await discovery.discoverJobs({
+      profileId: 7,
+      providerName,
+      runId: 41,
+      syncBoards: false,
+    });
+
+    expect(search).toHaveBeenCalledOnce();
+    expect(summary.providerFailure).toEqual({
+      provider: providerName,
+      classification: "fatal",
+      code,
+      attempts: 1,
+      skippedQueries: 369,
+    });
+    expect(journal.completed[0]?.errors).toContain(
+      `${providerName} fatal ${code} after 1 attempt; skipped 369 queries`,
+    );
+    expect(journal.completed[0]?.allQueriesFailed).toBe(true);
+    expect(journal.queryFailures).toEqual([
+      { queryId: 1, message: `${providerName} cannot continue`, finishedAt: timestamp },
+    ]);
+    expect(journal.cancelledQueryBatches).toEqual([
+      {
+        runId: 41,
+        message: `Skipped because ${providerName} reported ${code}.`,
+        finishedAt: timestamp,
+      },
+    ]);
+    expect(journal.progressRecords).toHaveLength(1);
+  });
+
+  it("counts only the queries left after a fatal response", async () => {
+    const baseJournal = recordingJournal();
+    const journal: DiscoveryRunJournal & typeof baseJournal = {
+      ...baseJournal,
+      planQueries: (_runId, queries) => {
+        const firstQuery = queries[0];
+        if (!firstQuery) {
+          throw new Error("The partial-provider test requires one planned query.");
+        }
+        return Array.from({ length: 3 }, (_, index) => ({ ...firstQuery, id: index + 1 }));
+      },
+    };
+    const search = vi
+      .fn<SearchProvider["search"]>()
+      .mockResolvedValueOnce([])
+      .mockRejectedValueOnce(
+        new SearchProviderFailure({
+          provider: "serper",
+          classification: "fatal",
+          code: "credit-exhausted",
+          attempts: 1,
+          message: "Serper.dev has no credits",
+        }),
+      );
+    const discovery = createJobDiscovery({
+      setup: configuredSetup(),
+      runs: journal,
+      jobs: { recordHit: vi.fn(), synchronizeBoard: vi.fn() },
+      matches: { evaluate: vi.fn(async () => ({ matched: 0 })) },
+      providers: providerDirectory(search),
+      now: () => timestamp,
+      yieldControl: vi.fn(),
+    });
+
+    const summary = await discovery.discoverJobs({
+      profileId: 7,
+      providerName: "serper",
+      runId: 41,
+      syncBoards: false,
+    });
+
+    expect(search).toHaveBeenCalledTimes(2);
+    expect(summary.providerFailure?.skippedQueries).toBe(1);
+    expect(journal.completed[0]?.allQueriesFailed).toBe(false);
+    expect(journal.cancelledQueryBatches).toHaveLength(1);
+  });
+
+  it("stops the provider lane after an exhausted transient failure", async () => {
+    const journal = recordingJournal();
+    const search = vi.fn(async () => {
+      throw new SearchProviderFailure({
+        provider: "brave",
+        classification: "transient",
+        code: "rate-limited",
+        attempts: 3,
+        message: "Brave Search returned HTTP 429",
+      });
+    });
+    const discovery = createJobDiscovery({
+      setup: configuredSetup(),
+      runs: journal,
+      jobs: { recordHit: vi.fn(), synchronizeBoard: vi.fn() },
+      matches: { evaluate: vi.fn(async () => ({ matched: 0 })) },
+      providers: providerDirectory(search),
+      now: () => timestamp,
+      yieldControl: vi.fn(),
+    });
+
+    const summary = await discovery.discoverJobs({
+      profileId: 7,
+      providerName: "brave",
+      runId: 41,
+      syncBoards: false,
+    });
+
+    expect(search).toHaveBeenCalledOnce();
+    expect(summary.providerFailure).toEqual({
+      provider: "brave",
+      classification: "transient",
+      code: "rate-limited",
+      attempts: 3,
+      skippedQueries: 1,
+    });
+    expect(journal.completed[0]?.errors).toContain(
+      "brave transient rate-limited after 3 attempts; skipped 1 query",
+    );
+    expect(journal.completed[0]?.errors).toHaveLength(1);
+    expect(journal.queryFailures).toHaveLength(1);
+    expect(journal.cancelledQueryBatches).toHaveLength(1);
+    expect(journal.progressRecords).toHaveLength(1);
+  });
+
   it("records the active query and run when hit processing fails", async () => {
     const journal = recordingJournal();
     const discovery = createJobDiscovery({
@@ -136,6 +328,51 @@ describe("discover jobs", () => {
     ]);
     expect(journal.failed).toEqual([
       expect.objectContaining({ runId: 41, message: "Could not store search result" }),
+    ]);
+    expect(journal.cancelledQueryBatches).toEqual([
+      {
+        runId: 41,
+        message: "Skipped because the discovery run failed: Could not store search result",
+        finishedAt: timestamp,
+      },
+    ]);
+  });
+
+  it("records the run without failing a completed query when match evaluation fails", async () => {
+    const journal = recordingJournal();
+    const discovery = createJobDiscovery({
+      setup: configuredSetup(),
+      runs: journal,
+      jobs: {
+        recordHit: vi.fn(async () => ({ inserted: false, jobsWritten: 0 })),
+        synchronizeBoard: vi.fn(),
+      },
+      matches: {
+        evaluate: vi.fn(async () => {
+          throw new Error("Could not evaluate matches");
+        }),
+      },
+      providers: providerDirectory(async () => []),
+      now: () => timestamp,
+      yieldControl: vi.fn(),
+    });
+
+    await expect(
+      discovery.discoverJobs({
+        profileId: 7,
+        providerName: "serper",
+        runId: 41,
+        syncBoards: false,
+      }),
+    ).rejects.toThrow("Could not evaluate matches");
+
+    expect(journal.queryFailures).toEqual([]);
+    expect(journal.cancelledQueryBatches).toEqual([
+      {
+        runId: 41,
+        message: "Skipped because the discovery run failed: Could not evaluate matches",
+        finishedAt: timestamp,
+      },
     ]);
   });
 
@@ -181,6 +418,39 @@ describe("discover jobs", () => {
 
     expect(search).toHaveBeenCalledOnce();
     expect(recordHit).toHaveBeenCalledOnce();
+    expect(journal.completed).toEqual([]);
+    expect(journal.failed).toEqual([]);
+  });
+
+  it("does not record a provider failure when cancellation rejects the active request", async () => {
+    const controller = new AbortController();
+    const journal = recordingJournal();
+    const cancellation = new DOMException("Cancelled by user", "AbortError");
+    const discovery = createJobDiscovery({
+      setup: configuredSetup(),
+      runs: journal,
+      jobs: { recordHit: vi.fn(), synchronizeBoard: vi.fn() },
+      matches: { evaluate: vi.fn() },
+      providers: providerDirectory(async () => {
+        controller.abort(cancellation);
+        throw cancellation;
+      }),
+      now: () => timestamp,
+      yieldControl: vi.fn(),
+    });
+
+    await expect(
+      discovery.discoverJobs({
+        profileId: 7,
+        providerName: "serper",
+        runId: 41,
+        syncBoards: false,
+        signal: controller.signal,
+      }),
+    ).rejects.toBe(cancellation);
+
+    expect(journal.queryFailures).toEqual([]);
+    expect(journal.progressRecords).toEqual([]);
     expect(journal.completed).toEqual([]);
     expect(journal.failed).toEqual([]);
   });
@@ -257,6 +527,12 @@ function recordingJournal(): DiscoveryRunJournal & {
     readonly message: string;
     readonly finishedAt: Date;
   }>;
+  readonly progressRecords: Array<DiscoveryRunProgress>;
+  readonly cancelledQueryBatches: Array<{
+    readonly runId: number;
+    readonly message: string;
+    readonly finishedAt: Date;
+  }>;
 } {
   const completed: Array<Parameters<DiscoveryRunJournal["complete"]>[0]> = [];
   const failed: Array<Parameters<DiscoveryRunJournal["fail"]>[0]> = [];
@@ -265,10 +541,18 @@ function recordingJournal(): DiscoveryRunJournal & {
     readonly message: string;
     readonly finishedAt: Date;
   }> = [];
+  const progressRecords: Array<DiscoveryRunProgress> = [];
+  const cancelledQueryBatches: Array<{
+    readonly runId: number;
+    readonly message: string;
+    readonly finishedAt: Date;
+  }> = [];
   return {
+    cancelledQueryBatches,
     completed,
     failed,
     queryFailures,
+    progressRecords,
     prepare: ({ runId = 99, profileId, providerName }) => ({
       id: runId,
       profileId,
@@ -280,7 +564,12 @@ function recordingJournal(): DiscoveryRunJournal & {
     failQuery: (queryId, message, finishedAt) => {
       queryFailures.push({ queryId, message, finishedAt });
     },
-    recordProgress: () => undefined,
+    cancelPlannedQueries: (runId, message, finishedAt) => {
+      cancelledQueryBatches.push({ runId, message, finishedAt });
+    },
+    recordProgress: (_runId, progress) => {
+      progressRecords.push(progress);
+    },
     complete: (request) => completed.push(request),
     fail: (request) => failed.push(request),
   };

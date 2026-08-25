@@ -1,5 +1,7 @@
+import { eq } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 
+import type { RuntimeSettings } from "@/contexts/discovery/application/runtime-settings/settings";
 import type { AtsType } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
 import type * as schema from "@/contexts/discovery/infrastructure/sqlite/schema";
 import {
@@ -34,6 +36,16 @@ interface SourceDomainDefault {
   readonly priority: number;
 }
 
+export const defaultProviderExecutionSettings = {
+  concurrency: 2,
+  requestsPerInterval: 5,
+  intervalMs: 1_000,
+  maxAttempts: 3,
+  retryMinDelayMs: 500,
+  retryMaxDelayMs: 4_000,
+  retryMaxTimeMs: 100_000,
+} as const satisfies RuntimeSettings["discovery"]["providerExecution"];
+
 const settingDefaults: SettingDefault[] = [
   {
     key: "network",
@@ -51,6 +63,7 @@ const settingDefaults: SettingDefault[] = [
       searchFreshnessDays: 0,
       workYieldBatchSize: 25,
       runHistoryLimit: 100,
+      providerExecution: defaultProviderExecutionSettings,
       structuredVerificationSources: ["web3-career", "cryptocurrencyjobs", "cryptojobslist"],
       closedListingMarkers: [
         "career opportunity is no longer available",
@@ -330,6 +343,26 @@ export function bootstrapJobRadar(database: Database, now = new Date()): void {
       .values(settingDefaults.map((setting) => ({ ...setting, updatedAt: now })))
       .onConflictDoNothing()
       .run();
+    const discovery = transaction
+      .select({ value: appSettings.value })
+      .from(appSettings)
+      .where(eq(appSettings.key, "discovery"))
+      .get()?.value;
+    if (
+      typeof discovery === "object" &&
+      discovery !== null &&
+      !Array.isArray(discovery) &&
+      !("providerExecution" in discovery)
+    ) {
+      transaction
+        .update(appSettings)
+        .set({
+          value: { ...discovery, providerExecution: defaultProviderExecutionSettings },
+          updatedAt: now,
+        })
+        .where(eq(appSettings.key, "discovery"))
+        .run();
+    }
     transaction
       .insert(atsIntegrations)
       .values(atsIntegrationDefaults.map((integration) => ({ ...integration, updatedAt: now })))

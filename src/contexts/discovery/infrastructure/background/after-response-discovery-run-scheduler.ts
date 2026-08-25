@@ -28,6 +28,10 @@ export function createAfterResponseDiscoveryRunScheduler({
           });
           if (result.status === "failed") {
             reportFailure(`Discovery run ${execution.runId} failed: ${result.message}`);
+          } else if (result.status === "partial") {
+            reportFailure(
+              `Discovery run ${execution.runId} partially completed: ${result.message}`,
+            );
           }
         } finally {
           controllers.delete(execution.runId);
@@ -35,7 +39,7 @@ export function createAfterResponseDiscoveryRunScheduler({
       });
     },
     cancel(runId) {
-      controllers.get(runId)?.abort("Cancelled by user");
+      controllers.get(runId)?.abort(new DOMException("Cancelled by user", "AbortError"));
     },
   };
 }

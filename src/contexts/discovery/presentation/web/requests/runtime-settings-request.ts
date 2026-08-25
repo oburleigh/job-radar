@@ -11,63 +11,80 @@ const integer = (constraint: { readonly min: number; readonly max: number }) =>
 const number = (constraint: { readonly min: number; readonly max: number }) =>
   z.coerce.number().min(constraint.min).max(constraint.max);
 
-const runtimeSettingsSchema = z.object({
-  timeoutMs: integer(runtimeSettingConstraints.timeoutMs),
-  userAgent: z
-    .string()
-    .trim()
-    .min(runtimeTextConstraints.userAgent.minLength)
-    .max(runtimeTextConstraints.userAgent.maxLength),
-  resultsPerQuery: integer(runtimeSettingConstraints.resultsPerQuery),
-  boardJobLimit: integer(runtimeSettingConstraints.boardJobLimit),
-  searchFreshnessDays: integer(runtimeSettingConstraints.searchFreshnessDays),
-  workYieldBatchSize: integer(runtimeSettingConstraints.workYieldBatchSize),
-  runHistoryLimit: integer(runtimeSettingConstraints.runHistoryLimit),
-  titleSearchMode: z.enum(["title", "anywhere"]),
-  structuredVerificationSources: z.string().transform(splitLines),
-  closedListingMarkers: z.string().transform(splitLines).pipe(z.array(z.string()).min(1)),
-  discoveryPollIntervalMs: integer(runtimeSettingConstraints.discoveryPollIntervalMs),
-  discoveryStaleAfterMs: integer(runtimeSettingConstraints.discoveryStaleAfterMs),
-  exactTitleScore: integer(runtimeSettingConstraints.exactTitleScore),
-  fullTokenScore: integer(runtimeSettingConstraints.fullTokenScore),
-  partialTokenScore: integer(runtimeSettingConstraints.partialTokenScore),
-  partialTokenThreshold: number(runtimeSettingConstraints.partialTokenThreshold),
-  locationScore: integer(runtimeSettingConstraints.locationScore),
-  remoteScore: integer(runtimeSettingConstraints.remoteScore),
-  unknownDateScore: integer(runtimeSettingConstraints.unknownDateScore),
-  freshnessMaxScore: integer(runtimeSettingConstraints.freshnessMaxScore),
-  freshnessMinimumScore: integer(runtimeSettingConstraints.freshnessMinimumScore),
-  freshnessStepDays: integer(runtimeSettingConstraints.freshnessStepDays),
-  stopWords: z.string().transform(splitLines),
-  genericTitleTerms: z.string().transform(splitLines).pipe(z.array(z.string()).min(1)),
-  remoteTerms: z.string().transform(splitLines).pipe(z.array(z.string()).min(1)),
-  unrestrictedRemotePhrases: z.string().transform(splitLines).pipe(z.array(z.string()).min(1)),
-  searchProviders: z.record(
-    z.string().min(1),
-    z.object({
-      endpoint: z.url(),
-      maxResults: integer(runtimeSettingConstraints.providerMaxResults),
-      titleSearchMode: z.union([z.literal(""), z.enum(["title", "anywhere"])]),
-    }),
-  ),
-  customIntegrationPriority: integer(runtimeSettingConstraints.customIntegrationPriority),
-  maximumAgeDays: integer(runtimeSettingConstraints.maximumAgeDays),
-  minimumScore: integer(runtimeSettingConstraints.minimumScore),
-  salaryCurrency: z
-    .string()
-    .trim()
-    .transform((value) => value.toUpperCase())
-    .refine(
-      (value) =>
-        value === "" ||
-        (runtimeTextConstraints.salaryCurrency.pattern.test(value) && isIso4217Currency(value)),
-      { message: "Default salary currency must be a valid ISO 4217 code such as GBP." },
+const runtimeSettingsSchema = z
+  .object({
+    timeoutMs: integer(runtimeSettingConstraints.timeoutMs),
+    userAgent: z
+      .string()
+      .trim()
+      .min(runtimeTextConstraints.userAgent.minLength)
+      .max(runtimeTextConstraints.userAgent.maxLength),
+    resultsPerQuery: integer(runtimeSettingConstraints.resultsPerQuery),
+    boardJobLimit: integer(runtimeSettingConstraints.boardJobLimit),
+    searchFreshnessDays: integer(runtimeSettingConstraints.searchFreshnessDays),
+    workYieldBatchSize: integer(runtimeSettingConstraints.workYieldBatchSize),
+    runHistoryLimit: integer(runtimeSettingConstraints.runHistoryLimit),
+    providerConcurrency: integer(runtimeSettingConstraints.providerConcurrency),
+    providerRequestsPerInterval: integer(runtimeSettingConstraints.providerRequestsPerInterval),
+    providerIntervalMs: integer(runtimeSettingConstraints.providerIntervalMs),
+    providerMaxAttempts: integer(runtimeSettingConstraints.providerMaxAttempts),
+    providerRetryMinDelayMs: integer(runtimeSettingConstraints.providerRetryMinDelayMs),
+    providerRetryMaxDelayMs: integer(runtimeSettingConstraints.providerRetryMaxDelayMs),
+    providerRetryMaxTimeMs: integer(runtimeSettingConstraints.providerRetryMaxTimeMs),
+    titleSearchMode: z.enum(["title", "anywhere"]),
+    structuredVerificationSources: z.string().transform(splitLines),
+    closedListingMarkers: z.string().transform(splitLines).pipe(z.array(z.string()).min(1)),
+    discoveryPollIntervalMs: integer(runtimeSettingConstraints.discoveryPollIntervalMs),
+    discoveryStaleAfterMs: integer(runtimeSettingConstraints.discoveryStaleAfterMs),
+    exactTitleScore: integer(runtimeSettingConstraints.exactTitleScore),
+    fullTokenScore: integer(runtimeSettingConstraints.fullTokenScore),
+    partialTokenScore: integer(runtimeSettingConstraints.partialTokenScore),
+    partialTokenThreshold: number(runtimeSettingConstraints.partialTokenThreshold),
+    locationScore: integer(runtimeSettingConstraints.locationScore),
+    remoteScore: integer(runtimeSettingConstraints.remoteScore),
+    unknownDateScore: integer(runtimeSettingConstraints.unknownDateScore),
+    freshnessMaxScore: integer(runtimeSettingConstraints.freshnessMaxScore),
+    freshnessMinimumScore: integer(runtimeSettingConstraints.freshnessMinimumScore),
+    freshnessStepDays: integer(runtimeSettingConstraints.freshnessStepDays),
+    stopWords: z.string().transform(splitLines),
+    genericTitleTerms: z.string().transform(splitLines).pipe(z.array(z.string()).min(1)),
+    remoteTerms: z.string().transform(splitLines).pipe(z.array(z.string()).min(1)),
+    unrestrictedRemotePhrases: z.string().transform(splitLines).pipe(z.array(z.string()).min(1)),
+    searchProviders: z.record(
+      z.string().min(1),
+      z.object({
+        endpoint: z.url(),
+        maxResults: integer(runtimeSettingConstraints.providerMaxResults),
+        titleSearchMode: z.union([z.literal(""), z.enum(["title", "anywhere"])]),
+      }),
     ),
-});
+    customIntegrationPriority: integer(runtimeSettingConstraints.customIntegrationPriority),
+    maximumAgeDays: integer(runtimeSettingConstraints.maximumAgeDays),
+    minimumScore: integer(runtimeSettingConstraints.minimumScore),
+    salaryCurrency: z
+      .string()
+      .trim()
+      .transform((value) => value.toUpperCase())
+      .refine(
+        (value) =>
+          value === "" ||
+          (runtimeTextConstraints.salaryCurrency.pattern.test(value) && isIso4217Currency(value)),
+        { message: "Default salary currency must be a valid ISO 4217 code such as GBP." },
+      ),
+  })
+  .superRefine((settings, context) => {
+    if (settings.providerRetryMaxDelayMs < settings.providerRetryMinDelayMs) {
+      context.addIssue({
+        code: "custom",
+        path: ["providerRetryMaxDelayMs"],
+        message: "Maximum retry delay must be at least the first retry delay.",
+      });
+    }
+  });
 
 export type RuntimeSettingsRequestResult =
   | { readonly ok: true; readonly command: RuntimeSettingsCommand }
-  | { readonly ok: false; readonly message: string };
+  | { readonly ok: false; readonly field: string; readonly message: string };
 
 export function parseRuntimeSettingsRequest(
   formData: FormData,
@@ -88,9 +105,11 @@ export function parseRuntimeSettingsRequest(
     searchProviders,
   });
   if (!parsed.success) {
+    const issue = parsed.error.issues[0];
     return {
       ok: false,
-      message: parsed.error.issues[0]?.message ?? "Invalid settings.",
+      field: issue ? requestFieldName(issue.path) : "runtimeSettings",
+      message: issue?.message ?? "Invalid settings.",
     };
   }
 
@@ -108,6 +127,15 @@ export function parseRuntimeSettingsRequest(
         searchFreshnessDays: values.searchFreshnessDays,
         workYieldBatchSize: values.workYieldBatchSize,
         runHistoryLimit: values.runHistoryLimit,
+        providerExecution: {
+          concurrency: values.providerConcurrency,
+          requestsPerInterval: values.providerRequestsPerInterval,
+          intervalMs: values.providerIntervalMs,
+          maxAttempts: values.providerMaxAttempts,
+          retryMinDelayMs: values.providerRetryMinDelayMs,
+          retryMaxDelayMs: values.providerRetryMaxDelayMs,
+          retryMaxTimeMs: values.providerRetryMaxTimeMs,
+        },
         titleSearchMode: values.titleSearchMode,
         structuredVerificationSources: values.structuredVerificationSources,
         closedListingMarkers: values.closedListingMarkers,
@@ -158,6 +186,13 @@ export function parseRuntimeSettingsRequest(
       },
     },
   };
+}
+
+function requestFieldName(path: PropertyKey[]): string {
+  if (path[0] === "searchProviders" && typeof path[1] === "string" && typeof path[2] === "string") {
+    return `provider:${path[1]}:${path[2]}`;
+  }
+  return typeof path[0] === "string" ? path[0] : "runtimeSettings";
 }
 
 function splitLines(value: string): string[] {
