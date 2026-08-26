@@ -47,14 +47,13 @@ export function createSqliteJobDiscoveryCatalog(
   dependencies: SqliteJobDiscoveryCatalogDependencies = {},
 ): JobDiscoveryCatalog {
   const lookupStructuredJobPage = dependencies.lookupStructuredJobPage ?? fetchStructuredJobPage;
-  const integrationConfig = getJobRadarConfig(database).ats;
   const exactAtsPostingOutcomes = new Map<string, ExactAtsHitOutcome>();
   const checkedLinkedInJobs = new Set<string>();
   const checkedStructuredJobPages = new Set<string>();
 
   return {
     async recordHit({ runId, query, rank, result, marketScopes, recordedAt }) {
-      const classified = classifyUrlWithConfig(result.url, integrationConfig);
+      const classified = classifyUrlWithConfig(result.url, getJobRadarConfig(database).ats);
       const boardId = classified?.board
         ? upsertBoard(database, classified.board, recordedAt)
         : undefined;

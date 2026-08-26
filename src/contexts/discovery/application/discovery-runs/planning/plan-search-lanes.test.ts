@@ -91,6 +91,14 @@ describe("search lane planning", () => {
 
     expect(planSearchLanes({ ...criteria, titleTerms: [" "] }, source, ["phrase"], [])).toEqual([]);
     expect(planSearchLanes({ ...criteria, markets: [] }, source, ["phrase"], [])).toEqual([]);
+    expect(
+      planSearchLanes(
+        { ...criteria, markets: [], includeRemote: true },
+        source,
+        ["phrase"],
+        ["remote"],
+      ),
+    ).toEqual([]);
     expect(planSearchLanes(criteria, [], ["phrase"], [])).toEqual([]);
     expect(planSearchLanes(criteria, source, [], [])).toEqual([]);
   });

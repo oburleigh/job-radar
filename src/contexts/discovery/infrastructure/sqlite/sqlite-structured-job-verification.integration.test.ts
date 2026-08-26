@@ -18,6 +18,7 @@ const { db } = await import("@/contexts/discovery/infrastructure/sqlite/database
 const { sqlite } = await import("@/platform/sqlite/client");
 const {
   appSettings,
+  atsIntegrations,
   companyBoards,
   discoveryHits,
   discoveryRuns,
@@ -532,6 +533,35 @@ describe("structured Web3 job verification", () => {
     const result = await catalog.recordHit(hit(runId, "https://example.com/jobs/unknown"));
 
     expect(result).toMatchObject({ inserted: true, jobsWritten: 0, isUseful: false });
+  });
+
+  it("classifies a custom ATS integration added after the catalog is created", async () => {
+    const { runId } = seedRun(false);
+    const catalog = createSqliteJobDiscoveryCatalog(db);
+    db.insert(atsIntegrations)
+      .values({
+        atsType: "custom-live",
+        label: "Custom Live",
+        hostnames: ["careers.example.net"],
+        hostSuffixes: [],
+        supportsBoardSync: false,
+        priority: 200,
+        pageSize: null,
+        endpoints: {},
+        updatedAt: checkedAt,
+      })
+      .run();
+
+    try {
+      const result = await catalog.recordHit(hit(runId, "https://careers.example.net/jobs/123"));
+
+      expect(result).toMatchObject({ inserted: true, jobsWritten: 1, isUseful: true });
+      expect(db.select().from(jobs).all()).toEqual([
+        expect.objectContaining({ atsType: "custom-live", externalId: "123" }),
+      ]);
+    } finally {
+      db.delete(atsIntegrations).where(eq(atsIntegrations.atsType, "custom-live")).run();
+    }
   });
 
   it("does not verify a custom source removed from structured verification settings", async () => {
