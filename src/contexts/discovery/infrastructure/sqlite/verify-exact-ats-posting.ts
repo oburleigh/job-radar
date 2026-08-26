@@ -56,7 +56,7 @@ export async function verifyExactAtsPosting(
     input.discoveredBoardId,
   );
   if (!board) {
-    const jobsWritten = upsertSearchResult(input.searchResult);
+    const jobsWritten = upsertSearchResult(input.searchResult, input.database);
     const outcome: ExactAtsHitOutcome = {
       boardId: null,
       status: "transient_failure",
@@ -70,6 +70,7 @@ export async function verifyExactAtsPosting(
       null,
       { status: "transient_failure", reason: "board-unresolved" },
       input.checkedAt,
+      input.database,
     );
     recordExactAtsHitOutcome(input.database, {
       runId: input.runId,
@@ -90,7 +91,7 @@ export async function verifyExactAtsPosting(
     input.classification.externalId,
   );
   if (lookup.status === "verified") {
-    upsertBoardJob(board, lookup.job);
+    upsertBoardJob(board, lookup.job, input.database);
     const outcome: ExactAtsHitOutcome = {
       boardId: board.id,
       status: "verified",
@@ -107,17 +108,21 @@ export async function verifyExactAtsPosting(
   }
 
   const status = lookup.status === "not_found" && hadKnownPosting ? "closed" : lookup.status;
-  const jobsWritten = upsertSearchResult({
-    ...input.searchResult,
-    boardId: board.id,
-    boardKey: board.canonicalKey,
-  });
+  const jobsWritten = upsertSearchResult(
+    {
+      ...input.searchResult,
+      boardId: board.id,
+      boardKey: board.canonicalKey,
+    },
+    input.database,
+  );
   recordAtsPostingOutcome(
     input.classification.atsType,
     input.classification.externalId,
     board.id,
     { status, reason: lookup.reason },
     input.checkedAt,
+    input.database,
   );
   const outcome: ExactAtsHitOutcome = {
     boardId: board.id,

@@ -137,6 +137,15 @@ test("completes discovery and triage while profile editing remains responsive", 
     page.getByRole("heading", { level: 1, name: `Run #${started.runId}` }),
   ).toBeVisible();
   await expect(page.getByText("1 unique search hits")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Requests by market and lane" })).toBeVisible();
+  const requestEvidence = page.getByRole("table", { name: "Discovery request evidence" });
+  await expect(requestEvidence.getByRole("columnheader", { name: "Market" })).toBeVisible();
+  await expect(requestEvidence.getByRole("columnheader", { name: "Locale" })).toBeVisible();
+  await expect(requestEvidence.getByRole("columnheader", { name: "Lane" })).toBeVisible();
+  await expect(requestEvidence.getByRole("columnheader", { name: "Strategy" })).toBeVisible();
+  await expect(requestEvidence.getByRole("columnheader", { name: "Source" })).toBeVisible();
+  await expect(requestEvidence.getByRole("columnheader", { name: "Page" })).toBeVisible();
+  await expect(requestEvidence.getByRole("columnheader", { name: "Requests" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "Head of Engineering" }).first()).toBeVisible();
 
   await configureSerperEndpoint(page, `${fixtureUrl}/serper/failure`);
@@ -427,7 +436,14 @@ async function configureDiscoveryFixtures(
   await page.getByLabel("Run status polling (ms)").fill("1000");
   await page.getByLabel("Requested web results per query").fill("1");
   await page.getByLabel("Background work batch size").fill("1");
-  await page.getByLabel("Google via Serper.dev endpoint").fill(serperEndpoint);
+  await page.getByLabel("Search strategies").fill("role-first");
+  const serperEndpointField = page.getByLabel("Google via Serper.dev endpoint");
+  await serperEndpointField.fill(serperEndpoint);
+  await serperEndpointField
+    .locator("..")
+    .locator("..")
+    .getByLabel("Strategy override")
+    .fill("role-first");
   await page.getByRole("button", { name: "Save runtime settings" }).click();
   await expect(page.getByText("Runtime settings saved to SQLite.")).toBeVisible();
 

@@ -20,7 +20,7 @@ export function createSqliteDiscoverySetup(database: Database): DiscoverySetupRe
         throw new Error(`Search profile ${profileId} was not found`);
       }
 
-      const config = getJobRadarConfig();
+      const config = getJobRadarConfig(database);
       const marketResolver = createMarketResolver(config.marketVocabulary);
       const provider = config.searchProviders[providerName];
       const sources = database
@@ -32,7 +32,7 @@ export function createSqliteDiscoverySetup(database: Database): DiscoverySetupRe
         .map((candidate) => ({
           atsType: candidate.atsType,
           pattern: candidate.pattern,
-          supportsBoardSync: supportsBoardSync(candidate.atsType),
+          supportsBoardSync: supportsBoardSync(candidate.atsType, database),
         }));
 
       return {

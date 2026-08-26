@@ -13,6 +13,7 @@ import {
 } from "@/contexts/discovery/infrastructure/sqlite/schema";
 
 type ProfileRow = typeof searchProfiles.$inferSelect;
+type Database = typeof db;
 
 export interface EvaluationSummary {
   evaluated: number;
@@ -31,10 +32,11 @@ interface EvaluationOptions {
 export async function evaluateAndStore(
   profile: ProfileRow,
   options: EvaluationOptions = {},
+  database: Database = db,
 ): Promise<EvaluationSummary> {
-  const activeJobs = db.select().from(jobs).where(eq(jobs.isActive, true)).all();
+  const activeJobs = database.select().from(jobs).where(eq(jobs.isActive, true)).all();
   const now = new Date();
-  const config = getJobRadarConfig();
+  const config = getJobRadarConfig(database);
   let matched = 0;
   let excluded = 0;
   const yieldEvery = options.yieldEvery ?? config.discovery.workYieldBatchSize;
@@ -62,7 +64,8 @@ export async function evaluateAndStore(
     );
     matched += Number(result.status === "matched");
     excluded += Number(result.status === "excluded");
-    db.insert(jobMatches)
+    database
+      .insert(jobMatches)
       .values({
         profileId: profile.id,
         jobId: job.id,

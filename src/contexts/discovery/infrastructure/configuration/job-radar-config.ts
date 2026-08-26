@@ -18,6 +18,8 @@ import {
   defaultProviderExecutionSettings,
 } from "./bootstrap-job-radar";
 
+type Database = typeof db;
+
 const integer = (constraint: { readonly min: number; readonly max: number }) =>
   z.number().int().min(constraint.min).max(constraint.max);
 const number = (constraint: { readonly min: number; readonly max: number }) =>
@@ -288,15 +290,15 @@ export function isMarketVocabulary(value: MarketVocabulary): boolean {
   return marketVocabularySchema.safeParse(value).success;
 }
 
-export function getJobRadarConfig(): JobRadarConfig {
+export function getJobRadarConfig(database: Database = db): JobRadarConfig {
   const settings = new Map(
-    db
+    database
       .select({ key: appSettings.key, value: appSettings.value })
       .from(appSettings)
       .all()
       .map((row) => [row.key, row.value]),
   );
-  const integrationRows = db.select().from(atsIntegrations).all();
+  const integrationRows = database.select().from(atsIntegrations).all();
   const ats = Object.fromEntries(
     integrationRows.map((row) => [
       row.atsType,
@@ -371,12 +373,15 @@ export function hostMatches(atsType: string, hostname: string): boolean {
   );
 }
 
-export function supportsBoardSync(atsType: string): boolean {
-  return getAtsIntegration(atsType).supportsBoardSync;
+export function supportsBoardSync(atsType: string, database: Database = db): boolean {
+  return getAtsIntegration(atsType, database).supportsBoardSync;
 }
 
-export function getAtsIntegration(atsType: string): z.infer<typeof integrationSchema> {
-  const integration = getJobRadarConfig().ats[atsType];
+export function getAtsIntegration(
+  atsType: string,
+  database: Database = db,
+): z.infer<typeof integrationSchema> {
+  const integration = getJobRadarConfig(database).ats[atsType];
   if (!integration) {
     throw new Error(`Missing ${atsType} integration configuration in SQLite`);
   }

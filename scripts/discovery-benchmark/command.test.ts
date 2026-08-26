@@ -3,15 +3,15 @@ import { evaluateDiscoveryBenchmark } from "./command";
 import { discoveryBenchmarkCorpus } from "./corpus";
 
 describe("discovery benchmark command", () => {
-  it("returns a successful JSON report for the credential-free corpus", () => {
-    const result = evaluateDiscoveryBenchmark(discoveryBenchmarkCorpus);
+  it("returns a successful JSON report for the credential-free corpus", async () => {
+    const result = await evaluateDiscoveryBenchmark(discoveryBenchmarkCorpus);
 
     expect(result.exitCode).toBe(0);
     expect(JSON.parse(result.stdout)).toEqual(expect.objectContaining({ passed: true }));
   });
 
-  it("returns a failing exit code without hiding uncovered profiles", () => {
-    const result = evaluateDiscoveryBenchmark({
+  it("returns a failing exit code without hiding uncovered profiles", async () => {
+    const result = await evaluateDiscoveryBenchmark({
       ...discoveryBenchmarkCorpus,
       examples: discoveryBenchmarkCorpus.examples.filter(
         (example) => example.profile !== "Asia engineering leadership",
@@ -35,8 +35,8 @@ describe("discovery benchmark command", () => {
     );
   });
 
-  it("fails when a declared profile retains only negative examples", () => {
-    const result = evaluateDiscoveryBenchmark({
+  it("fails when a declared profile retains only negative examples", async () => {
+    const result = await evaluateDiscoveryBenchmark({
       ...discoveryBenchmarkCorpus,
       examples: discoveryBenchmarkCorpus.examples.filter(
         (example) =>

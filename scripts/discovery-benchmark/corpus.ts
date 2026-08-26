@@ -15,6 +15,8 @@ import type {
 } from "./discovery-benchmark";
 
 export interface DiscoveryBenchmarkProfile extends DiscoveryBenchmarkProfileDefinition {
+  readonly source: AtsType;
+  readonly sourcePattern: string;
   readonly criteria: JobMatchingCriteria;
 }
 
@@ -34,6 +36,13 @@ export interface DiscoveryBenchmarkExample {
 
 export interface DiscoveryBenchmarkCorpus {
   readonly benchmarkedAt: Date;
+  readonly legacyAsiaRequestBaseline: {
+    readonly titleTerms: number;
+    readonly sources: number;
+    readonly variantsPerTitleSource: number;
+    readonly boardDiscoveryRequests: number;
+    readonly totalRequests: number;
+  };
   readonly policy: MatchingPolicy;
   readonly profiles: readonly DiscoveryBenchmarkProfile[];
   readonly examples: readonly DiscoveryBenchmarkExample[];
@@ -42,31 +51,59 @@ export interface DiscoveryBenchmarkCorpus {
 const benchmarkedAt = new Date("2026-08-25T12:00:00.000Z");
 
 const profiles: readonly DiscoveryBenchmarkProfile[] = [
-  profile("UK engineering leadership", "UK", "leadership", {
+  profile("UK engineering leadership", "UK", "leadership", "greenhouse", "boards.greenhouse.io", {
     titleTerms: ["Head of Engineering"],
-    locationTerms: ["London", "United Kingdom", "UK"],
+    locationTerms: ["United Kingdom"],
     requiredJobTerms: ["engineering"],
   }),
-  profile("UAE engineering leadership", "UAE", "leadership", {
-    titleTerms: ["VP Engineering"],
-    locationTerms: ["Dubai", "Abu Dhabi", "United Arab Emirates", "UAE"],
-    requiredJobTerms: ["engineering"],
-  }),
-  profile("Asia engineering leadership", "Asia", "leadership", {
-    titleTerms: ["Engineering Director"],
-    locationTerms: ["Singapore"],
-    requiredJobTerms: ["engineering"],
-  }),
-  profile("UK platform/infrastructure IC", "UK", "individual-contributor", {
-    titleTerms: ["Staff Platform Engineer"],
-    locationTerms: ["London", "United Kingdom", "UK"],
-    excludedDescriptionTerms: ["construction"],
-  }),
-  profile("UAE platform/infrastructure IC", "UAE", "individual-contributor", {
-    titleTerms: ["Principal Infrastructure Engineer"],
-    locationTerms: ["Dubai", "Abu Dhabi", "United Arab Emirates", "UAE"],
-    excludedTitleTerms: ["graduate"],
-  }),
+  profile(
+    "UAE engineering leadership",
+    "UAE",
+    "leadership",
+    "workday",
+    "atlas.wd5.myworkdayjobs.com",
+    {
+      titleTerms: ["VP Engineering"],
+      locationTerms: ["United Arab Emirates"],
+      requiredJobTerms: ["engineering"],
+    },
+  ),
+  profile(
+    "Asia engineering leadership",
+    "Asia",
+    "leadership",
+    "smartrecruiters",
+    "jobs.smartrecruiters.com",
+    {
+      titleTerms: ["Engineering Director"],
+      locationTerms: ["Singapore"],
+      requiredJobTerms: ["engineering"],
+    },
+  ),
+  profile(
+    "UK platform/infrastructure IC",
+    "UK",
+    "individual-contributor",
+    "ashby",
+    "jobs.ashbyhq.com",
+    {
+      titleTerms: ["Staff Platform Engineer"],
+      locationTerms: ["United Kingdom"],
+      excludedDescriptionTerms: ["construction"],
+    },
+  ),
+  profile(
+    "UAE platform/infrastructure IC",
+    "UAE",
+    "individual-contributor",
+    "lever",
+    "jobs.lever.co",
+    {
+      titleTerms: ["Principal Infrastructure Engineer"],
+      locationTerms: ["United Arab Emirates"],
+      excludedTitleTerms: ["graduate"],
+    },
+  ),
 ];
 
 const examples: readonly DiscoveryBenchmarkExample[] = [
@@ -210,6 +247,13 @@ const examples: readonly DiscoveryBenchmarkExample[] = [
 
 export const discoveryBenchmarkCorpus: DiscoveryBenchmarkCorpus = {
   benchmarkedAt,
+  legacyAsiaRequestBaseline: {
+    titleTerms: 12,
+    sources: 15,
+    variantsPerTitleSource: 2,
+    boardDiscoveryRequests: 10,
+    totalRequests: 370,
+  },
   policy: {
     exactTitleScore: 60,
     fullTokenScore: 50,
@@ -234,12 +278,16 @@ function profile(
   name: string,
   market: DiscoveryBenchmarkMarket,
   track: DiscoveryBenchmarkTrack,
+  source: AtsType,
+  sourcePattern: string,
   overrides: Partial<JobMatchingCriteria>,
 ): DiscoveryBenchmarkProfile {
   return {
     name,
     market,
     track,
+    source,
+    sourcePattern,
     criteria: {
       titleTerms: [],
       locationTerms: [],

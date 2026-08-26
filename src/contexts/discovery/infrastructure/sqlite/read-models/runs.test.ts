@@ -117,20 +117,72 @@ describe("completed discovery run funnel", () => {
     });
   });
 
-  it("returns the existing query summary in ATS order", () => {
+  it("groups request evidence by market, locale, lane, strategy, source, and page", () => {
     const { runId } = seedRun(database, { hitCount: 3, matchesFound: 0 });
     database
       .insert(discoveryQueries)
       .values([
-        query(runId, "greenhouse", "completed", 2),
-        query(runId, "ashby", "failed", 0),
-        query(runId, "greenhouse", "failed", 1),
+        {
+          ...query(runId, "greenhouse", "completed", 2),
+          marketKey: "country:AE",
+          countryCode: "AE",
+          searchLanguage: "en",
+          laneKind: "role",
+          strategy: "role-first",
+          page: 1,
+          usefulHitCount: 1,
+        },
+        {
+          ...query(runId, "greenhouse", "failed", 1),
+          marketKey: "country:AE",
+          countryCode: "AE",
+          searchLanguage: "en",
+          laneKind: "role",
+          strategy: "role-first",
+          page: 1,
+        },
+        {
+          ...query(runId, "greenhouse", "completed", 0),
+          marketKey: "country:AE",
+          countryCode: "AE",
+          searchLanguage: "en",
+          laneKind: "role",
+          strategy: "role-first",
+          page: 2,
+          stopReason: "no-more-results",
+        },
       ])
       .run();
 
-    expect(readRunDetail(database, runId)?.summary).toEqual([
-      { atsType: "ashby", queryCount: 1, completedCount: 0, hitCount: 0, errorCount: 1 },
-      { atsType: "greenhouse", queryCount: 2, completedCount: 1, hitCount: 3, errorCount: 1 },
+    expect(readRunDetail(database, runId)?.requestSummary).toEqual([
+      {
+        market: "country:AE",
+        locale: "en-AE",
+        lane: "role",
+        strategy: "role-first",
+        source: "greenhouse.example.com",
+        atsType: "greenhouse",
+        page: 1,
+        requestCount: 2,
+        completedRequestCount: 1,
+        rawHitCount: 3,
+        usefulHitCount: 1,
+        errorCount: 1,
+      },
+      {
+        market: "country:AE",
+        locale: "en-AE",
+        lane: "role",
+        strategy: "role-first",
+        source: "greenhouse.example.com",
+        atsType: "greenhouse",
+        page: 2,
+        requestCount: 1,
+        completedRequestCount: 1,
+        rawHitCount: 0,
+        usefulHitCount: 0,
+        errorCount: 0,
+      },
     ]);
   });
 

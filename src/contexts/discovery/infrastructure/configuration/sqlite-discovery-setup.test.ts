@@ -5,6 +5,7 @@ import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { bootstrapJobRadar } from "@/contexts/discovery/infrastructure/configuration/bootstrap-job-radar";
 import * as schema from "@/contexts/discovery/infrastructure/sqlite/schema";
 import { searchProfiles } from "@/contexts/discovery/infrastructure/sqlite/schema";
 
@@ -18,6 +19,7 @@ describe("SQLite discovery setup", () => {
     sqlite = new Database(":memory:");
     database = createDatabase(sqlite);
     migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    bootstrapJobRadar(database, new Date("2026-08-26T00:00:00.000Z"));
   });
 
   afterEach(() => sqlite.close());

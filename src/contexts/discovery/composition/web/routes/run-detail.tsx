@@ -26,7 +26,7 @@ export function loader({ params, request }: LoaderFunctionArgs) {
 
 export default function RunDetailPage() {
   const data = useLoaderData<typeof loader>();
-  const { run, queries, summary } = data;
+  const { run, queries, requestSummary } = data;
   const outcomeTitle =
     run.status === "failed"
       ? "Discovery failed"
@@ -43,7 +43,7 @@ export default function RunDetailPage() {
       <PageHeader
         index="04"
         title={`Run #${run.id}`}
-        description={`${run.profileName} · ${run.provider} · ${run.queryCount} role-title queries`}
+        description={`${run.profileName} · ${run.provider} · ${run.queryCount} requests`}
         actions={
           <Link {...buttonAttributes()} to="/runs">
             <ArrowLeft size={16} />
@@ -106,28 +106,55 @@ export default function RunDetailPage() {
 
       <section className="panel run-panel" id="query-details">
         <div className="section-heading">
-          <h2>Queries by ATS</h2>
+          <h2>Requests by market and lane</h2>
           <span>{run.hitCount} unique search hits</span>
         </div>
-        {summary.length > 0 ? (
+        {requestSummary.length > 0 ? (
           <div className="table-wrap">
-            <table>
+            <table aria-label="Discovery request evidence">
               <thead>
                 <tr>
-                  <th>ATS</th>
-                  <th>Role queries</th>
+                  <th>Market</th>
+                  <th>Locale</th>
+                  <th>Lane</th>
+                  <th>Strategy</th>
+                  <th>Source</th>
+                  <th>Page</th>
+                  <th>Requests</th>
                   <th>Completed</th>
-                  <th>Results returned</th>
+                  <th>Results</th>
+                  <th>Useful hits</th>
                   <th>Errors</th>
                 </tr>
               </thead>
               <tbody>
-                {summary.map((item) => (
-                  <tr key={item.atsType}>
-                    <td className="capitalize">{item.atsType}</td>
-                    <td>{item.queryCount}</td>
-                    <td>{item.completedCount}</td>
-                    <td>{item.hitCount}</td>
+                {requestSummary.map((item) => (
+                  <tr
+                    key={[
+                      item.market,
+                      item.locale,
+                      item.lane,
+                      item.strategy,
+                      item.source,
+                      item.page,
+                    ].join("|")}
+                  >
+                    <td>{item.market}</td>
+                    <td>{item.locale}</td>
+                    <td className="capitalize">{formatRequestLabel(item.lane)}</td>
+                    <td className="capitalize">
+                      {item.strategy ? formatRequestLabel(item.strategy) : "Not applicable"}
+                    </td>
+                    <td>
+                      <span className="capitalize">{item.atsType}</span>
+                      <br />
+                      <span className="muted">{item.source}</span>
+                    </td>
+                    <td>{item.page ?? "Not recorded"}</td>
+                    <td>{item.requestCount}</td>
+                    <td>{item.completedRequestCount}</td>
+                    <td>{item.rawHitCount}</td>
+                    <td>{item.usefulHitCount}</td>
                     <td>{item.errorCount || <span className="muted">None</span>}</td>
                   </tr>
                 ))}
@@ -136,7 +163,7 @@ export default function RunDetailPage() {
           </div>
         ) : (
           <p className="settings-empty">
-            Query-level history is available for granular discovery runs.
+            Request-level history is available for granular discovery runs.
           </p>
         )}
       </section>
@@ -144,18 +171,23 @@ export default function RunDetailPage() {
       {queries.length > 0 ? (
         <section className="panel run-panel">
           <div className="section-heading">
-            <h2>Every role and domain queried</h2>
-            <span>{queries.length} queries</span>
+            <h2>Every provider request</h2>
+            <span>{queries.length} requests</span>
           </div>
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
                   <th>Status</th>
-                  <th>ATS</th>
+                  <th>Market</th>
+                  <th>Locale</th>
+                  <th>Lane</th>
+                  <th>Strategy</th>
                   <th>Target role</th>
-                  <th>Domain</th>
+                  <th>Source</th>
+                  <th>Page</th>
                   <th>Results</th>
+                  <th>Useful hits</th>
                 </tr>
               </thead>
               <tbody>
@@ -180,10 +212,21 @@ export default function RunDetailPage() {
                         {query.status}
                       </span>
                     </td>
-                    <td className="capitalize">{query.atsType}</td>
+                    <td>{query.marketKey ?? "Not recorded"}</td>
+                    <td>{formatRequestLocale(query.searchLanguage, query.countryCode)}</td>
+                    <td className="capitalize">{formatRequestLabel(query.laneKind ?? "legacy")}</td>
+                    <td className="capitalize">
+                      {query.strategy ? formatRequestLabel(query.strategy) : "Not applicable"}
+                    </td>
                     <td>{query.titleTerm}</td>
-                    <td>{query.sourcePattern}</td>
+                    <td>
+                      <span className="capitalize">{query.atsType}</span>
+                      <br />
+                      <span className="muted">{query.sourcePattern}</span>
+                    </td>
+                    <td>{query.page ?? "Not recorded"}</td>
                     <td>{query.hitCount}</td>
+                    <td>{query.usefulHitCount}</td>
                   </tr>
                 ))}
               </tbody>
@@ -193,4 +236,15 @@ export default function RunDetailPage() {
       ) : null}
     </div>
   );
+}
+
+function formatRequestLocale(searchLanguage: string | null, countryCode: string | null): string {
+  if (searchLanguage && countryCode) {
+    return `${searchLanguage}-${countryCode}`;
+  }
+  return searchLanguage ?? countryCode ?? "Not recorded";
+}
+
+function formatRequestLabel(value: string): string {
+  return value.replaceAll("-", " ");
 }

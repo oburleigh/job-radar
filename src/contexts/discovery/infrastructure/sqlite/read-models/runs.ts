@@ -2,7 +2,6 @@ import { and, asc, desc, eq, inArray } from "drizzle-orm";
 
 import type { ExclusionReason } from "@/contexts/discovery/domain/job-match";
 import { getJobRadarConfig } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
-import type { AtsType } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
 import { canonicalizeUrl, classifyUrl } from "@/contexts/discovery/infrastructure/job-sources/urls";
 import { db } from "@/contexts/discovery/infrastructure/sqlite/database";
 import { normalizePersistedExclusionReasons } from "@/contexts/discovery/infrastructure/sqlite/migrate-legacy-exclusion-reasons";
@@ -79,41 +78,85 @@ export function readRunDetail(database: Database, runId: number) {
     .from(discoveryQueries)
     .where(eq(discoveryQueries.runId, runId))
     .orderBy(
-      asc(discoveryQueries.atsType),
-      asc(discoveryQueries.titleTerm),
+      asc(discoveryQueries.marketKey),
+      asc(discoveryQueries.searchLanguage),
+      asc(discoveryQueries.countryCode),
+      asc(discoveryQueries.laneKind),
+      asc(discoveryQueries.strategy),
       asc(discoveryQueries.sourcePattern),
+      asc(discoveryQueries.page),
+      asc(discoveryQueries.id),
     )
     .all();
-  const summary = Object.values(
+  const requestSummary = Object.values(
     queries.reduce<
       Record<
         string,
         {
-          atsType: AtsType;
-          queryCount: number;
-          completedCount: number;
-          hitCount: number;
+          market: string;
+          locale: string;
+          lane: string;
+          strategy: string | null;
+          source: string;
+          atsType: (typeof queries)[number]["atsType"];
+          page: number | null;
+          requestCount: number;
+          completedRequestCount: number;
+          rawHitCount: number;
+          usefulHitCount: number;
           errorCount: number;
         }
       >
     >((groups, query) => {
-      const current = groups[query.atsType] ?? {
+      const market = query.marketKey ?? "Not recorded";
+      const locale = requestLocale(query.searchLanguage, query.countryCode);
+      const lane = query.laneKind ?? "legacy";
+      const groupKey = JSON.stringify([
+        market,
+        locale,
+        lane,
+        query.strategy,
+        query.sourcePattern,
+        query.atsType,
+        query.page,
+      ]);
+      const current = groups[groupKey] ?? {
+        market,
+        locale,
+        lane,
+        strategy: query.strategy,
+        source: query.sourcePattern,
         atsType: query.atsType,
-        queryCount: 0,
-        completedCount: 0,
-        hitCount: 0,
+        page: query.page,
+        requestCount: 0,
+        completedRequestCount: 0,
+        rawHitCount: 0,
+        usefulHitCount: 0,
         errorCount: 0,
       };
-      current.queryCount += 1;
-      current.completedCount += Number(query.status === "completed");
-      current.hitCount += query.hitCount;
+      current.requestCount += 1;
+      current.completedRequestCount += Number(query.status === "completed");
+      current.rawHitCount += query.hitCount;
+      current.usefulHitCount += query.usefulHitCount;
       current.errorCount += Number(query.status === "failed");
-      groups[query.atsType] = current;
+      groups[groupKey] = current;
       return groups;
     }, {}),
-  ).sort((left, right) => left.atsType.localeCompare(right.atsType));
+  );
 
-  return { run, queries, summary, funnel: readRunFunnel(database, run.id, run.profileId) };
+  return {
+    run,
+    queries,
+    requestSummary,
+    funnel: readRunFunnel(database, run.id, run.profileId),
+  };
+}
+
+function requestLocale(searchLanguage: string | null, countryCode: string | null): string {
+  if (searchLanguage && countryCode) {
+    return `${searchLanguage}-${countryCode}`;
+  }
+  return searchLanguage ?? countryCode ?? "Not recorded";
 }
 
 function readRunFunnel(database: Database, runId: number, profileId: number) {

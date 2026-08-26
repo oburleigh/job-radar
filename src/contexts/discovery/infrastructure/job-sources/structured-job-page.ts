@@ -4,6 +4,9 @@ import type {
   AtsType,
   RawJob,
 } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
+import { db } from "@/contexts/discovery/infrastructure/sqlite/database";
+
+type Database = typeof db;
 
 export type StructuredJobPageLookup =
   | { status: "verified"; job: RawJob }
@@ -19,8 +22,8 @@ export type StructuredJobPageLookup =
         | "unstructured";
     };
 
-export function supportsStructuredJobPage(atsType: AtsType): boolean {
-  return getJobRadarConfig().discovery.structuredVerificationSources.includes(atsType);
+export function supportsStructuredJobPage(atsType: AtsType, database: Database = db): boolean {
+  return getJobRadarConfig(database).discovery.structuredVerificationSources.includes(atsType);
 }
 
 export async function fetchStructuredJobPage(

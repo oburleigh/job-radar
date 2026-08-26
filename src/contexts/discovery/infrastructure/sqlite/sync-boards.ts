@@ -20,6 +20,8 @@ import {
 } from "@/contexts/discovery/infrastructure/sqlite/schema";
 import { evaluateAndStore } from "./store-matches";
 
+type Database = typeof db;
+
 export interface SyncResult {
   boardId: number;
   created: number;
@@ -30,8 +32,12 @@ export interface SyncResult {
   error: string;
 }
 
-export async function syncBoard(board: BoardInput, requestedLimit?: number): Promise<SyncResult> {
-  const discovery = getJobRadarConfig().discovery;
+export async function syncBoard(
+  board: BoardInput,
+  requestedLimit?: number,
+  database: Database = db,
+): Promise<SyncResult> {
+  const discovery = getJobRadarConfig(database).discovery;
   const limit = requestedLimit ?? discovery.boardJobLimit;
   let created = 0;
   let updated = 0;
@@ -39,7 +45,7 @@ export async function syncBoard(board: BoardInput, requestedLimit?: number): Pro
   try {
     const fetched = await fetchBoardJobsWithDiagnostics(board, { limit });
     for (const [index, rawJob] of fetched.jobs.entries()) {
-      const result = upsertBoardJob(board, rawJob);
+      const result = upsertBoardJob(board, rawJob, database);
       created += Number(result === "created");
       updated += Number(result === "updated");
       if ((index + 1) % discovery.workYieldBatchSize === 0) {
@@ -48,7 +54,8 @@ export async function syncBoard(board: BoardInput, requestedLimit?: number): Pro
     }
 
     const warning = formatRejectedVendorRecords(fetched.rejectedRecords);
-    db.update(companyBoards)
+    database
+      .update(companyBoards)
       .set({ lastSyncedAt: new Date(), lastError: "", lastWarning: warning })
       .where(eq(companyBoards.id, board.id))
       .run();
@@ -64,7 +71,8 @@ export async function syncBoard(board: BoardInput, requestedLimit?: number): Pro
     };
   } catch (error) {
     const message = errorMessage(error);
-    db.update(companyBoards)
+    database
+      .update(companyBoards)
       .set({ lastSyncedAt: new Date(), lastError: message, lastWarning: "" })
       .where(eq(companyBoards.id, board.id))
       .run();
@@ -105,17 +113,26 @@ export async function syncEnabledBoards(
   return results;
 }
 
-export function upsertBoardJob(board: BoardInput, rawJob: RawJob): "created" | "updated" {
+export function upsertBoardJob(
+  board: BoardInput,
+  rawJob: RawJob,
+  database: Database = db,
+): "created" | "updated" {
   const dedupeKey = makeDedupeKey(
     rawJob.atsType,
     rawJob.canonicalUrl,
     rawJob.externalId,
     board.canonicalKey,
   );
-  const existing = db.select({ id: jobs.id }).from(jobs).where(eq(jobs.dedupeKey, dedupeKey)).get();
+  const existing = database
+    .select({ id: jobs.id })
+    .from(jobs)
+    .where(eq(jobs.dedupeKey, dedupeKey))
+    .get();
   const now = new Date();
 
-  db.insert(jobs)
+  database
+    .insert(jobs)
     .values({
       boardId: board.id,
       atsType: rawJob.atsType,
@@ -168,9 +185,14 @@ export function upsertBoardJob(board: BoardInput, rawJob: RawJob): "created" | "
     })
     .run();
 
-  const stored = db.select({ id: jobs.id }).from(jobs).where(eq(jobs.dedupeKey, dedupeKey)).get();
+  const stored = database
+    .select({ id: jobs.id })
+    .from(jobs)
+    .where(eq(jobs.dedupeKey, dedupeKey))
+    .get();
   if (stored && rawJob.externalId) {
-    db.update(jobs)
+    database
+      .update(jobs)
       .set({ isActive: false })
       .where(
         and(

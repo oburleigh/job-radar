@@ -1,6 +1,9 @@
 import { eq } from "drizzle-orm";
 import type { JobDiscoveryCatalog } from "@/contexts/discovery/application/discovery-runs/ports/job-discovery-catalog";
-import { supportsBoardSync } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
+import {
+  getJobRadarConfig,
+  supportsBoardSync,
+} from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
 import {
   type BoardIdentity,
   isBuiltInAtsType,
@@ -15,7 +18,7 @@ import {
   fetchStructuredJobPage,
   supportsStructuredJobPage,
 } from "@/contexts/discovery/infrastructure/job-sources/structured-job-page";
-import { classifyUrl } from "@/contexts/discovery/infrastructure/job-sources/urls";
+import { classifyUrlWithConfig } from "@/contexts/discovery/infrastructure/job-sources/url-classification";
 
 import type { db } from "./database";
 import { companyBoards, discoveryHits } from "./schema";
@@ -44,13 +47,14 @@ export function createSqliteJobDiscoveryCatalog(
   dependencies: SqliteJobDiscoveryCatalogDependencies = {},
 ): JobDiscoveryCatalog {
   const lookupStructuredJobPage = dependencies.lookupStructuredJobPage ?? fetchStructuredJobPage;
+  const integrationConfig = getJobRadarConfig(database).ats;
   const exactAtsPostingOutcomes = new Map<string, ExactAtsHitOutcome>();
   const checkedLinkedInJobs = new Set<string>();
   const checkedStructuredJobPages = new Set<string>();
 
   return {
     async recordHit({ runId, query, rank, result, marketScopes, recordedAt }) {
-      const classified = classifyUrl(result.url);
+      const classified = classifyUrlWithConfig(result.url, integrationConfig);
       const boardId = classified?.board
         ? upsertBoard(database, classified.board, recordedAt)
         : undefined;
@@ -92,11 +96,10 @@ export function createSqliteJobDiscoveryCatalog(
               }
             : {}),
         };
+        const canLookupStructuredPage =
+          Boolean(classified.externalId) && supportsStructuredJobPage(classified.atsType, database);
         const shouldLookupStructuredPage =
-          !isBuiltInAtsType(classified.atsType) &&
-          Boolean(classified.externalId) &&
-          supportsStructuredJobPage(classified.atsType) &&
-          !checkedStructuredJobPages.has(classified.canonicalUrl);
+          canLookupStructuredPage && !checkedStructuredJobPages.has(classified.canonicalUrl);
         const exactPostingKey =
           classified.externalId && supportsAtsPostingLookup(classified.atsType)
             ? [
@@ -145,18 +148,19 @@ export function createSqliteJobDiscoveryCatalog(
             classified.canonicalUrl,
           );
           if (lookup.status === "verified") {
-            jobsWritten += upsertVerifiedSearchJob(lookup.job);
+            jobsWritten += upsertVerifiedSearchJob(lookup.job, database);
           } else {
-            jobsWritten += upsertSearchResult(searchResult);
+            jobsWritten += upsertSearchResult(searchResult, database);
             recordStructuredJobPageOutcome(
               classified.atsType,
               classified.externalId,
               lookup,
               recordedAt,
+              database,
             );
           }
-        } else {
-          jobsWritten += upsertSearchResult(searchResult);
+        } else if (!canLookupStructuredPage) {
+          jobsWritten += upsertSearchResult(searchResult, database);
         }
 
         if (
@@ -167,16 +171,16 @@ export function createSqliteJobDiscoveryCatalog(
           checkedLinkedInJobs.add(classified.externalId);
           const lookup = await fetchLinkedInJob(classified.externalId, classified.canonicalUrl);
           if (lookup.status === "verified") {
-            jobsWritten += upsertVerifiedSearchJob(lookup.job);
+            jobsWritten += upsertVerifiedSearchJob(lookup.job, database);
           } else if (lookup.status === "closed" || lookup.status === "not_found") {
-            deactivateSearchJob("linkedin", classified.externalId);
+            deactivateSearchJob("linkedin", classified.externalId, database);
           }
         }
       }
 
       const wasInserted = inserted.changes > 0;
       const syncableBoardId =
-        boardId !== undefined && classified && supportsBoardSync(classified.atsType)
+        boardId !== undefined && classified && supportsBoardSync(classified.atsType, database)
           ? boardId
           : undefined;
       return {
@@ -197,7 +201,7 @@ export function createSqliteJobDiscoveryCatalog(
       if (!board) {
         throw new Error(`Discovered board ${boardId} was not found`);
       }
-      const result = await syncBoard(board, jobLimit);
+      const result = await syncBoard(board, jobLimit, database);
       return { jobsWritten: result.created + result.updated, error: result.error };
     },
   };

@@ -508,8 +508,21 @@ describe("structured Web3 job verification", () => {
 
     expect(lookupCalls).toBe(1);
     expect(first).toMatchObject({ inserted: true, jobsWritten: 1, isUseful: true });
-    expect(second).toMatchObject({ inserted: false, jobsWritten: 1, isUseful: false });
+    expect(second).toMatchObject({ inserted: false, jobsWritten: 0, isUseful: false });
     expect(db.select().from(jobs).all()).toHaveLength(1);
+  });
+
+  it("does not reactivate a closed structured page when a later lane returns the same URL", async () => {
+    const { runId } = seedRun(false);
+    const catalog = createSqliteJobDiscoveryCatalog(db, {
+      lookupStructuredJobPage: async () => ({ status: "not_found", reason: "not-found" }),
+    });
+    const url = "https://web3.career/head-of-engineering-acme/147252";
+
+    await catalog.recordHit(hit(runId, url));
+    await catalog.recordHit(hit(runId, url));
+
+    expect(db.select({ isActive: jobs.isActive }).from(jobs).get()).toEqual({ isActive: false });
   });
 
   it("does not count a unique unclassified result as useful", async () => {

@@ -1,11 +1,48 @@
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { discoveryBenchmarkCorpus } from "./corpus";
 import { runDiscoveryBenchmark } from "./run-discovery-benchmark";
 
 describe("deterministic discovery benchmark", () => {
-  it("follows every labelled role through production discovery decisions", () => {
-    const report = runDiscoveryBenchmark(discoveryBenchmarkCorpus);
+  it("does not open the configured application database", async () => {
+    const directory = mkdtempSync(path.join(tmpdir(), "job-radar-benchmark-import-"));
+    const configuredDatabasePath = path.join(directory, "private.sqlite");
+    const previousDatabasePath = process.env.DB_PATH;
+    process.env.DB_PATH = configuredDatabasePath;
+
+    try {
+      await runDiscoveryBenchmark(discoveryBenchmarkCorpus);
+
+      expect(existsSync(configuredDatabasePath)).toBe(false);
+      expect(existsSync(path.resolve(process.cwd(), ":memory:"))).toBe(false);
+    } finally {
+      if (previousDatabasePath === undefined) {
+        delete process.env.DB_PATH;
+      } else {
+        process.env.DB_PATH = previousDatabasePath;
+      }
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("records the exact Asia legacy request formula", async () => {
+    const report = await runDiscoveryBenchmark(discoveryBenchmarkCorpus);
+
+    expect(report.requestEvidence.legacyAsiaBaseline).toEqual({
+      titleTerms: 12,
+      sources: 15,
+      variantsPerTitleSource: 2,
+      boardDiscoveryRequests: 10,
+      totalRequests: 370,
+    });
+    expect(report.requestEvidence.legacyAsiaBaseline.totalRequests).toBe(12 * 15 * 2 + 10);
+  });
+
+  it("follows every labelled role through the production discovery path", async () => {
+    const report = await runDiscoveryBenchmark(discoveryBenchmarkCorpus);
 
     expect(report.coverage).toEqual({
       markets: ["UK", "UAE", "Asia"],
@@ -65,6 +102,15 @@ describe("deterministic discovery benchmark", () => {
         }),
       ]),
     );
+    expect(report.observations.find((item) => item.id === "uk-ic-staff-platform-engineer")).toEqual(
+      expect.objectContaining({
+        retrieved: true,
+        classified: true,
+        verification: "verified",
+        match: "matched",
+        visibleRank: 1,
+      }),
+    );
     expect(report.misses).toEqual({
       provider: [],
       classification: [],
@@ -76,15 +122,30 @@ describe("deterministic discovery benchmark", () => {
     expect(report.profiles).toEqual(
       expect.arrayContaining([expect.objectContaining({ recall: 1, top20Precision: 1 })]),
     );
+    expect(report.requestEvidence.profiles).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          profile: "Asia engineering leadership",
+          totalRequests: expect.any(Number),
+          completedRoleStrategies: ["role-first", "location-first", "phrase", "relaxed-title"],
+        }),
+      ]),
+    );
+    expect(
+      report.requestEvidence.profiles.every(
+        (profile) => profile.totalRequests <= 111 && profile.productiveLocalRoleRate >= 0.1,
+      ),
+    ).toBe(true);
+    expect(report.requestEvidence.targetsMet).toBe(true);
     expect(report.passed).toBe(true);
   });
 
-  it("keeps visibility ranks scoped to the profile when two labels share a URL", () => {
+  it("keeps visibility ranks scoped to the profile when two labels share a URL", async () => {
     const sharedUrl = discoveryBenchmarkCorpus.examples.find(
       (example) => example.id === "uk-leadership-head-of-engineering",
     )?.url;
     expect(sharedUrl).toBeDefined();
-    const report = runDiscoveryBenchmark({
+    const report = await runDiscoveryBenchmark({
       ...discoveryBenchmarkCorpus,
       examples: discoveryBenchmarkCorpus.examples.map((example) =>
         example.id === "uae-leadership-sales-negative"

@@ -15,6 +15,8 @@ import {
 import { db } from "@/contexts/discovery/infrastructure/sqlite/database";
 import { companyBoards, jobs } from "@/contexts/discovery/infrastructure/sqlite/schema";
 
+type Database = typeof db;
+
 export interface SearchResultInput {
   atsType: AtsType;
   canonicalUrl: string;
@@ -26,16 +28,16 @@ export interface SearchResultInput {
   locationHint?: string;
 }
 
-export function upsertSearchResult(input: SearchResultInput): number {
+export function upsertSearchResult(input: SearchResultInput, database: Database = db): number {
   const dedupeKey = makeDedupeKey(
     input.atsType,
     input.canonicalUrl,
     input.externalId,
     input.boardKey,
   );
-  let existing = db.select().from(jobs).where(eq(jobs.dedupeKey, dedupeKey)).get();
+  let existing = database.select().from(jobs).where(eq(jobs.dedupeKey, dedupeKey)).get();
   const identityMatches = input.externalId
-    ? db
+    ? database
         .select()
         .from(jobs)
         .where(
@@ -50,9 +52,10 @@ export function upsertSearchResult(input: SearchResultInput): number {
   const structuredMatch = identityMatches.find((job) => isVerifiedJobListing(job.evidence));
   if (structuredMatch) {
     if (existing && existing.id !== structuredMatch.id) {
-      db.update(jobs).set({ isActive: false }).where(eq(jobs.id, existing.id)).run();
+      database.update(jobs).set({ isActive: false }).where(eq(jobs.id, existing.id)).run();
     }
-    db.update(jobs)
+    database
+      .update(jobs)
       .set({ lastSeenAt: new Date(), isActive: true })
       .where(eq(jobs.id, structuredMatch.id))
       .run();
@@ -61,12 +64,12 @@ export function upsertSearchResult(input: SearchResultInput): number {
   if (!existing) {
     const identityMatch = identityMatches[0];
     if (identityMatch) {
-      db.update(jobs).set({ dedupeKey }).where(eq(jobs.id, identityMatch.id)).run();
+      database.update(jobs).set({ dedupeKey }).where(eq(jobs.id, identityMatch.id)).run();
       existing = { ...identityMatch, dedupeKey };
     }
   }
   const board = input.boardId
-    ? db
+    ? database
         .select({
           companyName: companyBoards.companyName,
           slug: companyBoards.slug,
@@ -81,7 +84,8 @@ export function upsertSearchResult(input: SearchResultInput): number {
   if (existing) {
     const hasStructuredEvidence = isVerifiedJobListing(existing.evidence);
     const publishedSalary = extractAnnualSalaryFromText(normalized.description);
-    db.update(jobs)
+    database
+      .update(jobs)
       .set({
         boardId: input.boardId ?? existing.boardId,
         companyName: hasStructuredEvidence
@@ -112,7 +116,8 @@ export function upsertSearchResult(input: SearchResultInput): number {
   }
 
   const publishedSalary = extractAnnualSalaryFromText(normalized.description);
-  db.insert(jobs)
+  database
+    .insert(jobs)
     .values({
       boardId: input.boardId,
       atsType: input.atsType,
@@ -141,11 +146,12 @@ export function upsertSearchResult(input: SearchResultInput): number {
   return 1;
 }
 
-export function upsertVerifiedSearchJob(rawJob: RawJob): number {
+export function upsertVerifiedSearchJob(rawJob: RawJob, database: Database = db): number {
   const dedupeKey = makeDedupeKey(rawJob.atsType, rawJob.canonicalUrl, rawJob.externalId);
   const now = new Date();
 
-  db.insert(jobs)
+  database
+    .insert(jobs)
     .values({
       boardId: null,
       atsType: rawJob.atsType,
@@ -199,8 +205,13 @@ export function upsertVerifiedSearchJob(rawJob: RawJob): number {
   return 1;
 }
 
-export function deactivateSearchJob(atsType: AtsType, externalId: string): void {
-  db.update(jobs)
+export function deactivateSearchJob(
+  atsType: AtsType,
+  externalId: string,
+  database: Database = db,
+): void {
+  database
+    .update(jobs)
     .set({ isActive: false, lastSeenAt: new Date() })
     .where(and(eq(jobs.atsType, atsType), eq(jobs.externalId, externalId)))
     .run();
@@ -211,8 +222,9 @@ export function recordStructuredJobPageOutcome(
   externalId: string,
   outcome: Exclude<StructuredJobPageLookup, { status: "verified" }>,
   checkedAt: Date,
+  database: Database = db,
 ): void {
-  const matchingJobs = db
+  const matchingJobs = database
     .select({ id: jobs.id, isActive: jobs.isActive, rawPayload: jobs.rawPayload })
     .from(jobs)
     .where(and(eq(jobs.atsType, atsType), eq(jobs.externalId, externalId)))
@@ -220,7 +232,8 @@ export function recordStructuredJobPageOutcome(
   const remainsActive = outcome.status === "unavailable";
 
   for (const job of matchingJobs) {
-    db.update(jobs)
+    database
+      .update(jobs)
       .set({
         isActive: remainsActive ? job.isActive : false,
         lastSeenAt: checkedAt,
@@ -247,8 +260,9 @@ export function recordAtsPostingOutcome(
     readonly reason: string;
   },
   checkedAt: Date,
+  database: Database = db,
 ): void {
-  const matchingJobs = db
+  const matchingJobs = database
     .select({ id: jobs.id, isActive: jobs.isActive, rawPayload: jobs.rawPayload })
     .from(jobs)
     .where(
@@ -262,7 +276,8 @@ export function recordAtsPostingOutcome(
   const remainsActive = outcome.status === "protected" || outcome.status === "transient_failure";
 
   for (const job of matchingJobs) {
-    db.update(jobs)
+    database
+      .update(jobs)
       .set({
         isActive: remainsActive ? job.isActive : false,
         lastSeenAt: checkedAt,
