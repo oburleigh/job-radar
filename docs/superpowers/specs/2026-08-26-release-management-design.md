@@ -1,6 +1,6 @@
 # Job Radar release management design
 
-- **Status:** Draft for review
+- **Status:** Approved for delivery
 - **Parent issue:** ADM-31
 - **Decision owner:** Oli Burleigh
 - **Date:** 2026-08-26
@@ -278,27 +278,29 @@ moving release references.
 
 ADM-31 remains the parent publication outcome. The approved child stories are:
 
-1. Maintainer gets reviewable semantic release proposals and optional RC tags. This is the first
-   implementation slice described by this specification.
-2. Local agent assesses release impact before a pull request. The result is advisory and includes the
-   change type, resolved version bump, contract evidence, and proposed changelog text.
-3. GitHub reviews declared release impact. A read-only agent comments on disagreement and cannot tag,
-   release, merge, or modify code.
-4. Maintainer proves the repository is safe to publish. This covers tracked files, history, secrets,
-   databases, personal data, generated reports, security policy, CodeQL, secret scanning, Dependabot,
-   CODEOWNERS, and community files.
-5. Visitor understands Job Radar from the repository landing page. This covers synthetic screenshots,
-   concise positioning, privacy and architecture summaries, roadmap status, badges, topics, and GitHub
-   metadata.
-6. Maintainer publishes the verified private `v0.1.0` release. This requires a green RC, branch
-   protection, publication-safety evidence, repository settings, and final review before visibility can
-   change.
-7. Maintainer declares the `1.0.0` compatibility contract. This settles stable database,
-   configuration, CLI, and operator guarantees before standard major/minor/patch semantics begin.
+1. ADM-169: Maintainer gets reviewable semantic release proposals and optional RC tags. This is the
+   first implementation slice described by this specification.
+2. ADM-171: Maintainer gets a local release-impact assessment before opening a pull request. The
+   result is advisory and includes the change type, resolved version bump, contract evidence, and
+   proposed changelog text.
+3. ADM-173: Pull request author sees a mismatched release-impact declaration. A read-only agent
+   comments on disagreement and cannot tag, release, merge, or modify code.
+4. ADM-152: Maintainer can enforce GitHub safeguards before Job Radar becomes public. This covers
+   tracked files, history, secrets, databases, personal data, generated reports, security policy,
+   CodeQL, secret scanning, Dependabot, CODEOWNERS, and community files.
+5. ADM-170: Visitor understands Job Radar from the repository landing page. This covers synthetic
+   screenshots, concise positioning, privacy and architecture summaries, roadmap status, badges,
+   topics, and GitHub metadata.
+6. ADM-172: Maintainer can publish the verified private `v0.1.0` release. This requires a green RC,
+   branch protection, publication-safety evidence, repository settings, and final review before
+   visibility can change.
+7. ADM-174: Maintainer can declare the Job Radar `1.0.0` compatibility contract. This settles stable
+   database, configuration, CLI, and operator guarantees before standard major/minor/patch semantics
+   begin.
 
-ADM-152 will move from the sandbox project to Job Radar, become a child of ADM-31, and be rewritten as
-the GitHub settings and safeguards story. This avoids a duplicate and removes claims that do not match
-the current repository.
+ADM-152 has moved from the sandbox project to Job Radar as a child of ADM-31 and now owns the GitHub
+settings and safeguards story. This avoids a duplicate and removes claims that did not match the current
+repository.
 
 ## Acceptance criteria
 
