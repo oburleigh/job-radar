@@ -20,11 +20,11 @@ jobs:
       DB_PATH: ${{ github.workspace }}/job-radar-clean-start.sqlite
       SERPER_API_KEY: clean-start-ci-key
     steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: pnpm/action-setup@v6.0.10
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with:
           run_install: false
-      - uses: actions/setup-node@v7.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           cache: pnpm
@@ -68,11 +68,11 @@ jobs:
       DB_PATH: ${{ github.workspace }}/job-radar-verify.sqlite
       SERPER_API_KEY: verify-ci-key
     steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: pnpm/action-setup@v6.0.10
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with:
           run_install: false
-      - uses: actions/setup-node@v7.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           cache: pnpm
@@ -92,7 +92,7 @@ jobs:
         run: pnpm performance:lighthouse
       - name: Upload Lighthouse reports
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: job-radar-lighthouse
           path: artifacts/lighthouse
@@ -107,7 +107,7 @@ jobs:
         run: pnpm performance:browser
       - name: Upload browser performance reports
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: job-radar-browser-performance
           path: artifacts/browser-performance
@@ -125,11 +125,11 @@ jobs:
       DB_PATH: ${{ github.workspace }}/job-radar-focused-mutation.sqlite
       SERPER_API_KEY: focused-mutation-ci-key
     steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: pnpm/action-setup@v6.0.10
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with:
           run_install: false
-      - uses: actions/setup-node@v7.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           cache: pnpm
@@ -140,7 +140,7 @@ jobs:
         run: pnpm test:mutation:focused
       - name: Upload focused mutation report
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: job-radar-mutation-focused
           path: reports/mutation

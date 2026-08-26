@@ -142,7 +142,9 @@ describe("production client asset budgets", () => {
     expect(lighthouseCommand).toBeGreaterThan(sizeCommand);
     expect(ciWorkflow).toContain("CHROME_PATH: /usr/bin/google-chrome");
     expect(ciWorkflow).toMatch(/if:\s*always\(\)/);
-    expect(ciWorkflow).toContain("actions/upload-artifact@v7.0.1");
+    expect(ciWorkflow).toContain(
+      "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1",
+    );
     expect(ciWorkflow).toContain("artifacts/lighthouse");
     expect(gitignore).toContain("/.lighthouseci/");
     expect(gitignore).toContain("/artifacts/lighthouse/");
@@ -224,7 +226,9 @@ describe("server and SQLite latency evidence", () => {
     expect(scheduledWorkflow).toContain("workflow_dispatch:");
     expect(scheduledWorkflow).toContain("pnpm performance:latency");
     expect(scheduledWorkflow).toContain("artifacts/latency");
-    expect(scheduledWorkflow).toContain("actions/upload-artifact@v7.0.1");
+    expect(scheduledWorkflow).toContain(
+      "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1",
+    );
   });
 });
 

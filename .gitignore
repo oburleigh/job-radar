@@ -61,3 +61,4 @@ yarn-error.log*
 /.codex/
 /.claude/settings.local.json
 /.impeccable/
+/skills-lock.json
