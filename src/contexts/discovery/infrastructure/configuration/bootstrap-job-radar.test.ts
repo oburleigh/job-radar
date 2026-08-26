@@ -110,7 +110,15 @@ describe("Job Radar database bootstrap", () => {
       throw new Error("The discovery bootstrap fixture must be an object.");
     }
     const legacyDiscovery = Object.fromEntries(
-      Object.entries(discovery).filter(([key]) => key !== "providerExecution"),
+      Object.entries(discovery).filter(
+        ([key]) =>
+          ![
+            "providerExecution",
+            "minimumUsefulHitsPerPage",
+            "maxPagesPerLane",
+            "maxRequestsPerRun",
+          ].includes(key),
+      ),
     );
     database
       .update(appSettings)
@@ -129,6 +137,9 @@ describe("Job Radar database bootstrap", () => {
     expect(backfilled?.value).toMatchObject({
       resultsPerQuery: 37,
       providerExecution: defaultProviderExecutionSettings,
+      minimumUsefulHitsPerPage: 1,
+      maxPagesPerLane: 3,
+      maxRequestsPerRun: 111,
     });
     expect(backfilled?.updatedAt).toEqual(backfilledAt);
   });

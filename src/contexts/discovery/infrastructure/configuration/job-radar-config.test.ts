@@ -74,12 +74,25 @@ describe("SQLite configuration", () => {
   it("loads the default provider execution policy from a legacy discovery row", () => {
     const original = getJobRadarConfig().discovery;
     const legacy = Object.fromEntries(
-      Object.entries(original).filter(([key]) => key !== "providerExecution"),
+      Object.entries(original).filter(
+        ([key]) =>
+          ![
+            "providerExecution",
+            "minimumUsefulHitsPerPage",
+            "maxPagesPerLane",
+            "maxRequestsPerRun",
+          ].includes(key),
+      ),
     );
 
-    expect(parseDiscoverySettings(legacy).providerExecution).toEqual(
-      defaultProviderExecutionSettings,
-    );
+    const parsed = parseDiscoverySettings(legacy);
+
+    expect(parsed.providerExecution).toEqual(defaultProviderExecutionSettings);
+    expect(parsed).toMatchObject({
+      minimumUsefulHitsPerPage: 1,
+      maxPagesPerLane: 3,
+      maxRequestsPerRun: 111,
+    });
   });
 
   it("maps legacy title modes to ordered strategies", () => {

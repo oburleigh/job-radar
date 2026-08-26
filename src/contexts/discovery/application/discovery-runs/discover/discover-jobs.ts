@@ -1,3 +1,4 @@
+import { decideSearchLaneContinuation } from "@/contexts/discovery/application/discovery-runs/planning/decide-search-lane-continuation";
 import { planSearchLanes } from "@/contexts/discovery/application/discovery-runs/planning/plan-search-lanes";
 import type { DiscoveryRunExecution } from "@/contexts/discovery/application/discovery-runs/ports/discovery-run";
 import type {
@@ -27,6 +28,7 @@ export type DiscoverySummary = {
   readonly matches: number;
   readonly queryErrors: number;
   readonly syncErrors: number;
+  readonly budgetStopReason?: "max-requests-per-run";
   readonly providerFailure?: {
     readonly provider: string;
     readonly classification: "fatal" | "transient";
@@ -103,6 +105,7 @@ export function createJobDiscovery({
       let activeQueryId: number | undefined;
       let admittedQueryCount = 0;
       let providerFailure: DiscoverySummary["providerFailure"];
+      let budgetStopReason: DiscoverySummary["budgetStopReason"];
 
       const progress = (): DiscoveryRunProgress => ({
         hitCount,
@@ -112,102 +115,130 @@ export function createJobDiscovery({
       });
 
       try {
-        for (const [queryIndex, lane] of plannedLanes.entries()) {
-          throwIfCancelled(command.signal);
-          const pageNumber = 1;
-          const prepared = provider.prepare(lane, {
-            count: command.resultsPerQuery ?? policy.resultsPerQuery,
-            maxAgeDays: searchMaxAgeDays,
-            page: pageNumber,
-          });
-          const query = runs.admitRequest(run.id, {
-            atsType: lane.source.atsType,
-            sourcePattern: lane.source.pattern,
-            titleTerm: lane.titleTerms.join(", "),
-            text: prepared.renderedQuery,
-            marketKey: lane.market.scope.key,
-            countryCode: lane.market.countryCode,
-            searchLanguage: lane.market.searchLanguage,
-            laneKind: lane.kind,
-            strategy: lane.strategy,
-            page: pageNumber,
-          });
-          admittedQueryCount += 1;
-          activeQueryId = query.id;
-          runs.startQuery(query.id, now());
-          let results: Awaited<ReturnType<typeof prepared.execute>>["results"] = [];
-          let hasMore = false;
-          let queryFailed = false;
-          try {
+        laneLoop: for (const [queryIndex, lane] of plannedLanes.entries()) {
+          if (admittedQueryCount >= policy.maxRequestsPerRun) {
+            budgetStopReason = "max-requests-per-run";
+            break;
+          }
+          for (let pageNumber = 1; ; pageNumber += 1) {
             throwIfCancelled(command.signal);
-            const page = await prepared.execute(command.signal);
-            results = page.results;
-            hasMore = page.hasMore;
-          } catch (error) {
-            if (command.signal?.aborted) {
-              throw error;
+            const prepared = provider.prepare(lane, {
+              count: command.resultsPerQuery ?? policy.resultsPerQuery,
+              maxAgeDays: searchMaxAgeDays,
+              page: pageNumber,
+            });
+            const query = runs.admitRequest(run.id, {
+              atsType: lane.source.atsType,
+              sourcePattern: lane.source.pattern,
+              titleTerm: lane.titleTerms.join(", "),
+              text: prepared.renderedQuery,
+              marketKey: lane.market.scope.key,
+              countryCode: lane.market.countryCode,
+              searchLanguage: lane.market.searchLanguage,
+              laneKind: lane.kind,
+              strategy: lane.strategy,
+              page: pageNumber,
+            });
+            admittedQueryCount += 1;
+            activeQueryId = query.id;
+            runs.startQuery(query.id, now());
+            let results: Awaited<ReturnType<typeof prepared.execute>>["results"] = [];
+            let hasMore = false;
+            let queryFailed = false;
+            try {
+              throwIfCancelled(command.signal);
+              const page = await prepared.execute(command.signal);
+              results = page.results;
+              hasMore = page.hasMore;
+            } catch (error) {
+              if (command.signal?.aborted) {
+                throw error;
+              }
+              if (error instanceof SearchProviderFailure) {
+                const skippedQueries = plannedLanes.length - queryIndex - 1;
+                const failureSummary = `${error.provider} ${error.classification} ${error.code} after ${error.attempts} ${error.attempts === 1 ? "attempt" : "attempts"}; skipped ${skippedQueries} ${skippedQueries === 1 ? "query" : "queries"}`;
+                queryErrors.push(failureSummary);
+                runs.failQuery(query.id, error.message, now());
+                providerFailure = {
+                  provider: error.provider,
+                  classification: error.classification,
+                  code: error.code,
+                  attempts: error.attempts,
+                  skippedQueries,
+                };
+                activeQueryId = undefined;
+                runs.recordProgress(run.id, progress(), now());
+                runs.cancelPendingRequests(
+                  run.id,
+                  `Skipped because ${error.provider} reported ${error.code}.`,
+                  now(),
+                );
+                break laneLoop;
+              }
+              const message = errorMessage(error);
+              queryErrors.push(
+                `${query.sourcePattern} / ${query.titleTerm || query.laneKind}: ${message}`,
+              );
+              queryFailed = true;
+              runs.failQuery(query.id, message, now());
             }
-            if (error instanceof SearchProviderFailure) {
-              const skippedQueries = plannedLanes.length - queryIndex - 1;
-              const failureSummary = `${error.provider} ${error.classification} ${error.code} after ${error.attempts} ${error.attempts === 1 ? "attempt" : "attempts"}; skipped ${skippedQueries} ${skippedQueries === 1 ? "query" : "queries"}`;
-              queryErrors.push(failureSummary);
-              runs.failQuery(query.id, error.message, now());
-              providerFailure = {
-                provider: error.provider,
-                classification: error.classification,
-                code: error.code,
-                attempts: error.attempts,
-                skippedQueries,
-              };
+
+            let usefulHitCount = 0;
+            for (const [index, result] of results.entries()) {
+              throwIfCancelled(command.signal);
+              const recorded = await jobs.recordHit({
+                runId: run.id,
+                query: query.text,
+                rank: index + 1,
+                result,
+                marketScopes: profile.markets.map((market) => market.scope),
+                recordedAt: now(),
+              });
+              hitCount += Number(recorded.inserted);
+              usefulHitCount += Number(recorded.isUseful);
+              jobsWritten += recorded.jobsWritten;
+              if (recorded.syncableBoardId !== undefined) {
+                boardIds.add(recorded.syncableBoardId);
+              }
+              if ((index + 1) % policy.workYieldBatchSize === 0) {
+                await yieldControl();
+                throwIfCancelled(command.signal);
+              }
+            }
+            throwIfCancelled(command.signal);
+            if (queryFailed) {
               activeQueryId = undefined;
               runs.recordProgress(run.id, progress(), now());
-              runs.cancelPendingRequests(
-                run.id,
-                `Skipped because ${error.provider} reported ${error.code}.`,
-                now(),
-              );
               break;
             }
-            const message = errorMessage(error);
-            queryErrors.push(
-              `${query.sourcePattern} / ${query.titleTerm || query.laneKind}: ${message}`,
-            );
-            queryFailed = true;
-            runs.failQuery(query.id, message, now());
-          }
 
-          for (const [index, result] of results.entries()) {
-            throwIfCancelled(command.signal);
-            const recorded = await jobs.recordHit({
-              runId: run.id,
-              query: query.text,
-              rank: index + 1,
-              result,
-              marketScopes: profile.markets.map((market) => market.scope),
-              recordedAt: now(),
+            const continuation = decideSearchLaneContinuation({
+              hasMore,
+              usefulHitCount,
+              minimumUsefulHitsPerPage: policy.minimumUsefulHitsPerPage,
+              page: pageNumber,
+              maxPagesPerLane: policy.maxPagesPerLane,
+              admittedRequestCount: admittedQueryCount,
+              maxRequestsPerRun: policy.maxRequestsPerRun,
             });
-            hitCount += Number(recorded.inserted);
-            jobsWritten += recorded.jobsWritten;
-            if (recorded.syncableBoardId !== undefined) {
-              boardIds.add(recorded.syncableBoardId);
-            }
-            if ((index + 1) % policy.workYieldBatchSize === 0) {
-              await yieldControl();
-              throwIfCancelled(command.signal);
-            }
-          }
-          throwIfCancelled(command.signal);
-          if (!queryFailed) {
             runs.completeQuery(query.id, {
               hitCount: results.length,
-              usefulHitCount: 0,
+              usefulHitCount,
               hasMore,
+              stopReason: continuation.stopReason,
               finishedAt: now(),
             });
             querySucceeded = true;
+            activeQueryId = undefined;
+            runs.recordProgress(run.id, progress(), now());
+            if (!continuation.continue) {
+              if (continuation.stopReason === "max-requests-per-run") {
+                budgetStopReason = continuation.stopReason;
+                break laneLoop;
+              }
+              break;
+            }
           }
-          activeQueryId = undefined;
-          runs.recordProgress(run.id, progress(), now());
         }
 
         if (command.syncBoards !== false) {
@@ -244,6 +275,7 @@ export function createJobDiscovery({
           matchesFound,
           errors: queryErrors,
           allQueriesFailed: plannedLanes.length > 0 && !querySucceeded,
+          budgetStopReason: budgetStopReason ?? null,
           finishedAt: now(),
         });
       } catch (error) {
@@ -279,6 +311,7 @@ export function createJobDiscovery({
         matches: matchesFound,
         queryErrors: queryErrors.length,
         syncErrors,
+        ...(budgetStopReason ? { budgetStopReason } : {}),
         ...(providerFailure ? { providerFailure } : {}),
       };
     },

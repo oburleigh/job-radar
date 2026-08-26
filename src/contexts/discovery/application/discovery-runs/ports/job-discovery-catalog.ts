@@ -3,6 +3,7 @@ import type { SearchResult } from "./search-provider";
 
 export type RecordedDiscoveryHit = {
   readonly inserted: boolean;
+  readonly isUseful: boolean;
   readonly jobsWritten: number;
   readonly syncableBoardId?: number;
 };

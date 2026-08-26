@@ -37,6 +37,9 @@ export interface RuntimeSettings {
     readonly workYieldBatchSize: number;
     readonly runHistoryLimit: number;
     readonly strategies: readonly SearchStrategy[];
+    readonly minimumUsefulHitsPerPage: number;
+    readonly maxPagesPerLane: number;
+    readonly maxRequestsPerRun: number;
     readonly providerExecution: {
       readonly concurrency: number;
       readonly requestsPerInterval: number;

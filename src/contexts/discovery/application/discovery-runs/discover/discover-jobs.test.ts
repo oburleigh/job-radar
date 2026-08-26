@@ -8,6 +8,7 @@ import type {
 import type { DiscoverySetupReader } from "@/contexts/discovery/application/discovery-runs/ports/discovery-setup";
 import type { JobDiscoveryCatalog } from "@/contexts/discovery/application/discovery-runs/ports/job-discovery-catalog";
 import {
+  type SearchPage,
   SearchProviderFailure,
   type SearchRequest,
   type SearchResult,
@@ -33,8 +34,18 @@ describe("discover jobs", () => {
     ]);
     const recordHit = vi
       .fn<JobDiscoveryCatalog["recordHit"]>()
-      .mockResolvedValueOnce({ inserted: true, jobsWritten: 1, syncableBoardId: 11 })
-      .mockResolvedValueOnce({ inserted: false, jobsWritten: 1, syncableBoardId: 11 });
+      .mockResolvedValueOnce({
+        inserted: true,
+        isUseful: true,
+        jobsWritten: 1,
+        syncableBoardId: 11,
+      })
+      .mockResolvedValueOnce({
+        inserted: false,
+        isUseful: false,
+        jobsWritten: 1,
+        syncableBoardId: 11,
+      });
     const synchronizeBoard = vi.fn(async () => ({ jobsWritten: 3, error: "" }));
     const evaluateMatches = vi.fn(
       async (_profileId: number, _markets: unknown, onBatch: () => void) => {
@@ -143,6 +154,183 @@ describe("discover jobs", () => {
       true,
     );
     expect(summary.queries).toBe(2);
+  });
+
+  it("admits page two after a productive page reports more results", async () => {
+    const journal = recordingJournal();
+    const executePage = vi.fn(async (_lane: SearchLane, request: SearchRequest) => ({
+      results: [
+        {
+          title: `VP Engineering page ${request.page}`,
+          url: `https://jobs.example.com/vp-engineering-${request.page}`,
+          snippet: "Dubai",
+        },
+      ],
+      hasMore: request.page === 1,
+    }));
+    const discovery = createJobDiscovery({
+      setup: setupWithPolicy(
+        [{ atsType: "greenhouse", pattern: "jobs.example.com", supportsBoardSync: false }],
+        { minimumUsefulHitsPerPage: 1, maxPagesPerLane: 3, maxRequestsPerRun: 10 },
+      ),
+      runs: journal,
+      jobs: {
+        recordHit: vi.fn(async () => ({
+          inserted: true,
+          isUseful: true,
+          jobsWritten: 0,
+        })),
+        synchronizeBoard: vi.fn(),
+      },
+      matches: { evaluate: vi.fn(async () => ({ matched: 0 })) },
+      providers: pageProviderDirectory(executePage),
+      now: () => timestamp,
+      yieldControl: vi.fn(),
+    });
+
+    const summary = await discovery.discoverJobs({
+      profileId: 7,
+      providerName: "serper",
+      runId: 41,
+      syncBoards: false,
+    });
+
+    expect(summary.queries).toBe(2);
+    expect(journal.admittedRequests.map(({ page }) => page)).toEqual([1, 2]);
+    expect(journal.queryCompletions.map(({ result }) => result)).toEqual([
+      expect.objectContaining({ hitCount: 1, usefulHitCount: 1, hasMore: true }),
+      expect.objectContaining({
+        hitCount: 1,
+        usefulHitCount: 1,
+        hasMore: false,
+        stopReason: "no-more-results",
+      }),
+    ]);
+  });
+
+  it("stops an unproductive lane without admitting page two", async () => {
+    const journal = recordingJournal();
+    const discovery = createJobDiscovery({
+      setup: setupWithPolicy(
+        [{ atsType: "greenhouse", pattern: "jobs.example.com", supportsBoardSync: false }],
+        { minimumUsefulHitsPerPage: 1, maxPagesPerLane: 3, maxRequestsPerRun: 10 },
+      ),
+      runs: journal,
+      jobs: {
+        recordHit: vi.fn(async () => ({
+          inserted: true,
+          isUseful: false,
+          jobsWritten: 0,
+        })),
+        synchronizeBoard: vi.fn(),
+      },
+      matches: { evaluate: vi.fn(async () => ({ matched: 0 })) },
+      providers: pageProviderDirectory(async () => ({
+        results: [{ title: "Unknown", url: "https://example.com/unknown", snippet: "" }],
+        hasMore: true,
+      })),
+      now: () => timestamp,
+      yieldControl: vi.fn(),
+    });
+
+    await discovery.discoverJobs({
+      profileId: 7,
+      providerName: "serper",
+      runId: 41,
+      syncBoards: false,
+    });
+
+    expect(journal.admittedRequests).toHaveLength(1);
+    expect(journal.queryCompletions[0]?.result).toMatchObject({
+      usefulHitCount: 0,
+      hasMore: true,
+      stopReason: "insufficient-useful-hits",
+    });
+  });
+
+  it("stops a productive lane at its page cap", async () => {
+    const journal = recordingJournal();
+    const discovery = createJobDiscovery({
+      setup: setupWithPolicy(
+        [{ atsType: "greenhouse", pattern: "jobs.example.com", supportsBoardSync: false }],
+        { minimumUsefulHitsPerPage: 1, maxPagesPerLane: 2, maxRequestsPerRun: 10 },
+      ),
+      runs: journal,
+      jobs: {
+        recordHit: vi.fn(async () => ({ inserted: true, isUseful: true, jobsWritten: 0 })),
+        synchronizeBoard: vi.fn(),
+      },
+      matches: { evaluate: vi.fn(async () => ({ matched: 0 })) },
+      providers: pageProviderDirectory(async (_lane, request) => ({
+        results: [
+          {
+            title: "VP Engineering",
+            url: `https://jobs.example.com/${request.page}`,
+            snippet: "Dubai",
+          },
+        ],
+        hasMore: true,
+      })),
+      now: () => timestamp,
+      yieldControl: vi.fn(),
+    });
+
+    await discovery.discoverJobs({
+      profileId: 7,
+      providerName: "serper",
+      runId: 41,
+      syncBoards: false,
+    });
+
+    expect(journal.admittedRequests.map(({ page }) => page)).toEqual([1, 2]);
+    expect(journal.queryCompletions[1]?.result.stopReason).toBe("max-pages-per-lane");
+  });
+
+  it("spends a run cap in deterministic lane and page order", async () => {
+    const journal = recordingJournal();
+    const discovery = createJobDiscovery({
+      setup: setupWithPolicy(
+        [
+          { atsType: "greenhouse", pattern: "jobs-one.example.com", supportsBoardSync: false },
+          { atsType: "lever", pattern: "jobs-two.example.com", supportsBoardSync: false },
+        ],
+        { minimumUsefulHitsPerPage: 1, maxPagesPerLane: 3, maxRequestsPerRun: 2 },
+      ),
+      runs: journal,
+      jobs: {
+        recordHit: vi.fn(async () => ({ inserted: true, isUseful: true, jobsWritten: 0 })),
+        synchronizeBoard: vi.fn(),
+      },
+      matches: { evaluate: vi.fn(async () => ({ matched: 0 })) },
+      providers: pageProviderDirectory(async (lane, request) => ({
+        results: [
+          {
+            title: "VP Engineering",
+            url: `https://${lane.source.pattern}/${request.page}`,
+            snippet: "Dubai",
+          },
+        ],
+        hasMore: true,
+      })),
+      now: () => timestamp,
+      yieldControl: vi.fn(),
+    });
+
+    const summary = await discovery.discoverJobs({
+      profileId: 7,
+      providerName: "serper",
+      runId: 41,
+      syncBoards: false,
+    });
+
+    expect(
+      journal.admittedRequests.map(({ sourcePattern, page }) => ({ sourcePattern, page })),
+    ).toEqual([
+      { sourcePattern: "jobs-one.example.com", page: 1 },
+      { sourcePattern: "jobs-one.example.com", page: 2 },
+    ]);
+    expect(journal.queryCompletions[1]?.result.stopReason).toBe("max-requests-per-run");
+    expect(summary).toMatchObject({ queries: 2, budgetStopReason: "max-requests-per-run" });
   });
 
   it("finishes a run as failed when every planned query is rejected by the provider", async () => {
@@ -443,7 +631,7 @@ describe("discover jobs", () => {
       setup: configuredSetup(),
       runs: journal,
       jobs: {
-        recordHit: vi.fn(async () => ({ inserted: false, jobsWritten: 0 })),
+        recordHit: vi.fn(async () => ({ inserted: false, isUseful: false, jobsWritten: 0 })),
         synchronizeBoard: vi.fn(),
       },
       matches: {
@@ -490,6 +678,7 @@ describe("discover jobs", () => {
     });
     const recordHit = vi.fn(async () => ({
       inserted: true,
+      isUseful: true,
       jobsWritten: 1,
     }));
     const yieldControl = vi.fn(async () => {
@@ -562,7 +751,7 @@ describe("discover jobs", () => {
       setup: configuredSetup(),
       runs: journal,
       jobs: {
-        recordHit: vi.fn(async () => ({ inserted: false, jobsWritten: 0 })),
+        recordHit: vi.fn(async () => ({ inserted: false, isUseful: false, jobsWritten: 0 })),
         synchronizeBoard: vi.fn(),
       },
       matches: {
@@ -621,6 +810,9 @@ function configuredSetup(): DiscoverySetupReader {
         workYieldBatchSize: 1,
         strategies: ["role-first"],
         worldwideRemoteTerms: ["remote"],
+        minimumUsefulHitsPerPage: 1,
+        maxPagesPerLane: 3,
+        maxRequestsPerRun: 111,
       },
     }),
   };
@@ -631,6 +823,22 @@ function setupWithSources(
 ): DiscoverySetupReader {
   return {
     load: (command) => ({ ...configuredSetup().load(command), sources }),
+  };
+}
+
+function setupWithPolicy(
+  sources: ReturnType<DiscoverySetupReader["load"]>["sources"],
+  policy: Pick<
+    ReturnType<DiscoverySetupReader["load"]>["policy"],
+    "minimumUsefulHitsPerPage" | "maxPagesPerLane" | "maxRequestsPerRun"
+  >,
+): DiscoverySetupReader {
+  return {
+    load: (command) => ({
+      ...configuredSetup().load(command),
+      sources,
+      policy: { ...configuredSetup().load(command).policy, ...policy },
+    }),
   };
 }
 
@@ -655,6 +863,20 @@ function providerDirectory(search: ExecuteSearch): SearchProviderDirectory {
   };
 }
 
+function pageProviderDirectory(
+  execute: (lane: SearchLane, request: SearchRequest) => Promise<SearchPage>,
+): SearchProviderDirectory {
+  return {
+    get: (name) => ({
+      name,
+      prepare: (lane, request = {}) => ({
+        renderedQuery: `${lane.kind}:${lane.source.pattern}:${lane.market.scope.key}`,
+        execute: () => execute(lane, request),
+      }),
+    }),
+  };
+}
+
 function recordingJournal(): DiscoveryRunJournal & {
   readonly completed: Array<Parameters<DiscoveryRunJournal["complete"]>[0]>;
   readonly failed: Array<Parameters<DiscoveryRunJournal["fail"]>[0]>;
@@ -673,6 +895,10 @@ function recordingJournal(): DiscoveryRunJournal & {
   readonly admittedRequests: Array<
     Parameters<DiscoveryRunJournal["admitRequest"]>[1] & { readonly runId: number }
   >;
+  readonly queryCompletions: Array<{
+    readonly queryId: number;
+    readonly result: Parameters<DiscoveryRunJournal["completeQuery"]>[1];
+  }>;
 } {
   const completed: Array<Parameters<DiscoveryRunJournal["complete"]>[0]> = [];
   const failed: Array<Parameters<DiscoveryRunJournal["fail"]>[0]> = [];
@@ -691,6 +917,10 @@ function recordingJournal(): DiscoveryRunJournal & {
   const admittedRequests: Array<
     Parameters<DiscoveryRunJournal["admitRequest"]>[1] & { readonly runId: number }
   > = [];
+  const queryCompletions: Array<{
+    readonly queryId: number;
+    readonly result: Parameters<DiscoveryRunJournal["completeQuery"]>[1];
+  }> = [];
   return {
     admittedRequests,
     cancelledQueryBatches,
@@ -699,6 +929,7 @@ function recordingJournal(): DiscoveryRunJournal & {
     preparedRuns,
     queryFailures,
     progressRecords,
+    queryCompletions,
     prepare: (request) => {
       preparedRuns.push(request);
       return {
@@ -712,7 +943,9 @@ function recordingJournal(): DiscoveryRunJournal & {
       return { ...query, id: admittedRequests.length };
     },
     startQuery: () => undefined,
-    completeQuery: () => undefined,
+    completeQuery: (queryId, result) => {
+      queryCompletions.push({ queryId, result });
+    },
     failQuery: (queryId, message, finishedAt) => {
       queryFailures.push({ queryId, message, finishedAt });
     },

@@ -195,13 +195,16 @@ describe("database setup command", () => {
 
     const migrated = new Database(databasePath, { readonly: true });
     expect(
-      migrated.prepare("SELECT status, query_count FROM discovery_runs WHERE id = ?").get(runId),
-    ).toEqual({ status: "completed", query_count: 1 });
+      migrated
+        .prepare("SELECT status, query_count, budget_stop_reason FROM discovery_runs WHERE id = ?")
+        .get(runId),
+    ).toEqual({ status: "completed", query_count: 1, budget_stop_reason: null });
     expect(
       migrated
         .prepare(
           `SELECT status, hit_count, query_text, market_key, country_code,
-                  search_language, lane_kind, strategy, page, useful_hit_count, has_more
+                  search_language, lane_kind, strategy, page, useful_hit_count, has_more,
+                  stop_reason
            FROM discovery_queries WHERE run_id = ?`,
         )
         .get(runId),
@@ -217,6 +220,7 @@ describe("database setup command", () => {
       page: null,
       useful_hit_count: 0,
       has_more: null,
+      stop_reason: null,
     });
     migrated.close();
   }, 30_000);

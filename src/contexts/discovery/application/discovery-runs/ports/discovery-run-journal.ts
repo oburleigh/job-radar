@@ -1,3 +1,4 @@
+import type { SearchLaneStopReason } from "@/contexts/discovery/application/discovery-runs/planning/decide-search-lane-continuation";
 import type {
   SearchLaneKind,
   SearchStrategy,
@@ -51,6 +52,7 @@ export interface DiscoveryRunJournal {
       readonly hitCount: number;
       readonly usefulHitCount: number;
       readonly hasMore: boolean;
+      readonly stopReason: SearchLaneStopReason | null;
       readonly finishedAt: Date;
     },
   ) => void;
@@ -68,6 +70,7 @@ export interface DiscoveryRunJournal {
     readonly matchesFound: number;
     readonly errors: readonly string[];
     readonly allQueriesFailed: boolean;
+    readonly budgetStopReason: "max-requests-per-run" | null;
     readonly finishedAt: Date;
   }) => void;
   readonly fail: (request: {

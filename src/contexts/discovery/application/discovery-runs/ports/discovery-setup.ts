@@ -23,6 +23,9 @@ export type DiscoveryPolicy = {
   readonly searchFreshnessDays: number;
   readonly workYieldBatchSize: number;
   readonly strategies: readonly SearchStrategy[];
+  readonly minimumUsefulHitsPerPage: number;
+  readonly maxPagesPerLane: number;
+  readonly maxRequestsPerRun: number;
   readonly worldwideRemoteTerms: readonly string[];
 };
 

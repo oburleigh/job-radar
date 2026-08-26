@@ -174,12 +174,18 @@ export function createSqliteJobDiscoveryCatalog(
         }
       }
 
+      const wasInserted = inserted.changes > 0;
+      const syncableBoardId =
+        boardId !== undefined && classified && supportsBoardSync(classified.atsType)
+          ? boardId
+          : undefined;
       return {
-        inserted: inserted.changes > 0,
+        inserted: wasInserted,
+        isUseful:
+          wasInserted &&
+          (Boolean(classified?.externalId) || syncableBoardId !== undefined || jobsWritten > 0),
         jobsWritten,
-        ...(boardId !== undefined && classified && supportsBoardSync(classified.atsType)
-          ? { syncableBoardId: boardId }
-          : {}),
+        ...(syncableBoardId === undefined ? {} : { syncableBoardId }),
       };
     },
     async synchronizeBoard(boardId, jobLimit) {

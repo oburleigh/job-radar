@@ -112,6 +112,39 @@ describe("runtime settings request", () => {
     });
   });
 
+  it("maps validated adaptive pagination budgets", () => {
+    const formData = runtimeSettingsForm({
+      maximumAgeDays: "45",
+      minimumScore: "82",
+      salaryCurrency: "AED",
+    });
+    formData.set("minimumUsefulHitsPerPage", "2");
+    formData.set("maxPagesPerLane", "4");
+    formData.set("maxRequestsPerRun", "88");
+
+    const result = parseRuntimeSettingsRequest(formData, currentRuntimeSettings());
+
+    expect(result.ok && result.command.discovery).toMatchObject({
+      minimumUsefulHitsPerPage: 2,
+      maxPagesPerLane: 4,
+      maxRequestsPerRun: 88,
+    });
+  });
+
+  it("rejects an out-of-range lane page cap", () => {
+    const formData = runtimeSettingsForm({
+      maximumAgeDays: "45",
+      minimumScore: "82",
+      salaryCurrency: "AED",
+    });
+    formData.set("maxPagesPerLane", "0");
+
+    expect(parseRuntimeSettingsRequest(formData, currentRuntimeSettings())).toMatchObject({
+      ok: false,
+      field: "maxPagesPerLane",
+    });
+  });
+
   it("maps validated market vocabulary JSON into the application command", () => {
     const formData = runtimeSettingsForm({
       maximumAgeDays: "45",
@@ -222,6 +255,9 @@ function currentRuntimeSettings(): RuntimeSettingsCommand {
         retryMaxTimeMs: 100_000,
       },
       strategies: ["role-first", "location-first", "phrase", "relaxed-title"],
+      minimumUsefulHitsPerPage: 1,
+      maxPagesPerLane: 3,
+      maxRequestsPerRun: 111,
       structuredVerificationSources: ["web3-career"],
       closedListingMarkers: ["no longer available"],
     },
@@ -294,6 +330,9 @@ function runtimeSettingsForm(profileDefaults: {
     providerRetryMaxDelayMs: String(config.discovery.providerExecution.retryMaxDelayMs),
     providerRetryMaxTimeMs: String(config.discovery.providerExecution.retryMaxTimeMs),
     strategies: config.discovery.strategies.join("\n"),
+    minimumUsefulHitsPerPage: String(config.discovery.minimumUsefulHitsPerPage),
+    maxPagesPerLane: String(config.discovery.maxPagesPerLane),
+    maxRequestsPerRun: String(config.discovery.maxRequestsPerRun),
     structuredVerificationSources: config.discovery.structuredVerificationSources.join("\n"),
     closedListingMarkers: config.discovery.closedListingMarkers.join("\n"),
     discoveryPollIntervalMs: String(config.ui.discoveryPollIntervalMs),

@@ -60,6 +60,7 @@ export function createSqliteDiscoveryRunJournal(database: Database): DiscoveryRu
             queryErrorCount: 0,
             syncErrorCount: 0,
             error: "",
+            budgetStopReason: null,
             heartbeatAt: startedAt,
             finishedAt: null,
           })
@@ -119,6 +120,7 @@ export function createSqliteDiscoveryRunJournal(database: Database): DiscoveryRu
           hitCount: result.hitCount,
           usefulHitCount: result.usefulHitCount,
           hasMore: result.hasMore,
+          stopReason: result.stopReason,
           finishedAt: result.finishedAt,
         })
         .where(and(eq(discoveryQueries.id, queryId), eq(discoveryQueries.status, "running")))
@@ -152,6 +154,7 @@ export function createSqliteDiscoveryRunJournal(database: Database): DiscoveryRu
       matchesFound,
       errors,
       allQueriesFailed,
+      budgetStopReason,
       finishedAt,
     }) {
       database
@@ -161,6 +164,7 @@ export function createSqliteDiscoveryRunJournal(database: Database): DiscoveryRu
           ...progress,
           boardsDiscovered,
           matchesFound,
+          budgetStopReason,
           error: errors.join("\n"),
           heartbeatAt: finishedAt,
           finishedAt,

@@ -53,6 +53,9 @@ export function createSqliteDiscoverySetup(database: Database): DiscoverySetupRe
           searchFreshnessDays: config.discovery.searchFreshnessDays,
           workYieldBatchSize: config.discovery.workYieldBatchSize,
           strategies: provider?.strategies ?? config.discovery.strategies,
+          minimumUsefulHitsPerPage: config.discovery.minimumUsefulHitsPerPage,
+          maxPagesPerLane: config.discovery.maxPagesPerLane,
+          maxRequestsPerRun: config.discovery.maxRequestsPerRun,
           worldwideRemoteTerms: [
             ...config.matching.remoteTerms,
             ...config.matching.unrestrictedRemotePhrases,

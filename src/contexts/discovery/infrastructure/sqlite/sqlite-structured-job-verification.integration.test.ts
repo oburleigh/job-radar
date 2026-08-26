@@ -507,9 +507,18 @@ describe("structured Web3 job verification", () => {
     const second = await catalog.recordHit(hit(runId, url));
 
     expect(lookupCalls).toBe(1);
-    expect(first).toMatchObject({ inserted: true, jobsWritten: 1 });
-    expect(second).toMatchObject({ inserted: false, jobsWritten: 1 });
+    expect(first).toMatchObject({ inserted: true, jobsWritten: 1, isUseful: true });
+    expect(second).toMatchObject({ inserted: false, jobsWritten: 1, isUseful: false });
     expect(db.select().from(jobs).all()).toHaveLength(1);
+  });
+
+  it("does not count a unique unclassified result as useful", async () => {
+    const { runId } = seedRun(false);
+    const catalog = createSqliteJobDiscoveryCatalog(db);
+
+    const result = await catalog.recordHit(hit(runId, "https://example.com/jobs/unknown"));
+
+    expect(result).toMatchObject({ inserted: true, jobsWritten: 0, isUseful: false });
   });
 
   it("does not verify a custom source removed from structured verification settings", async () => {

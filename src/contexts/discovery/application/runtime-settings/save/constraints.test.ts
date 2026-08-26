@@ -37,6 +37,18 @@ const setNumericSetting: Record<RuntimeNumericSetting, SetNumericSetting> = {
     ...settings,
     discovery: { ...settings.discovery, runHistoryLimit },
   }),
+  minimumUsefulHitsPerPage: (settings, minimumUsefulHitsPerPage) => ({
+    ...settings,
+    discovery: { ...settings.discovery, minimumUsefulHitsPerPage },
+  }),
+  maxPagesPerLane: (settings, maxPagesPerLane) => ({
+    ...settings,
+    discovery: { ...settings.discovery, maxPagesPerLane },
+  }),
+  maxRequestsPerRun: (settings, maxRequestsPerRun) => ({
+    ...settings,
+    discovery: { ...settings.discovery, maxRequestsPerRun },
+  }),
   providerConcurrency: (settings, concurrency) => withProviderExecution(settings, { concurrency }),
   providerRequestsPerInterval: (settings, requestsPerInterval) =>
     withProviderExecution(settings, { requestsPerInterval }),
@@ -313,6 +325,9 @@ function runtimeSettings(): RuntimeSettingsCommand {
         retryMaxTimeMs: 100_000,
       },
       strategies: ["role-first", "location-first", "phrase", "relaxed-title"],
+      minimumUsefulHitsPerPage: 1,
+      maxPagesPerLane: 3,
+      maxRequestsPerRun: 111,
       structuredVerificationSources: [],
       closedListingMarkers: ["closed"],
     },

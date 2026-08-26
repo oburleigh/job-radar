@@ -68,6 +68,27 @@ export function RuntimeSettingsForm({ settings }: RuntimeSettingsFormProps) {
             max={limits.resultsPerQuery.max}
             help="The provider-specific cap below can reduce this value."
           />
+          <NumberField
+            label="Useful hits required for another page"
+            name="minimumUsefulHitsPerPage"
+            value={discovery.minimumUsefulHitsPerPage}
+            min={limits.minimumUsefulHitsPerPage.min}
+            max={limits.minimumUsefulHitsPerPage.max}
+          />
+          <NumberField
+            label="Maximum pages per search lane"
+            name="maxPagesPerLane"
+            value={discovery.maxPagesPerLane}
+            min={limits.maxPagesPerLane.min}
+            max={limits.maxPagesPerLane.max}
+          />
+          <NumberField
+            label="Maximum requests per run"
+            name="maxRequestsPerRun"
+            value={discovery.maxRequestsPerRun}
+            min={limits.maxRequestsPerRun.min}
+            max={limits.maxRequestsPerRun.max}
+          />
           <label className="form-span-two">
             <span>HTTP user agent</span>
             <input name="userAgent" required defaultValue={network.userAgent} />

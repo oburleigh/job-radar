@@ -49,6 +49,12 @@ export const defaultProviderExecutionSettings = {
   retryMaxTimeMs: 100_000,
 } as const satisfies RuntimeSettings["discovery"]["providerExecution"];
 
+export const defaultAdaptivePaginationSettings = {
+  minimumUsefulHitsPerPage: 1,
+  maxPagesPerLane: 3,
+  maxRequestsPerRun: 111,
+} as const;
+
 export const defaultMarketVocabulary = {
   markets: [
     {
@@ -76,6 +82,7 @@ const settingDefaults: SettingDefault[] = [
       resultsPerQuery: 20,
       boardJobLimit: 200,
       strategies: ["role-first", "location-first", "phrase", "relaxed-title"],
+      ...defaultAdaptivePaginationSettings,
       searchFreshnessDays: 0,
       workYieldBatchSize: 25,
       runHistoryLimit: 100,
@@ -386,20 +393,31 @@ export function bootstrapJobRadar(database: Database, now = new Date()): void {
       .from(appSettings)
       .where(eq(appSettings.key, "discovery"))
       .get()?.value;
-    if (
-      typeof discovery === "object" &&
-      discovery !== null &&
-      !Array.isArray(discovery) &&
-      !("providerExecution" in discovery)
-    ) {
-      transaction
-        .update(appSettings)
-        .set({
-          value: { ...discovery, providerExecution: defaultProviderExecutionSettings },
-          updatedAt: now,
-        })
-        .where(eq(appSettings.key, "discovery"))
-        .run();
+    if (typeof discovery === "object" && discovery !== null && !Array.isArray(discovery)) {
+      const missingDefaults = {
+        ...(!("providerExecution" in discovery)
+          ? { providerExecution: defaultProviderExecutionSettings }
+          : {}),
+        ...(!("minimumUsefulHitsPerPage" in discovery)
+          ? { minimumUsefulHitsPerPage: defaultAdaptivePaginationSettings.minimumUsefulHitsPerPage }
+          : {}),
+        ...(!("maxPagesPerLane" in discovery)
+          ? { maxPagesPerLane: defaultAdaptivePaginationSettings.maxPagesPerLane }
+          : {}),
+        ...(!("maxRequestsPerRun" in discovery)
+          ? { maxRequestsPerRun: defaultAdaptivePaginationSettings.maxRequestsPerRun }
+          : {}),
+      };
+      if (Object.keys(missingDefaults).length > 0) {
+        transaction
+          .update(appSettings)
+          .set({
+            value: { ...discovery, ...missingDefaults },
+            updatedAt: now,
+          })
+          .where(eq(appSettings.key, "discovery"))
+          .run();
+      }
     }
     transaction
       .insert(atsIntegrations)

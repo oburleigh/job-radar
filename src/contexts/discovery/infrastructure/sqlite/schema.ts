@@ -118,6 +118,9 @@ export const discoveryRuns = sqliteTable(
     queryErrorCount: integer("query_error_count").notNull().default(0),
     syncErrorCount: integer("sync_error_count").notNull().default(0),
     error: text("error").notNull().default(""),
+    budgetStopReason: text("budget_stop_reason", {
+      enum: ["max-requests-per-run"],
+    }),
     startedAt: timestamp("started_at").notNull(),
     heartbeatAt: timestamp("heartbeat_at"),
     finishedAt: timestamp("finished_at"),
@@ -157,6 +160,14 @@ export const discoveryQueries = sqliteTable(
     hitCount: integer("hit_count").notNull().default(0),
     usefulHitCount: integer("useful_hit_count").notNull().default(0),
     hasMore: integer("has_more", { mode: "boolean" }),
+    stopReason: text("stop_reason", {
+      enum: [
+        "no-more-results",
+        "insufficient-useful-hits",
+        "max-pages-per-lane",
+        "max-requests-per-run",
+      ],
+    }),
     error: text("error").notNull().default(""),
     startedAt: timestamp("started_at"),
     finishedAt: timestamp("finished_at"),

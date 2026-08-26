@@ -13,7 +13,10 @@ import { ATS_TYPES } from "@/contexts/discovery/infrastructure/job-sources/ats-i
 import { db } from "@/contexts/discovery/infrastructure/sqlite/database";
 import { appSettings, atsIntegrations } from "@/contexts/discovery/infrastructure/sqlite/schema";
 
-import { defaultProviderExecutionSettings } from "./bootstrap-job-radar";
+import {
+  defaultAdaptivePaginationSettings,
+  defaultProviderExecutionSettings,
+} from "./bootstrap-job-radar";
 
 const integer = (constraint: { readonly min: number; readonly max: number }) =>
   z.number().int().min(constraint.min).max(constraint.max);
@@ -47,6 +50,15 @@ const discoverySchema = z
     runHistoryLimit: integer(runtimeSettingConstraints.runHistoryLimit),
     strategies: strategyListSchema.optional(),
     titleSearchMode: legacyTitleSearchModeSchema.optional(),
+    minimumUsefulHitsPerPage: integer(runtimeSettingConstraints.minimumUsefulHitsPerPage).default(
+      defaultAdaptivePaginationSettings.minimumUsefulHitsPerPage,
+    ),
+    maxPagesPerLane: integer(runtimeSettingConstraints.maxPagesPerLane).default(
+      defaultAdaptivePaginationSettings.maxPagesPerLane,
+    ),
+    maxRequestsPerRun: integer(runtimeSettingConstraints.maxRequestsPerRun).default(
+      defaultAdaptivePaginationSettings.maxRequestsPerRun,
+    ),
     providerExecution: z
       .object({
         concurrency: integer(runtimeSettingConstraints.providerConcurrency),

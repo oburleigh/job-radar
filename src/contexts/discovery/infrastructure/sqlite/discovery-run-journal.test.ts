@@ -99,16 +99,23 @@ describe("SQLite discovery run journal cancellation guards", () => {
       hitCount: 7,
       usefulHitCount: 3,
       hasMore: true,
+      stopReason: "max-pages-per-lane",
       finishedAt: new Date(now.getTime() + 1_000),
     });
     expect(
       sqlite
         .prepare(
-          `select status, hit_count, useful_hit_count, has_more
+          `select status, hit_count, useful_hit_count, has_more, stop_reason
            from discovery_queries where id = ?`,
         )
         .get(admitted.id),
-    ).toEqual({ status: "completed", hit_count: 7, useful_hit_count: 3, has_more: 1 });
+    ).toEqual({
+      status: "completed",
+      hit_count: 7,
+      useful_hit_count: 3,
+      has_more: 1,
+      stop_reason: "max-pages-per-lane",
+    });
 
     expect(() =>
       journal.admitRequest(run.id + 1_000, {
@@ -129,6 +136,22 @@ describe("SQLite discovery run journal cancellation guards", () => {
         .prepare("select count(*) as count from discovery_queries where run_id = ?")
         .get(run.id),
     ).toEqual({ count: 1 });
+
+    journal.complete({
+      runId: run.id,
+      progress: { hitCount: 7, jobsUpserted: 3, queryErrorCount: 0, syncErrorCount: 0 },
+      boardsDiscovered: 0,
+      matchesFound: 2,
+      errors: [],
+      allQueriesFailed: false,
+      budgetStopReason: "max-requests-per-run",
+      finishedAt: new Date(now.getTime() + 2_000),
+    });
+    expect(
+      sqlite
+        .prepare("select status, budget_stop_reason from discovery_runs where id = ?")
+        .get(run.id),
+    ).toEqual({ status: "completed", budget_stop_reason: "max-requests-per-run" });
   });
 
   it("does not prepare a reserved run after it was cancelled", () => {
@@ -179,6 +202,7 @@ describe("SQLite discovery run journal cancellation guards", () => {
       matchesFound: 2,
       errors: [],
       allQueriesFailed: false,
+      budgetStopReason: null,
       finishedAt: new Date(now.getTime() + 1_000),
     });
     journal.fail({
@@ -242,6 +266,7 @@ describe("SQLite discovery run journal cancellation guards", () => {
       hitCount: 4,
       usefulHitCount: 2,
       hasMore: true,
+      stopReason: "max-requests-per-run",
       finishedAt: new Date(now.getTime() + 1_000),
     });
     journal.failQuery(query.id, "late failure", new Date(now.getTime() + 2_000));
