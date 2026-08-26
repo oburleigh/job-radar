@@ -1,5 +1,6 @@
 import { iso31661, iso31662 } from "iso-3166";
 import { z } from "zod";
+import { SEARCH_STRATEGIES } from "@/contexts/discovery/application/discovery-runs/planning/plan-search-lanes";
 import {
   runtimeSettingConstraints,
   runtimeTextConstraints,
@@ -28,31 +29,46 @@ const networkSchema = z.object({
     .max(runtimeTextConstraints.userAgent.maxLength),
 });
 
-const discoverySchema = z.object({
-  resultsPerQuery: integer(runtimeSettingConstraints.resultsPerQuery),
-  boardJobLimit: integer(runtimeSettingConstraints.boardJobLimit),
-  searchFreshnessDays: integer(runtimeSettingConstraints.searchFreshnessDays),
-  workYieldBatchSize: integer(runtimeSettingConstraints.workYieldBatchSize),
-  runHistoryLimit: integer(runtimeSettingConstraints.runHistoryLimit),
-  titleSearchMode: z.enum(["title", "anywhere"]),
-  providerExecution: z
-    .object({
-      concurrency: integer(runtimeSettingConstraints.providerConcurrency),
-      requestsPerInterval: integer(runtimeSettingConstraints.providerRequestsPerInterval),
-      intervalMs: integer(runtimeSettingConstraints.providerIntervalMs),
-      maxAttempts: integer(runtimeSettingConstraints.providerMaxAttempts),
-      retryMinDelayMs: integer(runtimeSettingConstraints.providerRetryMinDelayMs),
-      retryMaxDelayMs: integer(runtimeSettingConstraints.providerRetryMaxDelayMs),
-      retryMaxTimeMs: integer(runtimeSettingConstraints.providerRetryMaxTimeMs),
-    })
-    .refine((policy) => policy.retryMaxDelayMs >= policy.retryMinDelayMs, {
-      message: "Maximum retry delay must be at least the first retry delay",
-      path: ["retryMaxDelayMs"],
-    })
-    .default(defaultProviderExecutionSettings),
-  structuredVerificationSources: z.array(z.string().min(1)),
-  closedListingMarkers: z.array(z.string().min(1)),
-});
+const strategySchema = z.enum(SEARCH_STRATEGIES);
+const strategyListSchema = z
+  .array(strategySchema)
+  .min(1)
+  .refine((strategies) => new Set(strategies).size === strategies.length, {
+    message: "Search strategies must be unique",
+  });
+const legacyTitleSearchModeSchema = z.enum(["title", "anywhere"]);
+
+const discoverySchema = z
+  .object({
+    resultsPerQuery: integer(runtimeSettingConstraints.resultsPerQuery),
+    boardJobLimit: integer(runtimeSettingConstraints.boardJobLimit),
+    searchFreshnessDays: integer(runtimeSettingConstraints.searchFreshnessDays),
+    workYieldBatchSize: integer(runtimeSettingConstraints.workYieldBatchSize),
+    runHistoryLimit: integer(runtimeSettingConstraints.runHistoryLimit),
+    strategies: strategyListSchema.optional(),
+    titleSearchMode: legacyTitleSearchModeSchema.optional(),
+    providerExecution: z
+      .object({
+        concurrency: integer(runtimeSettingConstraints.providerConcurrency),
+        requestsPerInterval: integer(runtimeSettingConstraints.providerRequestsPerInterval),
+        intervalMs: integer(runtimeSettingConstraints.providerIntervalMs),
+        maxAttempts: integer(runtimeSettingConstraints.providerMaxAttempts),
+        retryMinDelayMs: integer(runtimeSettingConstraints.providerRetryMinDelayMs),
+        retryMaxDelayMs: integer(runtimeSettingConstraints.providerRetryMaxDelayMs),
+        retryMaxTimeMs: integer(runtimeSettingConstraints.providerRetryMaxTimeMs),
+      })
+      .refine((policy) => policy.retryMaxDelayMs >= policy.retryMinDelayMs, {
+        message: "Maximum retry delay must be at least the first retry delay",
+        path: ["retryMaxDelayMs"],
+      })
+      .default(defaultProviderExecutionSettings),
+    structuredVerificationSources: z.array(z.string().min(1)),
+    closedListingMarkers: z.array(z.string().min(1)),
+  })
+  .transform(({ titleSearchMode, strategies, ...settings }) => ({
+    ...settings,
+    strategies: strategies ?? legacyStrategies(titleSearchMode ?? "title"),
+  }));
 
 const uiSchema = z.object({
   discoveryPollIntervalMs: integer(runtimeSettingConstraints.discoveryPollIntervalMs),
@@ -76,22 +92,54 @@ const matchingSchema = z.object({
   unrestrictedRemotePhrases: z.array(z.string().min(1)),
 });
 
-const providerSchema = z.object({
-  label: z.string().min(1),
-  endpoint: z.url(),
-  maxResults: integer(runtimeSettingConstraints.providerMaxResults),
-  parameters: z.record(z.string(), z.string()),
-  apiKeyEnv: z.string().regex(/^[A-Z][A-Z0-9_]*$/),
-  enabled: z.boolean(),
-  priority: z.number().int().nonnegative(),
-  titleSearchMode: z.enum(["title", "anywhere"]).nullable(),
-});
-
+const providerOwnedParameterKeys = new Set([
+  "country",
+  "search_lang",
+  "ui_lang",
+  "offset",
+  "location",
+  "gl",
+  "hl",
+  "start",
+  "page",
+]);
 const marketKeySchema = z
   .string()
   .regex(
     /^(?:country:[A-Z]{2}|subdivision:[A-Z]{2}-[A-Z0-9]{1,3}|city:[A-Z]{2}:[a-z0-9][a-z0-9-]*)$/,
   );
+
+const providerSchema = z
+  .object({
+    label: z.string().min(1),
+    endpoint: z.url(),
+    maxResults: integer(runtimeSettingConstraints.providerMaxResults),
+    parameters: z
+      .record(z.string(), z.string())
+      .refine(
+        (parameters) =>
+          Object.keys(parameters).every((key) => !providerOwnedParameterKeys.has(key)),
+        {
+          message: "Provider geography and pagination parameters are owned by the adapter",
+        },
+      ),
+    apiKeyEnv: z.string().regex(/^[A-Z][A-Z0-9_]*$/),
+    enabled: z.boolean(),
+    priority: z.number().int().nonnegative(),
+    strategies: strategyListSchema.nullable().optional(),
+    titleSearchMode: legacyTitleSearchModeSchema.nullable().optional(),
+    marketLocations: z.record(marketKeySchema, z.string().trim().min(1)).default({}),
+  })
+  .transform(({ titleSearchMode, strategies, ...provider }) => ({
+    ...provider,
+    strategies:
+      strategies !== undefined
+        ? strategies
+        : titleSearchMode === null || titleSearchMode === undefined
+          ? null
+          : legacyStrategies(titleSearchMode),
+  }));
+
 const marketEntrySchema = z.object({
   key: marketKeySchema,
   label: z.string().trim().min(1).optional(),
@@ -220,6 +268,10 @@ export function parseMarketVocabulary(value: unknown): MarketVocabulary {
   return marketVocabularySchema.parse(value);
 }
 
+export function parseSearchProviders(value: unknown): JobRadarConfig["searchProviders"] {
+  return searchProvidersSchema.parse(value);
+}
+
 export function isMarketVocabulary(value: MarketVocabulary): boolean {
   return marketVocabularySchema.safeParse(value).success;
 }
@@ -260,7 +312,7 @@ export function getJobRadarConfig(): JobRadarConfig {
     ui: uiSchema.parse(requireSetting(settings, "ui")),
     matching: matchingSchema.parse(requireSetting(settings, "matching")),
     marketVocabulary: parseMarketVocabulary(requireSetting(settings, "marketVocabulary")),
-    searchProviders: searchProvidersSchema.parse(requireSetting(settings, "searchProviders")),
+    searchProviders: parseSearchProviders(requireSetting(settings, "searchProviders")),
     integrationPolicy: integrationPolicySchema.parse(requireSetting(settings, "integrationPolicy")),
     profileDefaults: profileDefaultsSchema.parse(requireSetting(settings, "profileDefaults")),
     ats,
@@ -342,4 +394,10 @@ function marketCountryCode(key: string): string {
 
 function normalizeMarketTerm(value: string): string {
   return value.trim().toLocaleLowerCase();
+}
+
+function legacyStrategies(mode: "title" | "anywhere") {
+  return mode === "anywhere"
+    ? (["relaxed-title"] as const)
+    : (["role-first", "location-first", "phrase"] as const);
 }

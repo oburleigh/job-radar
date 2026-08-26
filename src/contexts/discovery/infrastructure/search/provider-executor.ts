@@ -35,9 +35,12 @@ export function createScheduledSearchProvider(
         executeWithRetry(provider.name, prepared, executionSignal, policy, requestQueue),
       signal ? { signal } : undefined,
     );
-  const prepare: SearchProvider["prepare"] = (query, request = {}) => {
-    const prepared = provider.prepare(query, request);
-    return { query: prepared.query, execute: (signal) => schedule(prepared, signal) };
+  const prepare: SearchProvider["prepare"] = (lane, request = {}) => {
+    const prepared = provider.prepare(lane, request);
+    return {
+      renderedQuery: prepared.renderedQuery,
+      execute: (signal) => schedule(prepared, signal),
+    };
   };
 
   return {

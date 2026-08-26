@@ -75,7 +75,7 @@ const settingDefaults: SettingDefault[] = [
     value: {
       resultsPerQuery: 20,
       boardJobLimit: 200,
-      titleSearchMode: "title",
+      strategies: ["role-first", "location-first", "phrase", "relaxed-title"],
       searchFreshnessDays: 0,
       workYieldBatchSize: 25,
       runHistoryLimit: 100,
@@ -151,7 +151,12 @@ const settingDefaults: SettingDefault[] = [
         apiKeyEnv: "SERPER_API_KEY",
         enabled: true,
         priority: 10,
-        titleSearchMode: "title",
+        strategies: ["role-first", "location-first", "phrase", "relaxed-title"],
+        marketLocations: {
+          "country:AE": "United Arab Emirates",
+          "subdivision:AE-AZ": "Abu Dhabi, United Arab Emirates",
+          "subdivision:AE-DU": "Dubai, United Arab Emirates",
+        },
       },
       brave: {
         label: "Brave Search",
@@ -166,7 +171,12 @@ const settingDefaults: SettingDefault[] = [
         apiKeyEnv: "BRAVE_SEARCH_API_KEY",
         enabled: true,
         priority: 20,
-        titleSearchMode: null,
+        strategies: null,
+        marketLocations: {
+          "country:AE": "United Arab Emirates",
+          "subdivision:AE-AZ": "Abu Dhabi, United Arab Emirates",
+          "subdivision:AE-DU": "Dubai, United Arab Emirates",
+        },
       },
       serpapi: {
         label: "Google via SerpAPI",
@@ -176,7 +186,12 @@ const settingDefaults: SettingDefault[] = [
         apiKeyEnv: "SERPAPI_KEY",
         enabled: true,
         priority: 30,
-        titleSearchMode: null,
+        strategies: null,
+        marketLocations: {
+          "country:AE": "United Arab Emirates",
+          "subdivision:AE-AZ": "Abu Dhabi, United Arab Emirates",
+          "subdivision:AE-DU": "Dubai, United Arab Emirates",
+        },
       },
     },
   },

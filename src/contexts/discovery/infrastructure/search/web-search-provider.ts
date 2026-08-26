@@ -1,5 +1,10 @@
 import { z } from "zod";
 import type {
+  SearchLane,
+  SearchStrategy,
+} from "@/contexts/discovery/application/discovery-runs/planning/plan-search-lanes";
+import type {
+  SearchPage,
   SearchProvider,
   SearchRequest,
   SearchResult,
@@ -18,23 +23,27 @@ const googleResultSchema = z.looseObject({
   link: z.url(),
 });
 const braveResponseSchema = z.union([
-  z
-    .looseObject({
-      web: z.looseObject({ results: z.array(braveResultSchema) }),
-    })
-    .transform((payload) => payload.web.results),
+  z.looseObject({
+    query: z.looseObject({ more_results_available: z.boolean().optional() }).optional(),
+    web: z.looseObject({ results: z.array(braveResultSchema) }),
+  }),
   z
     .looseObject({
       type: z.string(),
       query: z.looseObject({}),
       mixed: z.looseObject({}),
     })
-    .transform(() => [] as z.infer<typeof braveResultSchema>[]),
+    .transform(() => ({ web: { results: [] as z.infer<typeof braveResultSchema>[] } })),
 ]);
 const serpApiResponseSchema = z.looseObject({
   organic_results: z.array(googleResultSchema),
+  serpapi_pagination: z.looseObject({ next: z.string().optional() }).optional(),
 });
-const serperResponseSchema = z.looseObject({ organic: z.array(googleResultSchema) });
+const serperResponseSchema = z.looseObject({
+  organic: z.array(googleResultSchema),
+  hasMore: z.boolean().optional(),
+  pagination: z.looseObject({ next: z.string().optional() }).optional(),
+});
 const providerErrorSchema = z.looseObject({ message: z.string().optional() });
 
 export class BraveSearchProvider implements SearchProvider {
@@ -49,34 +58,37 @@ export class BraveSearchProvider implements SearchProvider {
     }
   }
 
-  prepare(query: string, options: SearchRequest = {}) {
+  prepare(lane: SearchLane, options: SearchRequest = {}) {
+    const query = renderSearchLane(lane);
     return {
-      query,
-      execute: (signal?: AbortSignal) => this.execute(query, options, signal),
+      renderedQuery: query,
+      execute: (signal?: AbortSignal) => this.execute(lane, query, options, signal),
     };
   }
 
   private async execute(
+    lane: SearchLane,
     query: string,
     options: SearchRequest,
     signal?: AbortSignal,
-  ): Promise<SearchResult[]> {
+  ): Promise<SearchPage> {
     const config = getJobRadarConfig();
     const providerConfig = requireProviderConfig(this.name);
+    const requestedLimit = Math.min(
+      options.count ?? config.discovery.resultsPerQuery,
+      providerConfig.maxResults,
+    );
     const url = new URL(providerConfig.endpoint);
     url.searchParams.set("q", query);
-    url.searchParams.set(
-      "count",
-      String(
-        Math.min(options.count ?? config.discovery.resultsPerQuery, providerConfig.maxResults),
-      ),
-    );
+    url.searchParams.set("count", String(requestedLimit));
     for (const [key, value] of Object.entries(providerConfig.parameters)) {
       url.searchParams.set(key, value);
     }
     if (options.maxAgeDays) {
       url.searchParams.set("freshness", dateRange(options.maxAgeDays, new Date()));
     }
+    addBraveMarket(url, lane);
+    url.searchParams.set("offset", String((options.page ?? 1) - 1));
 
     const response = await this.fetcher(url, {
       headers: {
@@ -100,11 +112,17 @@ export class BraveSearchProvider implements SearchProvider {
       braveResponseSchema,
       await response.json(),
     );
-    return results.map((result) => ({
+    const mapped = results.web.results.map((result) => ({
       title: result.title,
       url: result.url,
       snippet: result.description,
     }));
+    return {
+      results: mapped,
+      hasMore:
+        ("query" in results ? results.query?.more_results_available : undefined) ??
+        mapped.length === requestedLimit,
+    };
   }
 }
 
@@ -120,32 +138,35 @@ export class SerpApiSearchProvider implements SearchProvider {
     }
   }
 
-  prepare(query: string, options: SearchRequest = {}) {
+  prepare(lane: SearchLane, options: SearchRequest = {}) {
+    const query = renderSearchLane(lane);
     return {
-      query,
-      execute: (signal?: AbortSignal) => this.execute(query, options, signal),
+      renderedQuery: query,
+      execute: (signal?: AbortSignal) => this.execute(lane, query, options, signal),
     };
   }
 
   private async execute(
+    lane: SearchLane,
     query: string,
     options: SearchRequest,
     signal?: AbortSignal,
-  ): Promise<SearchResult[]> {
+  ): Promise<SearchPage> {
     const config = getJobRadarConfig();
     const providerConfig = requireProviderConfig(this.name);
+    const requestedLimit = Math.min(
+      options.count ?? config.discovery.resultsPerQuery,
+      providerConfig.maxResults,
+    );
     const url = new URL(providerConfig.endpoint);
     url.searchParams.set("q", query);
-    url.searchParams.set(
-      "num",
-      String(
-        Math.min(options.count ?? config.discovery.resultsPerQuery, providerConfig.maxResults),
-      ),
-    );
+    url.searchParams.set("num", String(requestedLimit));
     url.searchParams.set("api_key", this.apiKey);
     for (const [key, value] of Object.entries(providerConfig.parameters)) {
       url.searchParams.set(key, value);
     }
+    addGoogleMarket(url.searchParams, lane, providerConfig.marketLocations[lane.market.scope.key]);
+    url.searchParams.set("start", String(((options.page ?? 1) - 1) * requestedLimit));
 
     const response = await this.fetcher(url, {
       headers: { Accept: "application/json" },
@@ -166,11 +187,18 @@ export class SerpApiSearchProvider implements SearchProvider {
       serpApiResponseSchema,
       await response.json(),
     );
-    return payload.organic_results.map((result) => ({
+    const results = payload.organic_results.map((result) => ({
       title: result.title,
       url: result.link,
       snippet: result.snippet,
     }));
+    return {
+      results,
+      hasMore:
+        payload.serpapi_pagination === undefined
+          ? results.length === requestedLimit
+          : Boolean(payload.serpapi_pagination.next),
+    };
   }
 }
 
@@ -186,24 +214,33 @@ export class SerperSearchProvider implements SearchProvider {
     }
   }
 
-  prepare(query: string, options: SearchRequest = {}) {
+  prepare(lane: SearchLane, options: SearchRequest = {}) {
+    const query = renderSearchLane(lane);
     return {
-      query,
-      execute: (signal?: AbortSignal) => this.execute(query, options, signal),
+      renderedQuery: query,
+      execute: (signal?: AbortSignal) => this.execute(lane, query, options, signal),
     };
   }
 
   private async execute(
+    lane: SearchLane,
     query: string,
     options: SearchRequest,
     signal?: AbortSignal,
-  ): Promise<SearchResult[]> {
+  ): Promise<SearchPage> {
     const config = getJobRadarConfig();
     const providerConfig = requireProviderConfig(this.name);
+    const requestedLimit = Math.min(
+      options.count ?? config.discovery.resultsPerQuery,
+      providerConfig.maxResults,
+    );
     const body = {
       ...providerConfig.parameters,
       q: query,
-      num: Math.min(options.count ?? config.discovery.resultsPerQuery, providerConfig.maxResults),
+      num: requestedLimit,
+      ...(lane.market.countryCode ? { gl: lane.market.countryCode.toLowerCase() } : {}),
+      ...(lane.market.searchLanguage ? { hl: lane.market.searchLanguage } : {}),
+      page: options.page ?? 1,
       ...(options.maxAgeDays ? { tbs: googleFreshness(options.maxAgeDays) } : {}),
     };
     const response = await this.fetcher(providerConfig.endpoint, {
@@ -231,11 +268,19 @@ export class SerperSearchProvider implements SearchProvider {
       serperResponseSchema,
       await response.json(),
     );
-    return payload.organic.map((result) => ({
+    const results = payload.organic.map((result) => ({
       title: result.title,
       url: result.link,
       snippet: result.snippet,
     }));
+    return {
+      results,
+      hasMore:
+        payload.hasMore ??
+        (payload.pagination === undefined
+          ? results.length === requestedLimit
+          : Boolean(payload.pagination.next)),
+    };
   }
 }
 
@@ -244,13 +289,96 @@ export class JsonSearchProvider implements SearchProvider {
 
   constructor(private readonly hits: SearchResult[]) {}
 
-  prepare(query: string, options: SearchRequest = {}) {
+  prepare(lane: SearchLane, options: SearchRequest = {}) {
+    const query = renderSearchLane(lane);
     return {
-      query,
-      execute: async () =>
-        this.hits.slice(0, options.count ?? getJobRadarConfig().discovery.resultsPerQuery),
+      renderedQuery: query,
+      execute: async (_signal?: AbortSignal) => {
+        const limit = options.count ?? getJobRadarConfig().discovery.resultsPerQuery;
+        const start = ((options.page ?? 1) - 1) * limit;
+        const results = this.hits.slice(start, start + limit);
+        return { results, hasMore: results.length === limit };
+      },
     };
   }
+}
+
+export function renderSearchLane(lane: SearchLane): string {
+  const source = `site:${lane.source.pattern}`;
+  const market = orClause(lane.market.scope.terms.map(quoted));
+  if (lane.kind === "board-discovery") {
+    return `${source} ${market}`;
+  }
+
+  const phrases = orClause(lane.titleTerms.map(quoted));
+  if (lane.kind === "worldwide-remote") {
+    return `${source} ${phrases} ${market}`;
+  }
+
+  const titled = orClause(lane.titleTerms.map(titleClause));
+  const strategy = lane.strategy;
+  if (!strategy) {
+    throw new Error("Role search lanes require a strategy");
+  }
+  strategy satisfies SearchStrategy;
+  if (strategy === "role-first") {
+    return `${source} ${titled} ${market}`;
+  }
+  if (strategy === "location-first") {
+    return `${source} ${market} ${titled}`;
+  }
+  if (strategy === "phrase") {
+    return `${source} ${phrases} ${market}`;
+  }
+  return `${source} ${orClause(lane.titleTerms.map(relaxedTitle))} ${market}`;
+}
+
+function addBraveMarket(url: URL, lane: SearchLane): void {
+  if (lane.market.countryCode) {
+    url.searchParams.set("country", lane.market.countryCode);
+  }
+  if (lane.market.searchLanguage) {
+    url.searchParams.set("search_lang", lane.market.searchLanguage);
+    url.searchParams.set(
+      "ui_lang",
+      lane.market.countryCode
+        ? `${lane.market.searchLanguage}-${lane.market.countryCode}`
+        : lane.market.searchLanguage,
+    );
+  }
+}
+
+function addGoogleMarket(
+  parameters: URLSearchParams,
+  lane: SearchLane,
+  configuredLocation: string | undefined,
+): void {
+  if (configuredLocation) {
+    parameters.set("location", configuredLocation);
+  }
+  if (lane.market.countryCode) {
+    parameters.set("gl", lane.market.countryCode.toLowerCase());
+  }
+  if (lane.market.searchLanguage) {
+    parameters.set("hl", lane.market.searchLanguage);
+  }
+}
+
+function titleClause(value: string): string {
+  const tokens = value.replaceAll('"', "").split(/\s+/).filter(Boolean);
+  return `(${tokens.map((token) => `intitle:"${token}"`).join(" ")})`;
+}
+
+function relaxedTitle(value: string): string {
+  return `(${value.replaceAll('"', "").split(/\s+/).filter(Boolean).join(" ")})`;
+}
+
+function quoted(value: string): string {
+  return `"${value.replaceAll('"', "")}"`;
+}
+
+function orClause(terms: readonly string[]): string {
+  return `(${terms.join(" OR ")})`;
 }
 
 export function createSearchProvider(name: string): SearchProvider {

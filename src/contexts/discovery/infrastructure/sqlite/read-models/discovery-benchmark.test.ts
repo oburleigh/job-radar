@@ -493,7 +493,7 @@ function policySnapshot() {
     resultsPerQuery: 20,
     boardJobLimit: 200,
     searchFreshnessDays: 0,
-    titleSearchMode: "title" as const,
+    strategies: ["role-first", "location-first", "phrase", "relaxed-title"] as const,
     matching: {
       exactTitleScore: 60,
       fullTokenScore: 50,

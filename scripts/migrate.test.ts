@@ -199,12 +199,24 @@ describe("database setup command", () => {
     ).toEqual({ status: "completed", query_count: 1 });
     expect(
       migrated
-        .prepare("SELECT status, hit_count, query_text FROM discovery_queries WHERE run_id = ?")
+        .prepare(
+          `SELECT status, hit_count, query_text, market_key, country_code,
+                  search_language, lane_kind, strategy, page, useful_hit_count, has_more
+           FROM discovery_queries WHERE run_id = ?`,
+        )
         .get(runId),
     ).toEqual({
       status: "completed",
       hit_count: 3,
       query_text: "site:boards.greenhouse.io Director of Engineering Singapore",
+      market_key: null,
+      country_code: null,
+      search_language: null,
+      lane_kind: null,
+      strategy: null,
+      page: null,
+      useful_hit_count: 0,
+      has_more: null,
     });
     migrated.close();
   }, 30_000);

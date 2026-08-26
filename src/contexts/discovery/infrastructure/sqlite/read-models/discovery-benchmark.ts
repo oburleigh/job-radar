@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import type { SearchStrategy } from "@/contexts/discovery/application/discovery-runs/planning/plan-search-lanes";
 import type { MatchingPolicy } from "@/contexts/discovery/domain/job-match";
 import { supportsAtsPostingLookup } from "@/contexts/discovery/infrastructure/job-sources/connectors";
 import { canonicalizeUrl, classifyUrl } from "@/contexts/discovery/infrastructure/job-sources/urls";
@@ -19,7 +20,7 @@ export interface DiscoveryBenchmarkPolicySnapshot {
   readonly resultsPerQuery: number;
   readonly boardJobLimit: number;
   readonly searchFreshnessDays: number;
-  readonly titleSearchMode: "title" | "anywhere";
+  readonly strategies: readonly SearchStrategy[];
   readonly matching: MatchingPolicy;
 }
 

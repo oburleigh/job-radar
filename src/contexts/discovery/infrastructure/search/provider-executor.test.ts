@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { SearchLane } from "@/contexts/discovery/application/discovery-runs/planning/plan-search-lanes";
 import {
   type SearchProvider,
   SearchProviderFailure,
@@ -35,13 +36,16 @@ describe("scheduled search provider", () => {
   it("does not enter the execution lane until a prepared request executes", async () => {
     const search = vi.fn<ExecuteSearch>().mockResolvedValue([]);
     const provider = createScheduledSearchProvider(testProvider(search), policy);
-    const prepared = provider.prepare("engineering leadership", { count: 20 });
+    const prepared = provider.prepare(testLane("engineering leadership"), { count: 20 });
 
-    expect(prepared.query).toBe("engineering leadership");
+    expect(prepared.renderedQuery).toBe("engineering leadership");
     expect(search).not.toHaveBeenCalled();
 
     const controller = new AbortController();
-    await expect(prepared.execute(controller.signal)).resolves.toEqual([]);
+    await expect(prepared.execute(controller.signal)).resolves.toEqual({
+      results: [],
+      hasMore: false,
+    });
 
     expect(search).toHaveBeenCalledWith("engineering leadership", {
       count: 20,
@@ -386,9 +390,15 @@ describe("scheduled search provider", () => {
 function testProvider(search: ExecuteSearch): SearchProvider {
   return {
     name: "test",
-    prepare: (query, request = {}) => ({
-      query,
-      execute: (signal) => search(query, { ...request, ...(signal ? { signal } : {}) }),
+    prepare: (lane, request = {}) => ({
+      renderedQuery: lane.titleTerms[0] ?? lane.kind,
+      execute: async (signal) => ({
+        results: await search(lane.titleTerms[0] ?? lane.kind, {
+          ...request,
+          ...(signal ? { signal } : {}),
+        }),
+        hasMore: false,
+      }),
     }),
   };
 }
@@ -399,7 +409,24 @@ function execute(
   request: SearchRequest & { readonly signal?: AbortSignal } = {},
 ) {
   const { signal, ...preparation } = request;
-  return provider.prepare(query, preparation).execute(signal);
+  return provider
+    .prepare(testLane(query), preparation)
+    .execute(signal)
+    .then((page) => page.results);
+}
+
+function testLane(title: string): SearchLane {
+  return {
+    source: { atsType: "test", pattern: "jobs.example.com" },
+    kind: "role",
+    market: {
+      scope: { key: "literal:test", label: "Test", terms: ["Test"] },
+      countryCode: null,
+      searchLanguage: null,
+    },
+    titleTerms: [title],
+    strategy: "phrase",
+  };
 }
 
 function providerFailure(

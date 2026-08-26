@@ -48,25 +48,67 @@ describe("SQLite discovery run journal cancellation guards", () => {
     const admitted = journal.admitRequest(run.id, {
       atsType: "greenhouse",
       sourcePattern: "jobs.example.com",
-      titleTerm: "Staff Engineer",
+      titleTerm: "Staff Engineer, Principal Engineer",
       text: "site:jobs.example.com Staff Engineer",
+      marketKey: "country:AE",
+      countryCode: "AE",
+      searchLanguage: "en",
+      laneKind: "role",
+      strategy: "phrase",
+      page: 1,
     });
 
     expect(admitted).toEqual({
       id: expect.any(Number),
       atsType: "greenhouse",
       sourcePattern: "jobs.example.com",
-      titleTerm: "Staff Engineer",
+      titleTerm: "Staff Engineer, Principal Engineer",
       text: "site:jobs.example.com Staff Engineer",
+      marketKey: "country:AE",
+      countryCode: "AE",
+      searchLanguage: "en",
+      laneKind: "role",
+      strategy: "phrase",
+      page: 1,
     });
     expect(
       sqlite.prepare("select query_count from discovery_runs where id = ?").get(run.id),
     ).toEqual({ query_count: 1 });
     expect(
       sqlite
-        .prepare("select status, query_text from discovery_queries where run_id = ?")
+        .prepare(
+          `select status, query_text, market_key, country_code, search_language,
+                  lane_kind, strategy, page, useful_hit_count, has_more
+           from discovery_queries where run_id = ?`,
+        )
         .get(run.id),
-    ).toEqual({ status: "planned", query_text: "site:jobs.example.com Staff Engineer" });
+    ).toEqual({
+      status: "planned",
+      query_text: "site:jobs.example.com Staff Engineer",
+      market_key: "country:AE",
+      country_code: "AE",
+      search_language: "en",
+      lane_kind: "role",
+      strategy: "phrase",
+      page: 1,
+      useful_hit_count: 0,
+      has_more: null,
+    });
+    journal.startQuery(admitted.id, now);
+    journal.completeQuery(admitted.id, {
+      hitCount: 7,
+      usefulHitCount: 3,
+      hasMore: true,
+      finishedAt: new Date(now.getTime() + 1_000),
+    });
+    expect(
+      sqlite
+        .prepare(
+          `select status, hit_count, useful_hit_count, has_more
+           from discovery_queries where id = ?`,
+        )
+        .get(admitted.id),
+    ).toEqual({ status: "completed", hit_count: 7, useful_hit_count: 3, has_more: 1 });
 
     expect(() =>
       journal.admitRequest(run.id + 1_000, {
@@ -74,6 +116,12 @@ describe("SQLite discovery run journal cancellation guards", () => {
         sourcePattern: "jobs.example.com",
         titleTerm: "Principal Engineer",
         text: "site:jobs.example.com Principal Engineer",
+        marketKey: null,
+        countryCode: null,
+        searchLanguage: null,
+        laneKind: "role",
+        strategy: "phrase",
+        page: 1,
       }),
     ).toThrow("The discovery run is not accepting requests");
     expect(
@@ -190,7 +238,12 @@ describe("SQLite discovery run journal cancellation guards", () => {
       sqlite.prepare("select status from discovery_queries where id = ?").get(query.id),
     ).toEqual({ status: "cancelled" });
 
-    journal.completeQuery(query.id, 4, new Date(now.getTime() + 1_000));
+    journal.completeQuery(query.id, {
+      hitCount: 4,
+      usefulHitCount: 2,
+      hasMore: true,
+      finishedAt: new Date(now.getTime() + 1_000),
+    });
     journal.failQuery(query.id, "late failure", new Date(now.getTime() + 2_000));
 
     expect(

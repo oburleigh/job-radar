@@ -119,11 +119,11 @@ export function RuntimeSettingsForm({ settings }: RuntimeSettingsFormProps) {
             max={limits.discoveryStaleAfterMs.max}
           />
           <label>
-            <span>Title search mode</span>
-            <select name="titleSearchMode" defaultValue={discovery.titleSearchMode}>
-              <option value="title">Page title only</option>
-              <option value="anywhere">Anywhere on page</option>
-            </select>
+            <span>Search strategies</span>
+            <textarea name="strategies" rows={4} defaultValue={discovery.strategies.join("\n")} />
+            <small className="field-help">
+              One ordered strategy per line: role-first, location-first, phrase, or relaxed-title.
+            </small>
           </label>
         </div>
         <label>
@@ -365,15 +365,21 @@ export function RuntimeSettingsForm({ settings }: RuntimeSettingsFormProps) {
                   max={limits.providerMaxResults.max}
                 />
                 <label>
-                  <span>Title query mode</span>
-                  <select
-                    name={`provider:${name}:titleSearchMode`}
-                    defaultValue={provider.titleSearchMode ?? ""}
-                  >
-                    <option value="">Use discovery default</option>
-                    <option value="title">Page title only</option>
-                    <option value="anywhere">Anywhere on page</option>
-                  </select>
+                  <span>Strategy override</span>
+                  <textarea
+                    name={`provider:${name}:strategies`}
+                    rows={4}
+                    defaultValue={provider.strategies?.join("\n") ?? ""}
+                  />
+                  <small className="field-help">Leave blank to use the discovery order.</small>
+                </label>
+                <label>
+                  <span>Market locations (JSON)</span>
+                  <textarea
+                    name={`provider:${name}:marketLocations`}
+                    rows={7}
+                    defaultValue={JSON.stringify(provider.marketLocations, null, 2)}
+                  />
                 </label>
                 <small className="field-help">Credential: {provider.apiKeyEnv}</small>
               </div>

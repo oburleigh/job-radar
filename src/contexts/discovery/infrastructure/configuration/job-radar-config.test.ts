@@ -10,6 +10,7 @@ import {
   optionalEndpoint,
   parseDiscoverySettings,
   parseMarketVocabulary,
+  parseSearchProviders,
   supportsBoardSync,
 } from "./job-radar-config";
 
@@ -79,6 +80,57 @@ describe("SQLite configuration", () => {
     expect(parseDiscoverySettings(legacy).providerExecution).toEqual(
       defaultProviderExecutionSettings,
     );
+  });
+
+  it("maps legacy title modes to ordered strategies", () => {
+    const discovery = getJobRadarConfig().discovery;
+    const legacyDiscovery = {
+      ...discovery,
+      strategies: undefined,
+      titleSearchMode: "anywhere",
+    };
+    const provider = getJobRadarConfig().searchProviders.serper;
+    if (!provider) throw new Error("Expected the Serper test configuration");
+
+    expect(parseDiscoverySettings(legacyDiscovery).strategies).toEqual(["relaxed-title"]);
+    expect(
+      parseSearchProviders({
+        serper: { ...provider, strategies: undefined, titleSearchMode: "title" },
+      }).serper?.strategies,
+    ).toEqual(["role-first", "location-first", "phrase"]);
+  });
+
+  it.each(["country", "search_lang", "ui_lang", "offset", "location", "gl", "hl", "start", "page"])(
+    "rejects adapter-owned provider parameter %s",
+    (key) => {
+      const provider = getJobRadarConfig().searchProviders.serper;
+      if (!provider) throw new Error("Expected the Serper test configuration");
+
+      expect(() =>
+        parseSearchProviders({
+          serper: { ...provider, parameters: { [key]: "override" } },
+        }),
+      ).toThrow(/owned by the adapter/);
+    },
+  );
+
+  it("rejects a provider location without a canonical market key", () => {
+    const provider = getJobRadarConfig().searchProviders.serper;
+    if (!provider) throw new Error("Expected the Serper test configuration");
+
+    expect(() =>
+      parseSearchProviders({
+        serper: { ...provider, marketLocations: { Dubai: "Dubai, United Arab Emirates" } },
+      }),
+    ).toThrow(/country|subdivision|city/);
+  });
+
+  it("rejects duplicate configured search strategies", () => {
+    const discovery = getJobRadarConfig().discovery;
+
+    expect(() =>
+      parseDiscoverySettings({ ...discovery, strategies: ["phrase", "phrase"] }),
+    ).toThrow(/unique/);
   });
 
   it("rejects a provider policy whose maximum delay is below its first delay", () => {

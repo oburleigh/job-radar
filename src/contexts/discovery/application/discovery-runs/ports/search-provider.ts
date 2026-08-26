@@ -1,3 +1,5 @@
+import type { SearchLane } from "@/contexts/discovery/application/discovery-runs/planning/plan-search-lanes";
+
 export type SearchResult = {
   readonly title: string;
   readonly url: string;
@@ -7,11 +9,17 @@ export type SearchResult = {
 export type SearchRequest = {
   readonly count?: number;
   readonly maxAgeDays?: number;
+  readonly page?: number;
+};
+
+export type SearchPage = {
+  readonly results: ReadonlyArray<SearchResult>;
+  readonly hasMore: boolean;
 };
 
 export type PreparedSearchRequest = {
-  readonly query: string;
-  readonly execute: (signal?: AbortSignal) => Promise<ReadonlyArray<SearchResult>>;
+  readonly renderedQuery: string;
+  readonly execute: (signal?: AbortSignal) => Promise<SearchPage>;
 };
 
 export type SearchProviderFailureClassification = "fatal" | "transient";
@@ -43,5 +51,5 @@ export class SearchProviderFailure extends Error {
 
 export interface SearchProvider {
   readonly name: string;
-  readonly prepare: (query: string, request?: SearchRequest) => PreparedSearchRequest;
+  readonly prepare: (lane: SearchLane, request?: SearchRequest) => PreparedSearchRequest;
 }

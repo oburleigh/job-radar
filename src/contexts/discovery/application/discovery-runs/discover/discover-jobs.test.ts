@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createJobDiscovery } from "@/contexts/discovery/application/discovery-runs/discover/discover-jobs";
+import type { SearchLane } from "@/contexts/discovery/application/discovery-runs/planning/plan-search-lanes";
 import type {
   DiscoveryRunJournal,
   DiscoveryRunProgress,
@@ -69,7 +70,11 @@ describe("discover jobs", () => {
       syncErrors: 0,
     });
     expect(search).toHaveBeenCalledTimes(2);
-    expect(search).toHaveBeenCalledWith(expect.any(String), { count: 25, maxAgeDays: 30 });
+    expect(search).toHaveBeenCalledWith(expect.any(String), {
+      count: 25,
+      maxAgeDays: 30,
+      page: 1,
+    });
     expect(recordHit).toHaveBeenCalledTimes(2);
     expect(synchronizeBoard).toHaveBeenCalledOnce();
     expect(synchronizeBoard).toHaveBeenCalledWith(11, 200);
@@ -105,10 +110,10 @@ describe("discover jobs", () => {
     const journal = recordingJournal();
     const execute = vi.fn(async (signal?: AbortSignal) => {
       expect(signal).toBe(controller.signal);
-      return [];
+      return { results: [], hasMore: false };
     });
-    const prepare = vi.fn((query: string) => ({
-      query: `rendered:${query}`,
+    const prepare = vi.fn((lane: SearchLane) => ({
+      renderedQuery: `rendered:${lane.kind}:${lane.source.pattern}`,
       execute,
     }));
     const discovery = createJobDiscovery({
@@ -171,7 +176,7 @@ describe("discover jobs", () => {
         allQueriesFailed: true,
         errors: [
           "jobs.example.com / VP Engineering: Search provider timed out",
-          "jobs.example.com / Board discovery: Search provider timed out",
+          "jobs.example.com / board-discovery: Search provider timed out",
         ],
       }),
     ]);
@@ -614,7 +619,7 @@ function configuredSetup(): DiscoverySetupReader {
         boardJobLimit: 200,
         searchFreshnessDays: 30,
         workYieldBatchSize: 1,
-        titleSearchMode: "title",
+        strategies: ["role-first"],
         worldwideRemoteTerms: ["remote"],
       },
     }),
@@ -633,10 +638,19 @@ function providerDirectory(search: ExecuteSearch): SearchProviderDirectory {
   return {
     get: (name) => ({
       name,
-      prepare: (query, request = {}) => ({
-        query,
-        execute: (signal) => search(query, { ...request, ...(signal ? { signal } : {}) }),
-      }),
+      prepare: (lane, request = {}) => {
+        const renderedQuery = `${lane.kind}:${lane.source.pattern}:${lane.market.scope.key}`;
+        return {
+          renderedQuery,
+          execute: async (signal) => ({
+            results: await search(renderedQuery, {
+              ...request,
+              ...(signal ? { signal } : {}),
+            }),
+            hasMore: false,
+          }),
+        };
+      },
     }),
   };
 }

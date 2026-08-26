@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { SearchLane } from "@/contexts/discovery/application/discovery-runs/planning/plan-search-lanes";
 import type {
   SearchProvider,
   SearchProviderFailure,
@@ -50,13 +51,16 @@ describe("Brave search provider", () => {
       return Response.json({ web: { results: [] } });
     });
     const provider = new BraveSearchProvider("test-key", fetcher);
-    const prepared = provider.prepare("engineering leadership", { count: 20 });
+    const prepared = provider.prepare(testLane("engineering leadership"), { count: 20 });
 
-    expect(prepared.query).toBe("engineering leadership");
+    expect(prepared.renderedQuery).toContain("engineering leadership");
     expect(fetcher).not.toHaveBeenCalled();
 
     const controller = new AbortController();
-    await expect(prepared.execute(controller.signal)).resolves.toEqual([]);
+    await expect(prepared.execute(controller.signal)).resolves.toEqual({
+      results: [],
+      hasMore: false,
+    });
 
     expect(fetcher).toHaveBeenCalledOnce();
     expect(requestSignal).toBeDefined();
@@ -258,5 +262,22 @@ function execute(
   request: SearchRequest & { readonly signal?: AbortSignal } = {},
 ) {
   const { signal, ...preparation } = request;
-  return provider.prepare(query, preparation).execute(signal);
+  return provider
+    .prepare(testLane(query), preparation)
+    .execute(signal)
+    .then((page) => page.results);
+}
+
+function testLane(title: string): SearchLane {
+  return {
+    source: { atsType: "greenhouse", pattern: "boards.greenhouse.io" },
+    kind: "role",
+    market: {
+      scope: { key: "literal:UK", label: "UK", terms: ["UK"] },
+      countryCode: null,
+      searchLanguage: null,
+    },
+    titleTerms: [title],
+    strategy: "phrase",
+  };
 }

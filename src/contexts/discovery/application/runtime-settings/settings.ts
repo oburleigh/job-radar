@@ -1,3 +1,4 @@
+import type { SearchStrategy } from "@/contexts/discovery/application/discovery-runs/planning/plan-search-lanes";
 import type { MatchingPolicy } from "@/contexts/discovery/domain/job-match";
 
 export type MarketVocabularyEntry = {
@@ -20,7 +21,8 @@ export interface SearchProviderSettings {
   readonly apiKeyEnv: string;
   readonly enabled: boolean;
   readonly priority: number;
-  readonly titleSearchMode: "title" | "anywhere" | null;
+  readonly strategies: readonly SearchStrategy[] | null;
+  readonly marketLocations: Readonly<Record<string, string>>;
 }
 
 export interface RuntimeSettings {
@@ -34,7 +36,7 @@ export interface RuntimeSettings {
     readonly searchFreshnessDays: number;
     readonly workYieldBatchSize: number;
     readonly runHistoryLimit: number;
-    readonly titleSearchMode: "title" | "anywhere";
+    readonly strategies: readonly SearchStrategy[];
     readonly providerExecution: {
       readonly concurrency: number;
       readonly requestsPerInterval: number;

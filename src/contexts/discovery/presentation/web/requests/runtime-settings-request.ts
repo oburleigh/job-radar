@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SEARCH_STRATEGIES } from "@/contexts/discovery/application/discovery-runs/planning/plan-search-lanes";
 import type { RuntimeSettingsCommand } from "@/contexts/discovery/application/runtime-settings/save/command";
 import {
   runtimeSettingConstraints,
@@ -10,6 +11,19 @@ const integer = (constraint: { readonly min: number; readonly max: number }) =>
   z.coerce.number().int().min(constraint.min).max(constraint.max);
 const number = (constraint: { readonly min: number; readonly max: number }) =>
   z.coerce.number().min(constraint.min).max(constraint.max);
+const strategyListSchema = z
+  .string()
+  .transform(splitLines)
+  .pipe(z.array(z.enum(SEARCH_STRATEGIES)).min(1));
+const marketKeySchema = z
+  .string()
+  .regex(
+    /^(?:country:[A-Z]{2}|subdivision:[A-Z]{2}-[A-Z0-9]{1,3}|city:[A-Z]{2}:[a-z0-9][a-z0-9-]*)$/,
+  );
+const marketLocationsSchema = z
+  .string()
+  .transform((value, context) => parseJson(value, context, "Provider market locations"))
+  .pipe(z.record(marketKeySchema, z.string().trim().min(1)));
 
 const marketVocabularyRequestSchema = z.object({
   markets: z.array(
@@ -43,7 +57,7 @@ const runtimeSettingsSchema = z
     providerRetryMinDelayMs: integer(runtimeSettingConstraints.providerRetryMinDelayMs),
     providerRetryMaxDelayMs: integer(runtimeSettingConstraints.providerRetryMaxDelayMs),
     providerRetryMaxTimeMs: integer(runtimeSettingConstraints.providerRetryMaxTimeMs),
-    titleSearchMode: z.enum(["title", "anywhere"]),
+    strategies: strategyListSchema,
     structuredVerificationSources: z.string().transform(splitLines),
     closedListingMarkers: z.string().transform(splitLines).pipe(z.array(z.string()).min(1)),
     discoveryPollIntervalMs: integer(runtimeSettingConstraints.discoveryPollIntervalMs),
@@ -78,7 +92,11 @@ const runtimeSettingsSchema = z
       z.object({
         endpoint: z.url(),
         maxResults: integer(runtimeSettingConstraints.providerMaxResults),
-        titleSearchMode: z.union([z.literal(""), z.enum(["title", "anywhere"])]),
+        strategies: z
+          .string()
+          .transform((value) => (value.trim() === "" ? null : splitLines(value)))
+          .pipe(z.array(z.enum(SEARCH_STRATEGIES)).min(1).nullable()),
+        marketLocations: marketLocationsSchema,
       }),
     ),
     customIntegrationPriority: integer(runtimeSettingConstraints.customIntegrationPriority),
@@ -119,7 +137,8 @@ export function parseRuntimeSettingsRequest(
       {
         endpoint: formData.get(`provider:${name}:endpoint`),
         maxResults: formData.get(`provider:${name}:maxResults`),
-        titleSearchMode: formData.get(`provider:${name}:titleSearchMode`),
+        strategies: formData.get(`provider:${name}:strategies`),
+        marketLocations: formData.get(`provider:${name}:marketLocations`),
       },
     ]),
   );
@@ -159,7 +178,7 @@ export function parseRuntimeSettingsRequest(
           retryMaxDelayMs: values.providerRetryMaxDelayMs,
           retryMaxTimeMs: values.providerRetryMaxTimeMs,
         },
-        titleSearchMode: values.titleSearchMode,
+        strategies: values.strategies,
         structuredVerificationSources: values.structuredVerificationSources,
         closedListingMarkers: values.closedListingMarkers,
       },
@@ -194,7 +213,8 @@ export function parseRuntimeSettingsRequest(
                   ...provider,
                   endpoint: updated.endpoint,
                   maxResults: updated.maxResults,
-                  titleSearchMode: updated.titleSearchMode === "" ? null : updated.titleSearchMode,
+                  strategies: updated.strategies,
+                  marketLocations: updated.marketLocations,
                 }
               : provider,
           ];
@@ -228,4 +248,13 @@ function splitLines(value: string): string[] {
         .filter(Boolean),
     ),
   ];
+}
+
+function parseJson(value: string, context: z.RefinementCtx, label: string): unknown {
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    context.addIssue({ code: "custom", message: `${label} must be valid JSON.` });
+    return z.NEVER;
+  }
 }

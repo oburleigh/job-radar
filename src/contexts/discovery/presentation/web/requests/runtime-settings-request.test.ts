@@ -162,6 +162,45 @@ describe("runtime settings request", () => {
       message: "Market vocabulary must be valid JSON.",
     });
   });
+
+  it("writes ordered strategy lists and validated provider market locations", () => {
+    const formData = runtimeSettingsForm({
+      maximumAgeDays: "45",
+      minimumScore: "82",
+      salaryCurrency: "AED",
+    });
+    formData.set("strategies", "phrase\nrole-first");
+    formData.set("provider:test:strategies", "relaxed-title\nlocation-first");
+    formData.set(
+      "provider:test:marketLocations",
+      JSON.stringify({ "country:AE": "United Arab Emirates" }),
+    );
+
+    const result = parseRuntimeSettingsRequest(formData, currentRuntimeSettings());
+
+    expect(result.ok && result.command.discovery.strategies).toEqual(["phrase", "role-first"]);
+    expect(result.ok && result.command.searchProviders.test).toMatchObject({
+      strategies: ["relaxed-title", "location-first"],
+      marketLocations: { "country:AE": "United Arab Emirates" },
+    });
+  });
+
+  it("identifies a provider location with a non-canonical market key", () => {
+    const formData = runtimeSettingsForm({
+      maximumAgeDays: "45",
+      minimumScore: "82",
+      salaryCurrency: "AED",
+    });
+    formData.set(
+      "provider:test:marketLocations",
+      JSON.stringify({ Dubai: "Dubai, United Arab Emirates" }),
+    );
+
+    expect(parseRuntimeSettingsRequest(formData, currentRuntimeSettings())).toMatchObject({
+      ok: false,
+      field: "provider:test:marketLocations",
+    });
+  });
 });
 
 function currentRuntimeSettings(): RuntimeSettingsCommand {
@@ -182,7 +221,7 @@ function currentRuntimeSettings(): RuntimeSettingsCommand {
         retryMaxDelayMs: 4_000,
         retryMaxTimeMs: 100_000,
       },
-      titleSearchMode: "title",
+      strategies: ["role-first", "location-first", "phrase", "relaxed-title"],
       structuredVerificationSources: ["web3-career"],
       closedListingMarkers: ["no longer available"],
     },
@@ -223,7 +262,8 @@ function currentRuntimeSettings(): RuntimeSettingsCommand {
         apiKeyEnv: "TEST_SEARCH_API_KEY",
         enabled: true,
         priority: 10,
-        titleSearchMode: null,
+        strategies: null,
+        marketLocations: {},
       },
     },
     integrationPolicy: { customPriority: 200 },
@@ -253,7 +293,7 @@ function runtimeSettingsForm(profileDefaults: {
     providerRetryMinDelayMs: String(config.discovery.providerExecution.retryMinDelayMs),
     providerRetryMaxDelayMs: String(config.discovery.providerExecution.retryMaxDelayMs),
     providerRetryMaxTimeMs: String(config.discovery.providerExecution.retryMaxTimeMs),
-    titleSearchMode: config.discovery.titleSearchMode,
+    strategies: config.discovery.strategies.join("\n"),
     structuredVerificationSources: config.discovery.structuredVerificationSources.join("\n"),
     closedListingMarkers: config.discovery.closedListingMarkers.join("\n"),
     discoveryPollIntervalMs: String(config.ui.discoveryPollIntervalMs),
@@ -283,7 +323,11 @@ function runtimeSettingsForm(profileDefaults: {
   for (const [name, provider] of Object.entries(config.searchProviders)) {
     formData.set(`provider:${name}:endpoint`, provider.endpoint);
     formData.set(`provider:${name}:maxResults`, String(provider.maxResults));
-    formData.set(`provider:${name}:titleSearchMode`, provider.titleSearchMode ?? "");
+    formData.set(`provider:${name}:strategies`, provider.strategies?.join("\n") ?? "");
+    formData.set(
+      `provider:${name}:marketLocations`,
+      JSON.stringify(provider.marketLocations, null, 2),
+    );
   }
   return formData;
 }

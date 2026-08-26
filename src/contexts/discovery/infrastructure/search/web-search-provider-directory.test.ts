@@ -1,4 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
+import type { SearchLane } from "@/contexts/discovery/application/discovery-runs/planning/plan-search-lanes";
 import {
   type SearchProvider,
   SearchProviderFailure,
@@ -20,21 +21,27 @@ afterEach(() => {
 });
 
 it("renders during preparation but chooses the execution lane only when execution starts", async () => {
-  const execute = vi.fn(async () => []);
-  const prepare = vi.fn((query: string) => ({ query: `rendered:${query}`, execute }));
+  const execute = vi.fn(async () => ({ results: [], hasMore: false }));
+  const prepare = vi.fn((lane: SearchLane) => ({
+    renderedQuery: `rendered:${lane.titleTerms[0]}`,
+    execute,
+  }));
   const directory = createWebSearchProviderDirectory({
     createProvider: (name) => ({ name, prepare }),
     readExecutionPolicy: () => policy(),
   });
 
-  const prepared = directory.get("test").prepare("one");
+  const prepared = directory.get("test").prepare(testLane("one"));
 
-  expect(prepared.query).toBe("rendered:one");
+  expect(prepared.renderedQuery).toBe("rendered:one");
   expect(prepare).toHaveBeenCalledOnce();
   expect(execute).not.toHaveBeenCalled();
 
   const controller = new AbortController();
-  await expect(prepared.execute(controller.signal)).resolves.toEqual([]);
+  await expect(prepared.execute(controller.signal)).resolves.toEqual({
+    results: [],
+    hasMore: false,
+  });
 
   expect(execute).toHaveBeenCalledWith(controller.signal);
 });
@@ -275,9 +282,15 @@ it("applies another settings change after a completed transition", async () => {
 function providerFactory(search: ExecuteSearch): (name: string) => SearchProvider {
   return (name) => ({
     name,
-    prepare: (query, request = {}) => ({
-      query,
-      execute: (signal) => search(query, { ...request, ...(signal ? { signal } : {}) }),
+    prepare: (lane, request = {}) => ({
+      renderedQuery: lane.titleTerms[0] ?? lane.kind,
+      execute: async (signal) => ({
+        results: await search(lane.titleTerms[0] ?? lane.kind, {
+          ...request,
+          ...(signal ? { signal } : {}),
+        }),
+        hasMore: false,
+      }),
     }),
   });
 }
@@ -288,7 +301,24 @@ function execute(
   request: SearchRequest & { readonly signal?: AbortSignal } = {},
 ) {
   const { signal, ...preparation } = request;
-  return provider.prepare(query, preparation).execute(signal);
+  return provider
+    .prepare(testLane(query), preparation)
+    .execute(signal)
+    .then((page) => page.results);
+}
+
+function testLane(title: string): SearchLane {
+  return {
+    source: { atsType: "test", pattern: "jobs.example.com" },
+    kind: "role",
+    market: {
+      scope: { key: "literal:test", label: "Test", terms: ["Test"] },
+      countryCode: null,
+      searchLanguage: null,
+    },
+    titleTerms: [title],
+    strategy: "phrase",
+  };
 }
 
 function policy(

@@ -77,7 +77,7 @@ function runtimeSettings(): RuntimeSettingsCommand {
         retryMaxDelayMs: 4_000,
         retryMaxTimeMs: 100_000,
       },
-      titleSearchMode: "title",
+      strategies: ["role-first", "location-first", "phrase", "relaxed-title"],
       structuredVerificationSources: [],
       closedListingMarkers: ["closed"],
     },

@@ -139,12 +139,24 @@ export const discoveryQueries = sqliteTable(
     sourcePattern: text("source_pattern").notNull(),
     titleTerm: text("title_term").notNull(),
     queryText: text("query_text").notNull(),
+    marketKey: text("market_key"),
+    countryCode: text("country_code"),
+    searchLanguage: text("search_language"),
+    laneKind: text("lane_kind", {
+      enum: ["role", "board-discovery", "worldwide-remote"],
+    }),
+    strategy: text("strategy", {
+      enum: ["role-first", "location-first", "phrase", "relaxed-title"],
+    }),
+    page: integer("page"),
     status: text("status", {
       enum: ["planned", "running", "completed", "failed", "cancelled"],
     })
       .notNull()
       .default("planned"),
     hitCount: integer("hit_count").notNull().default(0),
+    usefulHitCount: integer("useful_hit_count").notNull().default(0),
+    hasMore: integer("has_more", { mode: "boolean" }),
     error: text("error").notNull().default(""),
     startedAt: timestamp("started_at"),
     finishedAt: timestamp("finished_at"),

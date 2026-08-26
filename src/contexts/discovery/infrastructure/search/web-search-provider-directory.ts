@@ -29,10 +29,10 @@ export function createWebSearchProviderDirectory({
       let activePolicySignature = JSON.stringify(activePolicy);
       let scheduled = createScheduledSearchProvider(provider, activePolicy);
       let policyTransition: Promise<void> | undefined;
-      const prepare: SearchProvider["prepare"] = (query, request = {}) => {
-        const prepared = provider.prepare(query, request);
+      const prepare: SearchProvider["prepare"] = (lane, request = {}) => {
+        const prepared = provider.prepare(lane, request);
         return {
-          query: prepared.query,
+          renderedQuery: prepared.renderedQuery,
           async execute(signal) {
             const requestedPolicy = readExecutionPolicy();
             if (activePolicySignature !== JSON.stringify(requestedPolicy)) {

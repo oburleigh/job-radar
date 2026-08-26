@@ -1,4 +1,7 @@
-import type { QuerySource } from "@/contexts/discovery/application/discovery-runs/planning/plan-search-queries";
+import type {
+  QuerySource,
+  SearchStrategy,
+} from "@/contexts/discovery/application/discovery-runs/planning/plan-search-lanes";
 import type { ResolvedMarket } from "@/contexts/discovery/domain/market";
 
 export type DiscoveryCriteria = {
@@ -19,7 +22,7 @@ export type DiscoveryPolicy = {
   readonly boardJobLimit: number;
   readonly searchFreshnessDays: number;
   readonly workYieldBatchSize: number;
-  readonly titleSearchMode: "title" | "anywhere";
+  readonly strategies: readonly SearchStrategy[];
   readonly worldwideRemoteTerms: readonly string[];
 };
 

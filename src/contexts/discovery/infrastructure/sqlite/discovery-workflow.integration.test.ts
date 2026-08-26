@@ -61,20 +61,23 @@ describe("discovery concurrency", () => {
     let searchCalls = 0;
     const provider: SearchProvider = {
       name: "test-provider",
-      prepare: (query) => ({
-        query,
+      prepare: (lane) => ({
+        renderedQuery: `${lane.kind}:${lane.source.pattern}`,
         async execute() {
           searchCalls += 1;
           if (searchCalls > 1) {
-            return [];
+            return { results: [], hasMore: false };
           }
           searchStarted.resolve();
           await releaseSearch.promise;
-          return Array.from({ length: resultCount }, (_, index) => ({
-            title: `Engineering leader ${index}`,
-            url: `https://example.com/jobs/${index}`,
-            snippet: "Engineering leadership role",
-          }));
+          return {
+            results: Array.from({ length: resultCount }, (_, index) => ({
+              title: `Engineering leader ${index}`,
+              url: `https://example.com/jobs/${index}`,
+              snippet: "Engineering leadership role",
+            })),
+            hasMore: false,
+          };
         },
       }),
     };
@@ -144,15 +147,18 @@ describe("discovery concurrency", () => {
     seedSingleSource();
     const provider: SearchProvider = {
       name: "test-provider",
-      prepare: (query) => ({
-        query,
-        execute: async () => [
-          {
-            title: "Engineering leader",
-            url: "https://example.com/jobs/engineering-leader",
-            snippet: "Engineering leadership role in Dubai",
-          },
-        ],
+      prepare: (lane) => ({
+        renderedQuery: `${lane.kind}:${lane.source.pattern}`,
+        execute: async () => ({
+          results: [
+            {
+              title: "Engineering leader",
+              url: "https://example.com/jobs/engineering-leader",
+              snippet: "Engineering leadership role in Dubai",
+            },
+          ],
+          hasMore: false,
+        }),
       }),
     };
 
@@ -165,7 +171,7 @@ describe("discovery concurrency", () => {
 
     expect(summary).toEqual({
       runId: expect.any(Number),
-      queries: 2,
+      queries: 5,
       hits: 1,
       boards: 0,
       jobs: 0,
@@ -179,15 +185,54 @@ describe("discovery concurrency", () => {
       profileId,
       provider: "test-provider",
       status: "completed",
-      queryCount: 2,
+      queryCount: 5,
       hitCount: 1,
       queryErrorCount: 0,
     });
+    const requests = db
+      .select()
+      .from(discoveryQueries)
+      .where(eq(discoveryQueries.runId, summary.runId))
+      .all();
+    expect(requests).toEqual([
+      expect.objectContaining({ status: "completed", hitCount: 1, page: 1 }),
+      expect.objectContaining({ status: "completed", hitCount: 1, page: 1 }),
+      expect.objectContaining({ status: "completed", hitCount: 1, page: 1 }),
+      expect.objectContaining({ status: "completed", hitCount: 1, page: 1 }),
+      expect.objectContaining({ status: "completed", hitCount: 1, page: 1 }),
+    ]);
     expect(
-      db.select().from(discoveryQueries).where(eq(discoveryQueries.runId, summary.runId)).all(),
+      requests.map((request) => ({
+        marketKey: request.marketKey,
+        countryCode: request.countryCode,
+        searchLanguage: request.searchLanguage,
+        laneKind: request.laneKind,
+        strategy: request.strategy,
+        titleTerm: request.titleTerm,
+        usefulHitCount: request.usefulHitCount,
+        hasMore: request.hasMore,
+      })),
     ).toEqual([
-      expect.objectContaining({ status: "completed", hitCount: 1 }),
-      expect.objectContaining({ status: "completed", hitCount: 1 }),
+      ...(["role-first", "location-first", "phrase", "relaxed-title"] as const).map((strategy) => ({
+        marketKey: "subdivision:AE-DU",
+        countryCode: "AE",
+        searchLanguage: "en",
+        laneKind: "role",
+        strategy,
+        titleTerm: "VP Engineering",
+        usefulHitCount: 0,
+        hasMore: false,
+      })),
+      {
+        marketKey: "subdivision:AE-DU",
+        countryCode: "AE",
+        searchLanguage: "en",
+        laneKind: "board-discovery",
+        strategy: null,
+        titleTerm: "",
+        usefulHitCount: 0,
+        hasMore: false,
+      },
     ]);
   });
 
@@ -196,8 +241,8 @@ describe("discovery concurrency", () => {
     seedSingleSource();
     const provider: SearchProvider = {
       name: "test-provider",
-      prepare: (query) => ({
-        query,
+      prepare: (lane) => ({
+        renderedQuery: `${lane.kind}:${lane.source.pattern}`,
         execute: async () => {
           throw new SearchProviderFailure({
             provider: "test-provider",

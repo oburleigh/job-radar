@@ -1,7 +1,4 @@
-import {
-  planBoardDiscoveryQueries,
-  planSearchQueries,
-} from "@/contexts/discovery/application/discovery-runs/planning/plan-search-queries";
+import { planSearchLanes } from "@/contexts/discovery/application/discovery-runs/planning/plan-search-lanes";
 import type { DiscoveryRunExecution } from "@/contexts/discovery/application/discovery-runs/ports/discovery-run";
 import type {
   DiscoveryRunJournal,
@@ -79,21 +76,16 @@ export function createJobDiscovery({
         policy.searchFreshnessDays > 0
           ? Math.min(profile.maxAgeDays, policy.searchFreshnessDays)
           : profile.maxAgeDays;
-      const roleQueries = planSearchQueries(
+      const plannedLanes = planSearchLanes(
         {
           titleTerms: profile.titleTerms,
-          markets: profile.markets.map((market) => market.scope),
+          markets: profile.markets,
           includeRemote: profile.includeRemote,
         },
         sources,
-        policy.titleSearchMode,
+        policy.strategies,
         policy.worldwideRemoteTerms,
       );
-      const boardQueries = planBoardDiscoveryQueries(
-        { markets: profile.markets.map((market) => market.scope) },
-        sources.filter((source) => source.supportsBoardSync),
-      );
-      const plannedQueries = [...roleQueries, ...boardQueries];
       throwIfCancelled(command.signal);
       const run = runs.prepare({
         ...(command.runId === undefined ? {} : { runId: command.runId }),
@@ -120,27 +112,43 @@ export function createJobDiscovery({
       });
 
       try {
-        for (const [queryIndex, plannedQuery] of plannedQueries.entries()) {
+        for (const [queryIndex, lane] of plannedLanes.entries()) {
           throwIfCancelled(command.signal);
-          const prepared = provider.prepare(plannedQuery.text, {
+          const pageNumber = 1;
+          const prepared = provider.prepare(lane, {
             count: command.resultsPerQuery ?? policy.resultsPerQuery,
             maxAgeDays: searchMaxAgeDays,
+            page: pageNumber,
           });
-          const query = runs.admitRequest(run.id, { ...plannedQuery, text: prepared.query });
+          const query = runs.admitRequest(run.id, {
+            atsType: lane.source.atsType,
+            sourcePattern: lane.source.pattern,
+            titleTerm: lane.titleTerms.join(", "),
+            text: prepared.renderedQuery,
+            marketKey: lane.market.scope.key,
+            countryCode: lane.market.countryCode,
+            searchLanguage: lane.market.searchLanguage,
+            laneKind: lane.kind,
+            strategy: lane.strategy,
+            page: pageNumber,
+          });
           admittedQueryCount += 1;
           activeQueryId = query.id;
           runs.startQuery(query.id, now());
-          let results: Awaited<ReturnType<typeof prepared.execute>> = [];
+          let results: Awaited<ReturnType<typeof prepared.execute>>["results"] = [];
+          let hasMore = false;
           let queryFailed = false;
           try {
             throwIfCancelled(command.signal);
-            results = await prepared.execute(command.signal);
+            const page = await prepared.execute(command.signal);
+            results = page.results;
+            hasMore = page.hasMore;
           } catch (error) {
             if (command.signal?.aborted) {
               throw error;
             }
             if (error instanceof SearchProviderFailure) {
-              const skippedQueries = plannedQueries.length - queryIndex - 1;
+              const skippedQueries = plannedLanes.length - queryIndex - 1;
               const failureSummary = `${error.provider} ${error.classification} ${error.code} after ${error.attempts} ${error.attempts === 1 ? "attempt" : "attempts"}; skipped ${skippedQueries} ${skippedQueries === 1 ? "query" : "queries"}`;
               queryErrors.push(failureSummary);
               runs.failQuery(query.id, error.message, now());
@@ -161,7 +169,9 @@ export function createJobDiscovery({
               break;
             }
             const message = errorMessage(error);
-            queryErrors.push(`${query.sourcePattern} / ${query.titleTerm}: ${message}`);
+            queryErrors.push(
+              `${query.sourcePattern} / ${query.titleTerm || query.laneKind}: ${message}`,
+            );
             queryFailed = true;
             runs.failQuery(query.id, message, now());
           }
@@ -188,7 +198,12 @@ export function createJobDiscovery({
           }
           throwIfCancelled(command.signal);
           if (!queryFailed) {
-            runs.completeQuery(query.id, results.length, now());
+            runs.completeQuery(query.id, {
+              hitCount: results.length,
+              usefulHitCount: 0,
+              hasMore,
+              finishedAt: now(),
+            });
             querySucceeded = true;
           }
           activeQueryId = undefined;
@@ -228,7 +243,7 @@ export function createJobDiscovery({
           boardsDiscovered: boardIds.size,
           matchesFound,
           errors: queryErrors,
-          allQueriesFailed: plannedQueries.length > 0 && !querySucceeded,
+          allQueriesFailed: plannedLanes.length > 0 && !querySucceeded,
           finishedAt: now(),
         });
       } catch (error) {

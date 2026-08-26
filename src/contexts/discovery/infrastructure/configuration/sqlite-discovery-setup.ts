@@ -52,7 +52,7 @@ export function createSqliteDiscoverySetup(database: Database): DiscoverySetupRe
           boardJobLimit: config.discovery.boardJobLimit,
           searchFreshnessDays: config.discovery.searchFreshnessDays,
           workYieldBatchSize: config.discovery.workYieldBatchSize,
-          titleSearchMode: provider?.titleSearchMode ?? config.discovery.titleSearchMode,
+          strategies: provider?.strategies ?? config.discovery.strategies,
           worldwideRemoteTerms: [
             ...config.matching.remoteTerms,
             ...config.matching.unrestrictedRemotePhrases,

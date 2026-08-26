@@ -89,6 +89,12 @@ export function createSqliteDiscoveryRunJournal(database: Database): DiscoveryRu
             sourcePattern: query.sourcePattern,
             titleTerm: query.titleTerm,
             queryText: query.text,
+            marketKey: query.marketKey,
+            countryCode: query.countryCode,
+            searchLanguage: query.searchLanguage,
+            laneKind: query.laneKind,
+            strategy: query.strategy,
+            page: query.page,
           })
           .returning({ id: discoveryQueries.id })
           .get();
@@ -105,10 +111,16 @@ export function createSqliteDiscoveryRunJournal(database: Database): DiscoveryRu
         .where(and(eq(discoveryQueries.id, queryId), eq(discoveryQueries.status, "planned")))
         .run();
     },
-    completeQuery(queryId, hitCount, finishedAt) {
+    completeQuery(queryId, result) {
       database
         .update(discoveryQueries)
-        .set({ status: "completed", hitCount, finishedAt })
+        .set({
+          status: "completed",
+          hitCount: result.hitCount,
+          usefulHitCount: result.usefulHitCount,
+          hasMore: result.hasMore,
+          finishedAt: result.finishedAt,
+        })
         .where(and(eq(discoveryQueries.id, queryId), eq(discoveryQueries.status, "running")))
         .run();
     },

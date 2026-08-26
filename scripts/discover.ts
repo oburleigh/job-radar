@@ -4,17 +4,17 @@ import { setImmediate as yieldToEventLoop } from "node:timers/promises";
 
 import { eq } from "drizzle-orm";
 import { createJobDiscovery } from "@/contexts/discovery/application/discovery-runs/discover/discover-jobs";
-import {
-  planBoardDiscoveryQueries,
-  planSearchQueries,
-} from "@/contexts/discovery/application/discovery-runs/planning/plan-search-queries";
+import { planSearchLanes } from "@/contexts/discovery/application/discovery-runs/planning/plan-search-lanes";
 import {
   getJobRadarConfig,
   supportsBoardSync,
 } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
 import { createSqliteDiscoverySetup } from "@/contexts/discovery/infrastructure/configuration/sqlite-discovery-setup";
 import { createMarketResolver } from "@/contexts/discovery/infrastructure/markets/market-resolver";
-import { getSearchProviderOptions } from "@/contexts/discovery/infrastructure/search/web-search-provider";
+import {
+  getSearchProviderOptions,
+  renderSearchLane,
+} from "@/contexts/discovery/infrastructure/search/web-search-provider";
 import { createWebSearchProviderDirectory } from "@/contexts/discovery/infrastructure/search/web-search-provider-directory";
 import { db } from "@/contexts/discovery/infrastructure/sqlite/database";
 import { createSqliteDiscoveryRunJournal } from "@/contexts/discovery/infrastructure/sqlite/discovery-run-journal";
@@ -57,25 +57,20 @@ async function main() {
       .filter((item) => !source || item.atsType === source);
     const marketResolver = createMarketResolver(config.marketVocabulary);
     const markets = profile.locationTerms.map((term) => marketResolver.resolve(term));
-    const roleQueries = planSearchQueries(
+    const lanes = planSearchLanes(
       {
         titleTerms: profile.titleTerms,
-        markets: markets.map((market) => market.scope),
+        markets,
         includeRemote: profile.includeRemote,
       },
-      sources,
-      config.searchProviders[providerName]?.titleSearchMode ?? config.discovery.titleSearchMode,
+      sources.map((item) => ({ ...item, supportsBoardSync: supportsBoardSync(item.atsType) })),
+      config.searchProviders[providerName]?.strategies ?? config.discovery.strategies,
       [...config.matching.remoteTerms, ...config.matching.unrestrictedRemotePhrases],
     );
-    const boardQueries = planBoardDiscoveryQueries(
-      { markets: markets.map((market) => market.scope) },
-      sources.filter((item) => supportsBoardSync(item.atsType)),
-    );
-    const queries = [...roleQueries, ...boardQueries];
-    for (const query of queries) {
-      console.log(`[${query.atsType}] ${query.text}`);
+    for (const lane of lanes) {
+      console.log(`[${lane.source.atsType}] ${renderSearchLane(lane)}`);
     }
-    console.log(`${queries.length} queries`);
+    console.log(`${lanes.length} requests`);
     return;
   }
 
@@ -106,9 +101,8 @@ async function main() {
             resultsPerQuery: config.discovery.resultsPerQuery,
             boardJobLimit: config.discovery.boardJobLimit,
             searchFreshnessDays: config.discovery.searchFreshnessDays,
-            titleSearchMode:
-              config.searchProviders[providerName]?.titleSearchMode ??
-              config.discovery.titleSearchMode,
+            strategies:
+              config.searchProviders[providerName]?.strategies ?? config.discovery.strategies,
             matching: config.matching,
           },
         }),
