@@ -45,7 +45,7 @@ describe("execute discovery run", () => {
     const discovery: ForDiscoveringJobs = {
       discoverJobs: async () => ({
         ...summary,
-        queries: 370,
+        queries: 1,
         hits: 0,
         jobs: 0,
         matches: 0,
@@ -71,7 +71,7 @@ describe("execute discovery run", () => {
     const discovery: ForDiscoveringJobs = {
       discoverJobs: async () => ({
         ...summary,
-        queries: 3,
+        queries: 2,
         queryErrors: 1,
         providerFailure: {
           provider: "brave",

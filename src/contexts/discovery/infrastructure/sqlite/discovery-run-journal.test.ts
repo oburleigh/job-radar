@@ -27,6 +27,62 @@ describe("SQLite discovery run journal cancellation guards", () => {
     sqlite.close();
   });
 
+  it("starts with zero requests and admits each executable request atomically", () => {
+    const profileId = insertProfile(database);
+    const journal = createSqliteDiscoveryRunJournal(database);
+    const run = journal.prepare({
+      profileId,
+      providerName: "serper",
+      startedAt: now,
+    });
+
+    expect(
+      sqlite.prepare("select query_count from discovery_runs where id = ?").get(run.id),
+    ).toEqual({ query_count: 0 });
+    expect(
+      sqlite
+        .prepare("select count(*) as count from discovery_queries where run_id = ?")
+        .get(run.id),
+    ).toEqual({ count: 0 });
+
+    const admitted = journal.admitRequest(run.id, {
+      atsType: "greenhouse",
+      sourcePattern: "jobs.example.com",
+      titleTerm: "Staff Engineer",
+      text: "site:jobs.example.com Staff Engineer",
+    });
+
+    expect(admitted).toEqual({
+      id: expect.any(Number),
+      atsType: "greenhouse",
+      sourcePattern: "jobs.example.com",
+      titleTerm: "Staff Engineer",
+      text: "site:jobs.example.com Staff Engineer",
+    });
+    expect(
+      sqlite.prepare("select query_count from discovery_runs where id = ?").get(run.id),
+    ).toEqual({ query_count: 1 });
+    expect(
+      sqlite
+        .prepare("select status, query_text from discovery_queries where run_id = ?")
+        .get(run.id),
+    ).toEqual({ status: "planned", query_text: "site:jobs.example.com Staff Engineer" });
+
+    expect(() =>
+      journal.admitRequest(run.id + 1_000, {
+        atsType: "greenhouse",
+        sourcePattern: "jobs.example.com",
+        titleTerm: "Principal Engineer",
+        text: "site:jobs.example.com Principal Engineer",
+      }),
+    ).toThrow("The discovery run is not accepting requests");
+    expect(
+      sqlite
+        .prepare("select count(*) as count from discovery_queries where run_id = ?")
+        .get(run.id),
+    ).toEqual({ count: 1 });
+  });
+
   it("does not prepare a reserved run after it was cancelled", () => {
     const profileId = insertProfile(database);
     const registry = createSqliteDiscoveryRunRegistry(database, {
@@ -46,7 +102,6 @@ describe("SQLite discovery run journal cancellation guards", () => {
         runId: reservation.runId,
         profileId,
         providerName: "serper",
-        queryCount: 1,
         startedAt: now,
       }),
     ).toThrow("The reserved discovery run is invalid");

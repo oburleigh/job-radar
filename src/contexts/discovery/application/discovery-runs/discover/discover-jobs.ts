@@ -99,7 +99,6 @@ export function createJobDiscovery({
         ...(command.runId === undefined ? {} : { runId: command.runId }),
         profileId: command.profileId,
         providerName: provider.name,
-        queryCount: plannedQueries.length,
         startedAt: now(),
       });
       const boardIds = new Set<number>();
@@ -110,6 +109,7 @@ export function createJobDiscovery({
       let syncErrors = 0;
       let querySucceeded = false;
       let activeQueryId: number | undefined;
+      let admittedQueryCount = 0;
       let providerFailure: DiscoverySummary["providerFailure"];
 
       const progress = (): DiscoveryRunProgress => ({
@@ -120,26 +120,27 @@ export function createJobDiscovery({
       });
 
       try {
-        const queries = runs.planQueries(run.id, plannedQueries);
-        for (const [queryIndex, query] of queries.entries()) {
+        for (const [queryIndex, plannedQuery] of plannedQueries.entries()) {
           throwIfCancelled(command.signal);
+          const prepared = provider.prepare(plannedQuery.text, {
+            count: command.resultsPerQuery ?? policy.resultsPerQuery,
+            maxAgeDays: searchMaxAgeDays,
+          });
+          const query = runs.admitRequest(run.id, { ...plannedQuery, text: prepared.query });
+          admittedQueryCount += 1;
           activeQueryId = query.id;
           runs.startQuery(query.id, now());
-          let results = [] as Awaited<ReturnType<typeof provider.search>>;
+          let results: Awaited<ReturnType<typeof prepared.execute>> = [];
           let queryFailed = false;
           try {
             throwIfCancelled(command.signal);
-            results = await provider.search(query.text, {
-              count: command.resultsPerQuery ?? policy.resultsPerQuery,
-              maxAgeDays: searchMaxAgeDays,
-              ...(command.signal ? { signal: command.signal } : {}),
-            });
+            results = await prepared.execute(command.signal);
           } catch (error) {
             if (command.signal?.aborted) {
               throw error;
             }
             if (error instanceof SearchProviderFailure) {
-              const skippedQueries = queries.length - queryIndex - 1;
+              const skippedQueries = plannedQueries.length - queryIndex - 1;
               const failureSummary = `${error.provider} ${error.classification} ${error.code} after ${error.attempts} ${error.attempts === 1 ? "attempt" : "attempts"}; skipped ${skippedQueries} ${skippedQueries === 1 ? "query" : "queries"}`;
               queryErrors.push(failureSummary);
               runs.failQuery(query.id, error.message, now());
@@ -152,7 +153,7 @@ export function createJobDiscovery({
               };
               activeQueryId = undefined;
               runs.recordProgress(run.id, progress(), now());
-              runs.cancelPlannedQueries(
+              runs.cancelPendingRequests(
                 run.id,
                 `Skipped because ${error.provider} reported ${error.code}.`,
                 now(),
@@ -238,7 +239,7 @@ export function createJobDiscovery({
         if (activeQueryId !== undefined) {
           runs.failQuery(activeQueryId, message, now());
         }
-        runs.cancelPlannedQueries(
+        runs.cancelPendingRequests(
           run.id,
           `Skipped because the discovery run failed: ${message}`,
           now(),
@@ -256,7 +257,7 @@ export function createJobDiscovery({
 
       return {
         runId: run.id,
-        queries: plannedQueries.length,
+        queries: admittedQueryCount,
         hits: hitCount,
         boards: boardIds.size,
         jobs: jobsWritten,

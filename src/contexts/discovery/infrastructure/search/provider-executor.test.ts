@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   type SearchProvider,
   SearchProviderFailure,
+  type SearchRequest,
+  type SearchResult,
 } from "@/contexts/discovery/application/discovery-runs/ports/search-provider";
 
 import {
@@ -19,19 +21,41 @@ const policy: SearchProviderExecutionPolicy = {
   retryMaxTimeMs: 5_000,
 };
 
+type ExecuteSearch = (
+  query: string,
+  request?: SearchRequest & { readonly signal?: AbortSignal },
+) => Promise<ReadonlyArray<SearchResult>>;
+
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
 describe("scheduled search provider", () => {
+  it("does not enter the execution lane until a prepared request executes", async () => {
+    const search = vi.fn<ExecuteSearch>().mockResolvedValue([]);
+    const provider = createScheduledSearchProvider(testProvider(search), policy);
+    const prepared = provider.prepare("engineering leadership", { count: 20 });
+
+    expect(prepared.query).toBe("engineering leadership");
+    expect(search).not.toHaveBeenCalled();
+
+    const controller = new AbortController();
+    await expect(prepared.execute(controller.signal)).resolves.toEqual([]);
+
+    expect(search).toHaveBeenCalledWith("engineering leadership", {
+      count: 20,
+      signal: controller.signal,
+    });
+  });
+
   it("stops a transient failure after three total attempts", async () => {
     const search = vi.fn(async () => {
       throw providerFailure("transient", "rate-limited");
     });
     const provider = createScheduledSearchProvider(testProvider(search), policy);
 
-    await expect(provider.search("engineering leadership")).rejects.toMatchObject({
+    await expect(execute(provider, "engineering leadership")).rejects.toMatchObject({
       provider: "test",
       classification: "transient",
       code: "rate-limited",
@@ -46,7 +70,7 @@ describe("scheduled search provider", () => {
     });
     const provider = createScheduledSearchProvider(testProvider(search), policy);
 
-    await expect(provider.search("engineering leadership")).rejects.toMatchObject({
+    await expect(execute(provider, "engineering leadership")).rejects.toMatchObject({
       provider: "test",
       classification: "transient",
       code: "timeout",
@@ -62,7 +86,7 @@ describe("scheduled search provider", () => {
     });
     const provider = createScheduledSearchProvider(testProvider(search), policy);
 
-    await expect(provider.search("engineering leadership")).rejects.toMatchObject({
+    await expect(execute(provider, "engineering leadership")).rejects.toMatchObject({
       provider: "test",
       classification: "transient",
       code: "network-error",
@@ -80,7 +104,7 @@ describe("scheduled search provider", () => {
       });
       const provider = createScheduledSearchProvider(testProvider(search), policy);
 
-      await expect(provider.search("engineering leadership")).rejects.toMatchObject({
+      await expect(execute(provider, "engineering leadership")).rejects.toMatchObject({
         provider: "test",
         classification: "fatal",
         code: "unexpected-error",
@@ -103,7 +127,7 @@ describe("scheduled search provider", () => {
       retryMaxDelayMs: 1_500,
     });
 
-    const result = provider.search("engineering leadership");
+    const result = execute(provider, "engineering leadership");
     const rejection = expect(result).rejects.toMatchObject({ attempts: 3 });
     await vi.advanceTimersByTimeAsync(0);
     expect(search).toHaveBeenCalledOnce();
@@ -132,7 +156,7 @@ describe("scheduled search provider", () => {
       retryMaxTimeMs: 999,
     });
 
-    const result = provider.search("engineering leadership");
+    const result = execute(provider, "engineering leadership");
     const rejection = expect(result).rejects.toMatchObject({ attempts: 2 });
     await vi.advanceTimersByTimeAsync(999);
 
@@ -146,7 +170,7 @@ describe("scheduled search provider", () => {
     });
     const provider = createScheduledSearchProvider(testProvider(search), policy);
 
-    await expect(provider.search("engineering leadership")).rejects.toMatchObject({
+    await expect(execute(provider, "engineering leadership")).rejects.toMatchObject({
       classification: "fatal",
       attempts: 1,
     });
@@ -170,7 +194,11 @@ describe("scheduled search provider", () => {
     );
     const provider = createScheduledSearchProvider(testProvider(search), policy);
 
-    const searches = [provider.search("one"), provider.search("two"), provider.search("three")];
+    const searches = [
+      execute(provider, "one"),
+      execute(provider, "two"),
+      execute(provider, "three"),
+    ];
     await vi.waitFor(() => expect(search).toHaveBeenCalledTimes(2));
     expect(maximumActive).toBe(2);
 
@@ -186,7 +214,7 @@ describe("scheduled search provider", () => {
 
   it("does not exceed the provider request rate", async () => {
     vi.useFakeTimers();
-    const search = vi.fn<SearchProvider["search"]>().mockResolvedValue([]);
+    const search = vi.fn<ExecuteSearch>().mockResolvedValue([]);
     const provider = createScheduledSearchProvider(testProvider(search), {
       ...policy,
       concurrency: 3,
@@ -194,7 +222,11 @@ describe("scheduled search provider", () => {
       intervalMs: 1_000,
     });
 
-    const searches = [provider.search("one"), provider.search("two"), provider.search("three")];
+    const searches = [
+      execute(provider, "one"),
+      execute(provider, "two"),
+      execute(provider, "three"),
+    ];
     await vi.advanceTimersByTimeAsync(0);
     expect(search).toHaveBeenCalledTimes(2);
     await vi.advanceTimersByTimeAsync(999);
@@ -208,7 +240,7 @@ describe("scheduled search provider", () => {
   it("counts retry attempts against the provider request rate", async () => {
     vi.useFakeTimers();
     const search = vi
-      .fn<SearchProvider["search"]>()
+      .fn<ExecuteSearch>()
       .mockRejectedValueOnce(providerFailure("transient", "rate-limited"))
       .mockRejectedValueOnce(providerFailure("transient", "rate-limited"))
       .mockResolvedValue([]);
@@ -219,7 +251,7 @@ describe("scheduled search provider", () => {
       intervalMs: 1_000,
     });
 
-    const result = provider.search("engineering leadership");
+    const result = execute(provider, "engineering leadership");
     await vi.advanceTimersByTimeAsync(0);
     expect(search).toHaveBeenCalledTimes(2);
     await vi.advanceTimersByTimeAsync(999);
@@ -233,7 +265,7 @@ describe("scheduled search provider", () => {
   it("does not start a queued request after cancellation", async () => {
     const firstRelease = Promise.withResolvers<readonly []>();
     const search = vi
-      .fn<SearchProvider["search"]>()
+      .fn<ExecuteSearch>()
       .mockImplementationOnce(() => firstRelease.promise)
       .mockResolvedValue([]);
     const provider = createScheduledSearchProvider(testProvider(search), {
@@ -242,8 +274,8 @@ describe("scheduled search provider", () => {
     });
     const controller = new AbortController();
 
-    const first = provider.search("one");
-    const cancelled = provider.search("two", { signal: controller.signal });
+    const first = execute(provider, "one");
+    const cancelled = execute(provider, "two", { signal: controller.signal });
     await vi.waitFor(() => expect(search).toHaveBeenCalledOnce());
     controller.abort(new DOMException("Cancelled by user", "AbortError"));
 
@@ -257,7 +289,7 @@ describe("scheduled search provider", () => {
     vi.useFakeTimers();
     const firstRelease = Promise.withResolvers<readonly []>();
     const search = vi
-      .fn<SearchProvider["search"]>()
+      .fn<ExecuteSearch>()
       .mockImplementationOnce(() => firstRelease.promise)
       .mockResolvedValue([]);
     const provider = createScheduledSearchProvider(testProvider(search), {
@@ -268,8 +300,8 @@ describe("scheduled search provider", () => {
     });
     const controller = new AbortController();
 
-    const first = provider.search("one");
-    const cancelled = provider.search("two", { signal: controller.signal });
+    const first = execute(provider, "one");
+    const cancelled = execute(provider, "two", { signal: controller.signal });
     await vi.advanceTimersByTimeAsync(0);
     expect(search).toHaveBeenCalledOnce();
     controller.abort(new DOMException("Cancelled by user", "AbortError"));
@@ -284,7 +316,7 @@ describe("scheduled search provider", () => {
   it("propagates cancellation from an active provider request without retrying", async () => {
     const controller = new AbortController();
     const cancellation = new DOMException("Cancelled by user", "AbortError");
-    const search = vi.fn<SearchProvider["search"]>(
+    const search = vi.fn<ExecuteSearch>(
       (_query, request) =>
         new Promise((_, reject) => {
           request?.signal?.addEventListener("abort", () => reject(request.signal?.reason), {
@@ -294,7 +326,7 @@ describe("scheduled search provider", () => {
     );
     const provider = createScheduledSearchProvider(testProvider(search), policy);
 
-    const result = provider.search("engineering", { signal: controller.signal });
+    const result = execute(provider, "engineering", { signal: controller.signal });
     await vi.waitFor(() => expect(search).toHaveBeenCalledOnce());
     controller.abort(cancellation);
 
@@ -314,7 +346,7 @@ describe("scheduled search provider", () => {
     });
     const controller = new AbortController();
 
-    const result = provider.search("engineering", { signal: controller.signal });
+    const result = execute(provider, "engineering", { signal: controller.signal });
     const rejection = expect(result).rejects.toMatchObject({ name: "AbortError" });
     await vi.waitFor(() => expect(search).toHaveBeenCalledOnce());
     controller.abort(new DOMException("Cancelled by user", "AbortError"));
@@ -336,7 +368,7 @@ describe("scheduled search provider", () => {
     });
     const controller = new AbortController();
 
-    const result = provider.search("engineering", { signal: controller.signal });
+    const result = execute(provider, "engineering", { signal: controller.signal });
     const rejection = expect(result).rejects.toMatchObject({ name: "AbortError" });
     await vi.waitFor(() => expect(search).toHaveBeenCalledOnce());
     controller.abort(new DOMException("Cancelled by user", "AbortError"));
@@ -351,8 +383,23 @@ describe("scheduled search provider", () => {
   });
 });
 
-function testProvider(search: SearchProvider["search"]): SearchProvider {
-  return { name: "test", search };
+function testProvider(search: ExecuteSearch): SearchProvider {
+  return {
+    name: "test",
+    prepare: (query, request = {}) => ({
+      query,
+      execute: (signal) => search(query, { ...request, ...(signal ? { signal } : {}) }),
+    }),
+  };
+}
+
+function execute(
+  provider: SearchProvider,
+  query: string,
+  request: SearchRequest & { readonly signal?: AbortSignal } = {},
+) {
+  const { signal, ...preparation } = request;
+  return provider.prepare(query, preparation).execute(signal);
 }
 
 function providerFailure(

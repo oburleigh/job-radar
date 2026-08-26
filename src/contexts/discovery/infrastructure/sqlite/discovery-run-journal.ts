@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 import type { DiscoveryRunJournal } from "@/contexts/discovery/application/discovery-runs/ports/discovery-run-journal";
 
@@ -9,7 +9,7 @@ type Database = typeof db;
 
 export function createSqliteDiscoveryRunJournal(database: Database): DiscoveryRunJournal {
   return {
-    prepare({ runId, profileId, providerName, queryCount, startedAt }) {
+    prepare({ runId, profileId, providerName, startedAt }) {
       const run = runId
         ? database
             .select({
@@ -27,7 +27,7 @@ export function createSqliteDiscoveryRunJournal(database: Database): DiscoveryRu
               profileId,
               provider: providerName,
               status: "running",
-              queryCount,
+              queryCount: 0,
               startedAt,
               heartbeatAt: startedAt,
             })
@@ -52,7 +52,7 @@ export function createSqliteDiscoveryRunJournal(database: Database): DiscoveryRu
           .update(discoveryRuns)
           .set({
             status: "running",
-            queryCount,
+            queryCount: 0,
             hitCount: 0,
             boardsDiscovered: 0,
             jobsUpserted: 0,
@@ -71,9 +71,17 @@ export function createSqliteDiscoveryRunJournal(database: Database): DiscoveryRu
       }
       return run;
     },
-    planQueries(runId, queries) {
-      return queries.map((query) => {
-        const row = database
+    admitRequest(runId, query) {
+      return database.transaction((transaction) => {
+        const accepted = transaction
+          .update(discoveryRuns)
+          .set({ queryCount: sql`${discoveryRuns.queryCount} + 1` })
+          .where(and(eq(discoveryRuns.id, runId), eq(discoveryRuns.status, "running")))
+          .run();
+        if (accepted.changes === 0) {
+          throw new Error("The discovery run is not accepting requests");
+        }
+        const row = transaction
           .insert(discoveryQueries)
           .values({
             runId,
@@ -111,7 +119,7 @@ export function createSqliteDiscoveryRunJournal(database: Database): DiscoveryRu
         .where(and(eq(discoveryQueries.id, queryId), eq(discoveryQueries.status, "running")))
         .run();
     },
-    cancelPlannedQueries(runId, message, finishedAt) {
+    cancelPendingRequests(runId, message, finishedAt) {
       database
         .update(discoveryQueries)
         .set({ status: "cancelled", error: message, finishedAt })

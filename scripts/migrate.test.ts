@@ -157,6 +157,57 @@ describe("database setup command", () => {
     expect(readMatchStatus(recovered, profileId, "legacy-structured")).toBe("matched");
     recovered.close();
   }, 30_000);
+
+  it("preserves pre-ADM-100 discovery history while applying current migrations", () => {
+    runDatabaseSetup(databasePath);
+
+    const sqlite = new Database(databasePath);
+    const profileId = seedProfile(sqlite);
+    const recordedAt = Date.parse("2026-08-24T00:00:00.000Z");
+    const runId = sqlite
+      .prepare(
+        `INSERT INTO discovery_runs (
+          profile_id, provider, status, query_count, started_at, heartbeat_at, finished_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(profileId, "serper", "completed", 1, recordedAt, recordedAt, recordedAt).lastInsertRowid;
+    sqlite
+      .prepare(
+        `INSERT INTO discovery_queries (
+          run_id, ats_type, source_pattern, title_term, query_text, status,
+          hit_count, started_at, finished_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        runId,
+        "greenhouse",
+        "boards.greenhouse.io",
+        "Director of Engineering",
+        "site:boards.greenhouse.io Director of Engineering Singapore",
+        "completed",
+        3,
+        recordedAt,
+        recordedAt,
+      );
+    sqlite.close();
+
+    runDatabaseSetup(databasePath);
+
+    const migrated = new Database(databasePath, { readonly: true });
+    expect(
+      migrated.prepare("SELECT status, query_count FROM discovery_runs WHERE id = ?").get(runId),
+    ).toEqual({ status: "completed", query_count: 1 });
+    expect(
+      migrated
+        .prepare("SELECT status, hit_count, query_text FROM discovery_queries WHERE run_id = ?")
+        .get(runId),
+    ).toEqual({
+      status: "completed",
+      hit_count: 3,
+      query_text: "site:boards.greenhouse.io Director of Engineering Singapore",
+    });
+    migrated.close();
+  }, 30_000);
 });
 
 function runDatabaseSetup(databasePath: string) {

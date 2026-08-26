@@ -29,22 +29,29 @@ export function createWebSearchProviderDirectory({
       let activePolicySignature = JSON.stringify(activePolicy);
       let scheduled = createScheduledSearchProvider(provider, activePolicy);
       let policyTransition: Promise<void> | undefined;
+      const prepare: SearchProvider["prepare"] = (query, request = {}) => {
+        const prepared = provider.prepare(query, request);
+        return {
+          query: prepared.query,
+          async execute(signal) {
+            const requestedPolicy = readExecutionPolicy();
+            if (activePolicySignature !== JSON.stringify(requestedPolicy)) {
+              policyTransition ??= reconfigureAfterIdle();
+            }
+            if (policyTransition) {
+              if (signal) {
+                await waitForPolicyTransition(policyTransition, signal);
+              } else {
+                await policyTransition;
+              }
+            }
+            return scheduled.schedule(prepared, signal);
+          },
+        };
+      };
       const configured: SearchProvider = {
         name: provider.name,
-        async search(query, request) {
-          const requestedPolicy = readExecutionPolicy();
-          if (activePolicySignature !== JSON.stringify(requestedPolicy)) {
-            policyTransition ??= reconfigureAfterIdle();
-          }
-          if (policyTransition) {
-            if (request?.signal) {
-              await waitForPolicyTransition(policyTransition, request.signal);
-            } else {
-              await policyTransition;
-            }
-          }
-          return scheduled.search(query, request);
-        },
+        prepare,
       };
       providers.set(name, configured);
       return configured;

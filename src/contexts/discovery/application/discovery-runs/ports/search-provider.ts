@@ -7,7 +7,11 @@ export type SearchResult = {
 export type SearchRequest = {
   readonly count?: number;
   readonly maxAgeDays?: number;
-  readonly signal?: AbortSignal;
+};
+
+export type PreparedSearchRequest = {
+  readonly query: string;
+  readonly execute: (signal?: AbortSignal) => Promise<ReadonlyArray<SearchResult>>;
 };
 
 export type SearchProviderFailureClassification = "fatal" | "transient";
@@ -39,5 +43,5 @@ export class SearchProviderFailure extends Error {
 
 export interface SearchProvider {
   readonly name: string;
-  readonly search: (query: string, request?: SearchRequest) => Promise<ReadonlyArray<SearchResult>>;
+  readonly prepare: (query: string, request?: SearchRequest) => PreparedSearchRequest;
 }

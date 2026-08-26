@@ -61,19 +61,22 @@ describe("discovery concurrency", () => {
     let searchCalls = 0;
     const provider: SearchProvider = {
       name: "test-provider",
-      async search() {
-        searchCalls += 1;
-        if (searchCalls > 1) {
-          return [];
-        }
-        searchStarted.resolve();
-        await releaseSearch.promise;
-        return Array.from({ length: resultCount }, (_, index) => ({
-          title: `Engineering leader ${index}`,
-          url: `https://example.com/jobs/${index}`,
-          snippet: "Engineering leadership role",
-        }));
-      },
+      prepare: (query) => ({
+        query,
+        async execute() {
+          searchCalls += 1;
+          if (searchCalls > 1) {
+            return [];
+          }
+          searchStarted.resolve();
+          await releaseSearch.promise;
+          return Array.from({ length: resultCount }, (_, index) => ({
+            title: `Engineering leader ${index}`,
+            url: `https://example.com/jobs/${index}`,
+            snippet: "Engineering leadership role",
+          }));
+        },
+      }),
     };
     let discoveryFinished = false;
     const discovery = createDiscovery(provider)
@@ -141,13 +144,16 @@ describe("discovery concurrency", () => {
     seedSingleSource();
     const provider: SearchProvider = {
       name: "test-provider",
-      search: async (_query, _request) => [
-        {
-          title: "Engineering leader",
-          url: "https://example.com/jobs/engineering-leader",
-          snippet: "Engineering leadership role in Dubai",
-        },
-      ],
+      prepare: (query) => ({
+        query,
+        execute: async () => [
+          {
+            title: "Engineering leader",
+            url: "https://example.com/jobs/engineering-leader",
+            snippet: "Engineering leadership role in Dubai",
+          },
+        ],
+      }),
     };
 
     const summary = await createDiscovery(provider).discoverJobs({
@@ -185,20 +191,23 @@ describe("discovery concurrency", () => {
     ]);
   });
 
-  it("finishes every planned query record after a fatal provider failure", async () => {
+  it("records only the admitted request after a fatal provider failure", async () => {
     const profileId = seedProfile("Fatal provider profile");
     seedSingleSource();
     const provider: SearchProvider = {
       name: "test-provider",
-      search: async () => {
-        throw new SearchProviderFailure({
-          provider: "test-provider",
-          classification: "fatal",
-          code: "credit-exhausted",
-          attempts: 1,
-          message: "Test provider has no credits",
-        });
-      },
+      prepare: (query) => ({
+        query,
+        execute: async () => {
+          throw new SearchProviderFailure({
+            provider: "test-provider",
+            classification: "fatal",
+            code: "credit-exhausted",
+            attempts: 1,
+            message: "Test provider has no credits",
+          });
+        },
+      }),
     };
 
     const summary = await createDiscovery(provider).discoverJobs({
@@ -212,7 +221,7 @@ describe("discovery concurrency", () => {
       db.select().from(discoveryRuns).where(eq(discoveryRuns.id, summary.runId)).get(),
     ).toMatchObject({
       status: "failed",
-      queryCount: 2,
+      queryCount: 1,
       queryErrorCount: 1,
     });
     expect(
@@ -222,13 +231,7 @@ describe("discovery concurrency", () => {
         .where(eq(discoveryQueries.runId, summary.runId))
         .orderBy(discoveryQueries.id)
         .all(),
-    ).toEqual([
-      { status: "failed", error: "Test provider has no credits" },
-      {
-        status: "cancelled",
-        error: "Skipped because test-provider reported credit-exhausted.",
-      },
-    ]);
+    ).toEqual([{ status: "failed", error: "Test provider has no credits" }]);
   });
 });
 

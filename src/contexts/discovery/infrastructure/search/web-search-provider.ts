@@ -49,7 +49,18 @@ export class BraveSearchProvider implements SearchProvider {
     }
   }
 
-  async search(query: string, options: SearchRequest = {}): Promise<SearchResult[]> {
+  prepare(query: string, options: SearchRequest = {}) {
+    return {
+      query,
+      execute: (signal?: AbortSignal) => this.execute(query, options, signal),
+    };
+  }
+
+  private async execute(
+    query: string,
+    options: SearchRequest,
+    signal?: AbortSignal,
+  ): Promise<SearchResult[]> {
     const config = getJobRadarConfig();
     const providerConfig = requireProviderConfig(this.name);
     const url = new URL(providerConfig.endpoint);
@@ -72,7 +83,7 @@ export class BraveSearchProvider implements SearchProvider {
         Accept: "application/json",
         "X-Subscription-Token": this.apiKey,
       },
-      signal: requestSignal(options.signal, config.network.timeoutMs),
+      signal: requestSignal(signal, config.network.timeoutMs),
     });
     if (!response.ok) {
       throw providerHttpFailure(
@@ -109,7 +120,18 @@ export class SerpApiSearchProvider implements SearchProvider {
     }
   }
 
-  async search(query: string, options: SearchRequest = {}): Promise<SearchResult[]> {
+  prepare(query: string, options: SearchRequest = {}) {
+    return {
+      query,
+      execute: (signal?: AbortSignal) => this.execute(query, options, signal),
+    };
+  }
+
+  private async execute(
+    query: string,
+    options: SearchRequest,
+    signal?: AbortSignal,
+  ): Promise<SearchResult[]> {
     const config = getJobRadarConfig();
     const providerConfig = requireProviderConfig(this.name);
     const url = new URL(providerConfig.endpoint);
@@ -127,7 +149,7 @@ export class SerpApiSearchProvider implements SearchProvider {
 
     const response = await this.fetcher(url, {
       headers: { Accept: "application/json" },
-      signal: requestSignal(options.signal, config.network.timeoutMs),
+      signal: requestSignal(signal, config.network.timeoutMs),
     });
     if (!response.ok) {
       throw providerHttpFailure(
@@ -164,7 +186,18 @@ export class SerperSearchProvider implements SearchProvider {
     }
   }
 
-  async search(query: string, options: SearchRequest = {}): Promise<SearchResult[]> {
+  prepare(query: string, options: SearchRequest = {}) {
+    return {
+      query,
+      execute: (signal?: AbortSignal) => this.execute(query, options, signal),
+    };
+  }
+
+  private async execute(
+    query: string,
+    options: SearchRequest,
+    signal?: AbortSignal,
+  ): Promise<SearchResult[]> {
     const config = getJobRadarConfig();
     const providerConfig = requireProviderConfig(this.name);
     const body = {
@@ -181,7 +214,7 @@ export class SerperSearchProvider implements SearchProvider {
         "X-API-KEY": this.apiKey,
       },
       body: JSON.stringify(body),
-      signal: requestSignal(options.signal, config.network.timeoutMs),
+      signal: requestSignal(signal, config.network.timeoutMs),
     });
     if (!response.ok) {
       throw providerHttpFailure(
@@ -211,8 +244,12 @@ export class JsonSearchProvider implements SearchProvider {
 
   constructor(private readonly hits: SearchResult[]) {}
 
-  async search(_query: string, options: SearchRequest = {}): Promise<SearchResult[]> {
-    return this.hits.slice(0, options.count ?? getJobRadarConfig().discovery.resultsPerQuery);
+  prepare(query: string, options: SearchRequest = {}) {
+    return {
+      query,
+      execute: async () =>
+        this.hits.slice(0, options.count ?? getJobRadarConfig().discovery.resultsPerQuery),
+    };
   }
 }
 

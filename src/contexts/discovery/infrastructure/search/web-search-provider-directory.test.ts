@@ -2,24 +2,51 @@ import { afterEach, expect, it, vi } from "vitest";
 import {
   type SearchProvider,
   SearchProviderFailure,
+  type SearchRequest,
+  type SearchResult,
 } from "@/contexts/discovery/application/discovery-runs/ports/search-provider";
 import type { SearchProviderExecutionPolicy } from "./provider-executor";
 
 import { createWebSearchProviderDirectory } from "./web-search-provider-directory";
+
+type ExecuteSearch = (
+  query: string,
+  request?: SearchRequest & { readonly signal?: AbortSignal },
+) => Promise<ReadonlyArray<SearchResult>>;
 
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
+it("renders during preparation but chooses the execution lane only when execution starts", async () => {
+  const execute = vi.fn(async () => []);
+  const prepare = vi.fn((query: string) => ({ query: `rendered:${query}`, execute }));
+  const directory = createWebSearchProviderDirectory({
+    createProvider: (name) => ({ name, prepare }),
+    readExecutionPolicy: () => policy(),
+  });
+
+  const prepared = directory.get("test").prepare("one");
+
+  expect(prepared.query).toBe("rendered:one");
+  expect(prepare).toHaveBeenCalledOnce();
+  expect(execute).not.toHaveBeenCalled();
+
+  const controller = new AbortController();
+  await expect(prepared.execute(controller.signal)).resolves.toEqual([]);
+
+  expect(execute).toHaveBeenCalledWith(controller.signal);
+});
+
 it("shares one bounded execution lane for each provider", async () => {
   const firstRelease = Promise.withResolvers<readonly []>();
   const search = vi
-    .fn<SearchProvider["search"]>()
+    .fn<ExecuteSearch>()
     .mockImplementationOnce(() => firstRelease.promise)
     .mockResolvedValue([]);
   const directory = createWebSearchProviderDirectory({
-    createProvider: (name) => ({ name, search }),
+    createProvider: providerFactory(search),
     readExecutionPolicy: () => ({
       concurrency: 1,
       requestsPerInterval: 20,
@@ -31,8 +58,8 @@ it("shares one bounded execution lane for each provider", async () => {
     }),
   });
 
-  const first = directory.get("test").search("one");
-  const second = directory.get("test").search("two");
+  const first = execute(directory.get("test"), "one");
+  const second = execute(directory.get("test"), "two");
   await vi.waitFor(() => expect(search).toHaveBeenCalledOnce());
 
   firstRelease.resolve([]);
@@ -42,7 +69,7 @@ it("shares one bounded execution lane for each provider", async () => {
 
 it("applies changed execution settings after the existing lane becomes idle", async () => {
   let executionPolicy = policy({ maxAttempts: 3 });
-  const search = vi.fn<SearchProvider["search"]>().mockRejectedValue(
+  const search = vi.fn<ExecuteSearch>().mockRejectedValue(
     new SearchProviderFailure({
       provider: "test",
       classification: "transient",
@@ -52,14 +79,14 @@ it("applies changed execution settings after the existing lane becomes idle", as
     }),
   );
   const directory = createWebSearchProviderDirectory({
-    createProvider: (name) => ({ name, search }),
+    createProvider: providerFactory(search),
     readExecutionPolicy: () => executionPolicy,
   });
   const provider = directory.get("test");
 
-  await expect(provider.search("one")).rejects.toMatchObject({ attempts: 3 });
+  await expect(execute(provider, "one")).rejects.toMatchObject({ attempts: 3 });
   executionPolicy = policy({ maxAttempts: 1 });
-  await expect(provider.search("two")).rejects.toMatchObject({ attempts: 1 });
+  await expect(execute(provider, "two")).rejects.toMatchObject({ attempts: 1 });
 
   expect(search).toHaveBeenCalledTimes(4);
 });
@@ -68,19 +95,19 @@ it("does not overlap old and new execution lanes while settings change", async (
   let executionPolicy = policy({ concurrency: 1 });
   const firstRelease = Promise.withResolvers<readonly []>();
   const search = vi
-    .fn<SearchProvider["search"]>()
+    .fn<ExecuteSearch>()
     .mockImplementationOnce(() => firstRelease.promise)
     .mockResolvedValue([]);
   const directory = createWebSearchProviderDirectory({
-    createProvider: (name) => ({ name, search }),
+    createProvider: providerFactory(search),
     readExecutionPolicy: () => executionPolicy,
   });
   const provider = directory.get("test");
 
-  const first = provider.search("one");
+  const first = execute(provider, "one");
   await vi.waitFor(() => expect(search).toHaveBeenCalledOnce());
   executionPolicy = policy({ concurrency: 2 });
-  const second = provider.search("two");
+  const second = execute(provider, "two");
   await new Promise((resolve) => setTimeout(resolve, 0));
   expect(search).toHaveBeenCalledOnce();
 
@@ -93,20 +120,20 @@ it("rejects cancellation while a request waits for a settings transition", async
   let executionPolicy = policy({ concurrency: 1 });
   const firstRelease = Promise.withResolvers<readonly []>();
   const search = vi
-    .fn<SearchProvider["search"]>()
+    .fn<ExecuteSearch>()
     .mockImplementationOnce(() => firstRelease.promise)
     .mockResolvedValue([]);
   const directory = createWebSearchProviderDirectory({
-    createProvider: (name) => ({ name, search }),
+    createProvider: providerFactory(search),
     readExecutionPolicy: () => executionPolicy,
   });
   const provider = directory.get("test");
   const controller = new AbortController();
 
-  const first = provider.search("one");
+  const first = execute(provider, "one");
   await vi.waitFor(() => expect(search).toHaveBeenCalledOnce());
   executionPolicy = policy({ concurrency: 2 });
-  const cancelled = provider.search("two", { signal: controller.signal });
+  const cancelled = execute(provider, "two", { signal: controller.signal });
   controller.abort(new DOMException("Cancelled by user", "AbortError"));
 
   await expect(cancelled).rejects.toMatchObject({ name: "AbortError" });
@@ -119,22 +146,22 @@ it("rejects a request already cancelled before a settings transition", async () 
   let executionPolicy = policy({ concurrency: 1 });
   const firstRelease = Promise.withResolvers<readonly []>();
   const search = vi
-    .fn<SearchProvider["search"]>()
+    .fn<ExecuteSearch>()
     .mockImplementationOnce(() => firstRelease.promise)
     .mockResolvedValue([]);
   const directory = createWebSearchProviderDirectory({
-    createProvider: (name) => ({ name, search }),
+    createProvider: providerFactory(search),
     readExecutionPolicy: () => executionPolicy,
   });
   const provider = directory.get("test");
   const controller = new AbortController();
 
-  const first = provider.search("one");
+  const first = execute(provider, "one");
   await vi.waitFor(() => expect(search).toHaveBeenCalledOnce());
   executionPolicy = policy({ concurrency: 2 });
   controller.abort("Cancelled by user");
 
-  await expect(provider.search("two", { signal: controller.signal })).rejects.toMatchObject({
+  await expect(execute(provider, "two", { signal: controller.signal })).rejects.toMatchObject({
     name: "AbortError",
     message: "Cancelled by user",
   });
@@ -147,20 +174,20 @@ it("continues a signalled request when a settings transition finishes first", as
   let executionPolicy = policy({ concurrency: 1 });
   const firstRelease = Promise.withResolvers<readonly []>();
   const search = vi
-    .fn<SearchProvider["search"]>()
+    .fn<ExecuteSearch>()
     .mockImplementationOnce(() => firstRelease.promise)
     .mockResolvedValue([]);
   const directory = createWebSearchProviderDirectory({
-    createProvider: (name) => ({ name, search }),
+    createProvider: providerFactory(search),
     readExecutionPolicy: () => executionPolicy,
   });
   const provider = directory.get("test");
   const controller = new AbortController();
 
-  const first = provider.search("one");
+  const first = execute(provider, "one");
   await vi.waitFor(() => expect(search).toHaveBeenCalledOnce());
   executionPolicy = policy({ concurrency: 2 });
-  const second = provider.search("two", { signal: controller.signal });
+  const second = execute(provider, "two", { signal: controller.signal });
   firstRelease.resolve([]);
 
   await expect(Promise.all([first, second])).resolves.toEqual([[], []]);
@@ -169,18 +196,18 @@ it("continues a signalled request when a settings transition finishes first", as
 
 it("keeps the active rate window when execution settings are unchanged", async () => {
   vi.useFakeTimers();
-  const search = vi.fn<SearchProvider["search"]>().mockResolvedValue([]);
+  const search = vi.fn<ExecuteSearch>().mockResolvedValue([]);
   const executionPolicy = policy({ requestsPerInterval: 1, intervalMs: 1_000 });
   const directory = createWebSearchProviderDirectory({
-    createProvider: (name) => ({ name, search }),
+    createProvider: providerFactory(search),
     readExecutionPolicy: () => executionPolicy,
   });
   const provider = directory.get("test");
 
-  const first = provider.search("one");
+  const first = execute(provider, "one");
   await vi.advanceTimersByTimeAsync(0);
   await expect(first).resolves.toEqual([]);
-  const second = provider.search("two");
+  const second = execute(provider, "two");
   await vi.advanceTimersByTimeAsync(999);
   expect(search).toHaveBeenCalledOnce();
   await vi.advanceTimersByTimeAsync(1);
@@ -195,20 +222,20 @@ it("keeps the active lane when settings revert during a transition", async () =>
   let executionPolicy = originalPolicy;
   const firstRelease = Promise.withResolvers<readonly []>();
   const search = vi
-    .fn<SearchProvider["search"]>()
+    .fn<ExecuteSearch>()
     .mockImplementationOnce(() => firstRelease.promise)
     .mockResolvedValue([]);
   const directory = createWebSearchProviderDirectory({
-    createProvider: (name) => ({ name, search }),
+    createProvider: providerFactory(search),
     readExecutionPolicy: () => executionPolicy,
   });
   const provider = directory.get("test");
 
-  const first = provider.search("one");
+  const first = execute(provider, "one");
   await vi.advanceTimersByTimeAsync(0);
   expect(search).toHaveBeenCalledOnce();
   executionPolicy = { ...originalPolicy, maxAttempts: 1 };
-  const second = provider.search("two");
+  const second = execute(provider, "two");
   executionPolicy = originalPolicy;
   firstRelease.resolve([]);
   await expect(first).resolves.toEqual([]);
@@ -222,7 +249,7 @@ it("keeps the active lane when settings revert during a transition", async () =>
 
 it("applies another settings change after a completed transition", async () => {
   let executionPolicy = policy({ maxAttempts: 3 });
-  const search = vi.fn<SearchProvider["search"]>().mockRejectedValue(
+  const search = vi.fn<ExecuteSearch>().mockRejectedValue(
     new SearchProviderFailure({
       provider: "test",
       classification: "transient",
@@ -232,18 +259,37 @@ it("applies another settings change after a completed transition", async () => {
     }),
   );
   const directory = createWebSearchProviderDirectory({
-    createProvider: (name) => ({ name, search }),
+    createProvider: providerFactory(search),
     readExecutionPolicy: () => executionPolicy,
   });
   const provider = directory.get("test");
 
   executionPolicy = policy({ maxAttempts: 1 });
-  await expect(provider.search("one")).rejects.toMatchObject({ attempts: 1 });
+  await expect(execute(provider, "one")).rejects.toMatchObject({ attempts: 1 });
   executionPolicy = policy({ maxAttempts: 2 });
-  await expect(provider.search("two")).rejects.toMatchObject({ attempts: 2 });
+  await expect(execute(provider, "two")).rejects.toMatchObject({ attempts: 2 });
 
   expect(search).toHaveBeenCalledTimes(3);
 });
+
+function providerFactory(search: ExecuteSearch): (name: string) => SearchProvider {
+  return (name) => ({
+    name,
+    prepare: (query, request = {}) => ({
+      query,
+      execute: (signal) => search(query, { ...request, ...(signal ? { signal } : {}) }),
+    }),
+  });
+}
+
+function execute(
+  provider: SearchProvider,
+  query: string,
+  request: SearchRequest & { readonly signal?: AbortSignal } = {},
+) {
+  const { signal, ...preparation } = request;
+  return provider.prepare(query, preparation).execute(signal);
+}
 
 function policy(
   overrides: Partial<SearchProviderExecutionPolicy> = {},

@@ -1,9 +1,9 @@
 import PQueue from "p-queue";
 import pRetry from "p-retry";
 import {
+  type PreparedSearchRequest,
   type SearchProvider,
   SearchProviderFailure,
-  type SearchRequest,
 } from "@/contexts/discovery/application/discovery-runs/ports/search-provider";
 import type { RuntimeSettings } from "@/contexts/discovery/application/runtime-settings/settings";
 
@@ -11,6 +11,10 @@ export type SearchProviderExecutionPolicy = RuntimeSettings["discovery"]["provid
 
 export interface ScheduledSearchProvider extends SearchProvider {
   readonly onIdle: () => Promise<void>;
+  readonly schedule: (
+    prepared: PreparedSearchRequest,
+    signal?: AbortSignal,
+  ) => ReturnType<PreparedSearchRequest["execute"]>;
 }
 
 export function createScheduledSearchProvider(
@@ -25,22 +29,28 @@ export function createScheduledSearchProvider(
     strict: true,
   });
 
+  const schedule: ScheduledSearchProvider["schedule"] = (prepared, signal) =>
+    executionQueue.add(
+      ({ signal: executionSignal }) =>
+        executeWithRetry(provider.name, prepared, executionSignal, policy, requestQueue),
+      signal ? { signal } : undefined,
+    );
+  const prepare: SearchProvider["prepare"] = (query, request = {}) => {
+    const prepared = provider.prepare(query, request);
+    return { query: prepared.query, execute: (signal) => schedule(prepared, signal) };
+  };
+
   return {
     name: provider.name,
     onIdle: () => executionQueue.onIdle(),
-    search(query, request = {}) {
-      return executionQueue.add(
-        ({ signal }) => executeWithRetry(provider, query, request, signal, policy, requestQueue),
-        request.signal ? { signal: request.signal } : undefined,
-      );
-    },
+    prepare,
+    schedule,
   };
 }
 
 async function executeWithRetry(
-  provider: SearchProvider,
-  query: string,
-  request: SearchRequest,
+  providerName: string,
+  prepared: PreparedSearchRequest,
   signal: AbortSignal | undefined,
   policy: SearchProviderExecutionPolicy,
   requestQueue: PQueue,
@@ -49,11 +59,11 @@ async function executeWithRetry(
     async (attemptNumber) => {
       try {
         return await requestQueue.add(
-          () => provider.search(query, request),
+          () => prepared.execute(signal),
           signal ? { signal } : undefined,
         );
       } catch (error) {
-        throw normalizeProviderFailure(provider.name, error, attemptNumber);
+        throw normalizeProviderFailure(providerName, error, attemptNumber);
       }
     },
     {

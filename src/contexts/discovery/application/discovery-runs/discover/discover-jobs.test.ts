@@ -6,11 +6,19 @@ import type {
 } from "@/contexts/discovery/application/discovery-runs/ports/discovery-run-journal";
 import type { DiscoverySetupReader } from "@/contexts/discovery/application/discovery-runs/ports/discovery-setup";
 import type { JobDiscoveryCatalog } from "@/contexts/discovery/application/discovery-runs/ports/job-discovery-catalog";
-import type { SearchProvider } from "@/contexts/discovery/application/discovery-runs/ports/search-provider";
-import { SearchProviderFailure } from "@/contexts/discovery/application/discovery-runs/ports/search-provider";
+import {
+  SearchProviderFailure,
+  type SearchRequest,
+  type SearchResult,
+} from "@/contexts/discovery/application/discovery-runs/ports/search-provider";
 import type { SearchProviderDirectory } from "@/contexts/discovery/application/discovery-runs/ports/search-provider-directory";
 
 const timestamp = new Date("2026-08-20T12:00:00.000Z");
+
+type ExecuteSearch = (
+  query: string,
+  request?: SearchRequest & { readonly signal?: AbortSignal },
+) => Promise<ReadonlyArray<SearchResult>>;
 
 describe("discover jobs", () => {
   it("plans, searches, records, synchronizes, and evaluates a discovery run", async () => {
@@ -92,6 +100,46 @@ describe("discover jobs", () => {
     expect(journal.failed).toEqual([]);
   });
 
+  it("admits the rendered request immediately before deferred execution", async () => {
+    const controller = new AbortController();
+    const journal = recordingJournal();
+    const execute = vi.fn(async (signal?: AbortSignal) => {
+      expect(signal).toBe(controller.signal);
+      return [];
+    });
+    const prepare = vi.fn((query: string) => ({
+      query: `rendered:${query}`,
+      execute,
+    }));
+    const discovery = createJobDiscovery({
+      setup: configuredSetup(),
+      runs: journal,
+      jobs: { recordHit: vi.fn(), synchronizeBoard: vi.fn() },
+      matches: { evaluate: vi.fn(async () => ({ matched: 0 })) },
+      providers: {
+        get: (name) => ({ name, prepare }),
+      },
+      now: () => timestamp,
+      yieldControl: vi.fn(),
+    });
+
+    const summary = await discovery.discoverJobs({
+      profileId: 7,
+      providerName: "serper",
+      runId: 41,
+      signal: controller.signal,
+      syncBoards: false,
+    });
+
+    expect(prepare).toHaveBeenCalledTimes(2);
+    expect(execute).toHaveBeenCalledTimes(2);
+    expect(journal.admittedRequests).toHaveLength(2);
+    expect(journal.admittedRequests.every((request) => request.text.startsWith("rendered:"))).toBe(
+      true,
+    );
+    expect(summary.queries).toBe(2);
+  });
+
   it("finishes a run as failed when every planned query is rejected by the provider", async () => {
     const journal = recordingJournal();
     const discovery = createJobDiscovery({
@@ -155,24 +203,56 @@ describe("discover jobs", () => {
     expect(journal.completed).toEqual([expect.objectContaining({ allQueriesFailed: false })]);
   });
 
+  it("admits only the request that can execute before a fatal provider failure", async () => {
+    const journal = recordingJournal();
+    const search = vi.fn(async () => {
+      throw new SearchProviderFailure({
+        provider: "serper",
+        classification: "fatal",
+        code: "credit-exhausted",
+        attempts: 1,
+        message: "Serper.dev has no credits",
+      });
+    });
+    const discovery = createJobDiscovery({
+      setup: configuredSetup(),
+      runs: journal,
+      jobs: { recordHit: vi.fn(), synchronizeBoard: vi.fn() },
+      matches: { evaluate: vi.fn(async () => ({ matched: 0 })) },
+      providers: providerDirectory(search),
+      now: () => timestamp,
+      yieldControl: vi.fn(),
+    });
+
+    const summary = await discovery.discoverJobs({
+      profileId: 7,
+      providerName: "serper",
+      runId: 41,
+      syncBoards: false,
+    });
+
+    expect(journal.preparedRuns).toEqual([
+      {
+        runId: 41,
+        profileId: 7,
+        providerName: "serper",
+        startedAt: timestamp,
+      },
+    ]);
+    expect(journal.admittedRequests).toHaveLength(1);
+    expect(journal.admittedRequests[0]).toEqual(
+      expect.objectContaining({ runId: 41, titleTerm: "VP Engineering" }),
+    );
+    expect(search).toHaveBeenCalledOnce();
+    expect(summary.queries).toBe(1);
+    expect(summary.providerFailure?.skippedQueries).toBe(1);
+  });
+
   it.each([
     ["serper", "credit-exhausted"],
     ["brave", "payment-required"],
   ] as const)("stops 370 %s queries after one fatal %s response", async (providerName, code) => {
-    const baseJournal = recordingJournal();
-    const journal: DiscoveryRunJournal & typeof baseJournal = {
-      ...baseJournal,
-      planQueries: (_runId, queries) => {
-        const firstQuery = queries[0];
-        if (!firstQuery) {
-          throw new Error("The fatal-provider test requires one planned query.");
-        }
-        return Array.from({ length: 370 }, (_, index) => ({
-          ...firstQuery,
-          id: index + 1,
-        }));
-      },
-    };
+    const journal = recordingJournal();
     const search = vi.fn(async () => {
       throw new SearchProviderFailure({
         provider: providerName,
@@ -183,7 +263,13 @@ describe("discover jobs", () => {
       });
     });
     const discovery = createJobDiscovery({
-      setup: configuredSetup(),
+      setup: setupWithSources(
+        Array.from({ length: 185 }, (_, index) => ({
+          atsType: "greenhouse",
+          pattern: `jobs-${index}.example.com`,
+          supportsBoardSync: true,
+        })),
+      ),
       runs: journal,
       jobs: { recordHit: vi.fn(), synchronizeBoard: vi.fn() },
       matches: { evaluate: vi.fn(async () => ({ matched: 0 })) },
@@ -225,19 +311,9 @@ describe("discover jobs", () => {
   });
 
   it("counts only the queries left after a fatal response", async () => {
-    const baseJournal = recordingJournal();
-    const journal: DiscoveryRunJournal & typeof baseJournal = {
-      ...baseJournal,
-      planQueries: (_runId, queries) => {
-        const firstQuery = queries[0];
-        if (!firstQuery) {
-          throw new Error("The partial-provider test requires one planned query.");
-        }
-        return Array.from({ length: 3 }, (_, index) => ({ ...firstQuery, id: index + 1 }));
-      },
-    };
+    const journal = recordingJournal();
     const search = vi
-      .fn<SearchProvider["search"]>()
+      .fn<ExecuteSearch>()
       .mockResolvedValueOnce([])
       .mockRejectedValueOnce(
         new SearchProviderFailure({
@@ -249,7 +325,10 @@ describe("discover jobs", () => {
         }),
       );
     const discovery = createJobDiscovery({
-      setup: configuredSetup(),
+      setup: setupWithSources([
+        { atsType: "greenhouse", pattern: "jobs-one.example.com", supportsBoardSync: true },
+        { atsType: "lever", pattern: "jobs-two.example.com", supportsBoardSync: false },
+      ]),
       runs: journal,
       jobs: { recordHit: vi.fn(), synchronizeBoard: vi.fn() },
       matches: { evaluate: vi.fn(async () => ({ matched: 0 })) },
@@ -433,6 +512,7 @@ describe("discover jobs", () => {
 
     expect(search).toHaveBeenCalledOnce();
     expect(recordHit).toHaveBeenCalledOnce();
+    expect(journal.admittedRequests).toHaveLength(1);
     expect(journal.completed).toEqual([]);
     expect(journal.failed).toEqual([]);
   });
@@ -541,8 +621,24 @@ function configuredSetup(): DiscoverySetupReader {
   };
 }
 
-function providerDirectory(search: SearchProvider["search"]): SearchProviderDirectory {
-  return { get: (name) => ({ name, search }) };
+function setupWithSources(
+  sources: ReturnType<DiscoverySetupReader["load"]>["sources"],
+): DiscoverySetupReader {
+  return {
+    load: (command) => ({ ...configuredSetup().load(command), sources }),
+  };
+}
+
+function providerDirectory(search: ExecuteSearch): SearchProviderDirectory {
+  return {
+    get: (name) => ({
+      name,
+      prepare: (query, request = {}) => ({
+        query,
+        execute: (signal) => search(query, { ...request, ...(signal ? { signal } : {}) }),
+      }),
+    }),
+  };
 }
 
 function recordingJournal(): DiscoveryRunJournal & {
@@ -559,6 +655,10 @@ function recordingJournal(): DiscoveryRunJournal & {
     readonly message: string;
     readonly finishedAt: Date;
   }>;
+  readonly preparedRuns: Array<Parameters<DiscoveryRunJournal["prepare"]>[0]>;
+  readonly admittedRequests: Array<
+    Parameters<DiscoveryRunJournal["admitRequest"]>[1] & { readonly runId: number }
+  >;
 } {
   const completed: Array<Parameters<DiscoveryRunJournal["complete"]>[0]> = [];
   const failed: Array<Parameters<DiscoveryRunJournal["fail"]>[0]> = [];
@@ -573,24 +673,36 @@ function recordingJournal(): DiscoveryRunJournal & {
     readonly message: string;
     readonly finishedAt: Date;
   }> = [];
+  const preparedRuns: Array<Parameters<DiscoveryRunJournal["prepare"]>[0]> = [];
+  const admittedRequests: Array<
+    Parameters<DiscoveryRunJournal["admitRequest"]>[1] & { readonly runId: number }
+  > = [];
   return {
+    admittedRequests,
     cancelledQueryBatches,
     completed,
     failed,
+    preparedRuns,
     queryFailures,
     progressRecords,
-    prepare: ({ runId = 99, profileId, providerName }) => ({
-      id: runId,
-      profileId,
-      providerName,
-    }),
-    planQueries: (_runId, queries) => queries.map((query, index) => ({ ...query, id: index + 1 })),
+    prepare: (request) => {
+      preparedRuns.push(request);
+      return {
+        id: request.runId ?? 99,
+        profileId: request.profileId,
+        providerName: request.providerName,
+      };
+    },
+    admitRequest: (runId, query) => {
+      admittedRequests.push({ runId, ...query });
+      return { ...query, id: admittedRequests.length };
+    },
     startQuery: () => undefined,
     completeQuery: () => undefined,
     failQuery: (queryId, message, finishedAt) => {
       queryFailures.push({ queryId, message, finishedAt });
     },
-    cancelPlannedQueries: (runId, message, finishedAt) => {
+    cancelPendingRequests: (runId, message, finishedAt) => {
       cancelledQueryBatches.push({ runId, message, finishedAt });
     },
     recordProgress: (_runId, progress) => {

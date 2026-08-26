@@ -31,7 +31,7 @@ export function createDiscoveryRunExecution({
         if (summary.providerFailure) {
           const { provider, classification, code, attempts, skippedQueries } =
             summary.providerFailure;
-          const successfulQueries = summary.queries - skippedQueries - summary.queryErrors;
+          const successfulQueries = summary.queries - summary.queryErrors;
           const message = `${provider} ${classification} ${code} after ${attempts} ${attempts === 1 ? "attempt" : "attempts"}; skipped ${skippedQueries} ${skippedQueries === 1 ? "query" : "queries"}`;
           return {
             status: successfulQueries > 0 ? "partial" : "failed",

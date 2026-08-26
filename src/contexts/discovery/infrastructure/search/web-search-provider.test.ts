@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type {
   SearchProvider,
   SearchProviderFailure,
+  SearchRequest,
 } from "@/contexts/discovery/application/discovery-runs/ports/search-provider";
 
 import {
@@ -20,7 +21,7 @@ describe.each([
     it("classifies rate limits with its provider identity", async () => {
       const provider = createProvider(async () => new Response(null, { status: 429 }));
 
-      await expect(provider.search("engineering")).rejects.toMatchObject({
+      await expect(execute(provider, "engineering")).rejects.toMatchObject({
         provider: providerName,
         classification: "transient",
         code: "rate-limited",
@@ -31,7 +32,7 @@ describe.each([
     it("classifies malformed successful responses with its provider identity", async () => {
       const provider = createProvider(async () => Response.json({}));
 
-      await expect(provider.search("engineering")).rejects.toMatchObject({
+      await expect(execute(provider, "engineering")).rejects.toMatchObject({
         provider: providerName,
         classification: "fatal",
         code: "invalid-response",
@@ -42,6 +43,27 @@ describe.each([
 );
 
 describe("Brave search provider", () => {
+  it("prepares a rendered request without executing it and receives cancellation at execution", async () => {
+    let requestSignal: AbortSignal | undefined;
+    const fetcher = vi.fn<typeof fetch>(async (_input, init) => {
+      requestSignal = init?.signal ?? undefined;
+      return Response.json({ web: { results: [] } });
+    });
+    const provider = new BraveSearchProvider("test-key", fetcher);
+    const prepared = provider.prepare("engineering leadership", { count: 20 });
+
+    expect(prepared.query).toBe("engineering leadership");
+    expect(fetcher).not.toHaveBeenCalled();
+
+    const controller = new AbortController();
+    await expect(prepared.execute(controller.signal)).resolves.toEqual([]);
+
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(requestSignal).toBeDefined();
+    controller.abort(new DOMException("Cancelled by user", "AbortError"));
+    expect(requestSignal?.aborted).toBe(true);
+  });
+
   it("maps a successful response without web results to an empty list", async () => {
     const provider = new BraveSearchProvider("test-key", async () =>
       Response.json({
@@ -51,7 +73,7 @@ describe("Brave search provider", () => {
       }),
     );
 
-    await expect(provider.search("engineering")).resolves.toEqual([]);
+    await expect(execute(provider, "engineering")).resolves.toEqual([]);
   });
 
   it("maps every web result", async () => {
@@ -74,7 +96,7 @@ describe("Brave search provider", () => {
       }),
     );
 
-    await expect(provider.search("engineering")).resolves.toEqual([
+    await expect(execute(provider, "engineering")).resolves.toEqual([
       {
         title: "Head of Engineering",
         url: "https://boards.greenhouse.io/acme/jobs/123",
@@ -97,7 +119,7 @@ describe("Brave search provider", () => {
       }),
     );
 
-    const failure = await provider.search("engineering").catch((error: unknown) => error);
+    const failure = await execute(provider, "engineering").catch((error: unknown) => error);
 
     expect(failure).toMatchObject({
       classification: "fatal",
@@ -125,7 +147,7 @@ describe("Brave search provider", () => {
       async () => new Response(null, { status }),
     );
 
-    await expect(provider.search("engineering")).rejects.toMatchObject({
+    await expect(execute(provider, "engineering")).rejects.toMatchObject({
       provider: "brave",
       classification,
       code,
@@ -144,7 +166,7 @@ describe("Brave search provider", () => {
     };
     const provider = new BraveSearchProvider("test-key", fetcher);
 
-    await provider.search("site:example.com engineering", {
+    await execute(provider, "site:example.com engineering", {
       count: 20,
       maxAgeDays: 30,
     });
@@ -163,7 +185,7 @@ describe("Brave search provider", () => {
     const provider = new BraveSearchProvider("test-key", fetcher);
     const controller = new AbortController();
 
-    await provider.search("engineering", { signal: controller.signal });
+    await execute(provider, "engineering", { signal: controller.signal });
 
     expect(requestSignal).toBeDefined();
     expect(requestSignal).not.toBe(controller.signal);
@@ -197,7 +219,8 @@ describe("Serper.dev search provider", () => {
     };
     const provider = new SerperSearchProvider("test-key", fetcher);
 
-    const results = await provider.search(
+    const results = await execute(
+      provider,
       'site:boards.greenhouse.io intitle:"Head of Engineering" "UK"',
       { count: 20, maxAgeDays: 30 },
     );
@@ -220,7 +243,7 @@ describe("Serper.dev search provider", () => {
       Response.json({ message: "Not enough credits" }, { status: 400 }),
     );
 
-    await expect(provider.search("engineering")).rejects.toMatchObject({
+    await expect(execute(provider, "engineering")).rejects.toMatchObject({
       provider: "serper",
       classification: "fatal",
       code: "credit-exhausted",
@@ -228,3 +251,12 @@ describe("Serper.dev search provider", () => {
     } satisfies Partial<SearchProviderFailure>);
   });
 });
+
+function execute(
+  provider: SearchProvider,
+  query: string,
+  request: SearchRequest & { readonly signal?: AbortSignal } = {},
+) {
+  const { signal, ...preparation } = request;
+  return provider.prepare(query, preparation).execute(signal);
+}

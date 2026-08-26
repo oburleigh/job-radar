@@ -22,17 +22,13 @@ export interface DiscoveryRunJournal {
     readonly runId?: number;
     readonly profileId: number;
     readonly providerName: string;
-    readonly queryCount: number;
     readonly startedAt: Date;
   }) => PreparedDiscoveryRun;
-  readonly planQueries: (
-    runId: number,
-    queries: readonly PlannedSearchQuery[],
-  ) => readonly PersistedDiscoveryQuery[];
+  readonly admitRequest: (runId: number, query: PlannedSearchQuery) => PersistedDiscoveryQuery;
   readonly startQuery: (queryId: number, startedAt: Date) => void;
   readonly completeQuery: (queryId: number, hitCount: number, finishedAt: Date) => void;
   readonly failQuery: (queryId: number, message: string, finishedAt: Date) => void;
-  readonly cancelPlannedQueries: (runId: number, message: string, finishedAt: Date) => void;
+  readonly cancelPendingRequests: (runId: number, message: string, finishedAt: Date) => void;
   readonly recordProgress: (
     runId: number,
     progress: DiscoveryRunProgress,
