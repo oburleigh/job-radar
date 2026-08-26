@@ -11,6 +11,7 @@ export function createSqliteRuntimeSettingsStore(database: Database): RuntimeSet
         { key: "network", value: settings.network },
         { key: "discovery", value: settings.discovery },
         { key: "matching", value: settings.matching },
+        { key: "marketVocabulary", value: settings.marketVocabulary },
         { key: "ui", value: settings.ui },
         { key: "searchProviders", value: settings.searchProviders },
         { key: "integrationPolicy", value: settings.integrationPolicy },

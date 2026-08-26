@@ -1,10 +1,12 @@
-import type {
-  QuerySource,
-  SearchQueryCriteria,
-} from "@/contexts/discovery/application/discovery-runs/planning/plan-search-queries";
+import type { QuerySource } from "@/contexts/discovery/application/discovery-runs/planning/plan-search-queries";
+import type { ResolvedMarket } from "@/contexts/discovery/domain/market";
 
-export type DiscoveryCriteria = SearchQueryCriteria & {
+export type DiscoveryCriteria = {
   readonly id: number;
+  readonly titleTerms: readonly string[];
+  readonly markets: readonly ResolvedMarket[];
+  readonly excludedMarkets: readonly ResolvedMarket[];
+  readonly includeRemote: boolean;
   readonly maxAgeDays: number;
 };
 

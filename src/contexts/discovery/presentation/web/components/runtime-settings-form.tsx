@@ -17,8 +17,16 @@ export function RuntimeSettingsForm({ settings }: RuntimeSettingsFormProps) {
   const fetcher = useFetcher<ActionState>();
   const state = fetcher.data ?? initialState;
   const pending = fetcher.state !== "idle";
-  const { network, discovery, ui, matching, searchProviders, integrationPolicy, profileDefaults } =
-    settings;
+  const {
+    network,
+    discovery,
+    ui,
+    matching,
+    marketVocabulary,
+    searchProviders,
+    integrationPolicy,
+    profileDefaults,
+  } = settings;
   const limits = runtimeSettingConstraints;
   const [salaryCurrency, setSalaryCurrency] = useState(profileDefaults.salaryCurrency);
   const fieldError = (field: string) =>
@@ -118,6 +126,27 @@ export function RuntimeSettingsForm({ settings }: RuntimeSettingsFormProps) {
             </select>
           </label>
         </div>
+        <label>
+          <span>Market vocabulary (JSON)</span>
+          <textarea
+            name="marketVocabulary"
+            required
+            rows={14}
+            defaultValue={JSON.stringify(marketVocabulary, null, 2)}
+            aria-invalid={Boolean(fieldError("marketVocabulary"))}
+            aria-describedby={fieldError("marketVocabulary") ? "marketVocabulary-error" : undefined}
+          />
+          {fieldError("marketVocabulary") ? (
+            <small id="marketVocabulary-error" className="field-error">
+              {fieldError("marketVocabulary")}
+            </small>
+          ) : (
+            <small className="field-help">
+              Country aliases and configured descendants widen country targets. Cities and
+              subdivisions stay narrow.
+            </small>
+          )}
+        </label>
         <fieldset className="form-grid settings-subsection">
           <legend>Provider execution</legend>
           <p className="field-help">

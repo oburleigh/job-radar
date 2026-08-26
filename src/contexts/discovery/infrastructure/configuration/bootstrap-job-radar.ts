@@ -1,7 +1,10 @@
 import { eq } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 
-import type { RuntimeSettings } from "@/contexts/discovery/application/runtime-settings/settings";
+import type {
+  MarketVocabulary,
+  RuntimeSettings,
+} from "@/contexts/discovery/application/runtime-settings/settings";
 import type { AtsType } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
 import type * as schema from "@/contexts/discovery/infrastructure/sqlite/schema";
 import {
@@ -46,6 +49,19 @@ export const defaultProviderExecutionSettings = {
   retryMaxTimeMs: 100_000,
 } as const satisfies RuntimeSettings["discovery"]["providerExecution"];
 
+export const defaultMarketVocabulary = {
+  markets: [
+    {
+      key: "country:AE",
+      aliases: ["UAE"],
+      covers: ["subdivision:AE-AZ", "subdivision:AE-DU"],
+      searchLanguage: "en",
+    },
+    { key: "subdivision:AE-AZ", label: "Abu Dhabi", aliases: [] },
+    { key: "subdivision:AE-DU", label: "Dubai", aliases: [] },
+  ],
+} as const satisfies MarketVocabulary;
+
 const settingDefaults: SettingDefault[] = [
   {
     key: "network",
@@ -80,6 +96,10 @@ const settingDefaults: SettingDefault[] = [
       discoveryPollIntervalMs: 3000,
       discoveryStaleAfterMs: 300000,
     },
+  },
+  {
+    key: "marketVocabulary",
+    value: defaultMarketVocabulary,
   },
   {
     key: "matching",

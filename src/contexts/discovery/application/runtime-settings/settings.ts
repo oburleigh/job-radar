@@ -1,5 +1,17 @@
 import type { MatchingPolicy } from "@/contexts/discovery/domain/job-match";
 
+export type MarketVocabularyEntry = {
+  readonly key: string;
+  readonly label?: string | undefined;
+  readonly aliases: readonly string[];
+  readonly covers?: readonly string[] | undefined;
+  readonly searchLanguage?: string | undefined;
+};
+
+export type MarketVocabulary = {
+  readonly markets: readonly MarketVocabularyEntry[];
+};
+
 export interface SearchProviderSettings {
   readonly label: string;
   readonly endpoint: string;
@@ -36,6 +48,7 @@ export interface RuntimeSettings {
     readonly closedListingMarkers: readonly string[];
   };
   readonly matching: MatchingPolicy;
+  readonly marketVocabulary: MarketVocabulary;
   readonly ui: {
     readonly discoveryPollIntervalMs: number;
     readonly discoveryStaleAfterMs: number;

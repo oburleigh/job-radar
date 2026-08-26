@@ -22,6 +22,7 @@ export function getSettingsData() {
     discovery: config.discovery,
     ui: config.ui,
     matching: config.matching,
+    marketVocabulary: config.marketVocabulary,
     searchProviders: config.searchProviders,
     integrationPolicy: config.integrationPolicy,
     profileDefaults: config.profileDefaults,

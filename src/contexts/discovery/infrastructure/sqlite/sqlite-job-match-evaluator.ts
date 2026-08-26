@@ -10,7 +10,7 @@ type Database = typeof db;
 
 export function createSqliteJobMatchEvaluator(database: Database): JobMatchEvaluator {
   return {
-    async evaluate(profileId, onBatch, beforeBatch) {
+    async evaluate(profileId, markets, onBatch, beforeBatch) {
       const profile = database
         .select()
         .from(searchProfiles)
@@ -20,6 +20,8 @@ export function createSqliteJobMatchEvaluator(database: Database): JobMatchEvalu
         throw new Error(`Search profile ${profileId} was not found`);
       }
       return evaluateAndStore(profile, {
+        locationTerms: markets.marketScopes.flatMap((market) => market.terms),
+        excludedLocationTerms: markets.excludedMarketScopes.flatMap((market) => market.terms),
         onBatch,
         ...(beforeBatch ? { beforeBatch } : {}),
       });

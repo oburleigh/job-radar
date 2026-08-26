@@ -8,7 +8,10 @@ import { createSaveSearchProfile } from "@/contexts/discovery/application/search
 import { createAddJobSource } from "@/contexts/discovery/application/source-coverage/add/use-case";
 import { createSetSourceCoverageEnabled } from "@/contexts/discovery/application/source-coverage/set-enabled/use-case";
 import { createSyncSourceCoverage } from "@/contexts/discovery/application/source-coverage/sync/use-case";
-import { getJobRadarConfig } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
+import {
+  getJobRadarConfig,
+  isMarketVocabulary,
+} from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
 import { isBuiltInAtsType } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
 import { getAtsLabels } from "@/contexts/discovery/infrastructure/job-sources/catalog";
 import { createJobSourceRegistrar } from "@/contexts/discovery/infrastructure/job-sources/job-source-registrar";
@@ -36,6 +39,7 @@ const changeJobListingState = createChangeJobListingState({
   now: () => new Date(),
 });
 const saveRuntimeSettings = createSaveRuntimeSettings({
+  marketVocabulary: { isValid: isMarketVocabulary },
   settings: createSqliteRuntimeSettingsStore(db),
   now: () => new Date(),
 });
@@ -81,6 +85,7 @@ export const discoveryWeb = {
       network,
       discovery,
       matching,
+      marketVocabulary,
       ui,
       searchProviders,
       integrationPolicy,
@@ -90,6 +95,7 @@ export const discoveryWeb = {
       network,
       discovery,
       matching,
+      marketVocabulary,
       ui,
       searchProviders,
       integrationPolicy,

@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import type { DiscoverySetupReader } from "@/contexts/discovery/application/discovery-runs/ports/discovery-setup";
+import { createMarketResolver } from "@/contexts/discovery/infrastructure/markets/market-resolver";
 import type { db } from "@/contexts/discovery/infrastructure/sqlite/database";
 import { searchProfiles, sourceDomains } from "@/contexts/discovery/infrastructure/sqlite/schema";
 
@@ -20,6 +21,7 @@ export function createSqliteDiscoverySetup(database: Database): DiscoverySetupRe
       }
 
       const config = getJobRadarConfig();
+      const marketResolver = createMarketResolver(config.marketVocabulary);
       const provider = config.searchProviders[providerName];
       const sources = database
         .select()
@@ -34,7 +36,16 @@ export function createSqliteDiscoverySetup(database: Database): DiscoverySetupRe
         }));
 
       return {
-        profile,
+        profile: {
+          id: profile.id,
+          titleTerms: profile.titleTerms,
+          markets: profile.locationTerms.map((term) => marketResolver.resolve(term)),
+          excludedMarkets: profile.excludedLocationTerms.map((term) =>
+            marketResolver.resolve(term),
+          ),
+          includeRemote: profile.includeRemote,
+          maxAgeDays: profile.maxAgeDays,
+        },
         sources,
         policy: {
           resultsPerQuery: config.discovery.resultsPerQuery,

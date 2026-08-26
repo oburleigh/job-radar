@@ -1,3 +1,5 @@
+import type { MarketScope } from "@/contexts/discovery/domain/market";
+
 export type QuerySource = {
   readonly atsType: string;
   readonly pattern: string;
@@ -10,9 +12,12 @@ export type PlannedSearchQuery = {
   readonly text: string;
 };
 
-export type SearchQueryCriteria = {
+type MarketSearchCriteria = {
+  readonly markets: readonly MarketScope[];
+};
+
+export type SearchQueryCriteria = MarketSearchCriteria & {
   readonly titleTerms: readonly string[];
-  readonly locationTerms: readonly string[];
   readonly includeRemote: boolean;
 };
 
@@ -26,7 +31,7 @@ export function planSearchQueries(
   worldwideRemoteTerms: readonly string[],
 ): PlannedSearchQuery[] {
   const titles = uniqueTerms(criteria.titleTerms);
-  const locations = uniqueTerms(criteria.locationTerms);
+  const locations = uniqueTerms(marketTerms(criteria));
 
   if (titles.length === 0 || locations.length === 0) {
     return [];
@@ -60,10 +65,10 @@ export function planSearchQueries(
 }
 
 export function planBoardDiscoveryQueries(
-  criteria: Pick<SearchQueryCriteria, "locationTerms">,
+  criteria: MarketSearchCriteria,
   sources: readonly QuerySource[],
 ): PlannedSearchQuery[] {
-  const locations = uniqueTerms(criteria.locationTerms);
+  const locations = uniqueTerms(marketTerms(criteria));
   if (locations.length === 0) {
     return [];
   }
@@ -94,4 +99,8 @@ function orClause(terms: readonly string[], prefix = ""): string {
 
 function uniqueTerms(terms: readonly string[]): string[] {
   return [...new Set(terms.map((term) => term.trim()).filter(Boolean))];
+}
+
+function marketTerms(criteria: MarketSearchCriteria): readonly string[] {
+  return criteria.markets.flatMap((market) => market.terms);
 }

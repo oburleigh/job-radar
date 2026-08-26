@@ -21,6 +21,8 @@ export interface EvaluationSummary {
 }
 
 interface EvaluationOptions {
+  locationTerms?: readonly string[];
+  excludedLocationTerms?: readonly string[];
   onBatch?: () => void;
   beforeBatch?: () => void;
   yieldEvery?: number;
@@ -47,7 +49,14 @@ export async function evaluateAndStore(
         verified: isVerifiedJobListing(job.evidence),
         publishedSalary: createAnnualSalaryRange(job.salaryCurrency, job.salaryMin, job.salaryMax),
       },
-      { ...profile, salaryCurrency: currencyFrom(profile.salaryCurrency) },
+      {
+        ...profile,
+        locationTerms: [...(options.locationTerms ?? profile.locationTerms)],
+        excludedLocationTerms: [
+          ...(options.excludedLocationTerms ?? profile.excludedLocationTerms),
+        ],
+        salaryCurrency: currencyFrom(profile.salaryCurrency),
+      },
       config.matching,
       now,
     );

@@ -8,6 +8,7 @@ describe("save runtime settings", () => {
     const replacements: { settings: RuntimeSettingsCommand; at: Date }[] = [];
     const changedAt = new Date("2026-08-20T13:00:00.000Z");
     const save = createSaveRuntimeSettings({
+      marketVocabulary: { isValid: () => true },
       settings: {
         replace: (settings, at) => replacements.push({ settings, at }),
       },
@@ -22,6 +23,7 @@ describe("save runtime settings", () => {
   it("rejects settings outside the supported operating bounds", () => {
     const replacements: RuntimeSettingsCommand[] = [];
     const save = createSaveRuntimeSettings({
+      marketVocabulary: { isValid: () => true },
       settings: { replace: (settings) => replacements.push(settings) },
       now: () => new Date(),
     });
@@ -36,6 +38,22 @@ describe("save runtime settings", () => {
       status: "rejected",
       reason: "invalid-setting",
       field: "resultsPerQuery",
+    });
+    expect(replacements).toEqual([]);
+  });
+
+  it("keeps the current settings when the market vocabulary is invalid", () => {
+    const replacements: RuntimeSettingsCommand[] = [];
+    const save = createSaveRuntimeSettings({
+      marketVocabulary: { isValid: () => false },
+      settings: { replace: (settings) => replacements.push(settings) },
+      now: () => new Date(),
+    });
+
+    expect(save(runtimeSettings())).toEqual({
+      status: "rejected",
+      reason: "invalid-setting",
+      field: "marketVocabulary",
     });
     expect(replacements).toEqual([]);
   });
@@ -78,6 +96,17 @@ function runtimeSettings(): RuntimeSettingsCommand {
       genericTitleTerms: ["head"],
       remoteTerms: ["remote"],
       unrestrictedRemotePhrases: ["worldwide"],
+    },
+    marketVocabulary: {
+      markets: [
+        {
+          key: "country:AE",
+          aliases: ["UAE"],
+          covers: ["subdivision:AE-DU"],
+          searchLanguage: "en",
+        },
+        { key: "subdivision:AE-DU", label: "Dubai", aliases: [] },
+      ],
     },
     ui: { discoveryPollIntervalMs: 2_000, discoveryStaleAfterMs: 300_000 },
     searchProviders: {},

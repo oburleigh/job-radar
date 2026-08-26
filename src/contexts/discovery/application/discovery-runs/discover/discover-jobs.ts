@@ -80,13 +80,17 @@ export function createJobDiscovery({
           ? Math.min(profile.maxAgeDays, policy.searchFreshnessDays)
           : profile.maxAgeDays;
       const roleQueries = planSearchQueries(
-        profile,
+        {
+          titleTerms: profile.titleTerms,
+          markets: profile.markets.map((market) => market.scope),
+          includeRemote: profile.includeRemote,
+        },
         sources,
         policy.titleSearchMode,
         policy.worldwideRemoteTerms,
       );
       const boardQueries = planBoardDiscoveryQueries(
-        profile,
+        { markets: profile.markets.map((market) => market.scope) },
         sources.filter((source) => source.supportsBoardSync),
       );
       const plannedQueries = [...roleQueries, ...boardQueries];
@@ -168,7 +172,7 @@ export function createJobDiscovery({
               query: query.text,
               rank: index + 1,
               result,
-              locationTerms: profile.locationTerms,
+              marketScopes: profile.markets.map((market) => market.scope),
               recordedAt: now(),
             });
             hitCount += Number(recorded.inserted);
@@ -207,6 +211,10 @@ export function createJobDiscovery({
         matchesFound = (
           await matches.evaluate(
             command.profileId,
+            {
+              marketScopes: profile.markets.map((market) => market.scope),
+              excludedMarketScopes: profile.excludedMarkets.map((market) => market.scope),
+            },
             () => {
               runs.recordProgress(run.id, progress(), now());
             },

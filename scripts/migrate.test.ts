@@ -26,7 +26,7 @@ describe("database setup command", () => {
     runDatabaseSetup(databasePath);
 
     const sqlite = new Database(databasePath);
-    expect(count(sqlite, "app_settings")).toBe(7);
+    expect(count(sqlite, "app_settings")).toBe(8);
     expect(count(sqlite, "ats_integrations")).toBe(13);
     expect(count(sqlite, "source_domains")).toBe(15);
     for (const table of [

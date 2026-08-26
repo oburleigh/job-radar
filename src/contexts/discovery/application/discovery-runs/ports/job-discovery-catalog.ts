@@ -1,3 +1,4 @@
+import type { MarketScope } from "@/contexts/discovery/domain/market";
 import type { SearchResult } from "./search-provider";
 
 export type RecordedDiscoveryHit = {
@@ -12,7 +13,7 @@ export interface JobDiscoveryCatalog {
     readonly query: string;
     readonly rank: number;
     readonly result: SearchResult;
-    readonly locationTerms: readonly string[];
+    readonly marketScopes: readonly MarketScope[];
     readonly recordedAt: Date;
   }) => Promise<RecordedDiscoveryHit>;
   readonly synchronizeBoard: (

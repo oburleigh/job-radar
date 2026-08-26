@@ -1,9 +1,13 @@
+import { iso31661, iso31662 } from "iso-3166";
 import { z } from "zod";
 import {
   runtimeSettingConstraints,
   runtimeTextConstraints,
 } from "@/contexts/discovery/application/runtime-settings/save/constraints";
-import type { RuntimeSettings } from "@/contexts/discovery/application/runtime-settings/settings";
+import type {
+  MarketVocabulary,
+  RuntimeSettings,
+} from "@/contexts/discovery/application/runtime-settings/settings";
 import { ATS_TYPES } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
 import { db } from "@/contexts/discovery/infrastructure/sqlite/database";
 import { appSettings, atsIntegrations } from "@/contexts/discovery/infrastructure/sqlite/schema";
@@ -83,6 +87,98 @@ const providerSchema = z.object({
   titleSearchMode: z.enum(["title", "anywhere"]).nullable(),
 });
 
+const marketKeySchema = z
+  .string()
+  .regex(
+    /^(?:country:[A-Z]{2}|subdivision:[A-Z]{2}-[A-Z0-9]{1,3}|city:[A-Z]{2}:[a-z0-9][a-z0-9-]*)$/,
+  );
+const marketEntrySchema = z.object({
+  key: marketKeySchema,
+  label: z.string().trim().min(1).optional(),
+  aliases: z.array(z.string().trim().min(1)),
+  covers: z.array(marketKeySchema).optional(),
+  searchLanguage: z
+    .string()
+    .refine(isLanguageTag, { message: "Search language must be a valid language tag" })
+    .optional(),
+});
+const marketVocabularySchema = z
+  .object({ markets: z.array(marketEntrySchema).min(1) })
+  .superRefine((vocabulary, context) => {
+    const entries = new Map(vocabulary.markets.map((market) => [market.key, market]));
+    const terms = new Map<string, string>();
+
+    for (const [index, market] of vocabulary.markets.entries()) {
+      const countryCode = marketCountryCode(market.key);
+      const isCountry = market.key.startsWith("country:");
+      const isSubdivision = market.key.startsWith("subdivision:");
+      const country = iso31661.find((entry) => entry.alpha2 === countryCode);
+      const subdivision = isSubdivision
+        ? iso31662.find((entry) => entry.code === market.key.slice("subdivision:".length))
+        : undefined;
+
+      if (!country || (isSubdivision && !subdivision)) {
+        context.addIssue({
+          code: "custom",
+          path: ["markets", index, "key"],
+          message: `Unknown ISO market key ${market.key}`,
+        });
+      }
+      if (!isCountry && !market.label) {
+        context.addIssue({
+          code: "custom",
+          path: ["markets", index, "label"],
+          message: "Subdivision and city markets require an operator label",
+        });
+      }
+      if (!isCountry && market.covers !== undefined) {
+        context.addIssue({
+          code: "custom",
+          path: ["markets", index, "covers"],
+          message: "Only country markets can cover other markets",
+        });
+      }
+      if (!isCountry && market.searchLanguage !== undefined) {
+        context.addIssue({
+          code: "custom",
+          path: ["markets", index, "searchLanguage"],
+          message: "Subdivision and city markets inherit their search language",
+        });
+      }
+
+      for (const coveredKey of market.covers ?? []) {
+        if (!entries.has(coveredKey)) {
+          context.addIssue({
+            code: "custom",
+            path: ["markets", index, "covers"],
+            message: `Covered market ${coveredKey} is not configured`,
+          });
+        } else if (marketCountryCode(coveredKey) !== countryCode) {
+          context.addIssue({
+            code: "custom",
+            path: ["markets", index, "covers"],
+            message: `Covered market ${coveredKey} belongs to another country`,
+          });
+        }
+      }
+
+      const label = isCountry ? country?.name : market.label;
+      for (const term of [...(label ? [label] : []), ...market.aliases]) {
+        const normalized = normalizeMarketTerm(term);
+        const owner = terms.get(normalized);
+        if (owner !== undefined) {
+          context.addIssue({
+            code: "custom",
+            path: ["markets", index, "aliases"],
+            message: `Market term ${term.trim()} duplicates ${owner}`,
+          });
+        } else {
+          terms.set(normalized, market.key);
+        }
+      }
+    }
+  });
+
 const searchProvidersSchema = z
   .record(z.string().min(1), providerSchema)
   .refine((providers) => Object.keys(providers).length > 0, {
@@ -112,11 +208,20 @@ const profileDefaultsSchema = z.object({
 });
 
 export interface JobRadarConfig extends RuntimeSettings {
+  marketVocabulary: MarketVocabulary;
   ats: Record<string, z.infer<typeof integrationSchema>>;
 }
 
 export function parseDiscoverySettings(value: unknown): RuntimeSettings["discovery"] {
   return discoverySchema.parse(value);
+}
+
+export function parseMarketVocabulary(value: unknown): MarketVocabulary {
+  return marketVocabularySchema.parse(value);
+}
+
+export function isMarketVocabulary(value: MarketVocabulary): boolean {
+  return marketVocabularySchema.safeParse(value).success;
 }
 
 export function getJobRadarConfig(): JobRadarConfig {
@@ -154,6 +259,7 @@ export function getJobRadarConfig(): JobRadarConfig {
     discovery: parseDiscoverySettings(requireSetting(settings, "discovery")),
     ui: uiSchema.parse(requireSetting(settings, "ui")),
     matching: matchingSchema.parse(requireSetting(settings, "matching")),
+    marketVocabulary: parseMarketVocabulary(requireSetting(settings, "marketVocabulary")),
     searchProviders: searchProvidersSchema.parse(requireSetting(settings, "searchProviders")),
     integrationPolicy: integrationPolicySchema.parse(requireSetting(settings, "integrationPolicy")),
     profileDefaults: profileDefaultsSchema.parse(requireSetting(settings, "profileDefaults")),
@@ -218,4 +324,22 @@ function requireSetting(settings: Map<string, unknown>, key: string): unknown {
     throw new Error(`Missing ${key} setting in SQLite`);
   }
   return settings.get(key);
+}
+
+function isLanguageTag(value: string): boolean {
+  try {
+    new Intl.Locale(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function marketCountryCode(key: string): string {
+  const separator = key.indexOf(":");
+  return key.slice(separator + 1, separator + 3);
+}
+
+function normalizeMarketTerm(value: string): string {
+  return value.trim().toLocaleLowerCase();
 }

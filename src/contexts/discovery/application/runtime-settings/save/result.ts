@@ -5,5 +5,5 @@ export type SaveRuntimeSettingsResult =
   | {
       readonly status: "rejected";
       readonly reason: "invalid-setting";
-      readonly field: RuntimeNumericSetting | "salaryCurrency" | "userAgent";
+      readonly field: RuntimeNumericSetting | "marketVocabulary" | "salaryCurrency" | "userAgent";
     };

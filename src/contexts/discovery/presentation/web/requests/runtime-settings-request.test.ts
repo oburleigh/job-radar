@@ -111,6 +111,57 @@ describe("runtime settings request", () => {
       retryMaxTimeMs: 45_000,
     });
   });
+
+  it("maps validated market vocabulary JSON into the application command", () => {
+    const formData = runtimeSettingsForm({
+      maximumAgeDays: "45",
+      minimumScore: "82",
+      salaryCurrency: "AED",
+    });
+    formData.set(
+      "marketVocabulary",
+      JSON.stringify({
+        markets: [
+          {
+            key: "country:AE",
+            aliases: ["UAE", "Emirates"],
+            covers: ["subdivision:AE-DU"],
+            searchLanguage: "en",
+          },
+          { key: "subdivision:AE-DU", label: "Dubai", aliases: [] },
+        ],
+      }),
+    );
+
+    const result = parseRuntimeSettingsRequest(formData, currentRuntimeSettings());
+
+    expect(result.ok && result.command.marketVocabulary).toEqual({
+      markets: [
+        {
+          key: "country:AE",
+          aliases: ["UAE", "Emirates"],
+          covers: ["subdivision:AE-DU"],
+          searchLanguage: "en",
+        },
+        { key: "subdivision:AE-DU", label: "Dubai", aliases: [] },
+      ],
+    });
+  });
+
+  it("identifies malformed market vocabulary JSON", () => {
+    const formData = runtimeSettingsForm({
+      maximumAgeDays: "45",
+      minimumScore: "82",
+      salaryCurrency: "AED",
+    });
+    formData.set("marketVocabulary", "{not-json");
+
+    expect(parseRuntimeSettingsRequest(formData, currentRuntimeSettings())).toEqual({
+      ok: false,
+      field: "marketVocabulary",
+      message: "Market vocabulary must be valid JSON.",
+    });
+  });
 });
 
 function currentRuntimeSettings(): RuntimeSettingsCommand {
@@ -151,6 +202,17 @@ function currentRuntimeSettings(): RuntimeSettingsCommand {
       genericTitleTerms: ["head"],
       remoteTerms: ["remote"],
       unrestrictedRemotePhrases: ["worldwide remote"],
+    },
+    marketVocabulary: {
+      markets: [
+        {
+          key: "country:AE",
+          aliases: ["UAE"],
+          covers: ["subdivision:AE-DU"],
+          searchLanguage: "en",
+        },
+        { key: "subdivision:AE-DU", label: "Dubai", aliases: [] },
+      ],
     },
     searchProviders: {
       test: {
@@ -210,6 +272,7 @@ function runtimeSettingsForm(profileDefaults: {
     genericTitleTerms: config.matching.genericTitleTerms.join("\n"),
     remoteTerms: config.matching.remoteTerms.join("\n"),
     unrestrictedRemotePhrases: config.matching.unrestrictedRemotePhrases.join("\n"),
+    marketVocabulary: JSON.stringify(config.marketVocabulary, null, 2),
     customIntegrationPriority: String(config.integrationPolicy.customPriority),
     ...profileDefaults,
   };

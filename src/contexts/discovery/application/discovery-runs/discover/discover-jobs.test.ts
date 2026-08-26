@@ -27,10 +27,12 @@ describe("discover jobs", () => {
       .mockResolvedValueOnce({ inserted: true, jobsWritten: 1, syncableBoardId: 11 })
       .mockResolvedValueOnce({ inserted: false, jobsWritten: 1, syncableBoardId: 11 });
     const synchronizeBoard = vi.fn(async () => ({ jobsWritten: 3, error: "" }));
-    const evaluateMatches = vi.fn(async (_profileId: number, onBatch: () => void) => {
-      onBatch();
-      return { matched: 5 };
-    });
+    const evaluateMatches = vi.fn(
+      async (_profileId: number, _markets: unknown, onBatch: () => void) => {
+        onBatch();
+        return { matched: 5 };
+      },
+    );
     const yieldControl = vi.fn(async () => undefined);
     const discovery = createJobDiscovery({
       setup: configuredSetup(),
@@ -63,7 +65,20 @@ describe("discover jobs", () => {
     expect(recordHit).toHaveBeenCalledTimes(2);
     expect(synchronizeBoard).toHaveBeenCalledOnce();
     expect(synchronizeBoard).toHaveBeenCalledWith(11, 200);
-    expect(evaluateMatches).toHaveBeenCalledWith(7, expect.any(Function), expect.any(Function));
+    const marketScope = {
+      key: "country:AE",
+      label: "United Arab Emirates",
+      terms: ["United Arab Emirates", "UAE", "Abu Dhabi", "Dubai"],
+    };
+    expect(recordHit).toHaveBeenCalledWith(
+      expect.objectContaining({ marketScopes: [marketScope] }),
+    );
+    expect(evaluateMatches).toHaveBeenCalledWith(
+      7,
+      { marketScopes: [marketScope], excludedMarketScopes: [] },
+      expect.any(Function),
+      expect.any(Function),
+    );
     expect(yieldControl).toHaveBeenCalledTimes(2);
     expect(journal.progressRecords).toHaveLength(4);
     expect(journal.completed).toEqual([
@@ -466,7 +481,7 @@ describe("discover jobs", () => {
         synchronizeBoard: vi.fn(),
       },
       matches: {
-        evaluate: async (_profileId, _onBatch, beforeBatch) => {
+        evaluate: async (_profileId, _markets, _onBatch, beforeBatch) => {
           beforeBatch?.();
           controller.abort("Cancelled by user");
           beforeBatch?.();
@@ -498,7 +513,18 @@ function configuredSetup(): DiscoverySetupReader {
       profile: {
         id: 7,
         titleTerms: ["VP Engineering"],
-        locationTerms: ["Dubai"],
+        markets: [
+          {
+            scope: {
+              key: "country:AE",
+              label: "United Arab Emirates",
+              terms: ["United Arab Emirates", "UAE", "Abu Dhabi", "Dubai"],
+            },
+            countryCode: "AE",
+            searchLanguage: "en",
+          },
+        ],
+        excludedMarkets: [],
         includeRemote: false,
         maxAgeDays: 60,
       },

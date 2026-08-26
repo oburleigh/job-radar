@@ -13,6 +13,7 @@ import {
   supportsBoardSync,
 } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
 import { createSqliteDiscoverySetup } from "@/contexts/discovery/infrastructure/configuration/sqlite-discovery-setup";
+import { createMarketResolver } from "@/contexts/discovery/infrastructure/markets/market-resolver";
 import { getSearchProviderOptions } from "@/contexts/discovery/infrastructure/search/web-search-provider";
 import { createWebSearchProviderDirectory } from "@/contexts/discovery/infrastructure/search/web-search-provider-directory";
 import { db } from "@/contexts/discovery/infrastructure/sqlite/database";
@@ -54,14 +55,20 @@ async function main() {
       .where(eq(sourceDomains.enabled, true))
       .all()
       .filter((item) => !source || item.atsType === source);
+    const marketResolver = createMarketResolver(config.marketVocabulary);
+    const markets = profile.locationTerms.map((term) => marketResolver.resolve(term));
     const roleQueries = planSearchQueries(
-      profile,
+      {
+        titleTerms: profile.titleTerms,
+        markets: markets.map((market) => market.scope),
+        includeRemote: profile.includeRemote,
+      },
       sources,
       config.searchProviders[providerName]?.titleSearchMode ?? config.discovery.titleSearchMode,
       [...config.matching.remoteTerms, ...config.matching.unrestrictedRemotePhrases],
     );
     const boardQueries = planBoardDiscoveryQueries(
-      profile,
+      { markets: markets.map((market) => market.scope) },
       sources.filter((item) => supportsBoardSync(item.atsType)),
     );
     const queries = [...roleQueries, ...boardQueries];

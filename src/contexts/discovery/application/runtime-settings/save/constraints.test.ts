@@ -332,6 +332,17 @@ function runtimeSettings(): RuntimeSettingsCommand {
       remoteTerms: ["remote"],
       unrestrictedRemotePhrases: ["worldwide"],
     },
+    marketVocabulary: {
+      markets: [
+        {
+          key: "country:AE",
+          aliases: ["UAE"],
+          covers: ["subdivision:AE-DU"],
+          searchLanguage: "en",
+        },
+        { key: "subdivision:AE-DU", label: "Dubai", aliases: [] },
+      ],
+    },
     ui: { discoveryPollIntervalMs: 2_000, discoveryStaleAfterMs: 300_000 },
     searchProviders: {
       test: {

@@ -99,6 +99,47 @@ describe("deterministic matching", () => {
     expect(result.exclusionReasons).toContainEqual({ code: "location-mismatch" });
   });
 
+  it("records the configured descendant term that matched a country target", () => {
+    const result = evaluateJob(
+      { ...baseJob, locationText: "Abu Dhabi", locations: ["Abu Dhabi"] },
+      {
+        ...profile,
+        locationTerms: ["United Arab Emirates", "UAE", "Abu Dhabi", "Dubai"],
+      },
+      new Date("2026-07-29T00:00:00Z"),
+    );
+
+    expect(result.status).toBe("matched");
+    expect(result.reasons).toContainEqual({ code: "location-match", term: "Abu Dhabi" });
+  });
+
+  it("does not widen a city target to another city in the same country", () => {
+    const result = evaluateJob(
+      { ...baseJob, locationText: "Abu Dhabi", locations: ["Abu Dhabi"] },
+      { ...profile, locationTerms: ["Dubai"] },
+      new Date("2026-07-29T00:00:00Z"),
+    );
+
+    expect(result.exclusionReasons).toContainEqual({ code: "location-mismatch" });
+  });
+
+  it("records the configured descendant term that triggered a country exclusion", () => {
+    const result = evaluateJob(
+      { ...baseJob, locationText: "Abu Dhabi", locations: ["Abu Dhabi"] },
+      {
+        ...profile,
+        locationTerms: ["Abu Dhabi"],
+        excludedLocationTerms: ["United Arab Emirates", "UAE", "Abu Dhabi", "Dubai"],
+      },
+      new Date("2026-07-29T00:00:00Z"),
+    );
+
+    expect(result.exclusionReasons).toContainEqual({
+      code: "excluded-location",
+      term: "Abu Dhabi",
+    });
+  });
+
   it("applies explicit exclusion terms before scoring", () => {
     const result = evaluateJob(
       { ...baseJob, title: "Assistant Head of Engineering" },

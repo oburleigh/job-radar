@@ -9,6 +9,7 @@ import {
   hostMatches,
   optionalEndpoint,
   parseDiscoverySettings,
+  parseMarketVocabulary,
   supportsBoardSync,
 } from "./job-radar-config";
 
@@ -35,6 +36,12 @@ describe("SQLite configuration", () => {
       retryMaxTimeMs: 100_000,
     });
     expect(config.integrationPolicy.customPriority).toBe(200);
+    expect(config.marketVocabulary.markets[0]).toEqual({
+      key: "country:AE",
+      aliases: ["UAE"],
+      covers: ["subdivision:AE-AZ", "subdivision:AE-DU"],
+      searchLanguage: "en",
+    });
     expect(config.profileDefaults).toEqual({
       maximumAgeDays: 30,
       minimumScore: 70,
@@ -88,5 +95,98 @@ describe("SQLite configuration", () => {
         },
       }),
     ).toThrow(/retryMaxDelayMs/);
+  });
+
+  it("validates configured market aliases and same-country coverage", () => {
+    expect(
+      parseMarketVocabulary({
+        markets: [
+          {
+            key: "country:AE",
+            aliases: ["UAE"],
+            covers: ["subdivision:AE-AZ", "subdivision:AE-DU"],
+            searchLanguage: "en",
+          },
+          { key: "subdivision:AE-AZ", label: "Abu Dhabi", aliases: [] },
+          { key: "subdivision:AE-DU", label: "Dubai", aliases: [] },
+        ],
+      }),
+    ).toEqual({
+      markets: [
+        {
+          key: "country:AE",
+          aliases: ["UAE"],
+          covers: ["subdivision:AE-AZ", "subdivision:AE-DU"],
+          searchLanguage: "en",
+        },
+        { key: "subdivision:AE-AZ", label: "Abu Dhabi", aliases: [] },
+        { key: "subdivision:AE-DU", label: "Dubai", aliases: [] },
+      ],
+    });
+  });
+
+  it.each([
+    [
+      "unknown ISO country",
+      {
+        markets: [{ key: "country:ZZ", aliases: [], covers: [], searchLanguage: "en" }],
+      },
+    ],
+    [
+      "missing covered market",
+      {
+        markets: [
+          {
+            key: "country:AE",
+            aliases: [],
+            covers: ["subdivision:AE-DU"],
+            searchLanguage: "en",
+          },
+        ],
+      },
+    ],
+    [
+      "cross-country coverage",
+      {
+        markets: [
+          {
+            key: "country:AE",
+            aliases: [],
+            covers: ["subdivision:GB-LND"],
+            searchLanguage: "en",
+          },
+          { key: "subdivision:GB-LND", label: "London", aliases: [] },
+        ],
+      },
+    ],
+    [
+      "duplicate normalized alias",
+      {
+        markets: [
+          {
+            key: "country:AE",
+            aliases: ["Dubai"],
+            covers: ["subdivision:AE-DU"],
+            searchLanguage: "en",
+          },
+          { key: "subdivision:AE-DU", label: " Dubai ", aliases: [] },
+        ],
+      },
+    ],
+    [
+      "invalid language tag",
+      {
+        markets: [
+          {
+            key: "country:AE",
+            aliases: [],
+            covers: [],
+            searchLanguage: "not_a_language",
+          },
+        ],
+      },
+    ],
+  ])("rejects %s", (_case, value) => {
+    expect(() => parseMarketVocabulary(value)).toThrow();
   });
 });

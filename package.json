@@ -60,6 +60,7 @@
     "dotenv": "17.4.2",
     "drizzle-orm": "0.45.2",
     "isbot": "^5",
+    "iso-3166": "4.4.0",
     "lucide-react": "1.33.0",
     "p-queue": "9.3.3",
     "p-retry": "8.0.0",

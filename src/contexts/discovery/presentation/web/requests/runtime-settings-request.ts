@@ -11,6 +11,18 @@ const integer = (constraint: { readonly min: number; readonly max: number }) =>
 const number = (constraint: { readonly min: number; readonly max: number }) =>
   z.coerce.number().min(constraint.min).max(constraint.max);
 
+const marketVocabularyRequestSchema = z.object({
+  markets: z.array(
+    z.object({
+      key: z.string().min(1),
+      label: z.string().trim().min(1).optional(),
+      aliases: z.array(z.string().trim().min(1)),
+      covers: z.array(z.string().min(1)).optional(),
+      searchLanguage: z.string().min(1).optional(),
+    }),
+  ),
+});
+
 const runtimeSettingsSchema = z
   .object({
     timeoutMs: integer(runtimeSettingConstraints.timeoutMs),
@@ -50,6 +62,17 @@ const runtimeSettingsSchema = z
     genericTitleTerms: z.string().transform(splitLines).pipe(z.array(z.string()).min(1)),
     remoteTerms: z.string().transform(splitLines).pipe(z.array(z.string()).min(1)),
     unrestrictedRemotePhrases: z.string().transform(splitLines).pipe(z.array(z.string()).min(1)),
+    marketVocabulary: z
+      .string()
+      .transform((value, context) => {
+        try {
+          return JSON.parse(value) as unknown;
+        } catch {
+          context.addIssue({ code: "custom", message: "Market vocabulary must be valid JSON." });
+          return z.NEVER;
+        }
+      })
+      .pipe(marketVocabularyRequestSchema),
     searchProviders: z.record(
       z.string().min(1),
       z.object({
@@ -156,6 +179,7 @@ export function parseRuntimeSettingsRequest(
         remoteTerms: values.remoteTerms,
         unrestrictedRemotePhrases: values.unrestrictedRemotePhrases,
       },
+      marketVocabulary: values.marketVocabulary,
       ui: {
         discoveryPollIntervalMs: values.discoveryPollIntervalMs,
         discoveryStaleAfterMs: values.discoveryStaleAfterMs,

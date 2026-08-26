@@ -152,6 +152,7 @@ export default function SettingsPage() {
               discovery: data.discovery,
               ui: data.ui,
               matching: data.matching,
+              marketVocabulary: data.marketVocabulary,
               searchProviders: data.searchProviders,
               integrationPolicy: data.integrationPolicy,
               profileDefaults: data.profileDefaults,

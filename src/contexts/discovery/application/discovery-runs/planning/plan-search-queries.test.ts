@@ -9,6 +9,29 @@ import {
 const worldwideRemoteTerms = ["remote", "work from anywhere", "anywhere in the world"];
 
 describe("search query planning", () => {
+  it("renders every term from the resolved market vocabulary", () => {
+    const queries = planSearchQueries(
+      {
+        titleTerms: ["Head of Engineering"],
+        markets: [
+          {
+            key: "country:AE",
+            label: "United Arab Emirates",
+            terms: ["United Arab Emirates", "UAE", "Abu Dhabi", "Dubai"],
+          },
+        ],
+        includeRemote: false,
+      },
+      [{ atsType: "ashby", pattern: "jobs.ashbyhq.com" }],
+      "title",
+      worldwideRemoteTerms,
+    );
+
+    expect(queries[0]?.text).toContain(
+      '("United Arab Emirates" OR "UAE" OR "Abu Dhabi" OR "Dubai")',
+    );
+  });
+
   it("creates one query per title and source without losing locations", () => {
     const queries = planSearchQueries(
       {
@@ -19,7 +42,7 @@ describe("search query planning", () => {
           "Technology Director",
           "Head of Technology",
         ],
-        locationTerms: ["Dubai", "UAE"],
+        markets: literalMarkets(["Dubai", "UAE"]),
         includeRemote: false,
       },
       [
@@ -44,7 +67,7 @@ describe("search query planning", () => {
       planSearchQueries(
         {
           titleTerms: [],
-          locationTerms: ["Dubai"],
+          markets: literalMarkets(["Dubai"]),
           includeRemote: false,
         },
         [{ atsType: "ashby", pattern: "jobs.ashbyhq.com" }],
@@ -57,7 +80,7 @@ describe("search query planning", () => {
       planSearchQueries(
         {
           titleTerms: ["Head of Engineering"],
-          locationTerms: [],
+          markets: [],
           includeRemote: false,
         },
         [{ atsType: "ashby", pattern: "jobs.ashbyhq.com" }],
@@ -71,7 +94,7 @@ describe("search query planning", () => {
     const queries = planSearchQueries(
       {
         titleTerms: ["Staff Platform Engineer"],
-        locationTerms: ["London", "UK"],
+        markets: literalMarkets(["London", "UK"]),
         includeRemote: true,
       },
       [{ atsType: "greenhouse", pattern: "boards.greenhouse.io" }],
@@ -94,7 +117,7 @@ describe("search query planning", () => {
     const queries = planSearchQueries(
       {
         titleTerms: ["AI Platform Engineer", "Forward Deployed Engineer"],
-        locationTerms: ["London"],
+        markets: literalMarkets(["London"]),
         includeRemote: false,
       },
       [{ atsType: "ashby", pattern: "jobs.ashbyhq.com" }],
@@ -122,7 +145,7 @@ describe("search query planning", () => {
     const queries = planSearchQueries(
       {
         titleTerms: ['  Staff "Platform"   Engineer  ', 'Staff "Platform"   Engineer'],
-        locationTerms: [" London ", "", "London", 'UK"'],
+        markets: literalMarkets([" London ", "", "London", 'UK"']),
         includeRemote: false,
       },
       [{ atsType: "greenhouse", pattern: "boards.greenhouse.io" }],
@@ -144,7 +167,7 @@ describe("search query planning", () => {
     const queries = planSearchQueries(
       {
         titleTerms: ["Platform Engineer", "Security Engineer"],
-        locationTerms: ["London"],
+        markets: literalMarkets(["London"]),
         includeRemote: true,
       },
       [{ atsType: "ashby", pattern: "jobs.ashbyhq.com" }],
@@ -173,7 +196,7 @@ describe("search query planning", () => {
   });
 
   it("builds one location-led board query per sync source", () => {
-    const queries = planBoardDiscoveryQueries({ locationTerms: ["Dubai", "UAE"] }, [
+    const queries = planBoardDiscoveryQueries({ markets: literalMarkets(["Dubai", "UAE"]) }, [
       { atsType: "ashby", pattern: "jobs.ashbyhq.com" },
       { atsType: "greenhouse", pattern: "boards.greenhouse.io" },
     ]);
@@ -196,13 +219,13 @@ describe("search query planning", () => {
 
   it("returns no board queries without locations and deduplicates repeated sources", () => {
     expect(
-      planBoardDiscoveryQueries({ locationTerms: [] }, [
+      planBoardDiscoveryQueries({ markets: [] }, [
         { atsType: "ashby", pattern: "jobs.ashbyhq.com" },
       ]),
     ).toEqual([]);
 
     expect(
-      planBoardDiscoveryQueries({ locationTerms: [" London ", "London"] }, [
+      planBoardDiscoveryQueries({ markets: literalMarkets([" London ", "London"]) }, [
         { atsType: "ashby", pattern: "jobs.ashbyhq.com" },
         { atsType: "ashby", pattern: "jobs.ashbyhq.com" },
       ]),
@@ -216,3 +239,11 @@ describe("search query planning", () => {
     ]);
   });
 });
+
+function literalMarkets(terms: readonly string[]) {
+  return terms.map((term, index) => ({
+    key: `literal:${index}`,
+    label: term,
+    terms: [term],
+  }));
+}

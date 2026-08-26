@@ -49,7 +49,7 @@ export function createSqliteJobDiscoveryCatalog(
   const checkedStructuredJobPages = new Set<string>();
 
   return {
-    async recordHit({ runId, query, rank, result, locationTerms, recordedAt }) {
+    async recordHit({ runId, query, rank, result, marketScopes, recordedAt }) {
       const classified = classifyUrl(result.url);
       const boardId = classified?.board
         ? upsertBoard(database, classified.board, recordedAt)
@@ -82,10 +82,13 @@ export function createSqliteJobDiscoveryCatalog(
           snippet: result.snippet,
           ...(!isBuiltInAtsType(classified.atsType)
             ? {
-                locationHint: inferLocationHint([...locationTerms], {
-                  title: result.title,
-                  description: result.snippet,
-                }),
+                locationHint: inferLocationHint(
+                  marketScopes.flatMap((market) => market.terms),
+                  {
+                    title: result.title,
+                    description: result.snippet,
+                  },
+                ),
               }
             : {}),
         };

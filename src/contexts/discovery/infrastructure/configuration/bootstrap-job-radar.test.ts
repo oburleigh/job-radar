@@ -44,13 +44,31 @@ describe("Job Radar database bootstrap", () => {
 
     bootstrapJobRadar(database, new Date("2026-08-20T00:00:00.000Z"));
 
-    expect(database.select().from(appSettings).all()).toHaveLength(7);
+    expect(database.select().from(appSettings).all()).toHaveLength(8);
     expect(database.select().from(atsIntegrations).all()).toHaveLength(13);
     expect(database.select().from(sourceDomains).all()).toHaveLength(15);
     expect(database.select().from(searchProfiles).all()).toEqual([]);
     expect(database.select().from(companyBoards).all()).toEqual([]);
     expect(database.select().from(jobs).all()).toEqual([]);
     expect(database.select().from(discoveryRuns).all()).toEqual([]);
+    expect(
+      database
+        .select({ value: appSettings.value })
+        .from(appSettings)
+        .where(eq(appSettings.key, "marketVocabulary"))
+        .get()?.value,
+    ).toEqual({
+      markets: [
+        {
+          key: "country:AE",
+          aliases: ["UAE"],
+          covers: ["subdivision:AE-AZ", "subdivision:AE-DU"],
+          searchLanguage: "en",
+        },
+        { key: "subdivision:AE-AZ", label: "Abu Dhabi", aliases: [] },
+        { key: "subdivision:AE-DU", label: "Dubai", aliases: [] },
+      ],
+    });
   });
 
   it("does not overwrite settings or sources changed by the user", () => {

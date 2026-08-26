@@ -141,8 +141,16 @@ describe("structured Web3 job verification", () => {
     });
     expect(result.jobsWritten).toBe(1);
 
-    await createSqliteJobMatchEvaluator(db).evaluate(strictProfileId, () => {});
-    await createSqliteJobMatchEvaluator(db).evaluate(permissiveProfileId, () => {});
+    await createSqliteJobMatchEvaluator(db).evaluate(
+      strictProfileId,
+      resolvedMarkets(["Remote"]),
+      () => {},
+    );
+    await createSqliteJobMatchEvaluator(db).evaluate(
+      permissiveProfileId,
+      resolvedMarkets(["Remote"]),
+      () => {},
+    );
 
     expect(
       db.select().from(jobMatches).where(eq(jobMatches.profileId, strictProfileId)).get(),
@@ -214,7 +222,11 @@ describe("structured Web3 job verification", () => {
     });
 
     const result = await catalog.recordHit(coupangHit(runId));
-    await createSqliteJobMatchEvaluator(db).evaluate(profileId, () => {});
+    await createSqliteJobMatchEvaluator(db).evaluate(
+      profileId,
+      resolvedMarkets(["Seoul"]),
+      () => {},
+    );
 
     expect(lookupCalls).toEqual([{ boardId, externalId: "8124387" }]);
     expect(result).toMatchObject({ jobsWritten: 1 });
@@ -696,7 +708,7 @@ function hit(runId: number, url: string) {
       url,
       snippet: "Head of Engineering. Remote. Work from anywhere.",
     },
-    locationTerms: ["Remote"],
+    marketScopes: literalMarketScopes(["Remote"]),
     recordedAt: checkedAt,
   };
 }
@@ -711,8 +723,23 @@ function coupangHit(runId: number) {
       url: "https://careers.coupang.com/jobs/?gh_jid=8124387",
       snippet: "Director, Back-end Engineering for Rocket Pay in Seoul, South Korea.",
     },
-    locationTerms: ["Seoul"],
+    marketScopes: literalMarketScopes(["Seoul"]),
     recordedAt: checkedAt,
+  };
+}
+
+function literalMarketScopes(terms: readonly string[]) {
+  return terms.map((term) => ({
+    key: `literal:${term.toLocaleLowerCase()}`,
+    label: term,
+    terms: [term],
+  }));
+}
+
+function resolvedMarkets(terms: readonly string[]) {
+  return {
+    marketScopes: literalMarketScopes(terms),
+    excludedMarketScopes: [],
   };
 }
 
