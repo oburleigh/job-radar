@@ -110,6 +110,14 @@ export const discoveryRuns = sqliteTable(
     })
       .notNull()
       .default("running"),
+    phase: text("phase", {
+      enum: ["known-boards", "web-coverage", "matching"],
+    }),
+    knownBoardCount: integer("known_board_count"),
+    knownBoardSuccessCount: integer("known_board_success_count"),
+    webCoverageStatus: text("web_coverage_status", {
+      enum: ["pending", "running", "completed", "skipped", "failed"],
+    }),
     queryCount: integer("query_count").notNull().default(0),
     hitCount: integer("hit_count").notNull().default(0),
     boardsDiscovered: integer("boards_discovered").notNull().default(0),

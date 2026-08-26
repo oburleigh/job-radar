@@ -9,6 +9,7 @@ test("completes discovery and triage while profile editing remains responsive", 
   test.setTimeout(90_000);
   expect((await request.post(`${fixtureUrl}/control/reset-success`)).ok()).toBe(true);
   await configureDiscoveryFixtures(page);
+  await disableAllKnownBoards(page);
   const otherProfile = await createProfile(page);
   const { id: profileId, name: profileName } = await createProfile(page);
 
@@ -56,6 +57,11 @@ test("completes discovery and triage while profile editing remains responsive", 
   await selectBrave;
   await page.unroute("**/*provider=brave*");
   await expect(page).toHaveURL(new RegExp(`[?&]profile=${profileId}(?:&|$).*provider=brave`));
+  await page.getByLabel("Search provider").selectOption("serpapi");
+  await expect(page.getByRole("button", { name: "Run discovery" })).toBeDisabled();
+  await expect(
+    discoveryControls.getByRole("link", { name: "Enable a company board" }),
+  ).toHaveAttribute("href", "/sources");
   await page.getByLabel("Search provider").selectOption("serper");
   await expect(page).toHaveURL(new RegExp(`[?&]profile=${profileId}(?:&|$).*provider=serper`));
   await page.getByRole("combobox", { name: "Profile" }).selectOption(String(otherProfile.id));
@@ -105,15 +111,17 @@ test("completes discovery and triage while profile editing remains responsive", 
   const response = await startedResponse;
   expect(response.status()).toBe(202);
   const started = (await response.json()) as { runId: number };
-  const runningMessage = `Discovery #${started.runId} is running in the background`;
+  const runningStatus = page.getByRole("status").filter({
+    has: page.getByRole("button", { name: `Cancel discovery #${started.runId}` }),
+  });
 
-  await expect(page.getByText(runningMessage, { exact: true })).toBeVisible();
+  await expect(runningStatus).toContainText("No enabled company boards; expanding web coverage");
   await page.getByRole("link", { name: /Search profiles/i }).click();
   await page.getByLabel("Required job keywords, one per line").fill("platform");
-  await expect(page.getByText(runningMessage, { exact: true })).toBeVisible();
+  await expect(runningStatus).toContainText("No enabled company boards; expanding web coverage");
   await page.getByRole("button", { name: "Save profile" }).click();
   await expect(page.getByText("Profile saved.")).toBeVisible();
-  await expect(page.getByText(runningMessage, { exact: true })).toBeVisible();
+  await expect(runningStatus).toContainText("No enabled company boards; expanding web coverage");
   expect((await request.post(`${fixtureUrl}/control/release-success`)).ok()).toBe(true);
 
   const completedNotice = page.getByRole("status").filter({ hasText: "Discovery completed" });
@@ -136,6 +144,8 @@ test("completes discovery and triage while profile editing remains responsive", 
   await expect(
     page.getByRole("heading", { level: 1, name: `Run #${started.runId}` }),
   ).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Discovery completed" })).toBeVisible();
+  await expect(page.getByText("Completed", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("1 unique search hits")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Requests by market and lane" })).toBeVisible();
   const requestEvidence = page.getByRole("table", { name: "Discovery request evidence" });
@@ -148,11 +158,46 @@ test("completes discovery and triage while profile editing remains responsive", 
   await expect(requestEvidence.getByRole("columnheader", { name: "Requests" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "Head of Engineering" }).first()).toBeVisible();
 
+  await page.getByRole("link", { name: "Opportunities", exact: true }).click();
+  await page
+    .getByRole("combobox", { name: "Profile", exact: true })
+    .selectOption(String(profileId));
+  await page.getByLabel("Search provider").selectOption("serpapi");
+  await expect(page.getByRole("button", { name: "Run discovery" })).toBeEnabled();
+  const boardOnlyResponse = page.waitForResponse(
+    (candidate) =>
+      candidate.request().method() === "POST" &&
+      new URL(candidate.url()).pathname === "/api/discovery-runs",
+  );
+  const boardOnlyRequest = page.waitForRequest(
+    (candidate) =>
+      candidate.method() === "POST" && new URL(candidate.url()).pathname === "/api/discovery-runs",
+  );
+  await page.getByRole("button", { name: "Run discovery" }).click();
+  expect((await boardOnlyRequest).postDataJSON()).toEqual({ profileId, provider: "serpapi" });
+  const boardOnlyStarted = (await (await boardOnlyResponse).json()) as { runId: number };
+  const boardOnlyNotice = page
+    .getByRole("status")
+    .filter({ hasText: "Web coverage was skipped because no provider was configured." });
+  await expect(boardOnlyNotice).toContainText("Discovery completed", { timeout: 30_000 });
+  await expect(boardOnlyNotice).toContainText(
+    "Web coverage was skipped because no provider was configured.",
+  );
+  await boardOnlyNotice.getByRole("link", { name: "Run history" }).click();
+  await expect(
+    page.getByRole("link", { name: new RegExp(`Run #${boardOnlyStarted.runId} Completed`) }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: new RegExp(`#${boardOnlyStarted.runId}`) }).click();
+  await expect(page.getByRole("heading", { level: 2, name: "Discovery completed" })).toBeVisible();
+  await expect(page.getByText("Completed", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(/Web coverage skipped/)).toBeVisible();
+
   await configureSerperEndpoint(page, `${fixtureUrl}/serper/failure`);
   await page.getByRole("link", { name: "Opportunities", exact: true }).click();
   await page
     .getByRole("combobox", { name: "Profile", exact: true })
     .selectOption(String(profileId));
+  await page.getByLabel("Search provider").selectOption("serper");
 
   const failedResponse = page.waitForResponse(
     (candidate) =>
@@ -164,21 +209,27 @@ test("completes discovery and triage while profile editing remains responsive", 
   expect(failedStartResponse.status()).toBe(202);
   const failedStart = (await failedStartResponse.json()) as { runId: number };
 
-  const failedNotice = page.getByRole("alert").filter({ hasText: "Discovery failed" });
-  await expect(failedNotice).toContainText(
+  const partialNotice = page
+    .getByRole("alert")
+    .filter({ hasText: "Discovery partially completed" });
+  await expect(partialNotice).toContainText(
     "Serper.dev was unavailable after 3 attempts. Try again later or choose another provider.",
     { timeout: 30_000 },
   );
-  await failedNotice.getByRole("link", { name: "Run history" }).click();
+  await partialNotice.getByRole("link", { name: "Run history" }).click();
+  await expect(
+    page.getByRole("link", { name: new RegExp(`Run #${failedStart.runId} Partial`) }),
+  ).toBeVisible();
   await page.getByRole("link", { name: new RegExp(`#${failedStart.runId}`) }).click();
   await expect(
     page.getByRole("heading", { level: 1, name: `Run #${failedStart.runId}` }),
   ).toBeVisible();
-  await expect(page.getByRole("heading", { level: 2, name: "Discovery failed" })).toBeVisible();
   await expect(
-    page.getByText("serper transient server-error after 3 attempts; skipped 26 queries", {
-      exact: true,
-    }),
+    page.getByRole("heading", { level: 2, name: "Discovery partially completed" }),
+  ).toBeVisible();
+  await expect(page.getByText("Partial", { exact: true }).first()).toBeVisible();
+  await expect(
+    page.getByText(/serper transient server-error after 3 attempts; skipped \d+ queries/),
   ).toBeVisible();
   await expect(page.getByText("failed", { exact: true }).first()).toBeVisible();
 });
@@ -247,8 +298,12 @@ test("cancels a running discovery without resurrecting a delayed poll", async ({
   );
   await page.getByRole("button", { name: "Run discovery" }).click();
   const started = (await (await startedResponse).json()) as { runId: number };
-  const runningMessage = `Discovery #${started.runId} is running in the background`;
-  await expect(page.getByText(runningMessage, { exact: true })).toBeVisible({ timeout: 30_000 });
+  const runningStatus = page.getByRole("status").filter({
+    has: page.getByRole("button", { name: `Cancel discovery #${started.runId}` }),
+  });
+  await expect(runningStatus).toContainText(/Refreshing known boards|Expanding web coverage/, {
+    timeout: 30_000,
+  });
 
   const cancelResponse = page.waitForResponse(
     (response) =>
@@ -258,16 +313,16 @@ test("cancels a running discovery without resurrecting a delayed poll", async ({
   await page.getByRole("button", { name: `Cancel discovery #${started.runId}` }).click();
   expect((await cancelResponse).status()).toBe(200);
   await expect(page.getByRole("status").filter({ hasText: "Discovery cancelled" })).toBeVisible();
-  await expect(page.getByText(runningMessage, { exact: true })).toBeHidden();
+  await expect(runningStatus).toBeHidden();
 
   await new Promise((resolve) => setTimeout(resolve, 1_800));
-  await expect(page.getByText(runningMessage, { exact: true })).toBeHidden();
+  await expect(runningStatus).toBeHidden();
   expect((await request.post(`${fixtureUrl}/control/release-success`)).ok()).toBe(true);
 
   await page.goto(`/runs/${started.runId}`);
   await expect(page.getByRole("heading", { level: 2, name: "Discovery cancelled" })).toBeVisible();
-  await expect(page.getByText("Run stopped", { exact: true })).toBeVisible();
-  await expect(page.getByText("Cancelled by user", { exact: true })).toBeVisible();
+  await expect(page.getByText("Cancelled", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(/Cancelled by user/)).toBeVisible();
 });
 
 test("explains that a returned role was excluded by location", async ({ page }) => {
@@ -452,6 +507,16 @@ async function configureDiscoveryFixtures(
     .fill(JSON.stringify({ jobs: `${fixtureUrl}/greenhouse/{slug}/jobs` }, null, 2));
   await page.getByRole("button", { name: "Save Greenhouse" }).click();
   await expect(page.getByText("Greenhouse settings saved to SQLite.")).toBeVisible();
+}
+
+async function disableAllKnownBoards(page: Page): Promise<void> {
+  await page.goto("/sources");
+  const enabledBoards = page.getByRole("switch", { name: /^Disable / });
+  while ((await enabledBoards.count()) > 0) {
+    const previousCount = await enabledBoards.count();
+    await enabledBoards.first().click();
+    await expect(enabledBoards).toHaveCount(previousCount - 1);
+  }
 }
 
 async function configureSerperEndpoint(page: Page, endpoint: string): Promise<void> {

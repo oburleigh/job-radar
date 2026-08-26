@@ -1,8 +1,7 @@
-import { Button, IconButton } from "@job-radar/design-ui";
-import { Play, RefreshCw } from "lucide-react";
+import { Button } from "@job-radar/design-ui";
+import { Play } from "lucide-react";
 import { useState, useTransition } from "react";
-import { useFetcher, useLocation, useNavigate, useNavigation, useSearchParams } from "react-router";
-import type { ActionState } from "@/contexts/discovery/presentation/web/action-state";
+import { Link, useLocation, useNavigate, useNavigation, useSearchParams } from "react-router";
 import { DISCOVERY_RUN_STARTED_EVENT } from "@/contexts/discovery/presentation/web/client-events";
 
 interface RunControlsProps {
@@ -16,10 +15,10 @@ interface RunControlsProps {
     label: string;
     configured: boolean;
   }[];
+  activeBoardCount: number;
 }
 
-export function RunControls({ profile, provider, providers }: RunControlsProps) {
-  const syncFetcher = useFetcher<ActionState>();
+export function RunControls({ profile, provider, providers, activeBoardCount }: RunControlsProps) {
   const navigate = useNavigate();
   const navigation = useNavigation();
   const { pathname } = useLocation();
@@ -27,6 +26,8 @@ export function RunControls({ profile, provider, providers }: RunControlsProps) 
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
   const isSelectionPending = navigation.state !== "idle";
+  const selectedProvider = providers.find((item) => item.name === provider);
+  const canRun = activeBoardCount > 0 || selectedProvider?.configured === true;
 
   function selectProvider(value: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -41,7 +42,10 @@ export function RunControls({ profile, provider, providers }: RunControlsProps) 
         const response = await fetch("/api/discovery-runs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ profileId: profile.id, provider }),
+          body: JSON.stringify({
+            profileId: profile.id,
+            ...(provider ? { provider } : {}),
+          }),
         });
         const result = (await response.json()) as {
           ok: boolean;
@@ -64,56 +68,47 @@ export function RunControls({ profile, provider, providers }: RunControlsProps) 
     });
   }
 
-  function refreshBoards() {
-    setMessage("");
-    startTransition(async () => {
-      await syncFetcher.submit({ intent: "sync-boards" }, { method: "post", action: "/sources" });
-      if (syncFetcher.data?.message) {
-        setMessage(syncFetcher.data.message);
-      }
-    });
-  }
-
   return (
     <section className="run-controls" aria-label="Discovery controls">
-      <span className="run-control-label">02 · Run discovery</span>
       <strong className="run-control-profile">{profile.name}</strong>
       <div className="run-action-row">
-        <label className="compact-select">
-          <span className="sr-only">Search provider</span>
-          <select
-            value={provider}
-            onChange={(event) => selectProvider(event.target.value)}
-            disabled={isPending || isSelectionPending}
-          >
-            {providers.map((item) => (
-              <option key={item.name} value={item.name}>
-                {item.label}
-                {item.configured ? "" : " (key missing)"}
-              </option>
-            ))}
-          </select>
-        </label>
+        {providers.length > 0 ? (
+          <label className="compact-select">
+            <span className="sr-only">Search provider</span>
+            <select
+              value={provider}
+              onChange={(event) => selectProvider(event.target.value)}
+              disabled={isPending || isSelectionPending}
+            >
+              {providers.map((item) => (
+                <option key={item.name} value={item.name}>
+                  {item.label}
+                  {item.configured ? "" : " (key missing)"}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
         <Button
           busy={isPending || isSelectionPending}
           onClick={runDiscovery}
-          disabled={isPending || isSelectionPending || !provider}
+          disabled={isPending || isSelectionPending || !canRun}
           variant="primary"
         >
           <Play size={16} fill="currentColor" />
           {isPending ? "Working..." : "Run discovery"}
         </Button>
-        <IconButton
-          busy={isPending || isSelectionPending}
-          onClick={refreshBoards}
-          disabled={isPending || isSelectionPending}
-          label="Refresh known boards"
-          title="Refresh known boards"
-        >
-          <RefreshCw size={18} className={isPending ? "spin" : ""} />
-        </IconButton>
       </div>
-      {message ? <p className="action-message">{message}</p> : null}
+      {!canRun ? (
+        <p className="action-message">
+          <Link to="/sources">Enable a company board</Link> or configure a web search provider to
+          run discovery.
+        </p>
+      ) : message ? (
+        <p className="action-message" role="status">
+          {message}
+        </p>
+      ) : null}
     </section>
   );
 }

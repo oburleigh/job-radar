@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   type DiscoveryRunStatus,
   describeDiscoveryNotice,
+  describeDiscoveryPhase,
   filterCurrentDiscoveryRuns,
   reconcilePendingRunIds,
 } from "./discovery-notifications";
@@ -34,6 +35,11 @@ describe("discovery notification polling reconciliation", () => {
         profileName: "Asia leadership",
         provider: "brave",
         status: "completed",
+        outcome: "partial",
+        phase: "matching",
+        knownBoardCount: 0,
+        knownBoardSuccessCount: 0,
+        webCoverageStatus: "failed",
         hitCount: 5,
         jobsUpserted: 4,
         matchesFound: 2,
@@ -57,6 +63,11 @@ describe("discovery notification polling reconciliation", () => {
         profileName: "Asia leadership",
         provider: "brave",
         status: "completed",
+        outcome: "partial",
+        phase: "matching",
+        knownBoardCount: 2,
+        knownBoardSuccessCount: 1,
+        webCoverageStatus: "completed",
         hitCount: 5,
         jobsUpserted: 4,
         matchesFound: 2,
@@ -75,25 +86,49 @@ describe("discovery notification polling reconciliation", () => {
   it.each([
     {
       name: "singular query fallback",
-      run: { queryErrorCount: 1, syncErrorCount: 0, errorSummary: "", matchesFound: 1 },
+      run: {
+        outcome: "partial" as const,
+        queryErrorCount: 1,
+        syncErrorCount: 0,
+        errorSummary: "",
+        matchesFound: 1,
+      },
       message:
         "Asia leadership completed with 1 search error. 1 current profile match was retained.",
     },
     {
       name: "query-only fallback",
-      run: { queryErrorCount: 2, syncErrorCount: 0, errorSummary: "", matchesFound: 1 },
+      run: {
+        outcome: "partial" as const,
+        queryErrorCount: 2,
+        syncErrorCount: 0,
+        errorSummary: "",
+        matchesFound: 1,
+      },
       message:
         "Asia leadership completed with 2 search errors. 1 current profile match was retained.",
     },
     {
       name: "combined fallback",
-      run: { queryErrorCount: 2, syncErrorCount: 3, errorSummary: "", matchesFound: 0 },
+      run: {
+        outcome: "partial" as const,
+        queryErrorCount: 2,
+        syncErrorCount: 3,
+        errorSummary: "",
+        matchesFound: 0,
+      },
       message:
         "Asia leadership completed with 2 search errors and 3 board synchronization errors. 0 current profile matches were retained.",
     },
     {
       name: "whitespace-only sync fallback",
-      run: { queryErrorCount: 0, syncErrorCount: 2, errorSummary: "   ", matchesFound: 0 },
+      run: {
+        outcome: "partial" as const,
+        queryErrorCount: 0,
+        syncErrorCount: 2,
+        errorSummary: "   ",
+        matchesFound: 0,
+      },
       message:
         "Asia leadership completed with 2 board synchronization errors. 0 current profile matches were retained.",
     },
@@ -112,6 +147,33 @@ describe("discovery notification polling reconciliation", () => {
       message: "Asia leadership: 2 current profile matches after processing 5 search results.",
     });
   });
+
+  it("reports skipped web coverage after board-only discovery", () => {
+    expect(
+      describeDiscoveryNotice(
+        completedRun({ provider: "", webCoverageStatus: "skipped", knownBoardCount: 1 }),
+      ),
+    ).toEqual({
+      kind: "completed",
+      title: "Discovery completed",
+      message:
+        "Asia leadership: 2 current profile matches after processing 5 search results. Web coverage was skipped because no provider was configured.",
+    });
+  });
+
+  it.each([
+    [{ phase: "known-boards", knownBoardCount: 2 }, "Refreshing known boards"],
+    [
+      { phase: "web-coverage", knownBoardCount: 0 },
+      "No enabled company boards; expanding web coverage",
+    ],
+    [{ phase: "web-coverage", knownBoardCount: 2 }, "Expanding web coverage"],
+    [{ phase: "matching", knownBoardCount: 2 }, "Matching jobs to profile"],
+  ] as const)("describes the active discovery phase", (overrides, expected) => {
+    expect(describeDiscoveryPhase(completedRun({ ...overrides, outcome: "running" }))).toBe(
+      expected,
+    );
+  });
 });
 
 function completedRun(overrides: Partial<DiscoveryRunStatus> = {}): DiscoveryRunStatus {
@@ -121,6 +183,11 @@ function completedRun(overrides: Partial<DiscoveryRunStatus> = {}): DiscoveryRun
     profileName: "Asia leadership",
     provider: "brave",
     status: "completed",
+    outcome: "completed",
+    phase: "matching",
+    knownBoardCount: 0,
+    knownBoardSuccessCount: 0,
+    webCoverageStatus: "completed",
     hitCount: 5,
     jobsUpserted: 4,
     matchesFound: 2,

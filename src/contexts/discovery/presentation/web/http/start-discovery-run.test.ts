@@ -8,6 +8,7 @@ describe("start discovery run web route", () => {
     const startDiscoveryRun = vi.fn(() => ({ status: "started" as const, runId: 41 }));
     const post = createStartDiscoveryRunRoute({
       assertLocalRequest: vi.fn(),
+      isProviderKnown: (name) => name === "serper",
       isProviderConfigured: (name) => name === "serper",
       assertProviderReady: vi.fn(),
       discoveryRuns: { startDiscoveryRun },
@@ -31,6 +32,7 @@ describe("start discovery run web route", () => {
     };
     const post = createStartDiscoveryRunRoute({
       assertLocalRequest: vi.fn(),
+      isProviderKnown: (name) => name === "serper",
       isProviderConfigured: (name) => name === "serper",
       assertProviderReady: vi.fn(),
       discoveryRuns,
@@ -51,6 +53,7 @@ describe("start discovery run web route", () => {
     const startDiscoveryRun = vi.fn();
     const post = createStartDiscoveryRunRoute({
       assertLocalRequest: vi.fn(),
+      isProviderKnown: (name) => name === "serper",
       isProviderConfigured: (name) => name === "serper",
       assertProviderReady: vi.fn(),
       discoveryRuns: { startDiscoveryRun },
@@ -70,6 +73,7 @@ describe("start discovery run web route", () => {
     const startDiscoveryRun = vi.fn();
     const post = createStartDiscoveryRunRoute({
       assertLocalRequest: vi.fn(),
+      isProviderKnown: () => true,
       isProviderConfigured: () => true,
       assertProviderReady: () => {
         throw new Error("Serper.dev API key is not configured");
@@ -90,6 +94,7 @@ describe("start discovery run web route", () => {
   it("translates application failures into the existing error response", async () => {
     const post = createStartDiscoveryRunRoute({
       assertLocalRequest: vi.fn(),
+      isProviderKnown: () => true,
       isProviderConfigured: () => true,
       assertProviderReady: vi.fn(),
       discoveryRuns: {
@@ -105,6 +110,45 @@ describe("start discovery run web route", () => {
     expect(await response.json()).toEqual({
       ok: false,
       message: "Search profile 99 was not found",
+    });
+  });
+
+  it("starts known-board discovery when the selected provider has no credential", async () => {
+    const startDiscoveryRun = vi.fn(() => ({ status: "started" as const, runId: 41 }));
+    const assertProviderReady = vi.fn();
+    const post = createStartDiscoveryRunRoute({
+      assertLocalRequest: vi.fn(),
+      isProviderKnown: (name) => name === "serper",
+      isProviderConfigured: () => false,
+      assertProviderReady,
+      discoveryRuns: { startDiscoveryRun },
+    });
+
+    const response = await post(discoveryRequest({ profileId: 7, provider: "serper" }));
+
+    expect(response.status).toBe(202);
+    expect(startDiscoveryRun).toHaveBeenCalledWith({ profileId: 7, providerName: null });
+    expect(assertProviderReady).not.toHaveBeenCalled();
+  });
+
+  it("explains an empty schedule without claiming to create a run", async () => {
+    const post = createStartDiscoveryRunRoute({
+      assertLocalRequest: vi.fn(),
+      isProviderKnown: () => true,
+      isProviderConfigured: () => false,
+      assertProviderReady: vi.fn(),
+      discoveryRuns: {
+        startDiscoveryRun: () => ({ status: "not-runnable" }),
+      },
+    });
+
+    const response = await post(discoveryRequest({ profileId: 7 }));
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      ok: false,
+      message:
+        "Enable a company board or configure a web search provider before running discovery.",
     });
   });
 });

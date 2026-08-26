@@ -1,5 +1,6 @@
 import { desc, eq, inArray } from "drizzle-orm";
 
+import { deriveDiscoveryRunOutcome } from "@/contexts/discovery/application/discovery-runs/outcome/derive-discovery-run-outcome";
 import type { DiscoveryRunStatusReader } from "@/contexts/discovery/application/discovery-runs/status/port";
 import type { db } from "./database";
 import { discoveryRuns, searchProfiles } from "./schema";
@@ -16,6 +17,11 @@ export function createSqliteDiscoveryRunStatusReader(database: Database): Discov
           profileName: searchProfiles.name,
           provider: discoveryRuns.provider,
           status: discoveryRuns.status,
+          phase: discoveryRuns.phase,
+          knownBoardCount: discoveryRuns.knownBoardCount,
+          knownBoardSuccessCount: discoveryRuns.knownBoardSuccessCount,
+          webCoverageStatus: discoveryRuns.webCoverageStatus,
+          queryCount: discoveryRuns.queryCount,
           hitCount: discoveryRuns.hitCount,
           jobsUpserted: discoveryRuns.jobsUpserted,
           matchesFound: discoveryRuns.matchesFound,
@@ -32,8 +38,16 @@ export function createSqliteDiscoveryRunStatusReader(database: Database): Discov
         )
         .orderBy(desc(discoveryRuns.startedAt))
         .all();
-      const runs = rows.map(({ error, ...run }) => ({
+      const runs = rows.map(({ error, queryCount, ...run }) => ({
         ...run,
+        outcome: deriveDiscoveryRunOutcome({
+          status: run.status,
+          queryCount,
+          queryErrorCount: run.queryErrorCount,
+          syncErrorCount: run.syncErrorCount,
+          knownBoardCount: run.knownBoardCount,
+          knownBoardSuccessCount: run.knownBoardSuccessCount,
+        }),
         errorSummary: error.split("\n", 1)[0]?.trim().slice(0, 500) ?? "",
       }));
       const foundIds = new Set(runs.map((run) => run.id));

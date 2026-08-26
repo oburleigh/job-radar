@@ -143,7 +143,7 @@ describe("SQLite discovery run journal cancellation guards", () => {
       boardsDiscovered: 0,
       matchesFound: 2,
       errors: [],
-      allQueriesFailed: false,
+      allWorkFailed: false,
       budgetStopReason: "max-requests-per-run",
       finishedAt: new Date(now.getTime() + 2_000),
     });
@@ -181,6 +181,83 @@ describe("SQLite discovery run journal cancellation guards", () => {
     ).toEqual({ status: "cancelled" });
   });
 
+  it("records the active phase and aggregate lane evidence", () => {
+    const profileId = insertProfile(database);
+    const journal = createSqliteDiscoveryRunJournal(database);
+    const run = journal.prepare({
+      profileId,
+      providerName: null,
+      startedAt: now,
+    });
+
+    journal.recordPhase(run.id, "known-boards", now);
+    journal.recordLaneEvidence(run.id, {
+      knownBoardCount: 3,
+      knownBoardSuccessCount: 2,
+      webCoverageStatus: "skipped",
+      progress: { hitCount: 0, jobsUpserted: 7, queryErrorCount: 0, syncErrorCount: 1 },
+      recordedAt: now,
+    });
+
+    expect(
+      sqlite
+        .prepare(
+          `select phase, known_board_count, known_board_success_count,
+                  web_coverage_status, jobs_upserted, sync_error_count
+           from discovery_runs where id = ?`,
+        )
+        .get(run.id),
+    ).toEqual({
+      phase: "known-boards",
+      known_board_count: 3,
+      known_board_success_count: 2,
+      web_coverage_status: "skipped",
+      jobs_upserted: 7,
+      sync_error_count: 1,
+    });
+  });
+
+  it("ignores late phase and lane evidence after cancellation", () => {
+    const profileId = insertProfile(database);
+    const registry = createSqliteDiscoveryRunRegistry(database, {
+      now: () => now,
+      staleAfterMs: () => 300_000,
+    });
+    const reservation = registry.reserve({ profileId, providerName: null });
+    registry.cancel({
+      runId: reservation.runId,
+      message: "Cancelled by user",
+      finishedAt: now,
+    });
+    const journal = createSqliteDiscoveryRunJournal(database);
+
+    journal.recordPhase(reservation.runId, "web-coverage", now);
+    journal.recordLaneEvidence(reservation.runId, {
+      knownBoardCount: 4,
+      knownBoardSuccessCount: 4,
+      webCoverageStatus: "completed",
+      progress: { hitCount: 5, jobsUpserted: 6, queryErrorCount: 0, syncErrorCount: 0 },
+      recordedAt: now,
+    });
+
+    expect(
+      sqlite
+        .prepare(
+          `select status, phase, known_board_count, known_board_success_count,
+                  web_coverage_status, jobs_upserted
+           from discovery_runs where id = ?`,
+        )
+        .get(reservation.runId),
+    ).toEqual({
+      status: "cancelled",
+      phase: "known-boards",
+      known_board_count: 0,
+      known_board_success_count: 0,
+      web_coverage_status: "pending",
+      jobs_upserted: 0,
+    });
+  });
+
   it("ignores late completion and failure writes after cancellation", () => {
     const profileId = insertProfile(database);
     const registry = createSqliteDiscoveryRunRegistry(database, {
@@ -201,7 +278,7 @@ describe("SQLite discovery run journal cancellation guards", () => {
       boardsDiscovered: 1,
       matchesFound: 2,
       errors: [],
-      allQueriesFailed: false,
+      allWorkFailed: false,
       budgetStopReason: null,
       finishedAt: new Date(now.getTime() + 1_000),
     });

@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { createJobDiscovery } from "@/contexts/discovery/application/discovery-runs/discover/discover-jobs";
+import { createJobDiscovery as createProductionJobDiscovery } from "@/contexts/discovery/application/discovery-runs/discover/discover-jobs";
 import type { SearchLane } from "@/contexts/discovery/application/discovery-runs/planning/plan-search-lanes";
 import type {
   DiscoveryRunJournal,
+  DiscoveryRunPhase,
   DiscoveryRunProgress,
+  WebCoverageStatus,
 } from "@/contexts/discovery/application/discovery-runs/ports/discovery-run-journal";
 import type { DiscoverySetupReader } from "@/contexts/discovery/application/discovery-runs/ports/discovery-setup";
 import type { JobDiscoveryCatalog } from "@/contexts/discovery/application/discovery-runs/ports/job-discovery-catalog";
@@ -75,10 +77,13 @@ describe("discover jobs", () => {
       queries: 2,
       hits: 1,
       boards: 1,
+      knownBoards: 0,
+      knownBoardSuccesses: 0,
       jobs: 5,
       matches: 5,
       queryErrors: 0,
       syncErrors: 0,
+      webCoverageStatus: "completed",
     });
     expect(search).toHaveBeenCalledTimes(2);
     expect(search).toHaveBeenCalledWith(expect.any(String), {
@@ -110,10 +115,116 @@ describe("discover jobs", () => {
         runId: 41,
         boardsDiscovered: 1,
         matchesFound: 5,
-        allQueriesFailed: false,
+        allWorkFailed: false,
       }),
     ]);
     expect(journal.failed).toEqual([]);
+  });
+
+  it("refreshes known boards before web coverage and evaluates both lanes together", async () => {
+    const events: string[] = [];
+    const journal = recordingJournal({
+      onPhase: (phase) => events.push(`phase:${phase}`),
+    });
+    const discovery = createJobDiscovery({
+      setup: configuredSetup(),
+      runs: journal,
+      knownBoards: {
+        countEnabledBoards: () => 2,
+        synchronizeEnabledBoards: async () => {
+          events.push("sync:known-boards");
+          return [
+            { boardId: 11, jobsWritten: 3, error: "" },
+            { boardId: 12, jobsWritten: 0, error: "Workable unavailable" },
+          ];
+        },
+      },
+      jobs: {
+        recordHit: vi.fn(async () => ({ inserted: false, isUseful: false, jobsWritten: 0 })),
+        synchronizeBoard: vi.fn(async () => ({ jobsWritten: 0, error: "" })),
+      },
+      matches: {
+        evaluate: async () => {
+          events.push("evaluate:profile-7");
+          return { matched: 2 };
+        },
+      },
+      providers: providerDirectory(async () => {
+        events.push("search:serper");
+        return [];
+      }),
+      now: () => timestamp,
+      yieldControl: vi.fn(),
+    });
+
+    const summary = await discovery.discoverJobs({
+      profileId: 7,
+      providerName: "serper",
+      runId: 41,
+    });
+
+    expect(events).toEqual([
+      "phase:known-boards",
+      "sync:known-boards",
+      "phase:web-coverage",
+      "search:serper",
+      "search:serper",
+      "phase:matching",
+      "evaluate:profile-7",
+    ]);
+    expect(summary).toMatchObject({
+      knownBoards: 2,
+      knownBoardSuccesses: 1,
+      jobs: 3,
+      matches: 2,
+      syncErrors: 1,
+      webCoverageStatus: "completed",
+    });
+  });
+
+  it("completes board-only discovery and records skipped web coverage", async () => {
+    const journal = recordingJournal();
+    const getProvider = vi.fn();
+    const discovery = createJobDiscovery({
+      setup: configuredSetup(),
+      runs: journal,
+      knownBoards: {
+        countEnabledBoards: () => 1,
+        synchronizeEnabledBoards: async () => [{ boardId: 11, jobsWritten: 4, error: "" }],
+      },
+      jobs: { recordHit: vi.fn(), synchronizeBoard: vi.fn() },
+      matches: { evaluate: vi.fn(async () => ({ matched: 3 })) },
+      providers: { get: getProvider },
+      now: () => timestamp,
+      yieldControl: vi.fn(),
+    });
+
+    const summary = await discovery.discoverJobs({
+      profileId: 7,
+      providerName: null,
+      runId: 41,
+    });
+
+    expect(getProvider).not.toHaveBeenCalled();
+    expect(summary).toEqual({
+      runId: 41,
+      queries: 0,
+      hits: 0,
+      boards: 0,
+      knownBoards: 1,
+      knownBoardSuccesses: 1,
+      jobs: 4,
+      matches: 3,
+      queryErrors: 0,
+      syncErrors: 0,
+      webCoverageStatus: "skipped",
+    });
+    expect(journal.phases).toEqual(["known-boards", "matching"]);
+    expect(journal.laneEvidence.at(-1)).toMatchObject({
+      knownBoardCount: 1,
+      knownBoardSuccessCount: 1,
+      webCoverageStatus: "skipped",
+    });
   });
 
   it("admits the rendered request immediately before deferred execution", async () => {
@@ -361,7 +472,7 @@ describe("discover jobs", () => {
     expect(journal.queryFailures).toHaveLength(2);
     expect(journal.completed).toEqual([
       expect.objectContaining({
-        allQueriesFailed: true,
+        allWorkFailed: true,
         errors: [
           "jobs.example.com / VP Engineering: Search provider timed out",
           "jobs.example.com / board-discovery: Search provider timed out",
@@ -393,7 +504,7 @@ describe("discover jobs", () => {
     });
 
     expect(search).not.toHaveBeenCalled();
-    expect(journal.completed).toEqual([expect.objectContaining({ allQueriesFailed: false })]);
+    expect(journal.completed).toEqual([expect.objectContaining({ allWorkFailed: false })]);
   });
 
   it("admits only the request that can execute before a fatal provider failure", async () => {
@@ -489,7 +600,7 @@ describe("discover jobs", () => {
     expect(journal.completed[0]?.errors).toContain(
       `${providerName} fatal ${code} after 1 attempt; skipped 369 queries`,
     );
-    expect(journal.completed[0]?.allQueriesFailed).toBe(true);
+    expect(journal.completed[0]?.allWorkFailed).toBe(true);
     expect(journal.queryFailures).toEqual([
       { queryId: 1, message: `${providerName} cannot continue`, finishedAt: timestamp },
     ]);
@@ -539,7 +650,7 @@ describe("discover jobs", () => {
 
     expect(search).toHaveBeenCalledTimes(2);
     expect(summary.providerFailure?.skippedQueries).toBe(1);
-    expect(journal.completed[0]?.allQueriesFailed).toBe(false);
+    expect(journal.completed[0]?.allWorkFailed).toBe(false);
     expect(journal.cancelledQueryBatches).toHaveLength(1);
   });
 
@@ -781,6 +892,22 @@ describe("discover jobs", () => {
   });
 });
 
+type JobDiscoveryDependencies = Parameters<typeof createProductionJobDiscovery>[0];
+
+function createJobDiscovery(
+  dependencies: Omit<JobDiscoveryDependencies, "knownBoards"> & {
+    readonly knownBoards?: JobDiscoveryDependencies["knownBoards"];
+  },
+) {
+  return createProductionJobDiscovery({
+    knownBoards: {
+      countEnabledBoards: () => 0,
+      synchronizeEnabledBoards: async () => [],
+    },
+    ...dependencies,
+  });
+}
+
 function configuredSetup(): DiscoverySetupReader {
   return {
     load: () => ({
@@ -877,7 +1004,9 @@ function pageProviderDirectory(
   };
 }
 
-function recordingJournal(): DiscoveryRunJournal & {
+function recordingJournal(
+  options: { onPhase?: (phase: DiscoveryRunPhase) => void } = {},
+): DiscoveryRunJournal & {
   readonly completed: Array<Parameters<DiscoveryRunJournal["complete"]>[0]>;
   readonly failed: Array<Parameters<DiscoveryRunJournal["fail"]>[0]>;
   readonly queryFailures: Array<{
@@ -898,6 +1027,12 @@ function recordingJournal(): DiscoveryRunJournal & {
   readonly queryCompletions: Array<{
     readonly queryId: number;
     readonly result: Parameters<DiscoveryRunJournal["completeQuery"]>[1];
+  }>;
+  readonly phases: DiscoveryRunPhase[];
+  readonly laneEvidence: Array<{
+    readonly knownBoardCount: number;
+    readonly knownBoardSuccessCount: number;
+    readonly webCoverageStatus: WebCoverageStatus;
   }>;
 } {
   const completed: Array<Parameters<DiscoveryRunJournal["complete"]>[0]> = [];
@@ -921,6 +1056,12 @@ function recordingJournal(): DiscoveryRunJournal & {
     readonly queryId: number;
     readonly result: Parameters<DiscoveryRunJournal["completeQuery"]>[1];
   }> = [];
+  const phases: DiscoveryRunPhase[] = [];
+  const laneEvidence: Array<{
+    readonly knownBoardCount: number;
+    readonly knownBoardSuccessCount: number;
+    readonly webCoverageStatus: WebCoverageStatus;
+  }> = [];
   return {
     admittedRequests,
     cancelledQueryBatches,
@@ -930,6 +1071,8 @@ function recordingJournal(): DiscoveryRunJournal & {
     queryFailures,
     progressRecords,
     queryCompletions,
+    phases,
+    laneEvidence,
     prepare: (request) => {
       preparedRuns.push(request);
       return {
@@ -954,6 +1097,13 @@ function recordingJournal(): DiscoveryRunJournal & {
     },
     recordProgress: (_runId, progress) => {
       progressRecords.push(progress);
+    },
+    recordPhase: (_runId, phase) => {
+      phases.push(phase);
+      options.onPhase?.(phase);
+    },
+    recordLaneEvidence: (_runId, evidence) => {
+      laneEvidence.push(evidence);
     },
     complete: (request) => completed.push(request),
     fail: (request) => failed.push(request),

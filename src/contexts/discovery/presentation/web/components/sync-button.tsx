@@ -19,7 +19,7 @@ export function SyncButton() {
         }
       >
         <RefreshCw size={17} className={pending ? "spin" : ""} />
-        {pending ? "Refreshing..." : "Refresh boards"}
+        {pending ? "Refreshing registry..." : "Refresh board registry"}
       </Button>
       {message ? <span>{message}</span> : null}
     </div>

@@ -38,7 +38,7 @@ export type DiscoverySetup = {
 export interface DiscoverySetupReader {
   readonly load: (request: {
     readonly profileId: number;
-    readonly providerName: string;
+    readonly providerName: string | null;
     readonly source?: string;
   }) => DiscoverySetup;
 }

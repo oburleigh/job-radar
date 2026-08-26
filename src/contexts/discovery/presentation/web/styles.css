@@ -339,15 +339,6 @@
   gap: 10px;
 }
 
-.run-control-label {
-  color: var(--jr-color-accent-strong);
-  font-family: var(--jr-font-family-mono);
-  font-size: var(--jr-font-size-caption);
-  font-weight: 750;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
 .run-action-row {
   display: flex;
   align-items: center;
@@ -1718,6 +1709,14 @@ td a {
   border-inline-start-color: var(--jr-color-danger);
 }
 
+.run-outcome-completed {
+  border-inline-start-color: var(--jr-color-success);
+}
+
+.run-outcome-partial {
+  border-inline-start-color: var(--jr-color-warning-border);
+}
+
 .run-outcome-cancelled {
   border-inline-start-color: var(--jr-color-border-strong);
 }
@@ -1863,6 +1862,11 @@ td a {
 .health-error {
   color: var(--jr-color-danger);
   background: var(--jr-color-danger-subtle);
+}
+
+.run-partial {
+  color: var(--jr-color-warning-text);
+  background: var(--jr-color-warning-subtle);
 }
 
 .health-warning {

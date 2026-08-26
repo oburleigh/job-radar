@@ -22,6 +22,7 @@ import { readDiscoveryBenchmark } from "@/contexts/discovery/infrastructure/sqli
 import { searchProfiles, sourceDomains } from "@/contexts/discovery/infrastructure/sqlite/schema";
 import { createSqliteJobDiscoveryCatalog } from "@/contexts/discovery/infrastructure/sqlite/sqlite-job-discovery-catalog";
 import { createSqliteJobMatchEvaluator } from "@/contexts/discovery/infrastructure/sqlite/sqlite-job-match-evaluator";
+import { createSqliteKnownBoardDiscoveryCatalog } from "@/contexts/discovery/infrastructure/sqlite/sqlite-known-board-discovery-catalog";
 
 async function main() {
   const args = process.argv.slice(2);
@@ -77,6 +78,7 @@ async function main() {
   const discovery = createJobDiscovery({
     setup: createSqliteDiscoverySetup(db),
     runs: createSqliteDiscoveryRunJournal(db),
+    knownBoards: createSqliteKnownBoardDiscoveryCatalog(db),
     jobs: createSqliteJobDiscoveryCatalog(db),
     matches: createSqliteJobMatchEvaluator(db),
     providers: createWebSearchProviderDirectory(),

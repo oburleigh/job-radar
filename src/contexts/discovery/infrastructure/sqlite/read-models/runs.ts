@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 
+import { deriveDiscoveryRunOutcome } from "@/contexts/discovery/application/discovery-runs/outcome/derive-discovery-run-outcome";
 import type { ExclusionReason } from "@/contexts/discovery/domain/job-match";
 import { getJobRadarConfig } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
 import { canonicalizeUrl, classifyUrl } from "@/contexts/discovery/infrastructure/job-sources/urls";
@@ -24,6 +25,10 @@ export function getRunsData() {
       profileName: searchProfiles.name,
       provider: discoveryRuns.provider,
       status: discoveryRuns.status,
+      phase: discoveryRuns.phase,
+      knownBoardCount: discoveryRuns.knownBoardCount,
+      knownBoardSuccessCount: discoveryRuns.knownBoardSuccessCount,
+      webCoverageStatus: discoveryRuns.webCoverageStatus,
       queryCount: discoveryRuns.queryCount,
       hitCount: discoveryRuns.hitCount,
       boardsDiscovered: discoveryRuns.boardsDiscovered,
@@ -39,7 +44,8 @@ export function getRunsData() {
     .innerJoin(searchProfiles, eq(searchProfiles.id, discoveryRuns.profileId))
     .orderBy(desc(discoveryRuns.startedAt))
     .limit(runHistoryLimit)
-    .all();
+    .all()
+    .map(withOutcome);
 }
 
 export function getRunDetail(runId: number) {
@@ -54,6 +60,10 @@ export function readRunDetail(database: Database, runId: number) {
       profileName: searchProfiles.name,
       provider: discoveryRuns.provider,
       status: discoveryRuns.status,
+      phase: discoveryRuns.phase,
+      knownBoardCount: discoveryRuns.knownBoardCount,
+      knownBoardSuccessCount: discoveryRuns.knownBoardSuccessCount,
+      webCoverageStatus: discoveryRuns.webCoverageStatus,
       queryCount: discoveryRuns.queryCount,
       hitCount: discoveryRuns.hitCount,
       boardsDiscovered: discoveryRuns.boardsDiscovered,
@@ -145,10 +155,26 @@ export function readRunDetail(database: Database, runId: number) {
   );
 
   return {
-    run,
+    run: withOutcome(run),
     queries,
     requestSummary,
     funnel: readRunFunnel(database, run.id, run.profileId),
+  };
+}
+
+function withOutcome<
+  Run extends {
+    readonly status: "running" | "completed" | "failed" | "cancelled";
+    readonly queryCount: number;
+    readonly queryErrorCount: number;
+    readonly syncErrorCount: number;
+    readonly knownBoardCount: number | null;
+    readonly knownBoardSuccessCount: number | null;
+  },
+>(run: Run): Run & { readonly outcome: ReturnType<typeof deriveDiscoveryRunOutcome> } {
+  return {
+    ...run,
+    outcome: deriveDiscoveryRunOutcome(run),
   };
 }
 
