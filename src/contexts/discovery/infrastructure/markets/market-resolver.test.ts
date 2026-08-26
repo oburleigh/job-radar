@@ -20,6 +20,11 @@ const vocabulary = {
       label: "Dubai",
       aliases: [],
     },
+    {
+      key: "city:KR:seoul",
+      label: "Seoul",
+      aliases: ["Seoul Capital Area"],
+    },
   ],
 } as const;
 
@@ -55,17 +60,32 @@ describe("market resolution", () => {
     });
   });
 
+  it("resolves a labelled city without requiring a configured country entry", () => {
+    const resolver = createMarketResolver(vocabulary);
+
+    expect(resolver.resolve("Seoul Capital Area")).toEqual({
+      scope: {
+        key: "city:KR:seoul",
+        label: "Seoul",
+        terms: ["Seoul", "Seoul Capital Area"],
+      },
+      countryCode: "KR",
+      searchLanguage: null,
+    });
+  });
+
   it("keeps unknown text as one literal market", () => {
     const resolver = createMarketResolver(vocabulary);
 
-    expect(resolver.resolve("  Seoul  ")).toEqual({
+    expect(resolver.resolve("  Busan  ")).toEqual({
       scope: {
-        key: "literal:seoul",
-        label: "Seoul",
-        terms: ["Seoul"],
+        key: "literal:busan",
+        label: "Busan",
+        terms: ["Busan"],
       },
       countryCode: null,
       searchLanguage: null,
     });
+    expect(resolver.resolve("  South Korea  ").scope.key).toBe("literal:south-korea");
   });
 });

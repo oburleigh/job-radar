@@ -94,4 +94,15 @@ describe("search lane planning", () => {
     expect(planSearchLanes(criteria, [], ["phrase"], [])).toEqual([]);
     expect(planSearchLanes(criteria, source, [], [])).toEqual([]);
   });
+
+  it("omits the worldwide lane when configured remote terms normalize to empty", () => {
+    const lanes = planSearchLanes(
+      { titleTerms: ["Engineer"], markets: [market], includeRemote: true },
+      [{ atsType: "ashby", pattern: "jobs.ashbyhq.com", supportsBoardSync: false }],
+      ["phrase"],
+      [" ", ""],
+    );
+
+    expect(lanes.map((lane) => lane.kind)).toEqual(["role"]);
+  });
 });
