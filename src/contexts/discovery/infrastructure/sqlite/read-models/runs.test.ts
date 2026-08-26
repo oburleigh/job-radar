@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import Database from "better-sqlite3";
+import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -188,6 +189,29 @@ describe("completed discovery run funnel", () => {
 
   it("returns null when the run does not exist", () => {
     expect(readRunDetail(database, 999_999)).toBeNull();
+  });
+
+  it("derives a partial run outcome from persisted lane evidence", () => {
+    const { runId } = seedRun(database, { hitCount: 0, matchesFound: 2 });
+    database
+      .update(discoveryRuns)
+      .set({
+        phase: "matching",
+        knownBoardCount: 2,
+        knownBoardSuccessCount: 1,
+        webCoverageStatus: "skipped",
+        syncErrorCount: 1,
+      })
+      .where(eq(discoveryRuns.id, runId))
+      .run();
+
+    expect(readRunDetail(database, runId)?.run).toMatchObject({
+      outcome: "partial",
+      phase: "matching",
+      webCoverageStatus: "skipped",
+      knownBoardCount: 2,
+      knownBoardSuccessCount: 1,
+    });
   });
 
   it("reports a genuine no-hit run without inventing downstream candidates", () => {

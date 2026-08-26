@@ -2,6 +2,7 @@ import { PageHeader } from "@job-radar/design-ui";
 import { CheckCircle2, CircleAlert, CircleX, Clock3, LoaderCircle } from "lucide-react";
 import { Link, useLoaderData } from "react-router";
 import { discoveryWeb } from "@/contexts/discovery/composition/discovery-web.server";
+import { presentDiscoveryRunOutcome } from "@/contexts/discovery/presentation/web/run-outcome-presentation";
 
 export function loader() {
   return { runs: discoveryWeb.getRunsData() };
@@ -36,46 +37,49 @@ export default function RunsPage() {
                 </tr>
               </thead>
               <tbody>
-                {runs.map((run) => (
-                  <tr key={run.id}>
-                    <td>
-                      <Link
-                        to={`/runs/${run.id}`}
-                        className={`run-status run-${run.status}`}
-                        aria-label={`Run #${run.id} ${run.status}`}
-                        title={run.status}
-                      >
-                        {run.status === "completed" ? (
-                          <CheckCircle2 size={15} />
-                        ) : run.status === "failed" ? (
-                          <CircleAlert size={15} />
-                        ) : run.status === "cancelled" ? (
-                          <CircleX size={15} />
+                {runs.map((run) => {
+                  const outcome = presentDiscoveryRunOutcome(run.outcome);
+                  return (
+                    <tr key={run.id}>
+                      <td>
+                        <Link
+                          to={`/runs/${run.id}`}
+                          className={`run-status run-${outcome.kind}`}
+                          aria-label={`Run #${run.id} ${outcome.label}`}
+                          title={outcome.title}
+                        >
+                          {outcome.kind === "completed" ? (
+                            <CheckCircle2 size={15} />
+                          ) : outcome.kind === "failed" || outcome.kind === "partial" ? (
+                            <CircleAlert size={15} />
+                          ) : outcome.kind === "cancelled" ? (
+                            <CircleX size={15} />
+                          ) : (
+                            <LoaderCircle size={15} />
+                          )}
+                          {outcome.label} · #{run.id}
+                        </Link>
+                        <small>{formatDate(run.startedAt)}</small>
+                      </td>
+                      <td>{run.profileName}</td>
+                      <td className="capitalize">{run.provider || "Not configured"}</td>
+                      <td>{run.queryCount}</td>
+                      <td>{run.hitCount}</td>
+                      <td>{run.boardsDiscovered}</td>
+                      <td>{run.jobsUpserted}</td>
+                      <td>{run.matchesFound}</td>
+                      <td>
+                        {run.queryErrorCount + run.syncErrorCount > 0 ? (
+                          <span className="error-count" title={run.error || "Connector error"}>
+                            {run.queryErrorCount + run.syncErrorCount}
+                          </span>
                         ) : (
-                          <LoaderCircle size={15} />
+                          <span className="muted">None</span>
                         )}
-                        #{run.id}
-                      </Link>
-                      <small>{formatDate(run.startedAt)}</small>
-                    </td>
-                    <td>{run.profileName}</td>
-                    <td className="capitalize">{run.provider}</td>
-                    <td>{run.queryCount}</td>
-                    <td>{run.hitCount}</td>
-                    <td>{run.boardsDiscovered}</td>
-                    <td>{run.jobsUpserted}</td>
-                    <td>{run.matchesFound}</td>
-                    <td>
-                      {run.queryErrorCount + run.syncErrorCount > 0 ? (
-                        <span className="error-count" title={run.error || "Connector error"}>
-                          {run.queryErrorCount + run.syncErrorCount}
-                        </span>
-                      ) : (
-                        <span className="muted">None</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

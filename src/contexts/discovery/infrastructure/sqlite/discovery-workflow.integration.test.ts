@@ -174,10 +174,13 @@ describe("discovery concurrency", () => {
       queries: 5,
       hits: 1,
       boards: 0,
+      knownBoards: 0,
+      knownBoardSuccesses: 0,
       jobs: 0,
       matches: 0,
       queryErrors: 0,
       syncErrors: 0,
+      webCoverageStatus: "completed",
     });
     expect(
       db.select().from(discoveryRuns).where(eq(discoveryRuns.id, summary.runId)).get(),
@@ -284,6 +287,10 @@ function createDiscovery(provider: SearchProvider) {
   return createJobDiscovery({
     setup: createSqliteDiscoverySetup(db),
     runs: createSqliteDiscoveryRunJournal(db),
+    knownBoards: {
+      countEnabledBoards: () => 0,
+      synchronizeEnabledBoards: async () => [],
+    },
     jobs: createSqliteJobDiscoveryCatalog(db),
     matches: createSqliteJobMatchEvaluator(db),
     providers: { get: () => provider },

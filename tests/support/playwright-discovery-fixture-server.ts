@@ -4,6 +4,7 @@ import process from "node:process";
 const hostname = "127.0.0.1";
 const port = 3200;
 let successGate = createGate();
+let boardProgressGate = createGate();
 
 const server = createServer(async (request, response) => {
   const url = new URL(request.url ?? "/", `http://${request.headers.host ?? hostname}`);
@@ -37,6 +38,19 @@ const server = createServer(async (request, response) => {
 
   if (request.method === "POST" && url.pathname === "/control/release-success") {
     successGate.release();
+    response.writeHead(204).end();
+    return;
+  }
+
+  if (request.method === "POST" && url.pathname === "/control/reset-board-progress") {
+    boardProgressGate.release();
+    boardProgressGate = createGate();
+    response.writeHead(204).end();
+    return;
+  }
+
+  if (request.method === "POST" && url.pathname === "/control/release-board-progress") {
+    boardProgressGate.release();
     response.writeHead(204).end();
     return;
   }
@@ -132,6 +146,34 @@ const server = createServer(async (request, response) => {
           title: "Head of Engineering",
           company_name: "Acme Fixture",
           absolute_url: "https://boards.greenhouse.io/acme-fixture/jobs/12345",
+          location: { name: "Dubai, United Arab Emirates" },
+          content: "<p>Lead the platform engineering organisation.</p>",
+          departments: [{ name: "Engineering" }],
+          first_published: new Date().toISOString(),
+        },
+      ],
+    });
+    return;
+  }
+
+  const progressBoard = url.pathname.match(
+    /^\/greenhouse\/(progress-(first|delayed)-[a-z0-9-]+)\/jobs$/,
+  );
+  if (request.method === "GET" && progressBoard) {
+    const [, slug, lane] = progressBoard;
+    if (lane === "delayed") {
+      await boardProgressGate.promise;
+      sendJson(response, 200, { jobs: [] });
+      return;
+    }
+    sendJson(response, 200, {
+      jobs: [
+        {
+          id: 12345,
+          internal_job_id: null,
+          title: "Head of Engineering",
+          company_name: "Progress Fixture",
+          absolute_url: `https://boards.greenhouse.io/${slug}/jobs/12345`,
           location: { name: "Dubai, United Arab Emirates" },
           content: "<p>Lead the platform engineering organisation.</p>",
           departments: [{ name: "Engineering" }],

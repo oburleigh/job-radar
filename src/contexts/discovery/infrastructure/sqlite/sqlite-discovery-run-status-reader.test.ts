@@ -64,6 +64,9 @@ describe("SQLite discovery run status reader", () => {
       expect.objectContaining({
         id: 1,
         status: "failed",
+        outcome: "failed",
+        phase: null,
+        webCoverageStatus: null,
         errorSummary:
           "jobs.ashbyhq.com / Staff Engineer: Serper.dev returned HTTP 400: Not enough credits",
       }),
@@ -105,11 +108,60 @@ describe("SQLite discovery run status reader", () => {
         expect.objectContaining({
           id: 1,
           status: "cancelled",
+          outcome: "cancelled",
           errorSummary: "Cancelled by user",
         }),
       ],
       missingIds: [],
     });
+  });
+
+  it("derives a partial outcome from one successful and one failed known board", () => {
+    const profileId = database
+      .insert(schema.searchProfiles)
+      .values({
+        name: "Mixed board profile",
+        titleTerms: ["Staff Engineer"],
+        locationTerms: ["Remote"],
+        excludedTitleTerms: [],
+        excludedDescriptionTerms: [],
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning({ id: schema.searchProfiles.id })
+      .get().id;
+    database
+      .insert(schema.discoveryRuns)
+      .values({
+        profileId,
+        provider: "",
+        status: "completed",
+        phase: "matching",
+        knownBoardCount: 2,
+        knownBoardCompletedCount: 1,
+        knownBoardSuccessCount: 1,
+        activeBoardName: "Beta Systems",
+        webCoverageStatus: "skipped",
+        syncErrorCount: 1,
+        startedAt: now,
+        heartbeatAt: now,
+        finishedAt: now,
+      })
+      .run();
+    const reader = createSqliteDiscoveryRunStatusReader(database);
+
+    expect(reader.read({ ids: [1], activeOnly: false }).runs).toEqual([
+      expect.objectContaining({
+        id: 1,
+        outcome: "partial",
+        phase: "matching",
+        webCoverageStatus: "skipped",
+        knownBoardCount: 2,
+        knownBoardCompletedCount: 1,
+        knownBoardSuccessCount: 1,
+        activeBoardName: "Beta Systems",
+      }),
+    ]);
   });
 });
 

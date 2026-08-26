@@ -11,10 +11,13 @@ export type DiscoveryRunProgress = {
   readonly syncErrorCount: number;
 };
 
+export type DiscoveryRunPhase = "known-boards" | "web-coverage" | "matching";
+export type WebCoverageStatus = "pending" | "running" | "completed" | "skipped" | "failed";
+
 export type PreparedDiscoveryRun = {
   readonly id: number;
   readonly profileId: number;
-  readonly providerName: string;
+  readonly providerName: string | null;
 };
 
 export type DiscoveryRequestEvidence = {
@@ -38,7 +41,7 @@ export interface DiscoveryRunJournal {
   readonly prepare: (request: {
     readonly runId?: number;
     readonly profileId: number;
-    readonly providerName: string;
+    readonly providerName: string | null;
     readonly startedAt: Date;
   }) => PreparedDiscoveryRun;
   readonly admitRequest: (
@@ -63,13 +66,37 @@ export interface DiscoveryRunJournal {
     progress: DiscoveryRunProgress,
     recordedAt: Date,
   ) => void;
+  readonly recordPhase: (runId: number, phase: DiscoveryRunPhase, recordedAt: Date) => void;
+  readonly recordBoardProgress: (
+    runId: number,
+    progress: {
+      readonly totalBoardCount: number;
+      readonly completedBoardCount: number;
+      readonly successfulBoardCount: number;
+      readonly activeBoardName: string | null;
+      readonly jobsUpserted: number;
+      readonly matchesFound: number;
+      readonly syncErrorCount: number;
+      readonly recordedAt: Date;
+    },
+  ) => void;
+  readonly recordLaneEvidence: (
+    runId: number,
+    evidence: {
+      readonly knownBoardCount: number;
+      readonly knownBoardSuccessCount: number;
+      readonly webCoverageStatus: WebCoverageStatus;
+      readonly progress: DiscoveryRunProgress;
+      readonly recordedAt: Date;
+    },
+  ) => void;
   readonly complete: (request: {
     readonly runId: number;
     readonly progress: DiscoveryRunProgress;
     readonly boardsDiscovered: number;
     readonly matchesFound: number;
     readonly errors: readonly string[];
-    readonly allQueriesFailed: boolean;
+    readonly allWorkFailed: boolean;
     readonly budgetStopReason: "max-requests-per-run" | null;
     readonly finishedAt: Date;
   }) => void;

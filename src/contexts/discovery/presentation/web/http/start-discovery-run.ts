@@ -4,6 +4,7 @@ import type { ForStartingDiscoveryRuns } from "@/contexts/discovery/application/
 
 type StartDiscoveryRunRouteDependencies = {
   readonly assertLocalRequest: (request: Request) => void;
+  readonly isProviderKnown: (name: string) => boolean;
   readonly isProviderConfigured: (name: string) => boolean;
   readonly assertProviderReady: (name: string) => void;
   readonly discoveryRuns: ForStartingDiscoveryRuns;
@@ -11,11 +12,12 @@ type StartDiscoveryRunRouteDependencies = {
 
 const startSchema = z.object({
   profileId: z.number().int().positive(),
-  provider: z.string().trim().min(1),
+  provider: z.string().trim().min(1).optional(),
 });
 
 export function createStartDiscoveryRunRoute({
   assertLocalRequest,
+  isProviderKnown,
   isProviderConfigured,
   assertProviderReady,
   discoveryRuns,
@@ -24,15 +26,31 @@ export function createStartDiscoveryRunRoute({
     try {
       assertLocalRequest(request);
       const input = startSchema.safeParse(await request.json());
-      if (!input.success || !isProviderConfigured(input.data.provider)) {
+      if (!input.success || (input.data.provider && !isProviderKnown(input.data.provider))) {
         return Response.json({ ok: false, message: "Invalid discovery request." }, { status: 400 });
       }
-      assertProviderReady(input.data.provider);
+      const providerName =
+        input.data.provider && isProviderConfigured(input.data.provider)
+          ? input.data.provider
+          : null;
+      if (providerName) {
+        assertProviderReady(providerName);
+      }
 
       const result = discoveryRuns.startDiscoveryRun({
         profileId: input.data.profileId,
-        providerName: input.data.provider,
+        providerName,
       });
+      if (result.status === "not-runnable") {
+        return Response.json(
+          {
+            ok: false,
+            message:
+              "Enable a company board or configure a web search provider before running discovery.",
+          },
+          { status: 400 },
+        );
+      }
       const alreadyRunning = result.status === "already-running";
       return Response.json(
         {

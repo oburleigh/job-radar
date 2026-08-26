@@ -116,6 +116,7 @@ export function createSqliteDiscoveryRunRegistry(
         .run();
     },
     reserve({ profileId, providerName }): DiscoveryRunReservation {
+      const persistedProviderName = providerName ?? "";
       const profile = database
         .select({ id: searchProfiles.id })
         .from(searchProfiles)
@@ -143,8 +144,14 @@ export function createSqliteDiscoveryRunRegistry(
           .insert(discoveryRuns)
           .values({
             profileId,
-            provider: providerName,
+            provider: persistedProviderName,
             status: "running",
+            phase: "known-boards",
+            knownBoardCount: 0,
+            knownBoardCompletedCount: 0,
+            knownBoardSuccessCount: 0,
+            activeBoardName: null,
+            webCoverageStatus: "pending",
             startedAt: timestamp,
             heartbeatAt: timestamp,
           })

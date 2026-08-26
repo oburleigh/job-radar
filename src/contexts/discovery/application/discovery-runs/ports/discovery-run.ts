@@ -1,6 +1,6 @@
 export type StartDiscoveryRunCommand = {
   readonly profileId: number;
-  readonly providerName: string;
+  readonly providerName: string | null;
 };
 
 export type DiscoveryRunExecution = StartDiscoveryRunCommand & {

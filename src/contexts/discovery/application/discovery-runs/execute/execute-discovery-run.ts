@@ -31,10 +31,30 @@ export function createDiscoveryRunExecution({
         if (summary.providerFailure) {
           const { provider, classification, code, attempts, skippedQueries } =
             summary.providerFailure;
-          const successfulQueries = summary.queries - summary.queryErrors;
+          const successfulItems =
+            summary.knownBoardSuccesses + summary.queries - summary.queryErrors;
           const message = `${provider} ${classification} ${code} after ${attempts} ${attempts === 1 ? "attempt" : "attempts"}; skipped ${skippedQueries} ${skippedQueries === 1 ? "query" : "queries"}`;
           return {
-            status: successfulQueries > 0 ? "partial" : "failed",
+            status: successfulItems > 0 ? "partial" : "failed",
+            message,
+          };
+        }
+        const failedItems = summary.queryErrors + summary.syncErrors;
+        if (failedItems > 0) {
+          const successfulItems =
+            summary.knownBoardSuccesses + summary.queries - summary.queryErrors;
+          const message = [
+            summary.syncErrors > 0
+              ? `${summary.syncErrors} known board refresh${summary.syncErrors === 1 ? "" : "es"} failed`
+              : "",
+            summary.queryErrors > 0
+              ? `${summary.queryErrors} web coverage request${summary.queryErrors === 1 ? "" : "s"} failed`
+              : "",
+          ]
+            .filter(Boolean)
+            .join("; ");
+          return {
+            status: successfulItems > 0 ? "partial" : "failed",
             message,
           };
         }

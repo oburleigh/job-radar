@@ -80,7 +80,7 @@ export default function SourcesPage() {
       <PageHeader
         index="03"
         title="Sources and company boards"
-        description="Search across the broad ATS list, then refresh known boards directly without paying for another web search."
+        description="Maintain the source registry and refresh known boards when a connector needs attention. Discovery handles the routine run."
         actions={
           <div className="header-action-group">
             <Link {...buttonAttributes("primary")} to="/settings?new=1">
@@ -127,7 +127,7 @@ export default function SourcesPage() {
       <section className="source-section">
         <div className="section-heading">
           <h2>Known company career sites</h2>
-          <span>{data.boards.length} discovered</span>
+          <span>{data.boards.length} registered</span>
         </div>
 
         <div className="panel">

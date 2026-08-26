@@ -7,6 +7,7 @@ import { assertLocalHost } from "@/platform/http/require-local-request";
 
 const startDiscoveryRun = createStartDiscoveryRunRoute({
   assertLocalRequest: (request) => assertLocalHost(request.headers.get("host") ?? ""),
+  isProviderKnown: discoveryRunsWeb.isProviderKnown,
   isProviderConfigured: discoveryRunsWeb.isProviderConfigured,
   assertProviderReady: discoveryRunsWeb.assertProviderReady,
   discoveryRuns: { startDiscoveryRun: discoveryRunsWeb.startDiscoveryRun },

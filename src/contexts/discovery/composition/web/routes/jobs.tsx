@@ -70,6 +70,7 @@ export default function JobsPage() {
               profile={{ id: data.profile.id, name: data.profile.name }}
               provider={selectedProvider}
               providers={searchProviders}
+              activeBoardCount={data.activeBoards}
             />
           ) : null
         }

@@ -11,7 +11,7 @@ test.describe
 
       await page.goto("/sources");
       await expect(page.getByText("15 active", { exact: true })).toBeVisible();
-      await expect(page.getByText("0 discovered", { exact: true })).toBeVisible();
+      await expect(page.getByText("0 registered", { exact: true })).toBeVisible();
       await expect(
         page.getByText("Add a known ATS URL or run discovery to populate this registry."),
       ).toBeVisible();

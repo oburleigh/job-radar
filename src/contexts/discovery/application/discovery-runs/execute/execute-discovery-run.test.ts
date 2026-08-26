@@ -90,6 +90,155 @@ describe("execute discovery run", () => {
     });
   });
 
+  it("reports a provider stop as partial when a known board succeeded first", async () => {
+    const discovery: ForDiscoveringJobs = {
+      discoverJobs: async () => ({
+        ...summary,
+        queries: 1,
+        queryErrors: 1,
+        knownBoards: 1,
+        knownBoardSuccesses: 1,
+        providerFailure: {
+          provider: "brave",
+          classification: "fatal",
+          code: "payment-required",
+          attempts: 1,
+          skippedQueries: 1,
+        },
+      }),
+    };
+    const discoveryRuns = createDiscoveryRunExecution({ discovery });
+
+    await expect(discoveryRuns.executeDiscoveryRun(execution)).resolves.toEqual({
+      status: "partial",
+      message: "brave fatal payment-required after 1 attempt; skipped 1 query",
+    });
+  });
+
+  it("fails when every scheduled known board fails and web coverage is skipped", async () => {
+    const discovery: ForDiscoveringJobs = {
+      discoverJobs: async () => ({
+        ...summary,
+        queries: 0,
+        queryErrors: 0,
+        knownBoards: 2,
+        knownBoardSuccesses: 0,
+        syncErrors: 2,
+        webCoverageStatus: "skipped",
+      }),
+    };
+    const discoveryRuns = createDiscoveryRunExecution({ discovery });
+
+    await expect(
+      discoveryRuns.executeDiscoveryRun({ ...execution, providerName: null }),
+    ).resolves.toEqual({
+      status: "failed",
+      message: "2 known board refreshes failed",
+    });
+  });
+
+  it("reports one failed known board without pluralizing refresh", async () => {
+    const discoveryRuns = createDiscoveryRunExecution({
+      discovery: {
+        discoverJobs: async () => ({
+          ...summary,
+          queries: 0,
+          queryErrors: 0,
+          knownBoards: 1,
+          knownBoardSuccesses: 0,
+          syncErrors: 1,
+          webCoverageStatus: "skipped",
+        }),
+      },
+    });
+
+    await expect(discoveryRuns.executeDiscoveryRun(execution)).resolves.toEqual({
+      status: "failed",
+      message: "1 known board refresh failed",
+    });
+  });
+
+  it("reports joined board and web failures when every scheduled item fails", async () => {
+    const discoveryRuns = createDiscoveryRunExecution({
+      discovery: {
+        discoverJobs: async () => ({
+          ...summary,
+          queries: 1,
+          queryErrors: 1,
+          knownBoards: 1,
+          knownBoardSuccesses: 0,
+          syncErrors: 1,
+        }),
+      },
+    });
+
+    await expect(discoveryRuns.executeDiscoveryRun(execution)).resolves.toEqual({
+      status: "failed",
+      message: "1 known board refresh failed; 1 web coverage request failed",
+    });
+  });
+
+  it("reports generic mixed success as partial", async () => {
+    const discoveryRuns = createDiscoveryRunExecution({
+      discovery: {
+        discoverJobs: async () => ({
+          ...summary,
+          queries: 0,
+          queryErrors: 0,
+          knownBoards: 2,
+          knownBoardSuccesses: 1,
+          syncErrors: 1,
+          webCoverageStatus: "skipped",
+        }),
+      },
+    });
+
+    await expect(discoveryRuns.executeDiscoveryRun(execution)).resolves.toEqual({
+      status: "partial",
+      message: "1 known board refresh failed",
+    });
+  });
+
+  it("reports a successful web request plus a board failure as partial", async () => {
+    const discoveryRuns = createDiscoveryRunExecution({
+      discovery: {
+        discoverJobs: async () => ({
+          ...summary,
+          queries: 1,
+          queryErrors: 0,
+          knownBoards: 1,
+          knownBoardSuccesses: 0,
+          syncErrors: 1,
+        }),
+      },
+    });
+
+    await expect(discoveryRuns.executeDiscoveryRun(execution)).resolves.toEqual({
+      status: "partial",
+      message: "1 known board refresh failed",
+    });
+  });
+
+  it("reports plural web failures without inventing a board failure", async () => {
+    const discoveryRuns = createDiscoveryRunExecution({
+      discovery: {
+        discoverJobs: async () => ({
+          ...summary,
+          queries: 2,
+          queryErrors: 2,
+          knownBoards: 0,
+          knownBoardSuccesses: 0,
+          syncErrors: 0,
+        }),
+      },
+    });
+
+    await expect(discoveryRuns.executeDiscoveryRun(execution)).resolves.toEqual({
+      status: "failed",
+      message: "2 web coverage requests failed",
+    });
+  });
+
   it("reports the plural attempt count for an exhausted transient failure", async () => {
     const discovery: ForDiscoveringJobs = {
       discoverJobs: async () => ({
@@ -185,8 +334,11 @@ const summary = {
   queries: 1,
   hits: 1,
   boards: 0,
+  knownBoards: 0,
+  knownBoardSuccesses: 0,
   jobs: 1,
   matches: 1,
   queryErrors: 0,
   syncErrors: 0,
+  webCoverageStatus: "completed" as const,
 };

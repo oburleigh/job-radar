@@ -84,6 +84,10 @@ export async function runDiscoveryBenchmark(corpus: DiscoveryBenchmarkCorpus) {
       const discovery = createJobDiscovery({
         setup: createSqliteDiscoverySetup(database),
         runs: createSqliteDiscoveryRunJournal(database),
+        knownBoards: {
+          countEnabledBoards: () => 0,
+          synchronizeEnabledBoards: async () => [],
+        },
         jobs: createSqliteJobDiscoveryCatalog(database, {
           lookupAtsPosting: fixture.lookupAtsPosting,
           lookupStructuredJobPage: fixture.lookupStructuredJobPage,

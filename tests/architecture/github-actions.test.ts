@@ -35,7 +35,13 @@ describe("GitHub Actions quality gates", () => {
     }
 
     expect(packageJson.packageManager).toBe("pnpm@11.1.3");
-    expect(ciWorkflow).toContain("pnpm/action-setup@v6.0.10");
+    expect(ciWorkflow).toContain(
+      "pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10",
+    );
+    expect(packageJson.scripts?.lint).toContain("pnpm lint:workflows");
+    expect(packageJson.scripts?.["lint:workflows"]).toBe(
+      "go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 && node scripts/check-github-actions.ts",
+    );
   });
 
   it("defines the focused mutation command and exact production mutation targets", async () => {

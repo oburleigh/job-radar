@@ -10,6 +10,7 @@ type Database = typeof db;
 export function createSqliteDiscoveryRunJournal(database: Database): DiscoveryRunJournal {
   return {
     prepare({ runId, profileId, providerName, startedAt }) {
+      const persistedProviderName = providerName ?? "";
       const run = runId
         ? database
             .select({
@@ -25,8 +26,14 @@ export function createSqliteDiscoveryRunJournal(database: Database): DiscoveryRu
             .insert(discoveryRuns)
             .values({
               profileId,
-              provider: providerName,
+              provider: persistedProviderName,
               status: "running",
+              phase: "known-boards",
+              knownBoardCount: 0,
+              knownBoardCompletedCount: 0,
+              knownBoardSuccessCount: 0,
+              activeBoardName: null,
+              webCoverageStatus: "pending",
               queryCount: 0,
               startedAt,
               heartbeatAt: startedAt,
@@ -42,7 +49,7 @@ export function createSqliteDiscoveryRunJournal(database: Database): DiscoveryRu
       if (
         !run ||
         run.profileId !== profileId ||
-        run.providerName !== providerName ||
+        run.providerName !== persistedProviderName ||
         (runId !== undefined && run.status !== "running")
       ) {
         throw new Error("The reserved discovery run is invalid");
@@ -52,6 +59,12 @@ export function createSqliteDiscoveryRunJournal(database: Database): DiscoveryRu
           .update(discoveryRuns)
           .set({
             status: "running",
+            phase: "known-boards",
+            knownBoardCount: 0,
+            knownBoardCompletedCount: 0,
+            knownBoardSuccessCount: 0,
+            activeBoardName: null,
+            webCoverageStatus: "pending",
             queryCount: 0,
             hitCount: 0,
             boardsDiscovered: 0,
@@ -70,7 +83,7 @@ export function createSqliteDiscoveryRunJournal(database: Database): DiscoveryRu
           throw new Error("The reserved discovery run is no longer running");
         }
       }
-      return run;
+      return { ...run, providerName: run.providerName || null };
     },
     admitRequest(runId, query) {
       return database.transaction((transaction) => {
@@ -147,20 +160,71 @@ export function createSqliteDiscoveryRunJournal(database: Database): DiscoveryRu
         .where(and(eq(discoveryRuns.id, runId), eq(discoveryRuns.status, "running")))
         .run();
     },
+    recordPhase(runId, phase, recordedAt) {
+      database
+        .update(discoveryRuns)
+        .set({ phase, heartbeatAt: recordedAt })
+        .where(and(eq(discoveryRuns.id, runId), eq(discoveryRuns.status, "running")))
+        .run();
+    },
+    recordBoardProgress(
+      runId,
+      {
+        totalBoardCount,
+        completedBoardCount,
+        successfulBoardCount,
+        activeBoardName,
+        jobsUpserted,
+        matchesFound,
+        syncErrorCount,
+        recordedAt,
+      },
+    ) {
+      database
+        .update(discoveryRuns)
+        .set({
+          knownBoardCount: totalBoardCount,
+          knownBoardCompletedCount: completedBoardCount,
+          knownBoardSuccessCount: successfulBoardCount,
+          activeBoardName,
+          jobsUpserted,
+          matchesFound,
+          syncErrorCount,
+          heartbeatAt: recordedAt,
+        })
+        .where(and(eq(discoveryRuns.id, runId), eq(discoveryRuns.status, "running")))
+        .run();
+    },
+    recordLaneEvidence(
+      runId,
+      { knownBoardCount, knownBoardSuccessCount, webCoverageStatus, progress, recordedAt },
+    ) {
+      database
+        .update(discoveryRuns)
+        .set({
+          knownBoardCount,
+          knownBoardSuccessCount,
+          webCoverageStatus,
+          ...progress,
+          heartbeatAt: recordedAt,
+        })
+        .where(and(eq(discoveryRuns.id, runId), eq(discoveryRuns.status, "running")))
+        .run();
+    },
     complete({
       runId,
       progress,
       boardsDiscovered,
       matchesFound,
       errors,
-      allQueriesFailed,
+      allWorkFailed,
       budgetStopReason,
       finishedAt,
     }) {
       database
         .update(discoveryRuns)
         .set({
-          status: allQueriesFailed ? "failed" : "completed",
+          status: allWorkFailed ? "failed" : "completed",
           ...progress,
           boardsDiscovered,
           matchesFound,

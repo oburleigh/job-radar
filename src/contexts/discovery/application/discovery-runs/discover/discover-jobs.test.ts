@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { createJobDiscovery } from "@/contexts/discovery/application/discovery-runs/discover/discover-jobs";
+import { createJobDiscovery as createProductionJobDiscovery } from "@/contexts/discovery/application/discovery-runs/discover/discover-jobs";
 import type { SearchLane } from "@/contexts/discovery/application/discovery-runs/planning/plan-search-lanes";
 import type {
   DiscoveryRunJournal,
+  DiscoveryRunPhase,
   DiscoveryRunProgress,
+  WebCoverageStatus,
 } from "@/contexts/discovery/application/discovery-runs/ports/discovery-run-journal";
 import type { DiscoverySetupReader } from "@/contexts/discovery/application/discovery-runs/ports/discovery-setup";
 import type { JobDiscoveryCatalog } from "@/contexts/discovery/application/discovery-runs/ports/job-discovery-catalog";
@@ -75,10 +77,13 @@ describe("discover jobs", () => {
       queries: 2,
       hits: 1,
       boards: 1,
+      knownBoards: 0,
+      knownBoardSuccesses: 0,
       jobs: 5,
       matches: 5,
       queryErrors: 0,
       syncErrors: 0,
+      webCoverageStatus: "completed",
     });
     expect(search).toHaveBeenCalledTimes(2);
     expect(search).toHaveBeenCalledWith(expect.any(String), {
@@ -110,10 +115,398 @@ describe("discover jobs", () => {
         runId: 41,
         boardsDiscovered: 1,
         matchesFound: 5,
-        allQueriesFailed: false,
+        allWorkFailed: false,
       }),
     ]);
     expect(journal.failed).toEqual([]);
+  });
+
+  it("refreshes known boards before web coverage and evaluates both lanes together", async () => {
+    const events: string[] = [];
+    const journal = recordingJournal({
+      onPhase: (phase) => events.push(`phase:${phase}`),
+    });
+    const discovery = createJobDiscovery({
+      setup: configuredSetup(),
+      runs: journal,
+      knownBoards: {
+        countEnabledBoards: () => 2,
+        synchronizeEnabledBoards: async (_jobLimit, observer) => {
+          events.push("sync:known-boards");
+          const results = [
+            { boardId: 11, jobsWritten: 3, error: "" },
+            { boardId: 12, jobsWritten: 0, error: "Workable unavailable" },
+          ];
+          for (const result of results) {
+            observer.boardStarted({ id: result.boardId, name: `Board ${result.boardId}` });
+            await observer.boardCompleted(result);
+          }
+          return results;
+        },
+      },
+      jobs: {
+        recordHit: vi.fn(async () => ({ inserted: false, isUseful: false, jobsWritten: 0 })),
+        synchronizeBoard: vi.fn(async () => ({ jobsWritten: 0, error: "" })),
+      },
+      matches: {
+        evaluate: async () => {
+          events.push("evaluate:profile-7");
+          return { matched: 2 };
+        },
+      },
+      providers: providerDirectory(async () => {
+        events.push("search:serper");
+        return [];
+      }),
+      now: () => timestamp,
+      yieldControl: vi.fn(),
+    });
+
+    const summary = await discovery.discoverJobs({
+      profileId: 7,
+      providerName: "serper",
+      runId: 41,
+    });
+
+    expect(events).toEqual([
+      "phase:known-boards",
+      "sync:known-boards",
+      "evaluate:profile-7",
+      "phase:web-coverage",
+      "search:serper",
+      "search:serper",
+      "phase:matching",
+      "evaluate:profile-7",
+    ]);
+    expect(summary).toMatchObject({
+      knownBoards: 2,
+      knownBoardSuccesses: 1,
+      jobs: 3,
+      matches: 2,
+      syncErrors: 1,
+      webCoverageStatus: "completed",
+    });
+  });
+
+  it("matches and records progress after each completed known board before starting the next", async () => {
+    type BoardObserver = {
+      readonly boardStarted: (board: { readonly id: number; readonly name: string }) => void;
+      readonly boardCompleted: (evidence: {
+        readonly boardId: number;
+        readonly jobsWritten: number;
+        readonly error: string;
+      }) => Promise<void>;
+    };
+    const events: string[] = [];
+    const journal = recordingJournal();
+    const evaluateMatches = vi
+      .fn<JobDiscoveryDependencies["matches"]["evaluate"]>()
+      .mockImplementationOnce(async () => {
+        events.push("match:acme");
+        return { matched: 2 };
+      })
+      .mockImplementationOnce(async () => {
+        events.push("match:beta");
+        return { matched: 5 };
+      })
+      .mockImplementationOnce(async () => {
+        events.push("match:final");
+        return { matched: 5 };
+      });
+    const discovery = createJobDiscovery({
+      setup: configuredSetup(),
+      runs: journal,
+      knownBoards: {
+        countEnabledBoards: () => 2,
+        synchronizeEnabledBoards: async (jobLimit: number, observer?: BoardObserver) => {
+          expect(jobLimit).toBe(75);
+          if (!observer) {
+            throw new Error("Board progress observer was not provided");
+          }
+          observer.boardStarted({ id: 11, name: "Acme" });
+          events.push("sync:acme");
+          const acme = { boardId: 11, jobsWritten: 3, error: "" };
+          await observer.boardCompleted(acme);
+          observer.boardStarted({ id: 12, name: "Beta" });
+          events.push("sync:beta");
+          const beta = { boardId: 12, jobsWritten: 4, error: "" };
+          await observer.boardCompleted(beta);
+          return [acme, beta];
+        },
+      },
+      jobs: { recordHit: vi.fn(), synchronizeBoard: vi.fn() },
+      matches: { evaluate: evaluateMatches },
+      providers: { get: vi.fn() },
+      now: () => timestamp,
+      yieldControl: vi.fn(),
+    });
+
+    const summary = await discovery.discoverJobs({
+      profileId: 7,
+      providerName: null,
+      runId: 41,
+      boardJobLimit: 75,
+    });
+
+    expect(events).toEqual(["sync:acme", "match:acme", "sync:beta", "match:beta", "match:final"]);
+    expect(journal.boardProgress).toEqual([
+      expect.objectContaining({
+        totalBoardCount: 2,
+        completedBoardCount: 0,
+        successfulBoardCount: 0,
+        activeBoardName: null,
+        jobsUpserted: 0,
+        matchesFound: 0,
+      }),
+      expect.objectContaining({
+        totalBoardCount: 2,
+        completedBoardCount: 0,
+        successfulBoardCount: 0,
+        activeBoardName: "Acme",
+        jobsUpserted: 0,
+        matchesFound: 0,
+      }),
+      expect.objectContaining({
+        totalBoardCount: 2,
+        completedBoardCount: 1,
+        successfulBoardCount: 1,
+        activeBoardName: "Acme",
+        jobsUpserted: 3,
+        matchesFound: 2,
+      }),
+      expect.objectContaining({
+        totalBoardCount: 2,
+        completedBoardCount: 1,
+        successfulBoardCount: 1,
+        activeBoardName: "Beta",
+        jobsUpserted: 3,
+        matchesFound: 2,
+      }),
+      expect.objectContaining({
+        totalBoardCount: 2,
+        completedBoardCount: 2,
+        successfulBoardCount: 2,
+        activeBoardName: null,
+        jobsUpserted: 7,
+        matchesFound: 5,
+      }),
+    ]);
+    expect(summary).toMatchObject({
+      knownBoards: 2,
+      knownBoardSuccesses: 2,
+      jobs: 7,
+      matches: 5,
+    });
+  });
+
+  it("matches jobs written before a known board reports a synchronization error", async () => {
+    const events: string[] = [];
+    const journal = recordingJournal();
+    const evaluateMatches = vi
+      .fn<JobDiscoveryDependencies["matches"]["evaluate"]>()
+      .mockImplementationOnce(async () => {
+        events.push("match:partial-board");
+        return { matched: 1 };
+      })
+      .mockImplementationOnce(async () => {
+        events.push("match:final");
+        return { matched: 1 };
+      });
+    const discovery = createJobDiscovery({
+      setup: configuredSetup(),
+      runs: journal,
+      knownBoards: {
+        countEnabledBoards: () => 1,
+        synchronizeEnabledBoards: async (_jobLimit, observer) => {
+          observer.boardStarted({ id: 11, name: "Acme" });
+          events.push("sync:acme");
+          const result = { boardId: 11, jobsWritten: 2, error: "Connection reset" };
+          await observer.boardCompleted(result);
+          return [result];
+        },
+      },
+      jobs: { recordHit: vi.fn(), synchronizeBoard: vi.fn() },
+      matches: { evaluate: evaluateMatches },
+      providers: { get: vi.fn() },
+      now: () => timestamp,
+      yieldControl: vi.fn(),
+    });
+
+    const summary = await discovery.discoverJobs({
+      profileId: 7,
+      providerName: null,
+      runId: 41,
+    });
+
+    expect(events).toEqual(["sync:acme", "match:partial-board", "match:final"]);
+    expect(summary).toMatchObject({ jobs: 2, matches: 1, syncErrors: 1 });
+    expect(journal.completed[0]?.errors).toEqual(["Known board 11: Connection reset"]);
+  });
+
+  it("stops immediately when cancellation wins before a known board starts", async () => {
+    const controller = new AbortController();
+    const journal = recordingJournal();
+    const discovery = createJobDiscovery({
+      setup: configuredSetup(),
+      runs: journal,
+      knownBoards: {
+        countEnabledBoards: () => 1,
+        synchronizeEnabledBoards: async (_jobLimit, observer) => {
+          controller.abort("Cancelled by user");
+          observer.boardStarted({ id: 11, name: "Acme" });
+          return [];
+        },
+      },
+      jobs: { recordHit: vi.fn(), synchronizeBoard: vi.fn() },
+      matches: { evaluate: vi.fn(async () => ({ matched: 0 })) },
+      providers: { get: vi.fn() },
+      now: () => timestamp,
+      yieldControl: vi.fn(),
+    });
+
+    await expect(
+      discovery.discoverJobs({
+        profileId: 7,
+        providerName: null,
+        runId: 41,
+        signal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ name: "AbortError" });
+
+    expect(journal.boardProgress).toHaveLength(1);
+    expect(journal.completed).toEqual([]);
+    expect(journal.failed).toEqual([]);
+  });
+
+  it("does not record a completed board when cancellation wins after its refresh", async () => {
+    const controller = new AbortController();
+    const journal = recordingJournal();
+    const discovery = createJobDiscovery({
+      setup: configuredSetup(),
+      runs: journal,
+      knownBoards: {
+        countEnabledBoards: () => 1,
+        synchronizeEnabledBoards: async (_jobLimit, observer) => {
+          observer.boardStarted({ id: 11, name: "Acme" });
+          controller.abort("Cancelled by user");
+          await observer.boardCompleted({ boardId: 11, jobsWritten: 2, error: "" });
+          return [];
+        },
+      },
+      jobs: { recordHit: vi.fn(), synchronizeBoard: vi.fn() },
+      matches: { evaluate: vi.fn(async () => ({ matched: 0 })) },
+      providers: { get: vi.fn() },
+      now: () => timestamp,
+      yieldControl: vi.fn(),
+    });
+
+    await expect(
+      discovery.discoverJobs({
+        profileId: 7,
+        providerName: null,
+        runId: 41,
+        signal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ name: "AbortError" });
+
+    expect(journal.boardProgress).toHaveLength(2);
+    expect(journal.boardProgress.at(-1)).toMatchObject({
+      completedBoardCount: 0,
+      activeBoardName: "Acme",
+      jobsUpserted: 0,
+    });
+    expect(journal.completed).toEqual([]);
+    expect(journal.failed).toEqual([]);
+  });
+
+  it("does not refresh a web-discovered board already handled by the known-board lane", async () => {
+    const synchronizeBoard = vi.fn(async () => ({ jobsWritten: 0, error: "" }));
+    const discovery = createJobDiscovery({
+      setup: configuredSetup(),
+      runs: recordingJournal(),
+      knownBoards: {
+        countEnabledBoards: () => 1,
+        synchronizeEnabledBoards: async (_jobLimit, observer) => {
+          const result = { boardId: 11, jobsWritten: 0, error: "" };
+          observer.boardStarted({ id: 11, name: "Acme" });
+          await observer.boardCompleted(result);
+          return [result];
+        },
+      },
+      jobs: {
+        recordHit: vi.fn(async () => ({
+          inserted: true,
+          isUseful: true,
+          jobsWritten: 1,
+          syncableBoardId: 11,
+        })),
+        synchronizeBoard,
+      },
+      matches: { evaluate: vi.fn(async () => ({ matched: 1 })) },
+      providers: providerDirectory(async () => [
+        {
+          title: "VP Engineering",
+          url: "https://jobs.example.com/vp-engineering",
+          snippet: "Engineering leadership in Dubai",
+        },
+      ]),
+      now: () => timestamp,
+      yieldControl: vi.fn(),
+    });
+
+    await discovery.discoverJobs({ profileId: 7, providerName: "serper", runId: 41 });
+
+    expect(synchronizeBoard).not.toHaveBeenCalled();
+  });
+
+  it("completes board-only discovery and records skipped web coverage", async () => {
+    const journal = recordingJournal();
+    const getProvider = vi.fn();
+    const discovery = createJobDiscovery({
+      setup: configuredSetup(),
+      runs: journal,
+      knownBoards: {
+        countEnabledBoards: () => 1,
+        synchronizeEnabledBoards: async (_jobLimit, observer) => {
+          const result = { boardId: 11, jobsWritten: 4, error: "" };
+          observer.boardStarted({ id: 11, name: "Acme" });
+          await observer.boardCompleted(result);
+          return [result];
+        },
+      },
+      jobs: { recordHit: vi.fn(), synchronizeBoard: vi.fn() },
+      matches: { evaluate: vi.fn(async () => ({ matched: 3 })) },
+      providers: { get: getProvider },
+      now: () => timestamp,
+      yieldControl: vi.fn(),
+    });
+
+    const summary = await discovery.discoverJobs({
+      profileId: 7,
+      providerName: null,
+      runId: 41,
+    });
+
+    expect(getProvider).not.toHaveBeenCalled();
+    expect(summary).toEqual({
+      runId: 41,
+      queries: 0,
+      hits: 0,
+      boards: 0,
+      knownBoards: 1,
+      knownBoardSuccesses: 1,
+      jobs: 4,
+      matches: 3,
+      queryErrors: 0,
+      syncErrors: 0,
+      webCoverageStatus: "skipped",
+    });
+    expect(journal.phases).toEqual(["known-boards", "matching"]);
+    expect(journal.laneEvidence.at(-1)).toMatchObject({
+      knownBoardCount: 1,
+      knownBoardSuccessCount: 1,
+      webCoverageStatus: "skipped",
+    });
   });
 
   it("admits the rendered request immediately before deferred execution", async () => {
@@ -361,7 +754,7 @@ describe("discover jobs", () => {
     expect(journal.queryFailures).toHaveLength(2);
     expect(journal.completed).toEqual([
       expect.objectContaining({
-        allQueriesFailed: true,
+        allWorkFailed: true,
         errors: [
           "jobs.example.com / VP Engineering: Search provider timed out",
           "jobs.example.com / board-discovery: Search provider timed out",
@@ -393,7 +786,7 @@ describe("discover jobs", () => {
     });
 
     expect(search).not.toHaveBeenCalled();
-    expect(journal.completed).toEqual([expect.objectContaining({ allQueriesFailed: false })]);
+    expect(journal.completed).toEqual([expect.objectContaining({ allWorkFailed: false })]);
   });
 
   it("admits only the request that can execute before a fatal provider failure", async () => {
@@ -489,7 +882,7 @@ describe("discover jobs", () => {
     expect(journal.completed[0]?.errors).toContain(
       `${providerName} fatal ${code} after 1 attempt; skipped 369 queries`,
     );
-    expect(journal.completed[0]?.allQueriesFailed).toBe(true);
+    expect(journal.completed[0]?.allWorkFailed).toBe(true);
     expect(journal.queryFailures).toEqual([
       { queryId: 1, message: `${providerName} cannot continue`, finishedAt: timestamp },
     ]);
@@ -539,7 +932,7 @@ describe("discover jobs", () => {
 
     expect(search).toHaveBeenCalledTimes(2);
     expect(summary.providerFailure?.skippedQueries).toBe(1);
-    expect(journal.completed[0]?.allQueriesFailed).toBe(false);
+    expect(journal.completed[0]?.allWorkFailed).toBe(false);
     expect(journal.cancelledQueryBatches).toHaveLength(1);
   });
 
@@ -781,6 +1174,22 @@ describe("discover jobs", () => {
   });
 });
 
+type JobDiscoveryDependencies = Parameters<typeof createProductionJobDiscovery>[0];
+
+function createJobDiscovery(
+  dependencies: Omit<JobDiscoveryDependencies, "knownBoards"> & {
+    readonly knownBoards?: JobDiscoveryDependencies["knownBoards"];
+  },
+) {
+  return createProductionJobDiscovery({
+    knownBoards: {
+      countEnabledBoards: () => 0,
+      synchronizeEnabledBoards: async () => [],
+    },
+    ...dependencies,
+  });
+}
+
 function configuredSetup(): DiscoverySetupReader {
   return {
     load: () => ({
@@ -877,7 +1286,9 @@ function pageProviderDirectory(
   };
 }
 
-function recordingJournal(): DiscoveryRunJournal & {
+function recordingJournal(
+  options: { onPhase?: (phase: DiscoveryRunPhase) => void } = {},
+): DiscoveryRunJournal & {
   readonly completed: Array<Parameters<DiscoveryRunJournal["complete"]>[0]>;
   readonly failed: Array<Parameters<DiscoveryRunJournal["fail"]>[0]>;
   readonly queryFailures: Array<{
@@ -898,6 +1309,20 @@ function recordingJournal(): DiscoveryRunJournal & {
   readonly queryCompletions: Array<{
     readonly queryId: number;
     readonly result: Parameters<DiscoveryRunJournal["completeQuery"]>[1];
+  }>;
+  readonly phases: DiscoveryRunPhase[];
+  readonly boardProgress: Array<{
+    readonly totalBoardCount: number;
+    readonly completedBoardCount: number;
+    readonly successfulBoardCount: number;
+    readonly activeBoardName: string | null;
+    readonly jobsUpserted: number;
+    readonly matchesFound: number;
+  }>;
+  readonly laneEvidence: Array<{
+    readonly knownBoardCount: number;
+    readonly knownBoardSuccessCount: number;
+    readonly webCoverageStatus: WebCoverageStatus;
   }>;
 } {
   const completed: Array<Parameters<DiscoveryRunJournal["complete"]>[0]> = [];
@@ -921,6 +1346,20 @@ function recordingJournal(): DiscoveryRunJournal & {
     readonly queryId: number;
     readonly result: Parameters<DiscoveryRunJournal["completeQuery"]>[1];
   }> = [];
+  const phases: DiscoveryRunPhase[] = [];
+  const boardProgress: Array<{
+    readonly totalBoardCount: number;
+    readonly completedBoardCount: number;
+    readonly successfulBoardCount: number;
+    readonly activeBoardName: string | null;
+    readonly jobsUpserted: number;
+    readonly matchesFound: number;
+  }> = [];
+  const laneEvidence: Array<{
+    readonly knownBoardCount: number;
+    readonly knownBoardSuccessCount: number;
+    readonly webCoverageStatus: WebCoverageStatus;
+  }> = [];
   return {
     admittedRequests,
     cancelledQueryBatches,
@@ -930,6 +1369,9 @@ function recordingJournal(): DiscoveryRunJournal & {
     queryFailures,
     progressRecords,
     queryCompletions,
+    phases,
+    boardProgress,
+    laneEvidence,
     prepare: (request) => {
       preparedRuns.push(request);
       return {
@@ -954,6 +1396,16 @@ function recordingJournal(): DiscoveryRunJournal & {
     },
     recordProgress: (_runId, progress) => {
       progressRecords.push(progress);
+    },
+    recordPhase: (_runId, phase) => {
+      phases.push(phase);
+      options.onPhase?.(phase);
+    },
+    recordBoardProgress: (_runId, progress) => {
+      boardProgress.push(progress);
+    },
+    recordLaneEvidence: (_runId, evidence) => {
+      laneEvidence.push(evidence);
     },
     complete: (request) => completed.push(request),
     fail: (request) => failed.push(request),

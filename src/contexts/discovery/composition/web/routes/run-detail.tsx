@@ -5,6 +5,7 @@ import { discoveryWeb } from "@/contexts/discovery/composition/discovery-web.ser
 import { DiscoveryFunnel } from "@/contexts/discovery/presentation/web/components/discovery-funnel";
 import { KnownRoleDiagnostic } from "@/contexts/discovery/presentation/web/components/known-role-diagnostic";
 import { parseKnownRoleDiagnosticRequest } from "@/contexts/discovery/presentation/web/requests/known-role-diagnostic-request";
+import { presentDiscoveryRunOutcome } from "@/contexts/discovery/presentation/web/run-outcome-presentation";
 
 export function loader({ params, request }: LoaderFunctionArgs) {
   const runId = Number.parseInt(params.runId ?? "", 10);
@@ -27,23 +28,22 @@ export function loader({ params, request }: LoaderFunctionArgs) {
 export default function RunDetailPage() {
   const data = useLoaderData<typeof loader>();
   const { run, queries, requestSummary } = data;
-  const outcomeTitle =
-    run.status === "failed"
-      ? "Discovery failed"
-      : run.status === "cancelled"
-        ? "Discovery cancelled"
-        : "Discovery completed with errors";
-  const outcomeSummary =
-    run.status === "cancelled"
-      ? "Run stopped"
-      : `${run.queryErrorCount + run.syncErrorCount} recorded error${run.queryErrorCount + run.syncErrorCount === 1 ? "" : "s"}`;
+  const outcome = presentDiscoveryRunOutcome(run.outcome);
+  const boardEvidence =
+    run.knownBoardCount === null || run.knownBoardSuccessCount === null
+      ? "Known-board evidence not recorded"
+      : `${run.knownBoardSuccessCount} of ${run.knownBoardCount} known boards refreshed`;
+  const webEvidence =
+    run.webCoverageStatus === null
+      ? "Web coverage evidence not recorded"
+      : `Web coverage ${run.webCoverageStatus}`;
 
   return (
     <div className="page">
       <PageHeader
         index="04"
         title={`Run #${run.id}`}
-        description={`${run.profileName} · ${run.provider} · ${run.queryCount} requests`}
+        description={`${run.profileName} · ${run.provider || "No web provider"} · ${run.queryCount} web requests`}
         actions={
           <Link {...buttonAttributes()} to="/runs">
             <ArrowLeft size={16} />
@@ -52,23 +52,24 @@ export default function RunDetailPage() {
         }
       />
 
-      {run.error ? (
-        <section
-          className={`panel run-panel run-outcome run-outcome-${run.status}`}
-          aria-labelledby="run-outcome-heading"
-        >
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">Run outcome</p>
-              <h2 id="run-outcome-heading">{outcomeTitle}</h2>
-            </div>
-            <span>{outcomeSummary}</span>
+      <section
+        className={`panel run-panel run-outcome run-outcome-${outcome.kind}`}
+        aria-labelledby="run-outcome-heading"
+      >
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Run outcome</p>
+            <h2 id="run-outcome-heading">{outcome.title}</h2>
           </div>
-          <p className="run-outcome-detail">{run.error}</p>
-        </section>
-      ) : null}
+          <span>{outcome.label}</span>
+        </div>
+        <p className="run-outcome-detail">
+          {boardEvidence} · {webEvidence}
+          {run.error ? ` · ${run.error}` : ""}
+        </p>
+      </section>
 
-      {run.status === "completed" ? (
+      {run.outcome === "completed" || run.outcome === "partial" ? (
         <DiscoveryFunnel counts={data.funnel} profileId={run.profileId} />
       ) : null}
 

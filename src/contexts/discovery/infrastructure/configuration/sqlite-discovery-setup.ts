@@ -22,7 +22,7 @@ export function createSqliteDiscoverySetup(database: Database): DiscoverySetupRe
 
       const config = getJobRadarConfig(database);
       const marketResolver = createMarketResolver(config.marketVocabulary);
-      const provider = config.searchProviders[providerName];
+      const provider = providerName ? config.searchProviders[providerName] : undefined;
       const sources = database
         .select()
         .from(sourceDomains)
