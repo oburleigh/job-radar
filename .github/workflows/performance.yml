@@ -17,7 +17,7 @@ jobs:
     name: HTTP and SQLite latency
     runs-on: ubuntu-latest
     env:
-      DB_PATH: ${{ runner.temp }}/job-radar-performance.sqlite
+      DB_PATH: ${{ github.workspace }}/job-radar-performance.sqlite
       SERPER_API_KEY: performance-ci-key
     steps:
       - uses: actions/checkout@v7.0.1

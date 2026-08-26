@@ -13,7 +13,7 @@ jobs:
     name: Full mutation
     runs-on: ubuntu-latest
     env:
-      DB_PATH: ${{ runner.temp }}/job-radar-full-mutation.sqlite
+      DB_PATH: ${{ github.workspace }}/job-radar-full-mutation.sqlite
       SERPER_API_KEY: full-mutation-ci-key
     steps:
       - uses: actions/checkout@v7.0.1
