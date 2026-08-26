@@ -114,7 +114,9 @@ export const discoveryRuns = sqliteTable(
       enum: ["known-boards", "web-coverage", "matching"],
     }),
     knownBoardCount: integer("known_board_count"),
+    knownBoardCompletedCount: integer("known_board_completed_count"),
     knownBoardSuccessCount: integer("known_board_success_count"),
+    activeBoardName: text("active_board_name"),
     webCoverageStatus: text("web_coverage_status", {
       enum: ["pending", "running", "completed", "skipped", "failed"],
     }),

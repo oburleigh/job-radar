@@ -30,7 +30,9 @@ export function createSqliteDiscoveryRunJournal(database: Database): DiscoveryRu
               status: "running",
               phase: "known-boards",
               knownBoardCount: 0,
+              knownBoardCompletedCount: 0,
               knownBoardSuccessCount: 0,
+              activeBoardName: null,
               webCoverageStatus: "pending",
               queryCount: 0,
               startedAt,
@@ -59,7 +61,9 @@ export function createSqliteDiscoveryRunJournal(database: Database): DiscoveryRu
             status: "running",
             phase: "known-boards",
             knownBoardCount: 0,
+            knownBoardCompletedCount: 0,
             knownBoardSuccessCount: 0,
+            activeBoardName: null,
             webCoverageStatus: "pending",
             queryCount: 0,
             hitCount: 0,
@@ -160,6 +164,34 @@ export function createSqliteDiscoveryRunJournal(database: Database): DiscoveryRu
       database
         .update(discoveryRuns)
         .set({ phase, heartbeatAt: recordedAt })
+        .where(and(eq(discoveryRuns.id, runId), eq(discoveryRuns.status, "running")))
+        .run();
+    },
+    recordBoardProgress(
+      runId,
+      {
+        totalBoardCount,
+        completedBoardCount,
+        successfulBoardCount,
+        activeBoardName,
+        jobsUpserted,
+        matchesFound,
+        syncErrorCount,
+        recordedAt,
+      },
+    ) {
+      database
+        .update(discoveryRuns)
+        .set({
+          knownBoardCount: totalBoardCount,
+          knownBoardCompletedCount: completedBoardCount,
+          knownBoardSuccessCount: successfulBoardCount,
+          activeBoardName,
+          jobsUpserted,
+          matchesFound,
+          syncErrorCount,
+          heartbeatAt: recordedAt,
+        })
         .where(and(eq(discoveryRuns.id, runId), eq(discoveryRuns.status, "running")))
         .run();
     },

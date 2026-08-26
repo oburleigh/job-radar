@@ -40,6 +40,8 @@ describe("SQLite discovery run registry", () => {
       profile_id: profileId,
       provider: "serper",
       status: "running",
+      known_board_completed_count: 0,
+      active_board_name: null,
       started_at: now.getTime(),
       heartbeat_at: now.getTime(),
     });

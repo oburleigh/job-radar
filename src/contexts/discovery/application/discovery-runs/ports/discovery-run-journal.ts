@@ -67,6 +67,19 @@ export interface DiscoveryRunJournal {
     recordedAt: Date,
   ) => void;
   readonly recordPhase: (runId: number, phase: DiscoveryRunPhase, recordedAt: Date) => void;
+  readonly recordBoardProgress: (
+    runId: number,
+    progress: {
+      readonly totalBoardCount: number;
+      readonly completedBoardCount: number;
+      readonly successfulBoardCount: number;
+      readonly activeBoardName: string | null;
+      readonly jobsUpserted: number;
+      readonly matchesFound: number;
+      readonly syncErrorCount: number;
+      readonly recordedAt: Date;
+    },
+  ) => void;
   readonly recordLaneEvidence: (
     runId: number,
     evidence: {

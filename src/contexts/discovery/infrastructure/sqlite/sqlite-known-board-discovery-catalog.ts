@@ -14,15 +14,18 @@ export function createSqliteKnownBoardDiscoveryCatalog(
 
   return {
     countEnabledBoards: () => enabledBoards().length,
-    async synchronizeEnabledBoards(jobLimit) {
+    async synchronizeEnabledBoards(jobLimit, observer) {
       const evidence = [];
       for (const board of enabledBoards()) {
+        observer.boardStarted({ id: board.id, name: board.companyName || board.slug });
         const result = await syncBoard(board, jobLimit, database);
-        evidence.push({
+        const boardEvidence = {
           boardId: result.boardId,
           jobsWritten: result.created + result.updated,
           error: result.error,
-        });
+        };
+        evidence.push(boardEvidence);
+        await observer.boardCompleted(boardEvidence);
       }
       return evidence;
     },

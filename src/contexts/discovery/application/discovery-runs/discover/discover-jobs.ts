@@ -111,7 +111,9 @@ export function createJobDiscovery({
       let matchesFound = 0;
       let syncErrors = 0;
       let knownBoardCount = 0;
+      let knownBoardCompletedCount = 0;
       let knownBoardSuccesses = 0;
+      let activeBoardName: string | null = null;
       let querySucceeded = false;
       let activeQueryId: number | undefined;
       let admittedQueryCount = 0;
@@ -127,25 +129,63 @@ export function createJobDiscovery({
         queryErrorCount: queryErrors.length,
         syncErrorCount: syncErrors,
       });
+      const recordBoardProgress = () =>
+        runs.recordBoardProgress(run.id, {
+          totalBoardCount: knownBoardCount,
+          completedBoardCount: knownBoardCompletedCount,
+          successfulBoardCount: knownBoardSuccesses,
+          activeBoardName,
+          jobsUpserted: jobsWritten,
+          matchesFound,
+          syncErrorCount: syncErrors,
+          recordedAt: now(),
+        });
+      const evaluateMatches = async () =>
+        matches.evaluate(
+          command.profileId,
+          {
+            marketScopes: profile.markets.map((market) => market.scope),
+            excludedMarketScopes: profile.excludedMarkets.map((market) => market.scope),
+          },
+          () => {
+            runs.recordProgress(run.id, progress(), now());
+          },
+          () => throwIfCancelled(command.signal),
+        );
 
       try {
         runs.recordPhase(run.id, "known-boards", now());
         if (command.syncBoards !== false) {
-          const evidence = await knownBoards.synchronizeEnabledBoards(
+          knownBoardCount = knownBoards.countEnabledBoards();
+          recordBoardProgress();
+          await knownBoards.synchronizeEnabledBoards(
             command.boardJobLimit ?? policy.boardJobLimit,
+            {
+              boardStarted(board) {
+                throwIfCancelled(command.signal);
+                activeBoardName = board.name;
+                recordBoardProgress();
+              },
+              async boardCompleted(result) {
+                throwIfCancelled(command.signal);
+                knownBoardIds.add(result.boardId);
+                jobsWritten += result.jobsWritten;
+                if (result.error) {
+                  syncErrors += 1;
+                  runErrors.push(`Known board ${result.boardId}: ${result.error}`);
+                } else {
+                  knownBoardSuccesses += 1;
+                }
+                if (result.jobsWritten > 0) {
+                  matchesFound = (await evaluateMatches()).matched;
+                }
+                knownBoardCompletedCount += 1;
+                activeBoardName =
+                  knownBoardCompletedCount === knownBoardCount ? null : activeBoardName;
+                recordBoardProgress();
+              },
+            },
           );
-          knownBoardCount = evidence.length;
-          for (const result of evidence) {
-            throwIfCancelled(command.signal);
-            knownBoardIds.add(result.boardId);
-            jobsWritten += result.jobsWritten;
-            if (result.error) {
-              syncErrors += 1;
-              runErrors.push(`Known board ${result.boardId}: ${result.error}`);
-            } else {
-              knownBoardSuccesses += 1;
-            }
-          }
         }
         runs.recordLaneEvidence(run.id, {
           knownBoardCount,
@@ -326,19 +366,7 @@ export function createJobDiscovery({
 
         throwIfCancelled(command.signal);
         runs.recordPhase(run.id, "matching", now());
-        matchesFound = (
-          await matches.evaluate(
-            command.profileId,
-            {
-              marketScopes: profile.markets.map((market) => market.scope),
-              excludedMarketScopes: profile.excludedMarkets.map((market) => market.scope),
-            },
-            () => {
-              runs.recordProgress(run.id, progress(), now());
-            },
-            () => throwIfCancelled(command.signal),
-          )
-        ).matched;
+        matchesFound = (await evaluateMatches()).matched;
         runs.complete({
           runId: run.id,
           progress: progress(),

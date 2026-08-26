@@ -50,6 +50,13 @@
       "when": 1787752858473,
       "tag": "0006_far_moonstone",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1787757923530,
+      "tag": "0007_woozy_zaladane",
+      "breakpoints": true
     }
   ]
 }

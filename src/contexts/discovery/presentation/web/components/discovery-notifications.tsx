@@ -1,4 +1,4 @@
-import { Button, IconButton } from "@job-radar/design-ui";
+import { Button, buttonAttributes, IconButton } from "@job-radar/design-ui";
 import { CheckCircle2, CircleAlert, CircleX, LoaderCircle, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useRevalidator } from "react-router";
@@ -22,7 +22,9 @@ export interface DiscoveryRunStatus {
   outcome: DiscoveryRunOutcome;
   phase: DiscoveryRunPhase | null;
   knownBoardCount: number | null;
+  knownBoardCompletedCount: number | null;
   knownBoardSuccessCount: number | null;
+  activeBoardName: string | null;
   webCoverageStatus: WebCoverageStatus | null;
   hitCount: number;
   jobsUpserted: number;
@@ -212,34 +214,36 @@ export function DiscoveryNotifications({ pollIntervalMs }: DiscoveryNotification
   }, [pollIntervalMs, revalidator]);
 
   return (
-    <aside
-      className="discovery-notification-layer"
-      aria-label="Discovery status"
-      aria-live="polite"
-    >
-      {runningRuns.map((run) => (
-        <div className="discovery-running" key={run.id} role="status">
-          <LoaderCircle className="spin" size={18} />
-          <div>
-            <strong>{run.profileName}</strong>
-            <span>
-              {describeDiscoveryPhase(run)}
-              {run.hitCount > 0
-                ? ` · ${run.hitCount} result${run.hitCount === 1 ? "" : "s"} found`
-                : ""}
-            </span>
+    <aside className="discovery-notification-layer" aria-label="Discovery status">
+      <div className="discovery-running-list" role="status" aria-live="polite" aria-atomic="true">
+        {runningRuns.map((run) => (
+          <div className="discovery-running" key={run.id}>
+            <LoaderCircle className="spin" size={18} />
+            <div className="discovery-running-copy">
+              <strong>{run.profileName}</strong>
+              <span>{describeDiscoveryProgress(run)}</span>
+            </div>
+            <div className="discovery-running-actions">
+              <Link
+                {...buttonAttributes("secondary")}
+                aria-label={`View results for ${run.profileName}`}
+                to={`/?profile=${run.profileId}`}
+              >
+                View results
+              </Link>
+              <Button
+                busy={cancellingIds.has(run.id)}
+                disabled={cancellingIds.has(run.id)}
+                onClick={() => void cancelRun(run)}
+                variant="danger"
+                aria-label={`Cancel discovery #${run.id}`}
+              >
+                {cancellingIds.has(run.id) ? "Cancelling…" : "Cancel"}
+              </Button>
+            </div>
           </div>
-          <Button
-            busy={cancellingIds.has(run.id)}
-            disabled={cancellingIds.has(run.id)}
-            onClick={() => void cancelRun(run)}
-            variant="danger"
-            aria-label={`Cancel discovery #${run.id}`}
-          >
-            {cancellingIds.has(run.id) ? "Cancelling…" : `Cancel discovery #${run.id}`}
-          </Button>
-        </div>
-      ))}
+        ))}
+      </div>
       {notices.map((run) => {
         const presentation = describeDiscoveryNotice(run);
         const failed = presentation.kind === "failed";
@@ -341,14 +345,29 @@ export function describeDiscoveryNotice(run: DiscoveryRunStatus): {
     return {
       kind: presentation.kind,
       title: presentation.title,
-      message: `${partialFailure} ${run.matchesFound} current profile match${run.matchesFound === 1 ? " was" : "es were"} retained.`,
+      message: `${partialFailure} Final totals: ${describeFinalDiscoveryTotals(run)}.`,
     };
   }
   return {
     kind: presentation.kind,
     title: presentation.title,
-    message: `${run.profileName}: ${run.matchesFound} current profile match${run.matchesFound === 1 ? "" : "es"} after processing ${run.hitCount} search result${run.hitCount === 1 ? "" : "s"}.${run.webCoverageStatus === "skipped" ? " Web coverage was skipped because no provider was configured." : ""}`,
+    message: `${run.profileName}: ${describeFinalDiscoveryTotals(run)}.${run.webCoverageStatus === "skipped" ? " No web search provider was configured." : ""}`,
   };
+}
+
+function describeFinalDiscoveryTotals(
+  run: Pick<
+    DiscoveryRunStatus,
+    | "knownBoardCount"
+    | "knownBoardCompletedCount"
+    | "jobsUpserted"
+    | "matchesFound"
+    | "webCoverageStatus"
+  >,
+): string {
+  const completedBoards = run.knownBoardCompletedCount ?? run.knownBoardCount ?? 0;
+  const webCoverage = run.webCoverageStatus ?? "not recorded";
+  return `${completedBoards} board${completedBoards === 1 ? "" : "s"} completed, ${run.jobsUpserted} job${run.jobsUpserted === 1 ? "" : "s"} changed, web coverage ${webCoverage}, and ${run.matchesFound} current profile match${run.matchesFound === 1 ? "" : "es"}`;
 }
 
 export function describeDiscoveryPhase(
@@ -366,6 +385,28 @@ export function describeDiscoveryPhase(
     return "Matching jobs to profile";
   }
   return `Discovery #${run.id} is running in the background`;
+}
+
+export function describeDiscoveryProgress(
+  run: Pick<
+    DiscoveryRunStatus,
+    | "phase"
+    | "knownBoardCount"
+    | "knownBoardCompletedCount"
+    | "activeBoardName"
+    | "jobsUpserted"
+    | "matchesFound"
+    | "id"
+  >,
+): string {
+  const details = [
+    describeDiscoveryPhase(run),
+    `${run.knownBoardCompletedCount ?? 0} of ${run.knownBoardCount ?? 0} boards`,
+    run.activeBoardName ? `Active board: ${run.activeBoardName}` : "",
+    `${run.jobsUpserted} job${run.jobsUpserted === 1 ? "" : "s"} changed`,
+    `${run.matchesFound} match${run.matchesFound === 1 ? "" : "es"} found`,
+  ];
+  return details.filter(Boolean).join(" · ");
 }
 
 export function reconcilePendingRunIds(

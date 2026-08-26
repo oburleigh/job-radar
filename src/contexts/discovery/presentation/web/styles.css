@@ -1946,7 +1946,25 @@ td a {
 }
 
 .discovery-running {
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.discovery-running-list {
+  display: grid;
+  gap: 8px;
+}
+
+.discovery-running-copy {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.discovery-running-actions {
+  display: flex;
+  grid-column: 2;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 
 .discovery-running strong,

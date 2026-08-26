@@ -13,7 +13,9 @@ export interface DiscoveryRunStatusDto {
   readonly outcome: DiscoveryRunOutcome;
   readonly phase: DiscoveryRunPhase | null;
   readonly knownBoardCount: number | null;
+  readonly knownBoardCompletedCount: number | null;
   readonly knownBoardSuccessCount: number | null;
+  readonly activeBoardName: string | null;
   readonly webCoverageStatus: WebCoverageStatus | null;
   readonly hitCount: number;
   readonly jobsUpserted: number;

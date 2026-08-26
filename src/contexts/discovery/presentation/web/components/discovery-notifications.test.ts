@@ -4,6 +4,7 @@ import {
   type DiscoveryRunStatus,
   describeDiscoveryNotice,
   describeDiscoveryPhase,
+  describeDiscoveryProgress,
   filterCurrentDiscoveryRuns,
   reconcilePendingRunIds,
 } from "./discovery-notifications";
@@ -38,7 +39,9 @@ describe("discovery notification polling reconciliation", () => {
         outcome: "partial",
         phase: "matching",
         knownBoardCount: 0,
+        knownBoardCompletedCount: 0,
         knownBoardSuccessCount: 0,
+        activeBoardName: null,
         webCoverageStatus: "failed",
         hitCount: 5,
         jobsUpserted: 4,
@@ -51,7 +54,7 @@ describe("discovery notification polling reconciliation", () => {
       kind: "partial",
       title: "Discovery partially completed",
       message:
-        "Brave Search requires payment. Choose another provider or update its plan. 2 current profile matches were retained.",
+        "Brave Search requires payment. Choose another provider or update its plan. Final totals: 0 boards completed, 4 jobs changed, web coverage failed, and 2 current profile matches.",
     });
   });
 
@@ -66,7 +69,9 @@ describe("discovery notification polling reconciliation", () => {
         outcome: "partial",
         phase: "matching",
         knownBoardCount: 2,
+        knownBoardCompletedCount: 2,
         knownBoardSuccessCount: 1,
+        activeBoardName: null,
         webCoverageStatus: "completed",
         hitCount: 5,
         jobsUpserted: 4,
@@ -79,7 +84,7 @@ describe("discovery notification polling reconciliation", () => {
       kind: "partial",
       title: "Discovery partially completed",
       message:
-        "Asia leadership completed with 1 board synchronization error. 2 current profile matches were retained.",
+        "Asia leadership completed with 1 board synchronization error. Final totals: 2 boards completed, 4 jobs changed, web coverage completed, and 2 current profile matches.",
     });
   });
 
@@ -94,7 +99,7 @@ describe("discovery notification polling reconciliation", () => {
         matchesFound: 1,
       },
       message:
-        "Asia leadership completed with 1 search error. 1 current profile match was retained.",
+        "Asia leadership completed with 1 search error. Final totals: 0 boards completed, 4 jobs changed, web coverage completed, and 1 current profile match.",
     },
     {
       name: "query-only fallback",
@@ -106,7 +111,7 @@ describe("discovery notification polling reconciliation", () => {
         matchesFound: 1,
       },
       message:
-        "Asia leadership completed with 2 search errors. 1 current profile match was retained.",
+        "Asia leadership completed with 2 search errors. Final totals: 0 boards completed, 4 jobs changed, web coverage completed, and 1 current profile match.",
     },
     {
       name: "combined fallback",
@@ -118,7 +123,7 @@ describe("discovery notification polling reconciliation", () => {
         matchesFound: 0,
       },
       message:
-        "Asia leadership completed with 2 search errors and 3 board synchronization errors. 0 current profile matches were retained.",
+        "Asia leadership completed with 2 search errors and 3 board synchronization errors. Final totals: 0 boards completed, 4 jobs changed, web coverage completed, and 0 current profile matches.",
     },
     {
       name: "whitespace-only sync fallback",
@@ -130,7 +135,7 @@ describe("discovery notification polling reconciliation", () => {
         matchesFound: 0,
       },
       message:
-        "Asia leadership completed with 2 board synchronization errors. 0 current profile matches were retained.",
+        "Asia leadership completed with 2 board synchronization errors. Final totals: 0 boards completed, 4 jobs changed, web coverage completed, and 0 current profile matches.",
     },
   ])("formats the $name", ({ run, message }) => {
     expect(describeDiscoveryNotice(completedRun(run))).toEqual({
@@ -144,20 +149,64 @@ describe("discovery notification polling reconciliation", () => {
     expect(describeDiscoveryNotice(completedRun())).toEqual({
       kind: "completed",
       title: "Discovery completed",
-      message: "Asia leadership: 2 current profile matches after processing 5 search results.",
+      message:
+        "Asia leadership: 0 boards completed, 4 jobs changed, web coverage completed, and 2 current profile matches.",
+    });
+  });
+
+  it("replaces running progress with final board, job, web, and match totals", () => {
+    expect(
+      describeDiscoveryNotice(
+        completedRun({
+          knownBoardCount: 5,
+          knownBoardCompletedCount: 5,
+          knownBoardSuccessCount: 4,
+          activeBoardName: null,
+          jobsUpserted: 7,
+          matchesFound: 3,
+          webCoverageStatus: "completed",
+        }),
+      ),
+    ).toEqual({
+      kind: "completed",
+      title: "Discovery completed",
+      message:
+        "Asia leadership: 5 boards completed, 7 jobs changed, web coverage completed, and 3 current profile matches.",
     });
   });
 
   it("reports skipped web coverage after board-only discovery", () => {
     expect(
       describeDiscoveryNotice(
-        completedRun({ provider: "", webCoverageStatus: "skipped", knownBoardCount: 1 }),
+        completedRun({
+          provider: "",
+          webCoverageStatus: "skipped",
+          knownBoardCount: 1,
+          knownBoardCompletedCount: 1,
+        }),
       ),
     ).toEqual({
       kind: "completed",
       title: "Discovery completed",
       message:
-        "Asia leadership: 2 current profile matches after processing 5 search results. Web coverage was skipped because no provider was configured.",
+        "Asia leadership: 1 board completed, 4 jobs changed, web coverage skipped, and 2 current profile matches. No web search provider was configured.",
+    });
+  });
+
+  it("uses the persisted completed count and singular job total in the final summary", () => {
+    expect(
+      describeDiscoveryNotice(
+        completedRun({
+          knownBoardCount: 5,
+          knownBoardCompletedCount: 2,
+          jobsUpserted: 1,
+        }),
+      ),
+    ).toEqual({
+      kind: "completed",
+      title: "Discovery completed",
+      message:
+        "Asia leadership: 2 boards completed, 1 job changed, web coverage completed, and 2 current profile matches.",
     });
   });
 
@@ -174,6 +223,43 @@ describe("discovery notification polling reconciliation", () => {
       expected,
     );
   });
+
+  it("describes persisted board progress and matches in one running update", () => {
+    expect(
+      describeDiscoveryProgress(
+        completedRun({
+          status: "running",
+          outcome: "running",
+          phase: "known-boards",
+          knownBoardCount: 5,
+          knownBoardCompletedCount: 2,
+          knownBoardSuccessCount: 2,
+          activeBoardName: "Beta Systems",
+          jobsUpserted: 7,
+          matchesFound: 3,
+        }),
+      ),
+    ).toBe(
+      "Refreshing known boards · 2 of 5 boards · Active board: Beta Systems · 7 jobs changed · 3 matches found",
+    );
+  });
+
+  it("omits an absent active board while preserving singular running totals", () => {
+    expect(
+      describeDiscoveryProgress(
+        completedRun({
+          status: "running",
+          outcome: "running",
+          phase: "known-boards",
+          knownBoardCount: null,
+          knownBoardCompletedCount: null,
+          activeBoardName: null,
+          jobsUpserted: 1,
+          matchesFound: 1,
+        }),
+      ),
+    ).toBe("Refreshing known boards · 0 of 0 boards · 1 job changed · 1 match found");
+  });
 });
 
 function completedRun(overrides: Partial<DiscoveryRunStatus> = {}): DiscoveryRunStatus {
@@ -186,7 +272,9 @@ function completedRun(overrides: Partial<DiscoveryRunStatus> = {}): DiscoveryRun
     outcome: "completed",
     phase: "matching",
     knownBoardCount: 0,
+    knownBoardCompletedCount: 0,
     knownBoardSuccessCount: 0,
+    activeBoardName: null,
     webCoverageStatus: "completed",
     hitCount: 5,
     jobsUpserted: 4,

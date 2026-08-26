@@ -138,7 +138,9 @@ describe("SQLite discovery run status reader", () => {
         status: "completed",
         phase: "matching",
         knownBoardCount: 2,
+        knownBoardCompletedCount: 1,
         knownBoardSuccessCount: 1,
+        activeBoardName: "Beta Systems",
         webCoverageStatus: "skipped",
         syncErrorCount: 1,
         startedAt: now,
@@ -155,7 +157,9 @@ describe("SQLite discovery run status reader", () => {
         phase: "matching",
         webCoverageStatus: "skipped",
         knownBoardCount: 2,
+        knownBoardCompletedCount: 1,
         knownBoardSuccessCount: 1,
+        activeBoardName: "Beta Systems",
       }),
     ]);
   });

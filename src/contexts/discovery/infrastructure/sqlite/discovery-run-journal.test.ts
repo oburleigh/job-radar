@@ -217,7 +217,47 @@ describe("SQLite discovery run journal cancellation guards", () => {
     });
   });
 
-  it("ignores late phase and lane evidence after cancellation", () => {
+  it("persists board-by-board progress for polling and reload recovery", () => {
+    const profileId = insertProfile(database);
+    const journal = createSqliteDiscoveryRunJournal(database);
+    const run = journal.prepare({
+      profileId,
+      providerName: null,
+      startedAt: now,
+    });
+
+    journal.recordBoardProgress(run.id, {
+      totalBoardCount: 5,
+      completedBoardCount: 2,
+      successfulBoardCount: 1,
+      activeBoardName: "Acme Engineering",
+      jobsUpserted: 7,
+      matchesFound: 3,
+      syncErrorCount: 1,
+      recordedAt: now,
+    });
+
+    expect(
+      sqlite
+        .prepare(
+          `select known_board_count, known_board_completed_count,
+                  known_board_success_count, active_board_name,
+                  jobs_upserted, matches_found, sync_error_count
+           from discovery_runs where id = ?`,
+        )
+        .get(run.id),
+    ).toEqual({
+      known_board_count: 5,
+      known_board_completed_count: 2,
+      known_board_success_count: 1,
+      active_board_name: "Acme Engineering",
+      jobs_upserted: 7,
+      matches_found: 3,
+      sync_error_count: 1,
+    });
+  });
+
+  it("ignores late phase, board progress, and lane evidence after cancellation", () => {
     const profileId = insertProfile(database);
     const registry = createSqliteDiscoveryRunRegistry(database, {
       now: () => now,
@@ -232,6 +272,16 @@ describe("SQLite discovery run journal cancellation guards", () => {
     const journal = createSqliteDiscoveryRunJournal(database);
 
     journal.recordPhase(reservation.runId, "web-coverage", now);
+    journal.recordBoardProgress(reservation.runId, {
+      totalBoardCount: 4,
+      completedBoardCount: 3,
+      successfulBoardCount: 3,
+      activeBoardName: "Late board",
+      jobsUpserted: 6,
+      matchesFound: 2,
+      syncErrorCount: 1,
+      recordedAt: now,
+    });
     journal.recordLaneEvidence(reservation.runId, {
       knownBoardCount: 4,
       knownBoardSuccessCount: 4,
@@ -243,8 +293,9 @@ describe("SQLite discovery run journal cancellation guards", () => {
     expect(
       sqlite
         .prepare(
-          `select status, phase, known_board_count, known_board_success_count,
-                  web_coverage_status, jobs_upserted
+          `select status, phase, known_board_count, known_board_completed_count,
+                  known_board_success_count, active_board_name,
+                  web_coverage_status, jobs_upserted, matches_found
            from discovery_runs where id = ?`,
         )
         .get(reservation.runId),
@@ -252,9 +303,12 @@ describe("SQLite discovery run journal cancellation guards", () => {
       status: "cancelled",
       phase: "known-boards",
       known_board_count: 0,
+      known_board_completed_count: 0,
       known_board_success_count: 0,
+      active_board_name: null,
       web_coverage_status: "pending",
       jobs_upserted: 0,
+      matches_found: 0,
     });
   });
 
