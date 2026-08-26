@@ -50,8 +50,9 @@ describe("GitHub Actions quality gates", () => {
 
     const { default: config } = await import(configPath);
     expect(config.mutate).toEqual([
-      "src/contexts/discovery/domain/evaluate-job.ts",
-      "src/contexts/discovery/application/discovery-runs/planning/plan-search-queries.ts",
+      "src/contexts/discovery/infrastructure/markets/market-resolver.ts",
+      "src/contexts/discovery/application/discovery-runs/planning/plan-search-lanes.ts",
+      "src/contexts/discovery/application/discovery-runs/planning/decide-search-lane-continuation.ts",
       "!src/**/*.test.ts",
       "!src/**/test-support/**",
     ]);
