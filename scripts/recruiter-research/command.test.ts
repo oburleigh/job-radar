@@ -80,7 +80,7 @@ describe("recruiter research command", () => {
       },
     };
     await expect(runRecruiterResearch({ process: failedProcess })).rejects.toThrow(
-      "Codex exited with code 23",
+      "Firm stage failed (exit code 23). Check the local server logs, then retry.",
     );
 
     const missingOutputProcess: RecruiterResearchProcess = {

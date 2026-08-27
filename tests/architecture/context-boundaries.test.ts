@@ -119,7 +119,7 @@ describe("context boundaries", () => {
           const target = internalTarget(file, specifier);
           if (target && isInside(target, contextsRoot)) {
             expect(
-              isInside(target, contextRoot),
+              isInside(target, contextRoot) || isPublicContextContract(target),
               `${relativePath(file)} wires another context through ${specifier}`,
             ).toBe(true);
           }
@@ -241,6 +241,13 @@ function isProviderModule(specifier: string): boolean {
 
 function isInside(target: string, root: string): boolean {
   return target === root || target.startsWith(`${root}${path.sep}`);
+}
+
+function isPublicContextContract(target: string): boolean {
+  return (
+    target ===
+    path.join(contextsRoot, "discovery", "composition", "configured-market-vocabulary.server")
+  );
 }
 
 function isTestFile(file: string): boolean {

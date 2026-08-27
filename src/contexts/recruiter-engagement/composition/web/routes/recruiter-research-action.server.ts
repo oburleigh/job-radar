@@ -7,6 +7,7 @@ import { assertLocalHost } from "@/platform/http/require-local-request";
 type RecruiterResearchActionDependencies = {
   readonly assertLocalHost: typeof assertLocalHost;
   readonly cancelResearchRun: typeof recruiterEngagementWeb.cancelResearchRun;
+  readonly getTargetLocationOptions: typeof recruiterEngagementWeb.getTargetLocationOptions;
   readonly retryResearchRun: typeof recruiterEngagementWeb.retryResearchRun;
   readonly startResearchRun: typeof recruiterEngagementWeb.startResearchRun;
 };
@@ -14,6 +15,7 @@ type RecruiterResearchActionDependencies = {
 export const recruiterResearchAction = createRecruiterResearchAction({
   assertLocalHost,
   cancelResearchRun: recruiterEngagementWeb.cancelResearchRun,
+  getTargetLocationOptions: recruiterEngagementWeb.getTargetLocationOptions,
   retryResearchRun: recruiterEngagementWeb.retryResearchRun,
   startResearchRun: recruiterEngagementWeb.startResearchRun,
 });
@@ -21,6 +23,7 @@ export const recruiterResearchAction = createRecruiterResearchAction({
 export function createRecruiterResearchAction({
   assertLocalHost,
   cancelResearchRun,
+  getTargetLocationOptions,
   retryResearchRun,
   startResearchRun,
 }: RecruiterResearchActionDependencies) {
@@ -30,7 +33,7 @@ export function createRecruiterResearchAction({
     const intent = formData.get("intent");
 
     if (intent === "start") {
-      const parsed = parseRecruiterResearchStartRequest(formData);
+      const parsed = parseRecruiterResearchStartRequest(formData, getTargetLocationOptions());
       if (parsed.status === "invalid") {
         return { error: parsed.message, field: parsed.field };
       }

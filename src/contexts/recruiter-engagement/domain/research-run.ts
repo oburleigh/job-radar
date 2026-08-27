@@ -2,9 +2,9 @@ export const DEFAULT_RECRUITER_TARGET = 20;
 export const DEFAULT_FIRM_TARGET = 10;
 
 export type ResearchCriteria = {
-  readonly geography: string;
   readonly industries: readonly string[];
   readonly specialisms: readonly string[];
+  readonly targetLocations: readonly string[];
 };
 
 export type SearchBrief = {
@@ -110,7 +110,6 @@ export type ResearchCoverage = {
 };
 
 const defaultCriteria: ResearchCriteria = {
-  geography: "United Arab Emirates",
   industries: ["Financial services", "Technology", "Healthcare", "Retail and e-commerce"],
   specialisms: [
     "Software engineering",
@@ -121,6 +120,7 @@ const defaultCriteria: ResearchCriteria = {
     "Architecture",
     "Technology leadership",
   ],
+  targetLocations: ["United Arab Emirates"],
 };
 
 export function createSearchBrief(input: {
@@ -134,9 +134,12 @@ export function createSearchBrief(input: {
   }
   return {
     criteria: {
-      geography: input.criteria?.geography?.trim() || defaultCriteria.geography,
       industries: normaliseCriteria(input.criteria?.industries, defaultCriteria.industries),
       specialisms: normaliseCriteria(input.criteria?.specialisms, defaultCriteria.specialisms),
+      targetLocations: normaliseCriteria(
+        input.criteria?.targetLocations,
+        defaultCriteria.targetLocations,
+      ),
     },
     description: input.description.trim(),
     recruiterTarget,

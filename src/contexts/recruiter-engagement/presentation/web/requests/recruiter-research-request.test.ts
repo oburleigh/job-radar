@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
+import type { TargetLocationOption } from "@/contexts/recruiter-engagement/application/research-runs/target-locations";
+
 import { parseRecruiterResearchStartRequest } from "./recruiter-research-request";
+
+const targetLocationOptions = [
+  { key: "country:AE", label: "United Arab Emirates" },
+  { key: "subdivision:AE-AZ", label: "Abu Dhabi" },
+  { key: "subdivision:AE-DU", label: "Dubai" },
+] as const satisfies readonly TargetLocationOption[];
 
 describe("recruiter research request", () => {
   it("accepts a plain-language brief and a positive caller-controlled target", () => {
@@ -8,20 +16,21 @@ describe("recruiter research request", () => {
       parseRecruiterResearchStartRequest(
         formData({
           brief: "UAE fintech engineering",
-          geography: "United Arab Emirates",
           industries: "Financial services, Healthcare",
           recruiterTarget: "24",
           specialisms: "Software engineering, Data and AI",
+          targetLocations: "United Arab Emirates",
         }),
+        targetLocationOptions,
       ),
     ).toEqual({
       status: "valid",
       command: {
         brief: "UAE fintech engineering",
         criteria: {
-          geography: "United Arab Emirates",
           industries: ["Financial services", "Healthcare"],
           specialisms: ["Software engineering", "Data and AI"],
+          targetLocations: ["United Arab Emirates"],
         },
         recruiterTarget: 24,
       },
@@ -33,11 +42,12 @@ describe("recruiter research request", () => {
       parseRecruiterResearchStartRequest(
         formData({
           brief: "UAE technology",
-          geography: "United Arab Emirates",
           industries: "Technology",
           recruiterTarget: "0",
           specialisms: "Software engineering",
+          targetLocations: "United Arab Emirates",
         }),
+        targetLocationOptions,
       ),
     ).toEqual({
       status: "invalid",
@@ -51,16 +61,36 @@ describe("recruiter research request", () => {
       parseRecruiterResearchStartRequest(
         formData({
           brief: "UAE technology",
-          geography: "",
           industries: "Technology",
           recruiterTarget: "20",
           specialisms: "Software engineering",
+          targetLocations: "",
         }),
+        targetLocationOptions,
       ),
     ).toEqual({
       status: "invalid",
-      field: "geography",
-      message: "Geography is required.",
+      field: "targetLocations",
+      message: "Choose at least one target location from the catalogue.",
+    });
+  });
+
+  it("rejects a forged target location that is not in the configured catalogue", () => {
+    expect(
+      parseRecruiterResearchStartRequest(
+        formData({
+          brief: "UAE technology",
+          industries: "Technology",
+          recruiterTarget: "20",
+          specialisms: "Software engineering",
+          targetLocations: "Forged location",
+        }),
+        targetLocationOptions,
+      ),
+    ).toEqual({
+      status: "invalid",
+      field: "targetLocations",
+      message: "Choose target locations from the catalogue.",
     });
   });
 });

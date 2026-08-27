@@ -8,7 +8,7 @@ Recruiter Engagement records public research about recruitment firms and named t
 : The user's plain-language technology hiring focus and requested recruiter count.
 
 **Research criteria**
-: The editable geography, technology specialisms, and target industries that focus both research stages.
+: The catalogue-backed target locations, technology specialisms, and target industries that focus both research stages. Target locations come from the configured market vocabulary.
 
 **Research run**
 : One durable attempt to research firms first, then named recruiters, against a frozen policy and source plan.
@@ -36,8 +36,8 @@ Recruiter Engagement records public research about recruitment firms and named t
 
 ## Current boundary
 
-The domain owns the vocabulary and terminal-state rules. The application owns starting, resuming, cancelling, retrying, and recording a run. It depends on a run store, a staged research source, a scheduler, and values supplied by composition.
+The domain owns the vocabulary and terminal-state rules. The application owns starting, resuming, cancelling, retrying, target-location validation, and recording a run. It depends on a run store, a staged research source, a scheduler, and values supplied by composition.
 
-Infrastructure stores the run in SQLite and provides two sources. The deterministic staged source supports local tests. The local Codex source starts a separate read-only, ephemeral Codex process for the firm stage and recruiter stage. It uses the existing ChatGPT Business login and removes `OPENAI_API_KEY` from its child environment. Only each stage's schema-validated final output becomes an observation.
+Infrastructure maps configured ISO market entries to selectable target locations, stores the run in SQLite, and provides two sources. Legacy persisted geography is read as one target location. The deterministic staged source supports local tests. The local Codex source starts a separate read-only, ephemeral Codex process for the firm stage and recruiter stage. It uses the existing ChatGPT Business login and removes `OPENAI_API_KEY` from its child environment. Only each stage's schema-validated final output becomes an observation. Failed local stages retain a safe recovery message. Bounded raw process diagnostics go only to server stderr.
 
-Presentation owns route request parsing, polling, status copy, and the grouped research results. It does not import SQLite or the Codex adapter. The composition root selects the deterministic source only for explicit test configuration; normal local use selects the direct Codex source.
+Presentation owns route request parsing, the controlled target-location selection, polling, status copy, and the grouped research results. It does not import SQLite, Discovery presentation, or the Codex adapter. The composition root selects the deterministic source only for explicit test configuration; normal local use selects the direct Codex source.

@@ -82,3 +82,6 @@ delivery and composition adapter: route loaders and actions translate HTTP, sele
 infrastructure, and call prepared use cases. It contains no matching, verification, or provider
 policy. Command-line scripts are separate executable composition roots. Reusable fakes live in
 `test-support` and cannot be imported by production code.
+
+Discovery composition owns the configured market vocabulary public contract. Recruiter composition
+consumes that contract to build its own location catalogue.

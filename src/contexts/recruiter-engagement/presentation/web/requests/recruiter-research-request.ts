@@ -1,8 +1,12 @@
 import { z } from "zod";
 
+import {
+  areConfiguredTargetLocations,
+  type TargetLocationOption,
+} from "@/contexts/recruiter-engagement/application/research-runs/target-locations";
+
 const requestSchema = z.object({
   brief: z.string().trim().max(1_000),
-  geography: z.string().trim().min(1).max(120),
   industries: z.string().trim().min(1).transform(criteriaItems),
   recruiterTarget: z
     .string()
@@ -10,6 +14,7 @@ const requestSchema = z.object({
     .transform(Number)
     .pipe(z.number().int().safe()),
   specialisms: z.string().trim().min(1).transform(criteriaItems),
+  targetLocations: z.array(z.string().trim().min(1)).min(1),
 });
 
 export type RecruiterResearchStartRequest =
@@ -18,9 +23,9 @@ export type RecruiterResearchStartRequest =
       readonly command: {
         readonly brief: string;
         readonly criteria: {
-          readonly geography: string;
           readonly industries: readonly string[];
           readonly specialisms: readonly string[];
+          readonly targetLocations: readonly string[];
         };
         readonly recruiterTarget: number;
       };
@@ -33,33 +38,41 @@ export type RecruiterResearchStartRequest =
 
 export type RecruiterResearchStartField =
   | "brief"
-  | "geography"
   | "industries"
   | "recruiterTarget"
-  | "specialisms";
+  | "specialisms"
+  | "targetLocations";
 
 export function parseRecruiterResearchStartRequest(
   formData: FormData,
+  options: readonly TargetLocationOption[],
 ): RecruiterResearchStartRequest {
   const result = requestSchema.safeParse({
     brief: formData.get("brief"),
-    geography: formData.get("geography"),
     industries: formData.get("industries"),
     recruiterTarget: formData.get("recruiterTarget"),
     specialisms: formData.get("specialisms"),
+    targetLocations: formData.getAll("targetLocations"),
   });
   if (!result.success) {
     const field = validationField(result.error.issues[0]?.path[0]);
     return { status: "invalid", field, message: validationMessage(field) };
+  }
+  if (!areConfiguredTargetLocations(result.data.targetLocations, options)) {
+    return {
+      status: "invalid",
+      field: "targetLocations",
+      message: "Choose target locations from the catalogue.",
+    };
   }
   return {
     status: "valid",
     command: {
       brief: result.data.brief,
       criteria: {
-        geography: result.data.geography,
         industries: result.data.industries,
         specialisms: result.data.specialisms,
+        targetLocations: result.data.targetLocations,
       },
       recruiterTarget: result.data.recruiterTarget,
     },
@@ -68,10 +81,10 @@ export function parseRecruiterResearchStartRequest(
 
 function validationField(field: PropertyKey | undefined): RecruiterResearchStartField {
   switch (field) {
-    case "geography":
     case "industries":
     case "recruiterTarget":
     case "specialisms":
+    case "targetLocations":
       return field;
     default:
       return "brief";
@@ -80,14 +93,14 @@ function validationField(field: PropertyKey | undefined): RecruiterResearchStart
 
 function validationMessage(field: RecruiterResearchStartField): string {
   switch (field) {
-    case "geography":
-      return "Geography is required.";
     case "industries":
       return "Target industries are required.";
     case "recruiterTarget":
       return "Recruiters to find must be a positive integer.";
     case "specialisms":
       return "Technology specialisms are required.";
+    case "targetLocations":
+      return "Choose at least one target location from the catalogue.";
     default:
       return "Technology brief details are invalid.";
   }

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 
+import { getConfiguredMarketVocabulary } from "@/contexts/discovery/composition/configured-market-vocabulary.server";
 import { createResearchRunCanceller } from "@/contexts/recruiter-engagement/application/research-runs/cancel-research-run";
 import { createResearchRunExecution } from "@/contexts/recruiter-engagement/application/research-runs/execute-research-run";
 import { createResearchRunGetter } from "@/contexts/recruiter-engagement/application/research-runs/get-research-run";
@@ -14,6 +15,7 @@ import {
 } from "@/contexts/recruiter-engagement/infrastructure/local-codex/local-codex-policy";
 import { localCodexProcess } from "@/contexts/recruiter-engagement/infrastructure/local-codex/local-codex-process";
 import { createLocalCodexResearchSource } from "@/contexts/recruiter-engagement/infrastructure/local-codex/local-codex-research-source";
+import { targetLocationOptions } from "@/contexts/recruiter-engagement/infrastructure/markets/target-location-catalogue";
 import { recruiterResearchDatabase } from "@/contexts/recruiter-engagement/infrastructure/sqlite/database";
 import { createSqliteResearchRunStore } from "@/contexts/recruiter-engagement/infrastructure/sqlite/sqlite-research-run-store";
 
@@ -57,6 +59,7 @@ void resumer.resumeResearchRuns();
 export const recruiterEngagementWeb = {
   cancelResearchRun: canceller.cancelResearchRun,
   getResearchRun: getter.getResearchRun,
+  getTargetLocationOptions: () => targetLocationOptions(getConfiguredMarketVocabulary()),
   retryResearchRun: retrier.retryResearchRun,
   startResearchRun: starter.startResearchRun,
 };

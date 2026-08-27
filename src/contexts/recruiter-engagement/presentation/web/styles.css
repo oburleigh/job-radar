@@ -40,7 +40,7 @@
 
 .recruiter-brief-form {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(190px, 0.32fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
   padding: 18px;
 }
@@ -50,7 +50,13 @@
   gap: 7px;
 }
 
-.recruiter-textarea-label > span {
+.recruiter-target-locations-label {
+  display: grid;
+  gap: 7px;
+}
+
+.recruiter-textarea-label > span,
+.recruiter-target-locations-label > span {
   font-family: var(--jr-font-family-mono);
   font-size: var(--jr-font-size-label);
   font-weight: 700;
@@ -69,7 +75,18 @@
   border-radius: 2px;
 }
 
+.recruiter-target-locations-label select {
+  width: 100%;
+  min-height: 132px;
+  padding: 12px;
+  color: var(--jr-color-text);
+  background: var(--jr-color-surface);
+  border: 1px solid var(--jr-color-border-strong);
+  border-radius: 2px;
+}
+
 .recruiter-textarea-label small,
+.recruiter-target-locations-label small,
 .recruiter-brief-actions p,
 .recruiter-run-provenance,
 .recruiter-evidence > div,
@@ -440,6 +457,7 @@
 @media (max-width: 760px) {
   .recruiter-brief-form {
     grid-template-columns: 1fr;
+    padding-bottom: 86px;
   }
 
   .recruiter-brief-actions,

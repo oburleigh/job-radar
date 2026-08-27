@@ -59,6 +59,7 @@ describe("search brief", () => {
     expect(createSearchBrief({ description: "UAE fintech engineering" })).toMatchObject({
       description: "UAE fintech engineering",
       recruiterTarget: DEFAULT_RECRUITER_TARGET,
+      criteria: { targetLocations: ["United Arab Emirates"] },
     });
     expect(() => createSearchBrief({ description: "UAE", recruiterTarget: 0 })).toThrow(
       "Recruiter target must be a positive safe integer.",

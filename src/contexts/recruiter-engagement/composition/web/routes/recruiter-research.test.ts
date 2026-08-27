@@ -7,6 +7,7 @@ describe("recruiter research route action", () => {
     const action = createRecruiterResearchAction({
       assertLocalHost: vi.fn(),
       cancelResearchRun: vi.fn(),
+      getTargetLocationOptions: vi.fn(() => []),
       retryResearchRun: vi.fn(async () => {
         throw new Error("Only a finished recruiter research run can be retried.");
       }),

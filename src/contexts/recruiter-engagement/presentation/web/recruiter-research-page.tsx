@@ -1,8 +1,8 @@
 import { Button, PageHeader, TextField } from "@job-radar/design-ui";
 import { CheckCircle2, CircleAlert, CircleX, LoaderCircle, RotateCcw, Square } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Form, useNavigation, useRevalidator } from "react-router";
-
+import type { TargetLocationOption } from "@/contexts/recruiter-engagement/application/research-runs/target-locations";
 import type { ResearchObservation } from "@/contexts/recruiter-engagement/domain/observation";
 import type {
   ResearchCoverage,
@@ -26,24 +26,28 @@ type RecruiterResearchPageProps = {
     readonly message: string;
   };
   readonly research?: RecruiterResearchRunView;
+  readonly targetLocationOptions: readonly TargetLocationOption[];
 };
 
 const activeStatuses = new Set<ResearchRun["status"]>(["pending", "running", "interrupted"]);
 
-export function RecruiterResearchPage({ actionError, research }: RecruiterResearchPageProps) {
+export function RecruiterResearchPage({
+  actionError,
+  research,
+  targetLocationOptions,
+}: RecruiterResearchPageProps) {
   const navigation = useNavigation();
   const revalidator = useRevalidator();
   const isSubmitting = navigation.state === "submitting";
   const run = research?.run;
   const isActive = run ? activeStatuses.has(run.status) : false;
   const briefError = fieldError(actionError, "brief");
-  const geographyError = fieldError(actionError, "geography");
+  const targetLocationsError = fieldError(actionError, "targetLocations");
   const specialismsError = fieldError(actionError, "specialisms");
   const industriesError = fieldError(actionError, "industries");
   const recruiterTargetError = fieldError(actionError, "recruiterTarget");
   const brief = run?.brief ?? {
     criteria: {
-      geography: "United Arab Emirates",
       industries: ["Financial services", "Technology", "Healthcare", "Retail and e-commerce"],
       specialisms: [
         "Software engineering",
@@ -54,11 +58,13 @@ export function RecruiterResearchPage({ actionError, research }: RecruiterResear
         "Architecture",
         "Technology leadership",
       ],
+      targetLocations: ["United Arab Emirates"],
     },
     description:
       "Research UAE technology recruitment firms for software engineering, data and AI, cloud and DevOps, cybersecurity, product, architecture, and technology leadership roles.",
     recruiterTarget: 20,
   };
+  const [briefDescription, setBriefDescription] = useState(brief.description);
 
   useEffect(() => {
     if (!isActive) {
@@ -67,6 +73,10 @@ export function RecruiterResearchPage({ actionError, research }: RecruiterResear
     const timer = window.setInterval(() => revalidator.revalidate(), 400);
     return () => window.clearInterval(timer);
   }, [isActive, revalidator]);
+
+  useEffect(() => {
+    setBriefDescription(brief.description);
+  }, [brief.description]);
 
   return (
     <div className="page recruiter-research-page">
@@ -84,17 +94,23 @@ export function RecruiterResearchPage({ actionError, research }: RecruiterResear
           </div>
           <span>Public web only</span>
         </div>
-        <Form method="post" className="recruiter-brief-form" noValidate>
+        <Form
+          key={run?.id ?? "new-research"}
+          method="post"
+          className="recruiter-brief-form"
+          noValidate
+        >
           <input name="intent" type="hidden" value="start" />
           <label className="recruiter-textarea-label" htmlFor="recruiter-brief">
             <span>Technology brief</span>
             <textarea
-              defaultValue={brief.description}
+              value={briefDescription}
               disabled={isSubmitting || isActive}
               {...textareaAccessibility("recruiter-brief", briefError, true)}
               id="recruiter-brief"
               maxLength={1000}
               name="brief"
+              onChange={(event) => setBriefDescription(event.target.value)}
               rows={5}
             />
             <small id="recruiter-brief-hint">
@@ -107,15 +123,33 @@ export function RecruiterResearchPage({ actionError, research }: RecruiterResear
               </small>
             ) : null}
           </label>
-          <TextField
-            defaultValue={brief.criteria.geography}
-            disabled={isSubmitting || isActive}
-            {...(geographyError ? { error: geographyError } : {})}
-            id="recruiter-geography"
-            label="Geography"
-            name="geography"
-            required
-          />
+          <label className="recruiter-target-locations-label" htmlFor="recruiter-target-locations">
+            <span>Target locations</span>
+            <select
+              defaultValue={brief.criteria.targetLocations}
+              disabled={isSubmitting || isActive}
+              {...selectAccessibility("recruiter-target-locations", targetLocationsError)}
+              id="recruiter-target-locations"
+              multiple
+              name="targetLocations"
+              required
+              size={targetLocationOptions.length}
+            >
+              {targetLocationOptions.map((location) => (
+                <option key={location.key} value={location.label}>
+                  {location.label}
+                </option>
+              ))}
+            </select>
+            <small id="recruiter-target-locations-hint">
+              Choose one or more configured markets for both research stages.
+            </small>
+            {targetLocationsError ? (
+              <small className="jr-field-error" id="recruiter-target-locations-error">
+                {targetLocationsError}
+              </small>
+            ) : null}
+          </label>
           <label className="recruiter-textarea-label" htmlFor="recruiter-specialisms">
             <span>Technology specialisms</span>
             <textarea
@@ -223,6 +257,14 @@ function textareaAccessibility(id: string, error: string | undefined, hasHint: b
   };
 }
 
+function selectAccessibility(id: string, error: string | undefined) {
+  const describedBy = [`${id}-hint`, error ? `${id}-error` : undefined].filter(Boolean).join(" ");
+  return {
+    "aria-describedby": describedBy,
+    "aria-invalid": error ? true : undefined,
+  };
+}
+
 function EmptyResearchState() {
   return (
     <section className="empty-state recruiter-empty-state">
@@ -302,8 +344,8 @@ function ResearchRunResult({
             {run.policy.execution.automaticRetry ? "automatic retry" : "no automatic retry"}
           </span>
           <span>
-            Criteria: {run.brief.criteria.geography}; {run.brief.criteria.specialisms.join(", ")};{" "}
-            {run.brief.criteria.industries.join(", ")}
+            Criteria: {run.brief.criteria.targetLocations.join(", ")};{" "}
+            {run.brief.criteria.specialisms.join(", ")}; {run.brief.criteria.industries.join(", ")}
           </span>
           <span>{run.policy.retention.rule}</span>
           <span>{run.policy.retention.deletionRule}</span>

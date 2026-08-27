@@ -74,7 +74,10 @@ export interface LocalCodexProcessRequest {
 }
 
 export interface LocalCodexProcess {
-  readonly run: (request: LocalCodexProcessRequest) => Promise<{ readonly exitCode: number }>;
+  readonly run: (request: LocalCodexProcessRequest) => Promise<{
+    readonly diagnostic?: string;
+    readonly exitCode: number;
+  }>;
 }
 
 type LocalCodexResearchSourceOptions = {
@@ -252,7 +255,7 @@ async function runStage(input: {
     delete environment.OPENAI_API_KEY;
     const timeoutSignal = AbortSignal.timeout(input.stageTimeoutMs);
     const signal = input.signal ? AbortSignal.any([input.signal, timeoutSignal]) : timeoutSignal;
-    let result: { readonly exitCode: number };
+    let result: { readonly diagnostic?: string; readonly exitCode: number };
     try {
       result = await input.process.run({
         command: input.command,
@@ -289,7 +292,8 @@ async function runStage(input: {
       throw error;
     }
     if (result.exitCode !== 0) {
-      throw new Error(`Codex exited with code ${result.exitCode}.`);
+      reportLocalCodexDiagnostic(input.stage, result.exitCode, result.diagnostic);
+      throw new Error(localCodexRecoveryMessage(input.stage, result.exitCode, result.diagnostic));
     }
     try {
       return JSON.parse(await readFile(outputPath, "utf8"));
@@ -392,7 +396,7 @@ function firmPrompt(run: ResearchRun, companyTarget: number): string {
     "Research public sources only for UAE technology recruitment firms.",
     `Invocation identity: ${run.id}:firms. This identifies one durable research stage.`,
     `Return at least ${companyTarget} distinct firms for this brief: ${run.brief.description || "UAE technology hiring"}.`,
-    `Geography: ${run.brief.criteria.geography}.`,
+    `Target locations: ${run.brief.criteria.targetLocations.join(", ")}.`,
     `Technology specialisms: ${run.brief.criteria.specialisms.join(", ")}.`,
     `Target industries: ${run.brief.criteria.industries.join(", ")}.`,
     "Use public HTTPS firm sources. Do not access private, candidate, or contact data, logged-in LinkedIn sessions, cookies, LinkedIn DOM, messaging, browser or computer use, direct publisher crawling, or social automation.",
@@ -406,7 +410,7 @@ function recruiterPrompt(run: ResearchRun, firms: readonly FirmObservation[]): s
     `Invocation identity: ${run.id}:recruiters. This identifies one durable research stage.`,
     `Return at least ${run.brief.recruiterTarget} distinct named recruiters, with at least one recruiter for each listed firm.`,
     `Listed firms: ${firms.map((firm) => firm.companyName).join(", ")}.`,
-    `Geography: ${run.brief.criteria.geography}.`,
+    `Target locations: ${run.brief.criteria.targetLocations.join(", ")}.`,
     `Technology specialisms: ${run.brief.criteria.specialisms.join(", ")}.`,
     `Target industries: ${run.brief.criteria.industries.join(", ")}.`,
     "Use public HTTPS LinkedIn profile URLs. Do not access private, candidate, or contact data, logged-in LinkedIn sessions, cookies, LinkedIn DOM, messaging, browser or computer use, direct publisher crawling, or social automation.",
@@ -487,4 +491,40 @@ function normaliseProfileUrl(value: string): string {
 
 function isMissingFileError(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT";
+}
+
+function localCodexRecoveryMessage(
+  stage: "firm" | "recruiter",
+  exitCode: number,
+  diagnostic: string | undefined,
+): string {
+  const recovery = recoveryFor(diagnostic ?? "");
+  return `${stage === "firm" ? "Firm" : "Recruiter"} stage failed (exit code ${exitCode}). ${recovery}`;
+}
+
+function recoveryFor(diagnostic: string): string {
+  const value = diagnostic.toLocaleLowerCase();
+  if (/(not signed in|not logged in|sign in|login required)/.test(value)) {
+    return "Sign in to Codex, then retry this research run.";
+  }
+  if (/(subscription|quota|rate limit|usage limit|credit)/.test(value)) {
+    return "Wait for the subscription or quota limit to reset, then retry.";
+  }
+  if (/(command not found|enoent|codex cli|spawn codex)/.test(value)) {
+    return "Install or repair the local Codex CLI, then retry.";
+  }
+  return "Check the local server logs, then retry.";
+}
+
+function reportLocalCodexDiagnostic(
+  stage: "firm" | "recruiter",
+  exitCode: number,
+  diagnostic: string | undefined,
+): void {
+  const bounded = diagnostic?.slice(0, 4_096);
+  if (bounded) {
+    process.stderr.write(
+      `[recruiter-research] ${stage} stage Codex diagnostic (exit ${exitCode}): ${bounded}\n`,
+    );
+  }
 }

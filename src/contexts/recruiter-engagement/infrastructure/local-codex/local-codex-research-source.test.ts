@@ -214,6 +214,70 @@ describe("local Codex research source", () => {
     );
   });
 
+  it("classifies local Codex diagnostics without storing raw process output and skips recruiters after a firm failure", async () => {
+    const rawDiagnostic = "not signed in\nprompt: private research brief";
+    const codexProcess = {
+      run: vi.fn(async () => ({ exitCode: 23, diagnostic: rawDiagnostic })),
+    } satisfies LocalCodexProcess;
+    const source = createLocalCodexResearchSource({ process: codexProcess });
+    const run = sampleRun(1);
+    const runs = createFakeResearchRunStore([run]);
+    const execution = createResearchRunExecution({
+      now: () => new Date("2026-08-27T10:01:00.000Z"),
+      runs,
+      source,
+    });
+    const write = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    let stderr = "";
+
+    try {
+      await execution.executeResearchRun(run.id);
+      stderr = write.mock.calls.flat().join("");
+    } finally {
+      write.mockRestore();
+    }
+
+    expect(codexProcess.run).toHaveBeenCalledTimes(1);
+    expect((await runs.get(run.id))?.status).toBe("failed");
+    await expect(runs.failuresFor(run.id)).resolves.toEqual([
+      expect.objectContaining({
+        message:
+          "Firm stage failed (exit code 23). Sign in to Codex, then retry this research run.",
+        stage: "firms",
+      }),
+    ]);
+    expect(JSON.stringify(await runs.failuresFor(run.id))).not.toContain(rawDiagnostic);
+    expect(stderr).toContain("firm stage");
+    expect(stderr).toContain("exit 23");
+    expect(stderr).toContain(rawDiagnostic);
+  });
+
+  it.each([
+    ["not signed in", "Sign in to Codex, then retry this research run."],
+    [
+      "subscription limit reached",
+      "Wait for the subscription or quota limit to reset, then retry.",
+    ],
+    ["codex: command not found", "Install or repair the local Codex CLI, then retry."],
+    ["an unclassified local failure", "Check the local server logs, then retry."],
+  ])("returns a safe recovery message for %s", async (diagnostic, recovery) => {
+    const codexProcess: LocalCodexProcess = {
+      async run() {
+        return { exitCode: 1, diagnostic };
+      },
+    };
+    const source = createLocalCodexResearchSource({ process: codexProcess });
+    const write = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+
+    try {
+      await expect(source.findFirms({ run: sampleRun(1) })).rejects.toThrow(
+        `Firm stage failed (exit code 1). ${recovery}`,
+      );
+    } finally {
+      write.mockRestore();
+    }
+  });
+
   it("rejects a successful Codex exit that has no final output and removes its temporary directory", async () => {
     let cwd = "";
     const process: LocalCodexProcess = {

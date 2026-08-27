@@ -24,11 +24,29 @@ const evidence = z
   .strict();
 const researchCriteria = z
   .object({
-    geography: z.string().min(1),
+    geography: z.string().min(1).optional(),
     industries: z.array(z.string().min(1)).min(1),
     specialisms: z.array(z.string().min(1)).min(1),
+    targetLocations: z.array(z.string().min(1)).min(1).optional(),
   })
-  .strict();
+  .strict()
+  .transform((criteria, context) => {
+    const targetLocations =
+      criteria.targetLocations ?? (criteria.geography ? [criteria.geography] : []);
+    if (targetLocations.length === 0) {
+      context.addIssue({
+        code: "custom",
+        message: "Target locations are required.",
+        path: ["targetLocations"],
+      });
+      return z.NEVER;
+    }
+    return {
+      industries: criteria.industries,
+      specialisms: criteria.specialisms,
+      targetLocations,
+    };
+  });
 const adapterPolicy = z
   .object({
     allowedPublicSourceScope: z.array(z.string().min(1)).min(1),
