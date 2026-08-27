@@ -1,4 +1,10 @@
-# Job Radar
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/agent-kit-logo-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="assets/agent-kit-logo-light.png">
+    <img src="assets/agent-kit-logo-light.png" alt="Agent Kit logo" width="768" height="512">
+  </picture>
+</p>
 
 Job Radar is a local job discovery and triage app. It searches targeted ATS
 domains through a web search provider, discovers company job boards, fetches
