@@ -46,7 +46,7 @@ export default function DiscoveryWebApplication() {
   return (
     <>
       <a className="skip-link" href="#main-content">
-        Skip to opportunities
+        Skip to main content
       </a>
       <div className="app-shell">
         <AppNavigation />

@@ -99,7 +99,7 @@ export function RuntimeSettingsForm({ settings }: RuntimeSettingsFormProps) {
             value={discovery.boardJobLimit}
             min={limits.boardJobLimit.min}
             max={limits.boardJobLimit.max}
-            help="Direct connectors paginate until this total is reached."
+            help="Direct board sync continues until this total is reached."
           />
           <NumberField
             label="Web freshness (days)"

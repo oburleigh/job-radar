@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import * as jobRadarConfig from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
 import type { BoardInput } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
-import { fetchBoardJobs, fetchBoardJobsWithDiagnostics, lookupAtsPosting } from "./connectors";
+import { fetchBoardJobs, fetchBoardJobsWithDiagnostics, lookupAtsPosting } from "./adapters";
 
 const greenhouseBoard: BoardInput = {
   id: 1,
@@ -14,8 +14,8 @@ const greenhouseBoard: BoardInput = {
   config: {},
 };
 
-describe("ATS connectors", () => {
-  it("rejects a malformed vendor response at the connector boundary", async () => {
+describe("ATS adapters", () => {
+  it("rejects a malformed vendor response at the adapter boundary", async () => {
     await expect(
       fetchBoardJobs(greenhouseBoard, {
         fetcher: async () => Response.json({ results: [] }),
@@ -23,7 +23,7 @@ describe("ATS connectors", () => {
     ).rejects.toThrow("Greenhouse returned an invalid response");
   });
 
-  it("reports JSON connector HTTP failures", async () => {
+  it("reports JSON adapter HTTP failures", async () => {
     await expect(
       fetchBoardJobs(greenhouseBoard, {
         fetcher: async () => new Response("unavailable", { status: 503 }),
@@ -31,7 +31,7 @@ describe("ATS connectors", () => {
     ).rejects.toThrow("ATS request returned HTTP 503");
   });
 
-  it("reports HTML connector HTTP failures", async () => {
+  it("reports HTML adapter HTTP failures", async () => {
     await expect(
       fetchBoardJobs(board("jobvite", "https://jobs.jobvite.com/acme"), {
         fetcher: async () => new Response("unavailable", { status: 502 }),

@@ -96,7 +96,7 @@ function integrationRejectionMessage(
 ): string {
   switch (result.reason) {
     case "custom-sync-not-supported":
-      return "Custom integrations are search-only until a direct connector is implemented.";
+      return "Custom integrations are search-only until direct sync is available.";
     case "already-exists":
       return "That integration ID already exists.";
     case "not-found":
@@ -123,7 +123,7 @@ export default function SettingsPage() {
   return (
     <div className="page">
       <PageHeader
-        index="05"
+        index="06"
         title="Settings"
         description="Edit runtime defaults and ATS integration rules. Changes are stored in the local database and take effect on the next operation."
         actions={

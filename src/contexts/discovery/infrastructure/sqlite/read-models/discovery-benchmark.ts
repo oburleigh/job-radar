@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import type { SearchStrategy } from "@/contexts/discovery/application/discovery-runs/planning/plan-search-lanes";
 import type { MatchingPolicy } from "@/contexts/discovery/domain/job-match";
-import { supportsAtsPostingLookup } from "@/contexts/discovery/infrastructure/job-sources/connectors";
+import { supportsAtsPostingLookup } from "@/contexts/discovery/infrastructure/job-sources/adapters";
 import { canonicalizeUrl, classifyUrl } from "@/contexts/discovery/infrastructure/job-sources/urls";
 import type { db } from "@/contexts/discovery/infrastructure/sqlite/database";
 import {

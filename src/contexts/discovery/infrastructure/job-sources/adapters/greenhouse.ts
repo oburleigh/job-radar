@@ -6,9 +6,9 @@ import {
 import { optionalVendorTextValue, parseVendorResponse } from "./response-schema";
 import {
   asRecord,
-  type BoardConnector,
+  type BoardAdapter,
   lookupPostingInBoard,
-  type PostingLookupConnector,
+  type PostingLookupAdapter,
   parseDate,
   rawJob,
   recordArray,
@@ -32,7 +32,7 @@ const greenhouseJobSchema = z.looseObject({
 });
 const greenhouseResponseSchema = z.looseObject({ jobs: z.array(greenhouseJobSchema) });
 
-export const fetchGreenhouse: BoardConnector = async (board, limit, fetcher) => {
+export const fetchGreenhouse: BoardAdapter = async (board, limit, fetcher) => {
   const payload = parseVendorResponse(
     "Greenhouse",
     greenhouseResponseSchema,
@@ -49,11 +49,7 @@ export const fetchGreenhouse: BoardConnector = async (board, limit, fetcher) => 
     .map((row) => greenhouseJob(board, row));
 };
 
-export const lookupGreenhousePosting: PostingLookupConnector = async (
-  board,
-  externalId,
-  fetcher,
-) => {
+export const lookupGreenhousePosting: PostingLookupAdapter = async (board, externalId, fetcher) => {
   const checkedUrl = optionalEndpoint("greenhouse", "posting", {
     slug: board.slug,
     externalId,
@@ -79,7 +75,7 @@ export const lookupGreenhousePosting: PostingLookupConnector = async (
   }
 };
 
-function greenhouseJob(board: Parameters<BoardConnector>[0], row: Record<string, unknown>) {
+function greenhouseJob(board: Parameters<BoardAdapter>[0], row: Record<string, unknown>) {
   const externalId = stringValue(row.id) || stringValue(row.internal_job_id);
   const location = asRecord(row.location);
   const departments = recordArray(row.departments);

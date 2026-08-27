@@ -6,7 +6,7 @@ import {
 import type { RawJob } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
 import { optionalVendorTextValue, parseVendorResponse } from "./response-schema";
 import {
-  type BoardConnector,
+  type BoardAdapter,
   lastPathPart,
   parseWorkdayDate,
   rawJob,
@@ -26,7 +26,7 @@ const workdayJobSchema = z.looseObject({
 });
 const workdayResponseSchema = z.looseObject({ jobPostings: z.array(workdayJobSchema) });
 
-export const fetchWorkday: BoardConnector = async (board, limit, fetcher) => {
+export const fetchWorkday: BoardAdapter = async (board, limit, fetcher) => {
   const host = board.config.host || new URL(board.baseUrl).hostname;
   const tenant = board.config.tenant || board.slug;
   const site = board.config.site || "External";

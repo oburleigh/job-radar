@@ -7,10 +7,10 @@ import { endpoint } from "@/contexts/discovery/infrastructure/configuration/job-
 import { parseVendorRecords, parseVendorResponse } from "./response-schema";
 import {
   asRecord,
-  type BoardConnector,
+  type BoardAdapter,
   lastPathPart,
   lookupPostingInBoard,
-  type PostingLookupConnector,
+  type PostingLookupAdapter,
   parseDate,
   rawJob,
   recordArray,
@@ -28,7 +28,7 @@ const ashbyJobSchema = z
   });
 const ashbyResponseSchema = z.looseObject({ jobs: z.array(z.unknown()) });
 
-export const fetchAshby: BoardConnector = async (board, limit, fetcher, reportRejected) => {
+export const fetchAshby: BoardAdapter = async (board, limit, fetcher, reportRejected) => {
   const payload = parseVendorResponse(
     "Ashby",
     ashbyResponseSchema,
@@ -68,7 +68,7 @@ export const fetchAshby: BoardConnector = async (board, limit, fetcher, reportRe
     });
 };
 
-export const lookupAshbyPosting: PostingLookupConnector = (board, externalId, fetcher) =>
+export const lookupAshbyPosting: PostingLookupAdapter = (board, externalId, fetcher) =>
   lookupPostingInBoard(
     board,
     externalId,

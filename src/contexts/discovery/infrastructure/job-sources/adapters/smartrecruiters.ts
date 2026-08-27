@@ -6,7 +6,7 @@ import {
 import { optionalVendorTextValue, parseVendorResponse } from "./response-schema";
 import {
   asRecord,
-  type BoardConnector,
+  type BoardAdapter,
   joinLocation,
   parseDate,
   rawJob,
@@ -36,7 +36,7 @@ const smartRecruitersResponseSchema = z.looseObject({
   content: z.array(smartRecruitersJobSchema),
 });
 
-export const fetchSmartRecruiters: BoardConnector = async (board, limit, fetcher) => {
+export const fetchSmartRecruiters: BoardAdapter = async (board, limit, fetcher) => {
   const results = [];
   let offset = 0;
 

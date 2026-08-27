@@ -3,7 +3,7 @@ import { endpoint } from "@/contexts/discovery/infrastructure/configuration/job-
 import { optionalVendorTextValue, parseVendorResponse } from "./response-schema";
 import {
   asRecord,
-  type BoardConnector,
+  type BoardAdapter,
   joinLocation,
   rawJob,
   recordArray,
@@ -29,7 +29,7 @@ const bambooJobSchema = z.looseObject({
 });
 const bambooResponseSchema = z.looseObject({ result: z.array(bambooJobSchema) });
 
-export const fetchBambooHr: BoardConnector = async (board, limit, fetcher) => {
+export const fetchBambooHr: BoardAdapter = async (board, limit, fetcher) => {
   const payload = parseVendorResponse(
     "BambooHR",
     bambooResponseSchema,

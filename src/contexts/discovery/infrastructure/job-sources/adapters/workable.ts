@@ -2,10 +2,10 @@ import { z } from "zod";
 import { endpoint } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
 import { parseVendorRecords, parseVendorResponse } from "./response-schema";
 import {
-  type BoardConnector,
+  type BoardAdapter,
   joinLocation,
   lookupPostingInBoard,
-  type PostingLookupConnector,
+  type PostingLookupAdapter,
   parseDate,
   rawJob,
   recordArray,
@@ -23,7 +23,7 @@ const workableJobSchema = z
   );
 const workableResponseSchema = z.looseObject({ jobs: z.array(z.unknown()) });
 
-export const fetchWorkable: BoardConnector = async (board, limit, fetcher, reportRejected) => {
+export const fetchWorkable: BoardAdapter = async (board, limit, fetcher, reportRejected) => {
   const payload = parseVendorResponse(
     "Workable",
     workableResponseSchema,
@@ -73,7 +73,7 @@ export const fetchWorkable: BoardConnector = async (board, limit, fetcher, repor
     });
 };
 
-export const lookupWorkablePosting: PostingLookupConnector = (board, externalId, fetcher) =>
+export const lookupWorkablePosting: PostingLookupAdapter = (board, externalId, fetcher) =>
   lookupPostingInBoard(
     board,
     externalId,

@@ -80,7 +80,7 @@ export default function SourcesPage() {
       <PageHeader
         index="03"
         title="Sources and company boards"
-        description="Maintain the source registry and refresh known boards when a connector needs attention. Discovery handles the routine run."
+        description="Maintain the source registry and refresh known boards when an ATS integration needs attention. Discovery handles the routine run."
         actions={
           <div className="header-action-group">
             <Link {...buttonAttributes("primary")} to="/settings?new=1">

@@ -1,26 +1,14 @@
-import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import {
-  DEFAULT_RECRUITER_TARGET,
-  type RecruiterResearchProcess,
-  type RecruiterResearchProcessRequest,
-  runRecruiterResearch,
-} from "./command";
-
-const codexProcess: RecruiterResearchProcess = {
-  run(request) {
-    return runChildProcess(request);
-  },
-};
+import { localCodexProcess } from "@/contexts/recruiter-engagement/infrastructure/local-codex/local-codex-process";
+import { DEFAULT_RECRUITER_TARGET, runRecruiterResearch } from "./command";
 
 export async function runCli(argumentsList: readonly string[]): Promise<void> {
   const argumentsInput = parseRecruiterResearchArguments(argumentsList);
   const result = await runRecruiterResearch({
     brief: argumentsInput.brief,
-    process: codexProcess,
-    reportProgress: (message) => process.stderr.write(message),
+    process: localCodexProcess,
     recruiterTarget: argumentsInput.recruiterTarget,
   });
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
@@ -61,22 +49,6 @@ export function parseRecruiterResearchArguments(
   }
 
   return { brief: brief.join(" ").trim(), recruiterTarget };
-}
-
-function runChildProcess(
-  request: RecruiterResearchProcessRequest,
-): Promise<{ readonly exitCode: number }> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(request.command, request.arguments, {
-      cwd: request.cwd,
-      env: request.environment,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    child.stdout?.on("data", (chunk: Buffer) => request.reportProgress(chunk.toString()));
-    child.stderr?.on("data", (chunk: Buffer) => request.reportProgress(chunk.toString()));
-    child.on("error", reject);
-    child.on("close", (code) => resolve({ exitCode: code ?? 1 }));
-  });
 }
 
 const entryPoint = process.argv[1];

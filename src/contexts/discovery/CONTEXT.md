@@ -24,6 +24,10 @@ _Avoid_: Source, connector
 A company's job catalogue hosted by an ATS and available for direct synchronisation.
 _Avoid_: Source, careers page
 
+**ATS adapter**:
+A driven infrastructure implementation that translates an ATS integration's public feed into the application contracts.
+_Avoid_: Connector
+
 **Discovery run**:
 One execution of a search profile across its enabled sources and company boards.
 _Avoid_: Scan, search job
@@ -68,6 +72,10 @@ clients, and background scheduling. Vendor JSON and runtime configuration are va
 this boundary. Presentation owns Discovery-specific React components, request schemas, formatters,
 and client-only behaviour. It may consume the context-neutral design packages, but it cannot import
 infrastructure or composition.
+
+`ATS integration` is the product term for a configured ATS capability. `ATS adapter` is the
+architecture term for its driven implementation. The context uses the canonical port and adapter
+vocabulary for implementation roles; `connector` is not an accepted synonym.
 
 React Router requires one application directory. Discovery's `composition/web` directory is that
 delivery and composition adapter: route loaders and actions translate HTTP, select concrete

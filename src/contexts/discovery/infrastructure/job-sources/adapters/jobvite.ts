@@ -1,9 +1,9 @@
 import { endpoint } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
 import type { RawJob } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
 
-import { type BoardConnector, lastPathPart, rawJob, requestText, stripHtml } from "./shared";
+import { type BoardAdapter, lastPathPart, rawJob, requestText, stripHtml } from "./shared";
 
-export const fetchJobvite: BoardConnector = async (board, limit, fetcher) => {
+export const fetchJobvite: BoardAdapter = async (board, limit, fetcher) => {
   const html = await requestText(endpoint("jobvite", "jobs", { slug: board.slug }), fetcher);
   const results: RawJob[] = [];
   const sectionPattern =

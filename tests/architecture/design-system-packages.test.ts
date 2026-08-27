@@ -16,6 +16,7 @@ const packages = {
 } as const;
 
 const discoveryPresentation = "src/contexts/discovery/presentation/web";
+const recruiterEngagementPresentation = "src/contexts/recruiter-engagement/presentation/web";
 const webDocs = "apps/web-docs";
 
 describe("design system boundaries", () => {
@@ -109,6 +110,7 @@ describe("design system boundaries", () => {
     const stylesheets = [
       "packages/design-ui/src/styles.css",
       "src/contexts/discovery/presentation/web/styles.css",
+      "src/contexts/recruiter-engagement/presentation/web/styles.css",
     ];
 
     for (const stylesheet of stylesheets) {
@@ -131,7 +133,12 @@ describe("design system boundaries", () => {
   });
 
   it("keeps native button styling inside the shared component package", () => {
-    for (const layer of [discoveryPresentation, "src/contexts/discovery/composition/web"]) {
+    for (const layer of [
+      discoveryPresentation,
+      recruiterEngagementPresentation,
+      "src/contexts/discovery/composition/web",
+      "src/contexts/recruiter-engagement/composition/web",
+    ]) {
       for (const file of sourceFiles(path.join(repositoryRoot, layer))) {
         const source = readFileSync(file, "utf8");
         expect(source, file).not.toMatch(/<button\b/);

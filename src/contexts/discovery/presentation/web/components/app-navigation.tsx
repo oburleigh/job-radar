@@ -8,6 +8,7 @@ import {
   Radar,
   SlidersHorizontal,
   Sun,
+  UsersRound,
   Waypoints,
 } from "lucide-react";
 import { useSyncExternalStore } from "react";
@@ -61,6 +62,12 @@ const navigation = [
     icon: Waypoints,
   },
   { href: "/runs", label: "Discovery runs", shortLabel: "Runs", icon: History },
+  {
+    href: "/recruiter-research",
+    label: "Recruiter research",
+    shortLabel: "Recruiters",
+    icon: UsersRound,
+  },
   {
     href: "/settings",
     label: "System settings",

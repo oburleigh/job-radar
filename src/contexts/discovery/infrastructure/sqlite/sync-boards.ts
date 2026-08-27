@@ -1,16 +1,16 @@
 import { setImmediate as yieldToEventLoop } from "node:timers/promises";
 import { and, eq, ne } from "drizzle-orm";
 import { getJobRadarConfig } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
+import {
+  fetchBoardJobsWithDiagnostics,
+  formatRejectedVendorRecords,
+  type RejectedVendorRecord,
+} from "@/contexts/discovery/infrastructure/job-sources/adapters";
 import type {
   AtsType,
   BoardInput,
   RawJob,
 } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
-import {
-  fetchBoardJobsWithDiagnostics,
-  formatRejectedVendorRecords,
-  type RejectedVendorRecord,
-} from "@/contexts/discovery/infrastructure/job-sources/connectors";
 import { makeDedupeKey } from "@/contexts/discovery/infrastructure/job-sources/urls";
 import { db } from "@/contexts/discovery/infrastructure/sqlite/database";
 import {

@@ -5,13 +5,13 @@ import {
   supportsBoardSync,
 } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
 import {
+  type lookupAtsPosting,
+  supportsAtsPostingLookup,
+} from "@/contexts/discovery/infrastructure/job-sources/adapters";
+import {
   type BoardIdentity,
   isBuiltInAtsType,
 } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
-import {
-  type lookupAtsPosting,
-  supportsAtsPostingLookup,
-} from "@/contexts/discovery/infrastructure/job-sources/connectors";
 import { fetchLinkedInJob } from "@/contexts/discovery/infrastructure/job-sources/linkedin";
 import { inferLocationHint } from "@/contexts/discovery/infrastructure/job-sources/search-result";
 import {

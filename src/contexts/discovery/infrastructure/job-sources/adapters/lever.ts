@@ -6,9 +6,9 @@ import {
 import { optionalVendorTextValue, parseVendorResponse } from "./response-schema";
 import {
   asRecord,
-  type BoardConnector,
+  type BoardAdapter,
   lookupPostingInBoard,
-  type PostingLookupConnector,
+  type PostingLookupAdapter,
   parseEpochMilliseconds,
   rawJob,
   recordArray,
@@ -42,7 +42,7 @@ const leverJobSchema = z.looseObject({
 });
 const leverResponseSchema = z.array(leverJobSchema);
 
-export const fetchLever: BoardConnector = async (board, limit, fetcher) => {
+export const fetchLever: BoardAdapter = async (board, limit, fetcher) => {
   const payload = parseVendorResponse(
     "Lever",
     leverResponseSchema,
@@ -61,7 +61,7 @@ export const fetchLever: BoardConnector = async (board, limit, fetcher) => {
     .map((row) => leverJob(board, row));
 };
 
-export const lookupLeverPosting: PostingLookupConnector = async (board, externalId, fetcher) => {
+export const lookupLeverPosting: PostingLookupAdapter = async (board, externalId, fetcher) => {
   const endpointName = board.config.region === "eu" ? "postingEu" : "posting";
   const checkedUrl = optionalEndpoint("lever", endpointName, { slug: board.slug, externalId });
   if (!checkedUrl) {
@@ -86,7 +86,7 @@ export const lookupLeverPosting: PostingLookupConnector = async (board, external
   }
 };
 
-function leverJob(board: Parameters<BoardConnector>[0], row: Record<string, unknown>) {
+function leverJob(board: Parameters<BoardAdapter>[0], row: Record<string, unknown>) {
   const categories = asRecord(row.categories);
   const allLocations = stringArray(categories.allLocations);
   const listContent = recordArray(row.lists).map((item) => stringValue(item.content));

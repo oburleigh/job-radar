@@ -138,7 +138,7 @@ export function IntegrationSettingsForm({
                 defaultValue={integration.pageSize ?? ""}
               />
               <small className="field-help">
-                This is not the board limit. The connector paginates up to the global jobs-per-board
+                This is not the board limit. Direct sync paginates up to the global jobs-per-board
                 total.
               </small>
             </label>
@@ -173,8 +173,8 @@ export function IntegrationSettingsForm({
             <div>
               <h2>Search-only integration</h2>
               <p>
-                Results are saved as unverified leads. Direct board sync needs a connector that
-                understands this ATS feed.
+                Results are saved as unverified leads. Direct board sync needs support for this ATS
+                feed.
               </p>
             </div>
           </div>

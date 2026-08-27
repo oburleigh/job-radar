@@ -10,7 +10,7 @@ import { fetchGreenhouse, lookupGreenhousePosting } from "./greenhouse";
 import { fetchJobvite } from "./jobvite";
 import { fetchLever, lookupLeverPosting } from "./lever";
 import type { RejectedVendorRecord } from "./response-schema";
-import type { BoardConnector, PostingLookupConnector } from "./shared";
+import type { BoardAdapter, PostingLookupAdapter } from "./shared";
 import { fetchSmartRecruiters } from "./smartrecruiters";
 import { fetchWorkable, lookupWorkablePosting } from "./workable";
 import { fetchWorkday } from "./workday";
@@ -30,12 +30,12 @@ export interface BoardFetchResult {
   readonly rejectedRecords: readonly RejectedVendorRecord[];
 }
 
-interface AtsConnector {
-  readonly fetchBoard: BoardConnector;
-  readonly lookupPosting?: PostingLookupConnector;
+interface AtsAdapter {
+  readonly fetchBoard: BoardAdapter;
+  readonly lookupPosting?: PostingLookupAdapter;
 }
 
-const connectors: Readonly<Record<string, AtsConnector>> = {
+const adapters: Readonly<Record<string, AtsAdapter>> = {
   ashby: { fetchBoard: fetchAshby, lookupPosting: lookupAshbyPosting },
   bamboohr: { fetchBoard: fetchBambooHr },
   greenhouse: { fetchBoard: fetchGreenhouse, lookupPosting: lookupGreenhousePosting },
@@ -57,17 +57,17 @@ export async function fetchBoardJobsWithDiagnostics(
   board: BoardInput,
   options: FetchOptions = {},
 ): Promise<BoardFetchResult> {
-  const connector = connectors[board.atsType];
-  if (!connector) {
+  const adapter = adapters[board.atsType];
+  if (!adapter) {
     throw new Error(
       board.atsType === "icims" || board.atsType === "linkedin"
         ? `${board.atsType} does not support direct board sync`
-        : `${board.atsType} does not have a direct board connector`,
+        : `${board.atsType} does not have a direct board adapter`,
     );
   }
 
   const rejectedRecords: RejectedVendorRecord[] = [];
-  const jobs = await connector.fetchBoard(
+  const jobs = await adapter.fetchBoard(
     board,
     options.limit ?? getJobRadarConfig().discovery.boardJobLimit,
     options.fetcher ?? fetch,
@@ -86,7 +86,7 @@ export async function lookupAtsPosting(
   externalId: string,
   options: Pick<FetchOptions, "fetcher"> = {},
 ) {
-  const lookupPosting = connectors[board.atsType]?.lookupPosting;
+  const lookupPosting = adapters[board.atsType]?.lookupPosting;
   if (!lookupPosting) {
     throw new Error(`${board.atsType} does not support exact posting lookup`);
   }
@@ -94,5 +94,5 @@ export async function lookupAtsPosting(
 }
 
 export function supportsAtsPostingLookup(atsType: string): boolean {
-  return connectors[atsType]?.lookupPosting !== undefined;
+  return adapters[atsType]?.lookupPosting !== undefined;
 }

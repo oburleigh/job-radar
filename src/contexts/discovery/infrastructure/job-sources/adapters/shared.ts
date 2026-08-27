@@ -8,7 +8,7 @@ import type {
 } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
 import type { ReportRejectedVendorRecord } from "./response-schema";
 
-export type BoardConnector = (
+export type BoardAdapter = (
   board: BoardInput,
   limit: number,
   fetcher: typeof fetch,
@@ -23,7 +23,7 @@ export type AtsPostingLookup =
       readonly checkedUrl: string;
     };
 
-export type PostingLookupConnector = (
+export type PostingLookupAdapter = (
   board: BoardInput,
   externalId: string,
   fetcher: typeof fetch,
@@ -33,12 +33,12 @@ export async function lookupPostingInBoard(
   board: BoardInput,
   externalId: string,
   checkedUrl: string,
-  connector: BoardConnector,
+  adapter: BoardAdapter,
   fetcher: typeof fetch,
 ): Promise<AtsPostingLookup> {
   let boardJobs: RawJob[];
   try {
-    boardJobs = await connector(board, Number.MAX_SAFE_INTEGER, fetcher);
+    boardJobs = await adapter(board, Number.MAX_SAFE_INTEGER, fetcher);
   } catch (error) {
     if (error instanceof AtsRequestError) {
       if (error.status === 404 || error.status === 410) {

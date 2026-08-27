@@ -152,7 +152,7 @@
 
 .nav-list {
   display: grid;
-  grid-template-columns: repeat(5, minmax(112px, 1fr));
+  grid-template-columns: repeat(6, minmax(112px, 1fr));
 }
 
 .nav-link {
@@ -2246,7 +2246,7 @@ td a {
     inset: auto 0 0;
     z-index: 50;
     height: 68px;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     background: var(--jr-color-nav);
     border-top: 3px solid var(--jr-color-accent);
   }

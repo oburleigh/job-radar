@@ -8,11 +8,11 @@ import { createJobDiscovery } from "@/contexts/discovery/application/discovery-r
 import { SEARCH_STRATEGIES } from "@/contexts/discovery/application/discovery-runs/planning/plan-search-lanes";
 import { isVerifiedJobListing } from "@/contexts/discovery/domain/job-listing-provenance";
 import { bootstrapJobRadar } from "@/contexts/discovery/infrastructure/configuration/bootstrap-job-radar";
+import type { AtsPostingLookup } from "@/contexts/discovery/infrastructure/job-sources/adapters";
 import type {
   AtsType,
   RawJob,
 } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
-import type { AtsPostingLookup } from "@/contexts/discovery/infrastructure/job-sources/connectors";
 import type { StructuredJobPageLookup } from "@/contexts/discovery/infrastructure/job-sources/structured-job-page";
 import { classifyUrlWithConfig } from "@/contexts/discovery/infrastructure/job-sources/url-classification";
 import type { db } from "@/contexts/discovery/infrastructure/sqlite/database";

@@ -197,7 +197,7 @@ The effective web result count is the smaller of **Requested web results per
 query** and the selected provider's maximum. Serper free accounts reject a
 request for more than 10 results, so raising the global value alone does not
 increase a Serper run. This web limit is separate from **Total jobs per
-discovered board**, which defaults to 200. Connector page sizes, such as
+discovered board**, which defaults to 200. ATS integration page sizes, such as
 Workday's default of 20, are pagination sizes rather than job totals.
 
 Provider limits and billing still apply. One discovery run creates:
@@ -398,9 +398,9 @@ New integrations are search-only. They can generate queries, classify results,
 appear in filters, and save unverified leads. Enable **Include unverified
 leads** on a profile if you want those leads to appear as matches.
 
-Direct board sync is available only for the built-in connectors listed below.
+Direct board sync is available only for the built-in ATS integrations listed below.
 Adding an ID and endpoint template is not enough to parse an unfamiliar ATS
-response. A new direct connector needs URL classification, pagination and
+response. A new direct integration needs URL classification, pagination and
 response normalization code, fixtures, and tests. Until that exists, the
 Settings form keeps the integration in search-only mode instead of claiming
 that its results are verified.
@@ -423,8 +423,7 @@ that its results are verified.
 LinkedIn job pages are verified individually through its public guest job page.
 Listings marked as closed or no longer accepting applications are deactivated.
 Temporary request failures leave the prior record unchanged. iCIMS and
-LinkedIn do not have a consistent public board feed used by the direct
-connector model.
+LinkedIn do not have a consistent public board feed used by direct sync.
 
 Jobvite is read from its public, server-rendered `jobs/viewall` page. Its
 internal JSON-looking URL is not a public JSON feed and is not used.

@@ -56,6 +56,7 @@ export default defineConfig({
         DB_PATH: databasePath,
         HOST: "127.0.0.1",
         PORT: "3100",
+        JOB_RADAR_RECRUITER_RESEARCH_SOURCE: "deterministic",
         SERPER_API_KEY: "playwright-fixture-key",
       },
       url: BASE_URL,

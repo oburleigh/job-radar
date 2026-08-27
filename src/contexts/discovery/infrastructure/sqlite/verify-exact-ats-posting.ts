@@ -1,9 +1,9 @@
 import { and, eq, isNotNull } from "drizzle-orm";
-import type { ClassifiedUrl } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
 import {
   lookupAtsPosting,
   supportsAtsPostingLookup,
-} from "@/contexts/discovery/infrastructure/job-sources/connectors";
+} from "@/contexts/discovery/infrastructure/job-sources/adapters";
+import type { ClassifiedUrl } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
 import type { db } from "./database";
 import { companyBoards, discoveryHits, jobs } from "./schema";
 import {

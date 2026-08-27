@@ -16,7 +16,7 @@ export default function RunsPage() {
       <PageHeader
         index="04"
         title="Discovery history"
-        description="See what each search found, how many boards expanded successfully, and where a provider or connector failed."
+        description="See what each search found, how many boards expanded successfully, and where a provider or adapter failed."
       />
 
       <section className="panel run-panel">
@@ -70,7 +70,7 @@ export default function RunsPage() {
                       <td>{run.matchesFound}</td>
                       <td>
                         {run.queryErrorCount + run.syncErrorCount > 0 ? (
-                          <span className="error-count" title={run.error || "Connector error"}>
+                          <span className="error-count" title={run.error || "Adapter error"}>
                             {run.queryErrorCount + run.syncErrorCount}
                           </span>
                         ) : (

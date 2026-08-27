@@ -1,6 +1,5 @@
 import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
@@ -11,44 +10,49 @@ import {
 } from "./command";
 
 const observationDate = "2026-08-27";
-
-const validResearch = {
-  observationDate,
-  companies: Array.from({ length: 12 }, (_, index) => ({
-    name: `Firm ${index + 1}`,
-    websiteUrl: `https://firm-${index + 1}.example.com`,
-    reason: "Technology hiring coverage in the UAE.",
-    industries: ["Financial services", "Software"],
-    specialisms: ["Software engineering", "Data and AI"],
-    evidenceExcerpt:
-      "This firm recruits software engineering and data talent for UAE financial services.",
-    observationDate,
-  })),
-  recruiters: Array.from({ length: 24 }, (_, index) => {
-    const firm = Math.floor(index / 2) + 1;
-    return {
-      name: `Recruiter ${index + 1}`,
-      title: "Technology Recruiter",
-      company: `Firm ${firm}`,
-      linkedInUrl: `https://www.linkedin.com/in/recruiter-${index + 1}`,
-      evidenceExcerpt: `Recruiter ${index + 1} recruits technology talent at Firm ${firm}.`,
-      observationDate,
-    };
-  }),
-};
+const companies = Array.from({ length: 10 }, (_, index) => ({
+  companyName: `Firm ${index + 1}`,
+  websiteUrl: `https://firm-${index + 1}.example.com`,
+  reason: "Technology hiring coverage in the UAE.",
+  industries: ["Financial services", "Software"],
+  specialisms: ["Software engineering", "Data and AI"],
+  evidence: {
+    adapterId: "local-codex-cli-web-search-v1",
+    confidence: "high",
+    excerpt: "This firm recruits software engineering and data talent for UAE financial services.",
+    observedAt: observationDate,
+    policyVersion: "1",
+    sourceUrl: `https://firm-${index + 1}.example.com/evidence`,
+  },
+}));
+const recruiters = Array.from({ length: 20 }, (_, index) => ({
+  name: `Recruiter ${index + 1}`,
+  title: "Technology Recruiter",
+  companyName: `Firm ${Math.floor(index / 2) + 1}`,
+  linkedInUrl: `https://www.linkedin.com/in/recruiter-${index + 1}`,
+  evidence: {
+    adapterId: "local-codex-cli-web-search-v1",
+    confidence: "high",
+    excerpt: `Recruiter ${index + 1} recruits technology talent.`,
+    observedAt: observationDate,
+    policyVersion: "1",
+    sourceUrl: `https://www.linkedin.com/in/recruiter-${index + 1}`,
+  },
+}));
 
 describe("recruiter research command", () => {
-  it("runs Codex through its controlled boundary and returns only validated final output", async () => {
-    let request: RecruiterResearchProcessRequest | undefined;
-    let schema: unknown;
+  it("is a thin CLI driver over the staged local Codex boundary", async () => {
+    const requests: RecruiterResearchProcessRequest[] = [];
     const process: RecruiterResearchProcess = {
-      async run(nextRequest) {
-        request = nextRequest;
-        schema = JSON.parse(
-          await readFile(valueAfter(nextRequest.arguments, "--output-schema"), "utf8"),
+      async run(request) {
+        requests.push(request);
+        const schema = JSON.parse(
+          await readFile(valueAfter(request.arguments, "--output-schema"), "utf8"),
+        ) as { properties: Record<string, unknown> };
+        await writeFile(
+          valueAfter(request.arguments, "--output-last-message"),
+          JSON.stringify("companies" in schema.properties ? { companies } : { recruiters }),
         );
-        const outputPath = valueAfter(nextRequest.arguments, "--output-last-message");
-        await writeFile(outputPath, JSON.stringify(validResearch));
         return { exitCode: 0 };
       },
     };
@@ -57,83 +61,27 @@ describe("recruiter research command", () => {
       brief: "Prioritise fintech and healthtech firms.",
       environment: { OPENAI_API_KEY: "must-not-reach-codex", PATH: "/usr/bin" },
       process,
-      recruiterTarget: 24,
     });
 
-    expect(result).toEqual(validResearch);
-    expect(request).toMatchObject({
-      command: "codex",
-      cwd: expect.stringContaining("job-radar-recruiter-research-"),
-      environment: { PATH: "/usr/bin" },
-    });
-    expect(request?.environment.OPENAI_API_KEY).toBeUndefined();
-    expect(request?.arguments).toEqual(
-      expect.arrayContaining([
-        "--search",
-        "-m",
-        "gpt-5.6-terra",
-        'model_reasoning_effort="medium"',
-        "exec",
-        "--ephemeral",
-        "--sandbox",
-        "read-only",
-        "--output-schema",
-        "--output-last-message",
-      ]),
+    expect(result.companies).toHaveLength(10);
+    expect(result.recruiters).toHaveLength(20);
+    expect(requests).toHaveLength(2);
+    expect(requests.every((request) => request.environment.OPENAI_API_KEY === undefined)).toBe(
+      true,
     );
-    expect(request?.arguments.at(-1)).toContain("Prioritise fintech and healthtech firms.");
-    expect(request?.arguments.at(-1)).toContain("technology role specialisms");
-    expect(request?.arguments.at(-1)).toContain("major UAE tech-hiring sectors");
-    expect(request?.arguments.at(-1)).toContain("at least 24 named technology recruiters");
-    for (const discipline of [
-      "software engineering",
-      "data/AI",
-      "cloud/DevOps",
-      "cybersecurity",
-      "product",
-      "architecture",
-      "technology leadership",
-    ]) {
-      expect(request?.arguments.at(-1)).toContain(discipline);
-    }
-
-    expect(schema).toMatchObject({
-      properties: {
-        companies: {
-          minItems: 10,
-          items: {
-            properties: {
-              industries: { type: "array", minItems: 1 },
-              specialisms: { type: "array", minItems: 1 },
-            },
-          },
-        },
-        recruiters: { minItems: 24, uniqueItems: true },
-      },
-    });
-    expect(
-      (schema as { properties: { companies: { maxItems?: number } } }).properties.companies
-        .maxItems,
-    ).toBeUndefined();
-    expect(
-      (schema as { properties: { recruiters: { maxItems?: number } } }).properties.recruiters
-        .maxItems,
-    ).toBeUndefined();
-
-    expect(existsSync(request?.cwd ?? "")).toBe(false);
+    expect(requests.every((request) => existsSync(request.cwd) === false)).toBe(true);
+    expect(requests[1]?.arguments.at(-1)).toContain("Firm 1");
   });
 
-  it("fails and cleans temporary output when Codex does not provide a final result", async () => {
-    let outputPath = "";
-    const process: RecruiterResearchProcess = {
-      async run(request) {
-        outputPath = valueAfter(request.arguments, "--output-last-message");
+  it("returns failure from a missing or unsuccessful final stage", async () => {
+    const failedProcess: RecruiterResearchProcess = {
+      async run() {
         return { exitCode: 23 };
       },
     };
-
-    await expect(runRecruiterResearch({ process })).rejects.toThrow("Codex exited with code 23");
-    expect(existsSync(path.dirname(outputPath))).toBe(false);
+    await expect(runRecruiterResearch({ process: failedProcess })).rejects.toThrow(
+      "Codex exited with code 23",
+    );
 
     const missingOutputProcess: RecruiterResearchProcess = {
       async run() {
@@ -142,68 +90,6 @@ describe("recruiter research command", () => {
     };
     await expect(runRecruiterResearch({ process: missingOutputProcess })).rejects.toThrow(
       "Codex completed without final output.",
-    );
-
-    const startFailureProcess: RecruiterResearchProcess = {
-      async run() {
-        throw new Error("Codex process could not start.");
-      },
-    };
-    await expect(runRecruiterResearch({ process: startFailureProcess })).rejects.toThrow(
-      "Codex process could not start.",
-    );
-  });
-
-  it("rejects malformed final output and market scans below the evidence threshold", async () => {
-    const malformedProcess: RecruiterResearchProcess = {
-      async run(request) {
-        await writeFile(valueAfter(request.arguments, "--output-last-message"), "not JSON");
-        return { exitCode: 0 };
-      },
-    };
-    await expect(runRecruiterResearch({ process: malformedProcess })).rejects.toThrow(
-      "final output is not valid JSON",
-    );
-
-    const incompleteProcess: RecruiterResearchProcess = {
-      async run(request) {
-        const incomplete = {
-          ...validResearch,
-          companies: validResearch.companies.slice(0, 9),
-        };
-        await writeFile(
-          valueAfter(request.arguments, "--output-last-message"),
-          JSON.stringify(incomplete),
-        );
-        return { exitCode: 0 };
-      },
-    };
-    await expect(runRecruiterResearch({ process: incompleteProcess })).rejects.toThrow(
-      "companies must contain at least 10 entries",
-    );
-  });
-
-  it("rejects duplicate named recruiters with the same public LinkedIn profile URL", async () => {
-    const firstRecruiter = validResearch.recruiters[0];
-    if (!firstRecruiter) {
-      throw new Error("The research fixture requires a recruiter.");
-    }
-    const duplicateProfileProcess: RecruiterResearchProcess = {
-      async run(request) {
-        const duplicate = {
-          ...validResearch,
-          recruiters: [...validResearch.recruiters.slice(0, -1), { ...firstRecruiter }],
-        };
-        await writeFile(
-          valueAfter(request.arguments, "--output-last-message"),
-          JSON.stringify(duplicate),
-        );
-        return { exitCode: 0 };
-      },
-    };
-
-    await expect(runRecruiterResearch({ process: duplicateProfileProcess })).rejects.toThrow(
-      "recruiters must have distinct public LinkedIn profile URLs",
     );
   });
 });
