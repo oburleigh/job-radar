@@ -52,7 +52,9 @@ export function parseRecruiterResearchStartRequest(
     industries: formData.get("industries"),
     recruiterTarget: formData.get("recruiterTarget"),
     specialisms: formData.get("specialisms"),
-    targetLocations: formData.getAll("targetLocations"),
+    targetLocations: formData
+      .getAll("targetLocations")
+      .flatMap((value) => (typeof value === "string" ? value.split("\n") : [])),
   });
   if (!result.success) {
     const field = validationField(result.error.issues[0]?.path[0]);
@@ -72,11 +74,23 @@ export function parseRecruiterResearchStartRequest(
       criteria: {
         industries: result.data.industries,
         specialisms: result.data.specialisms,
-        targetLocations: result.data.targetLocations,
+        targetLocations: canonicalTargetLocations(result.data.targetLocations, options),
       },
       recruiterTarget: result.data.recruiterTarget,
     },
   };
+}
+
+function canonicalTargetLocations(
+  values: readonly string[],
+  options: readonly TargetLocationOption[],
+): readonly string[] {
+  return values.map((value) => {
+    const option = options.find(
+      (candidate) => candidate.label.toLocaleLowerCase() === value.toLocaleLowerCase(),
+    );
+    return option?.label ?? value;
+  });
 }
 
 function validationField(field: PropertyKey | undefined): RecruiterResearchStartField {

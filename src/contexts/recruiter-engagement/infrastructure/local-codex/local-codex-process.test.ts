@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { localCodexProcess } from "./local-codex-process";
+import { exitCodeFor, localCodexProcess } from "./local-codex-process";
 
 describe("local Codex process", () => {
   it("returns bounded stderr and JSONL diagnostics when a local subprocess fails", async () => {
@@ -19,5 +19,10 @@ describe("local Codex process", () => {
     expect(result.diagnostic ?? "").toContain(jsonLine);
     expect(result.diagnostic ?? "").toContain("codex failed");
     expect(result.diagnostic?.length ?? 0).toBeLessThanOrEqual(4_096);
+  });
+
+  it("maps a spawn error with an unusable close code to the shell command-not-found status", () => {
+    expect(exitCodeFor(-1, new Error("spawn codex ENOENT"))).toBe(127);
+    expect(exitCodeFor(null, new Error("spawn codex ENOENT"))).toBe(127);
   });
 });

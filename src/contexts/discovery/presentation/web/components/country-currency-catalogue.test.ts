@@ -5,6 +5,7 @@ import {
   countryOptionsMatching,
   currencyOptionsMatching,
   isIso4217Currency,
+  normaliseCountryName,
 } from "./country-currency-catalogue";
 
 describe("country and currency catalogue", () => {
@@ -12,6 +13,13 @@ describe("country and currency catalogue", () => {
     expect(countryCurrencyOptions.find((option) => option.countryCode === "AE")).toMatchObject({
       currencyCode: "AED",
     });
+  });
+
+  it.each([
+    ["Saint Lucia", "St Lucia"],
+    ["Côte d’Ivoire", "Cote d'Ivoire"],
+  ])("normalises %s and %s to the same country name", (catalogueLabel, input) => {
+    expect(normaliseCountryName(input)).toBe(normaliseCountryName(catalogueLabel));
   });
 
   it.each([

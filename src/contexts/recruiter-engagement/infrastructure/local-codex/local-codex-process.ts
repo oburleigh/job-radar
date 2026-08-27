@@ -41,14 +41,23 @@ export const localCodexProcess: LocalCodexProcess = {
           return;
         }
         settled = true;
-        resolve({
-          exitCode: code ?? (spawnError ? 127 : 1),
-          diagnostic: [stdout, stderr, spawnError?.message].filter(Boolean).join("\n"),
+        setImmediate(() => {
+          resolve({
+            exitCode: exitCodeFor(code, spawnError),
+            diagnostic: [stdout, stderr, spawnError?.message].filter(Boolean).join("\n"),
+          });
         });
       });
     });
   },
 };
+
+export function exitCodeFor(code: number | null, spawnError: Error | undefined): number {
+  if (spawnError && (code === null || code < 0)) {
+    return 127;
+  }
+  return code ?? (spawnError ? 127 : 1);
+}
 
 function appendDiagnostic(current: string, chunk: Buffer): string {
   return `${current}${chunk.toString("utf8")}`.slice(0, MAX_DIAGNOSTIC_CHARS_PER_STREAM);

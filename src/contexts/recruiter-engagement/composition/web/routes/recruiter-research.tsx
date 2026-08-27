@@ -8,6 +8,7 @@ export async function loader({ request }: { readonly request: Request }) {
   const runId = new URL(request.url).searchParams.get("run");
   return {
     research: runId ? await recruiterEngagementWeb.getResearchRun(runId) : undefined,
+    defaultBrief: recruiterEngagementWeb.getDefaultResearchBrief(),
     targetLocationOptions: recruiterEngagementWeb.getTargetLocationOptions(),
   };
 }
@@ -17,7 +18,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function RecruiterResearchRoute() {
-  const { research, targetLocationOptions } = useLoaderData<typeof loader>();
+  const { defaultBrief, research, targetLocationOptions } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   return (
     <RecruiterResearchPage
@@ -30,6 +31,7 @@ export default function RecruiterResearchRoute() {
           }
         : {})}
       {...(research ? { research } : {})}
+      defaultBrief={defaultBrief}
       targetLocationOptions={targetLocationOptions}
     />
   );

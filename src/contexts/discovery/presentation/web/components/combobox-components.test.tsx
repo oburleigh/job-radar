@@ -15,15 +15,22 @@ describe("profile editor comboboxes", () => {
     expect(markup).toContain('aria-expanded="false"');
     expect(markup).toContain('name="locationTerms"');
     expect(markup).toContain('aria-label="Remove China"');
+    expect(markup).toContain('placeholder="Add another location"');
     expect(markup).not.toContain('role="option"');
   });
 
   it("keeps an unmatched saved location visible and marks it for replacement", () => {
     const markup = renderToStaticMarkup(
-      <LocationCombobox name="locationTerms" onChange={() => undefined} values={["Dubai"]} />,
+      <LocationCombobox
+        name="locationTerms"
+        onChange={() => undefined}
+        values={["China", "Dubai"]}
+      />,
     );
 
+    expect(markup).toContain('name="locationTerms" value="China"');
     expect(markup).toContain('name="legacyLocationTerms"');
+    expect(markup).toContain('name="legacyLocationTerms" value="Dubai"');
     expect(markup).toContain('aria-invalid="true"');
     expect(markup).toContain("aria-describedby=");
     expect(markup).toContain(

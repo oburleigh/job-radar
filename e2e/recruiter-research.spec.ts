@@ -14,7 +14,7 @@ test("starts recruiter research from the browser and renders firms before recrui
   await expect(page).toHaveURL(/\/recruiter-research$/);
 
   await page.getByLabel("Technology brief").fill("UAE fintech cybersecurity leadership");
-  await page.getByLabel("Target locations").selectOption(["Dubai"]);
+  await selectRecruiterLocation(page, "Dubai");
   await page.getByLabel("Technology specialisms").fill("Cybersecurity, Technology leadership");
   await page.getByLabel("Target industries").fill("Financial services, Health technology");
   await page.getByLabel("Recruiters to find").fill("10");
@@ -50,7 +50,7 @@ test("starts recruiter research from the browser and renders firms before recrui
 
 test("shows each invalid structured criterion on its own control", async ({ page }) => {
   await page.goto("/recruiter-research");
-  await page.getByLabel("Target locations").selectOption([]);
+  await clearRecruiterLocations(page);
   await page.getByLabel("Recruiters to find").fill("20");
   await page.getByRole("button", { name: "Start research" }).click();
 
@@ -62,12 +62,29 @@ test("shows each invalid structured criterion on its own control", async ({ page
   ).toHaveCount(1);
 });
 
+test("keeps edited recruiter research fields after a recoverable validation revalidation", async ({
+  page,
+}) => {
+  await page.goto("/recruiter-research");
+
+  const brief = page.getByLabel("Technology brief");
+  await brief.fill("Edited applied AI leadership brief");
+  await selectRecruiterLocation(page, "Dubai");
+  await page.getByLabel("Recruiters to find").fill("0");
+  await page.getByRole("button", { name: "Start research" }).click();
+
+  await expect(page.getByRole("alert")).toContainText("highlighted field");
+  await expect(page.getByLabel("Recruiters to find")).toHaveAttribute("aria-invalid", "true");
+  await expect(brief).toHaveValue("Edited applied AI leadership brief");
+  await expect(page.getByRole("button", { name: "Remove Dubai" })).toBeVisible();
+});
+
 test("cancels an active recruiter run and retries with the frozen brief and plan", async ({
   page,
 }) => {
   await page.goto("/recruiter-research");
   await page.getByLabel("Technology brief").fill("UAE data and AI hiring");
-  await page.getByLabel("Target locations").selectOption(["Abu Dhabi"]);
+  await selectRecruiterLocation(page, "Abu Dhabi");
   await page.getByLabel("Technology specialisms").fill("Data and AI, Architecture");
   await page.getByLabel("Target industries").fill("Government, Energy");
   await page.getByLabel("Recruiters to find").fill("10");
@@ -105,19 +122,26 @@ test("cancels an active recruiter run and retries with the frozen brief and plan
   });
 });
 
-test("uses the configured market catalogue and keeps recruiter controls in aligned desktop rows", async ({
+test("uses configured market options in the shared token autocomplete and keeps compact desktop rows", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 1200 });
   await page.goto("/recruiter-research");
 
   const targetLocations = page.getByLabel("Target locations");
-  await expect(targetLocations).toHaveJSProperty("tagName", "SELECT");
-  await expect(targetLocations.locator("option")).toHaveText([
-    "United Arab Emirates",
-    "Abu Dhabi",
-    "Dubai",
-  ]);
+  await expect(targetLocations).toHaveAttribute("role", "combobox");
+  await expect(page.locator('select[name="targetLocations"]')).toHaveCount(0);
+  await targetLocations.fill("Du");
+  await expect(page.getByRole("option")).toHaveText(["Dubai"]);
+  await targetLocations.press("ArrowDown");
+  await targetLocations.press("Enter");
+  await expect(page.getByLabel("Remove Dubai")).toHaveCount(1);
+  await targetLocations.fill("Dubai");
+  await targetLocations.press("ArrowDown");
+  await targetLocations.press("Enter");
+  await expect(page.getByLabel("Remove Dubai")).toHaveCount(1);
+  await targetLocations.press("Backspace");
+  await expect(page.getByLabel("Remove Dubai")).toHaveCount(0);
   await expect(page.getByLabel("Geography")).toHaveCount(0);
 
   const controls = await Promise.all(
@@ -129,15 +153,18 @@ test("uses the configured market catalogue and keeps recruiter controls in align
       "Recruiters to find",
     ].map(async (label) => page.getByLabel(label).boundingBox()),
   );
-  const [brief, ...criteria] = requiredBoxes(controls);
-  if (!brief) {
+  const [brief, locations, specialisms, industries, recruiterTarget] = requiredBoxes(controls);
+  if (!brief || !locations || !specialisms || !industries || !recruiterTarget) {
     throw new Error("Recruiter controls must be rendered before layout is measured.");
   }
-  for (const control of criteria) {
-    expect(control.x).toBeCloseTo(brief.x, 1);
-    expect(control.width).toBeCloseTo(brief.width, 1);
-    expect(control.y).toBeGreaterThan(brief.y + brief.height);
-  }
+  expect(brief.width).toBeGreaterThan(specialisms.width);
+  expect(Math.abs(specialisms.y - industries.y)).toBeLessThan(4);
+  expect(specialisms.x).toBeLessThan(industries.x);
+  expect(Math.abs(locations.y - recruiterTarget.y)).toBeLessThan(4);
+  expect(locations.x).toBeLessThan(recruiterTarget.x);
+  expect(locations.height).toBeGreaterThanOrEqual(44);
+  expect(locations.height).toBeLessThan(100);
+  await page.screenshot({ path: "test-results/recruiter-desktop.png", fullPage: true });
 });
 
 test("contains recruiter controls equally on mobile and clears the fixed navigation", async ({
@@ -160,8 +187,8 @@ test("contains recruiter controls equally on mobile and clears the fixed navigat
     throw new Error("Recruiter controls must be rendered before layout is measured.");
   }
   for (const control of remaining) {
-    expect(control.x).toBeCloseTo(first.x, 1);
-    expect(control.width).toBeCloseTo(first.width, 1);
+    expect(control.x).toBeGreaterThanOrEqual(first.x);
+    expect(control.x + control.width).toBeLessThanOrEqual(390);
   }
 
   const recruiterTarget = page.getByLabel("Recruiters to find");
@@ -179,6 +206,7 @@ test("contains recruiter controls equally on mobile and clears the fixed navigat
     targetBox.y + targetBox.height <= navigationBox.y ||
       targetBox.y >= navigationBox.y + navigationBox.height,
   ).toBe(true);
+  await page.screenshot({ path: "test-results/recruiter-mobile.png", fullPage: true });
 });
 
 for (const theme of ["light", "dark"] as const) {
@@ -201,4 +229,19 @@ function requiredBoxes<T>(boxes: readonly (T | null)[]): readonly T[] {
     throw new Error("Recruiter controls must be rendered before layout is measured.");
   }
   return resolved;
+}
+
+async function selectRecruiterLocation(page: import("@playwright/test").Page, label: string) {
+  await clearRecruiterLocations(page);
+  const locations = page.getByLabel("Target locations");
+  await locations.fill(label);
+  await locations.press("ArrowDown");
+  await locations.press("Enter");
+}
+
+async function clearRecruiterLocations(page: import("@playwright/test").Page) {
+  const removers = page.getByRole("button", { name: /^Remove / });
+  while (await removers.count()) {
+    await removers.first().click();
+  }
 }

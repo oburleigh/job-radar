@@ -123,6 +123,17 @@ const defaultCriteria: ResearchCriteria = {
   targetLocations: ["United Arab Emirates"],
 };
 
+const defaultResearchBriefDescription =
+  "Research technology recruitment firms for software engineering, data and AI, cloud and DevOps, cybersecurity, product, architecture, and technology leadership roles.";
+
+export function createDefaultSearchBrief(targetLocations: readonly string[]): SearchBrief {
+  const defaults = createSearchBrief({ description: defaultResearchBriefDescription });
+  return {
+    ...defaults,
+    criteria: { ...defaults.criteria, targetLocations },
+  };
+}
+
 export function createSearchBrief(input: {
   readonly criteria?: Partial<ResearchCriteria>;
   readonly description: string;

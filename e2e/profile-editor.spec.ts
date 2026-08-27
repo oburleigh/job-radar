@@ -7,6 +7,39 @@ test("edits profile locations and salary currency through keyboard comboboxes", 
   await page.goto("/profiles?new=1");
 
   const locations = page.getByRole("combobox", { name: "Target locations" });
+  const locationLabelStyles = await page
+    .getByText("Target locations", { exact: true })
+    .evaluate((label) => {
+      const styles = getComputedStyle(label);
+      return { color: styles.color, fontSize: styles.fontSize, fontWeight: styles.fontWeight };
+    });
+  const titleLabelStyles = await page
+    .getByText("Target job titles", { exact: true })
+    .evaluate((label) => {
+      const styles = getComputedStyle(label);
+      return { color: styles.color, fontSize: styles.fontSize, fontWeight: styles.fontWeight };
+    });
+  expect(locationLabelStyles).toEqual(titleLabelStyles);
+
+  const locationControlStyles = await locations.evaluate((input) => {
+    const outer = input.parentElement;
+    if (!outer) {
+      throw new Error("Target-location input has no token container.");
+    }
+    const inputStyles = getComputedStyle(input);
+    const outerStyles = getComputedStyle(outer);
+    return {
+      inputBackground: inputStyles.backgroundColor,
+      inputBorderWidth: inputStyles.borderTopWidth,
+      outerBorderStyle: outerStyles.borderTopStyle,
+      outerBorderWidth: outerStyles.borderTopWidth,
+    };
+  });
+  expect(locationControlStyles.inputBackground).toBe("rgba(0, 0, 0, 0)");
+  expect(locationControlStyles.inputBorderWidth).toBe("0px");
+  expect(locationControlStyles.outerBorderStyle).toBe("solid");
+  expect(Number.parseFloat(locationControlStyles.outerBorderWidth)).toBeGreaterThan(0);
+
   await locations.focus();
   await expect(locations).not.toHaveAttribute("aria-activedescendant");
   await locations.press("Tab");
@@ -28,6 +61,11 @@ test("edits profile locations and salary currency through keyboard comboboxes", 
     page.getByRole("status").filter({ hasText: "United Arab Emirates added" }),
   ).toBeVisible();
 
+  await locations.fill("St Lucia");
+  await locations.press("ArrowDown");
+  await locations.press("Enter");
+  await expect(page.getByRole("button", { name: "Remove St. Lucia" })).toBeVisible();
+
   await page.getByRole("combobox", { name: "Salary currency" }).fill("british pound");
   await page.getByRole("combobox", { name: "Salary currency" }).press("ArrowDown");
   await page.getByRole("combobox", { name: "Salary currency" }).press("Enter");
@@ -37,6 +75,9 @@ test("edits profile locations and salary currency through keyboard comboboxes", 
   await locations.press("ArrowDown");
   await locations.press("Enter");
   await expect(page.getByRole("combobox", { name: "Salary currency" })).toHaveValue("GBP");
+  await expect(
+    page.getByRole("status").filter({ hasText: "United Arab Emirates is already included" }),
+  ).toBeVisible();
 
   await locations.fill("Canada");
   await locations.press("ArrowDown");

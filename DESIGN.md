@@ -48,6 +48,7 @@ values, not domain entities. The current public set is:
 - `Button` and `buttonAttributes` for button and link actions
 - `IconButton` for labelled icon-only actions
 - `TextField`
+- `TokenAutocomplete` for multi-value suggestion selection
 - `Switch`
 - `Modal`
 - `Skeleton`

@@ -7,6 +7,7 @@ import { createResearchRunGetter } from "@/contexts/recruiter-engagement/applica
 import { createResearchRunResumer } from "@/contexts/recruiter-engagement/application/research-runs/resume-research-runs";
 import { createResearchRunRetrier } from "@/contexts/recruiter-engagement/application/research-runs/retry-research-run";
 import { createResearchRunStarter } from "@/contexts/recruiter-engagement/application/research-runs/start-research-run";
+import { createDefaultSearchBrief } from "@/contexts/recruiter-engagement/domain/research-run";
 import { createAfterResponseResearchRunScheduler } from "@/contexts/recruiter-engagement/infrastructure/background/after-response-research-run-scheduler";
 import { createDeterministicStagedResearchSource } from "@/contexts/recruiter-engagement/infrastructure/deterministic/deterministic-staged-research-source";
 import {
@@ -59,6 +60,10 @@ void resumer.resumeResearchRuns();
 export const recruiterEngagementWeb = {
   cancelResearchRun: canceller.cancelResearchRun,
   getResearchRun: getter.getResearchRun,
+  getDefaultResearchBrief: () => {
+    const options = targetLocationOptions(getConfiguredMarketVocabulary());
+    return createDefaultSearchBrief(options.slice(0, 1).map((option) => option.label));
+  },
   getTargetLocationOptions: () => targetLocationOptions(getConfiguredMarketVocabulary()),
   retryResearchRun: retrier.retryResearchRun,
   startResearchRun: starter.startResearchRun,

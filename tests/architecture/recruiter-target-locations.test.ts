@@ -9,12 +9,13 @@ const recruiterPresentation = path.resolve(
 );
 
 describe("recruiter target location control", () => {
-  it("renders a recruiter-owned catalogue selection without a raw geography field", () => {
+  it("renders a recruiter-owned shared token autocomplete without a raw geography field", () => {
     const source = readFileSync(recruiterPresentation, "utf8");
 
     expect(source).toContain('name="targetLocations"');
     expect(source).toContain("targetLocationOptions");
-    expect(source).toMatch(/<select\b[\s\S]*name="targetLocations"/);
+    expect(source).toContain("RecruiterLocationCombobox");
+    expect(source).not.toMatch(/<select\b/);
     expect(source).not.toMatch(/\bgeography\b/i);
     expect(source).not.toMatch(/@\/contexts\/discovery\/presentation/);
     expect(source).not.toMatch(/<(?:TextField|input|textarea)\b[^>]*name="targetLocations"/);

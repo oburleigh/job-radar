@@ -54,33 +54,37 @@ export function isIso4217Currency(value: string): boolean {
 }
 
 export function countryOptionsMatching(value: string): readonly CountryCurrencyOption[] {
-  const query = normalize(value);
+  const query = normaliseCountryName(value);
   return countryCurrencyOptions.filter(
-    (option) => query === "" || normalize(option.countryName).includes(query),
+    (option) => query === "" || normaliseCountryName(option.countryName).includes(query),
   );
 }
 
 export function countryOptionFor(value: string): CountryCurrencyOption | undefined {
-  const candidate = normalize(value);
+  const candidate = normaliseCountryName(value);
   if (candidate === "") {
     return undefined;
   }
-  return countryCurrencyOptions.find((option) => normalize(option.countryName) === candidate);
-}
-
-export function currencyOptionsMatching(value: string): readonly CurrencyOption[] {
-  const query = normalize(value);
-  return currencyOptions.filter(
-    (option) =>
-      query === "" ||
-      normalize(option.currencyCode).includes(query) ||
-      normalize(option.currencyName).includes(query) ||
-      option.countryNames.some((countryName) => normalize(countryName).includes(query)),
+  return countryCurrencyOptions.find(
+    (option) => normaliseCountryName(option.countryName) === candidate,
   );
 }
 
-function normalize(value: string): string {
+export function currencyOptionsMatching(value: string): readonly CurrencyOption[] {
+  const query = normaliseCountryName(value);
+  return currencyOptions.filter(
+    (option) =>
+      query === "" ||
+      normaliseCountryName(option.currencyCode).includes(query) ||
+      normaliseCountryName(option.currencyName).includes(query) ||
+      option.countryNames.some((countryName) => normaliseCountryName(countryName).includes(query)),
+  );
+}
+
+export function normaliseCountryName(value: string): string {
   return value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
     .trim()
     .toLowerCase()
     .replace(/\bsaint\b/g, "st")

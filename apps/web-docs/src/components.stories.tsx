@@ -6,6 +6,7 @@ import {
   Skeleton,
   Switch,
   TextField,
+  TokenAutocomplete,
 } from "@job-radar/design-ui";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
@@ -34,6 +35,16 @@ export const FormControls: Story = {
     <div style={{ display: "grid", gap: "1rem", width: "22rem" }}>
       <TextField id="example" label="Label" hint="Helpful supporting text" />
       <TextField id="error" label="Invalid field" error="Explain how to fix this value" />
+      <TokenAutocomplete
+        label="Markets"
+        name="markets"
+        onChange={() => undefined}
+        options={[
+          { label: "Greater London", value: "greater-london" },
+          { label: "West Midlands", value: "west-midlands" },
+        ]}
+        values={["greater-london"]}
+      />
       <Switch checked label="Enabled" />
       <Switch checked={false} label="Disabled" />
     </div>

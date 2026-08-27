@@ -1,6 +1,6 @@
 import { Button, PageHeader, TextField } from "@job-radar/design-ui";
 import { CheckCircle2, CircleAlert, CircleX, LoaderCircle, RotateCcw, Square } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Form, useNavigation, useRevalidator } from "react-router";
 import type { TargetLocationOption } from "@/contexts/recruiter-engagement/application/research-runs/target-locations";
 import type { ResearchObservation } from "@/contexts/recruiter-engagement/domain/observation";
@@ -10,6 +10,7 @@ import type {
   ResearchSourceFailure,
 } from "@/contexts/recruiter-engagement/domain/research-run";
 import type { RecruiterResearchStartField } from "@/contexts/recruiter-engagement/presentation/web/requests/recruiter-research-request";
+import { RecruiterLocationCombobox } from "./recruiter-location-combobox";
 
 import "./styles.css";
 
@@ -25,6 +26,7 @@ type RecruiterResearchPageProps = {
     readonly field?: RecruiterResearchStartField;
     readonly message: string;
   };
+  readonly defaultBrief: ResearchRun["brief"];
   readonly research?: RecruiterResearchRunView;
   readonly targetLocationOptions: readonly TargetLocationOption[];
 };
@@ -33,6 +35,7 @@ const activeStatuses = new Set<ResearchRun["status"]>(["pending", "running", "in
 
 export function RecruiterResearchPage({
   actionError,
+  defaultBrief,
   research,
   targetLocationOptions,
 }: RecruiterResearchPageProps) {
@@ -46,25 +49,15 @@ export function RecruiterResearchPage({
   const specialismsError = fieldError(actionError, "specialisms");
   const industriesError = fieldError(actionError, "industries");
   const recruiterTargetError = fieldError(actionError, "recruiterTarget");
-  const brief = run?.brief ?? {
-    criteria: {
-      industries: ["Financial services", "Technology", "Healthcare", "Retail and e-commerce"],
-      specialisms: [
-        "Software engineering",
-        "Data and AI",
-        "Cloud and DevOps",
-        "Cybersecurity",
-        "Product",
-        "Architecture",
-        "Technology leadership",
-      ],
-      targetLocations: ["United Arab Emirates"],
-    },
-    description:
-      "Research UAE technology recruitment firms for software engineering, data and AI, cloud and DevOps, cybersecurity, product, architecture, and technology leadership roles.",
-    recruiterTarget: 20,
-  };
-  const [briefDescription, setBriefDescription] = useState(brief.description);
+  const brief = run?.brief ?? defaultBrief;
+  const loadedBriefDescription = brief.description;
+  const loadedTargetLocations = brief.criteria.targetLocations.join("\n");
+  const loadedBriefKey = run?.id ?? "new-research";
+  const previousLoadedBriefKey = useRef(loadedBriefKey);
+  const [briefDescription, setBriefDescription] = useState(loadedBriefDescription);
+  const [targetLocations, setTargetLocations] = useState<readonly string[]>(
+    loadedTargetLocations === "" ? [] : loadedTargetLocations.split("\n"),
+  );
 
   useEffect(() => {
     if (!isActive) {
@@ -75,15 +68,20 @@ export function RecruiterResearchPage({
   }, [isActive, revalidator]);
 
   useEffect(() => {
-    setBriefDescription(brief.description);
-  }, [brief.description]);
+    if (previousLoadedBriefKey.current === loadedBriefKey) {
+      return;
+    }
+    previousLoadedBriefKey.current = loadedBriefKey;
+    setBriefDescription(loadedBriefDescription);
+    setTargetLocations(loadedTargetLocations === "" ? [] : loadedTargetLocations.split("\n"));
+  }, [loadedBriefDescription, loadedBriefKey, loadedTargetLocations]);
 
   return (
     <div className="page recruiter-research-page">
       <PageHeader
         index="05"
         title="Recruiter research"
-        description="Run a local, public-source scan of UAE technology recruitment firms and their named recruiters. Counts describe this run, not the whole market."
+        description="Run a local, public-source scan of technology recruitment firms and their named recruiters. Counts describe this run, not the whole market."
       />
 
       <section className="panel recruiter-brief-panel" aria-labelledby="recruiter-brief-title">
@@ -114,7 +112,7 @@ export function RecruiterResearchPage({
               rows={5}
             />
             <small id="recruiter-brief-hint">
-              Industries in this brief guide prioritisation. Without one, the scan covers major UAE
+              Industries in this brief guide prioritisation. Without one, the scan covers major
               technology-hiring sectors.
             </small>
             {briefError ? (
@@ -123,33 +121,27 @@ export function RecruiterResearchPage({
               </small>
             ) : null}
           </label>
-          <label className="recruiter-target-locations-label" htmlFor="recruiter-target-locations">
-            <span>Target locations</span>
-            <select
-              defaultValue={brief.criteria.targetLocations}
-              disabled={isSubmitting || isActive}
-              {...selectAccessibility("recruiter-target-locations", targetLocationsError)}
-              id="recruiter-target-locations"
-              multiple
-              name="targetLocations"
-              required
-              size={targetLocationOptions.length}
-            >
-              {targetLocationOptions.map((location) => (
-                <option key={location.key} value={location.label}>
-                  {location.label}
-                </option>
-              ))}
-            </select>
-            <small id="recruiter-target-locations-hint">
-              Choose one or more configured markets for both research stages.
-            </small>
-            {targetLocationsError ? (
-              <small className="jr-field-error" id="recruiter-target-locations-error">
-                {targetLocationsError}
-              </small>
-            ) : null}
-          </label>
+          <RecruiterLocationCombobox
+            disabled={isSubmitting || isActive}
+            {...(targetLocationsError ? { error: targetLocationsError } : {})}
+            name="targetLocations"
+            onChange={setTargetLocations}
+            options={targetLocationOptions}
+            values={targetLocations}
+          />
+          <TextField
+            defaultValue={String(brief.recruiterTarget)}
+            disabled={isSubmitting || isActive}
+            {...(recruiterTargetError ? { error: recruiterTargetError } : {})}
+            hint="Any positive whole number. There is no hard maximum."
+            id="recruiter-target"
+            inputMode="numeric"
+            label="Recruiters to find"
+            min="1"
+            name="recruiterTarget"
+            required
+            type="number"
+          />
           <label className="recruiter-textarea-label" htmlFor="recruiter-specialisms">
             <span>Technology specialisms</span>
             <textarea
@@ -158,7 +150,7 @@ export function RecruiterResearchPage({
               {...textareaAccessibility("recruiter-specialisms", specialismsError, true)}
               id="recruiter-specialisms"
               name="specialisms"
-              rows={3}
+              rows={2}
             />
             <small id="recruiter-specialisms-hint">
               Separate disciplines with commas or new lines.
@@ -177,7 +169,7 @@ export function RecruiterResearchPage({
               {...textareaAccessibility("recruiter-industries", industriesError, true)}
               id="recruiter-industries"
               name="industries"
-              rows={3}
+              rows={2}
             />
             <small id="recruiter-industries-hint">
               These structured criteria are sent to both research stages.
@@ -188,19 +180,6 @@ export function RecruiterResearchPage({
               </small>
             ) : null}
           </label>
-          <TextField
-            defaultValue={String(brief.recruiterTarget)}
-            disabled={isSubmitting || isActive}
-            {...(recruiterTargetError ? { error: recruiterTargetError } : {})}
-            hint="Any positive whole number. There is no hard maximum."
-            id="recruiter-target"
-            inputMode="numeric"
-            label="Recruiters to find"
-            min="1"
-            name="recruiterTarget"
-            required
-            type="number"
-          />
           <div className="recruiter-brief-actions">
             <Button
               busy={isSubmitting}
@@ -253,14 +232,6 @@ function textareaAccessibility(id: string, error: string | undefined, hasHint: b
     .join(" ");
   return {
     "aria-describedby": describedBy || undefined,
-    "aria-invalid": error ? true : undefined,
-  };
-}
-
-function selectAccessibility(id: string, error: string | undefined) {
-  const describedBy = [`${id}-hint`, error ? `${id}-error` : undefined].filter(Boolean).join(" ");
-  return {
-    "aria-describedby": describedBy,
     "aria-invalid": error ? true : undefined,
   };
 }

@@ -37,6 +37,32 @@ describe("recruiter research request", () => {
     });
   });
 
+  it("canonicalizes case-insensitive configured target location labels before they are persisted", () => {
+    expect(
+      parseRecruiterResearchStartRequest(
+        formData({
+          brief: "UAE fintech engineering",
+          industries: "Financial services, Healthcare",
+          recruiterTarget: "24",
+          specialisms: "Software engineering, Data and AI",
+          targetLocations: "united arab emirates",
+        }),
+        targetLocationOptions,
+      ),
+    ).toEqual({
+      status: "valid",
+      command: {
+        brief: "UAE fintech engineering",
+        criteria: {
+          industries: ["Financial services", "Healthcare"],
+          specialisms: ["Software engineering", "Data and AI"],
+          targetLocations: ["United Arab Emirates"],
+        },
+        recruiterTarget: 24,
+      },
+    });
+  });
+
   it("returns a recoverable validation error before any research run can start", () => {
     expect(
       parseRecruiterResearchStartRequest(

@@ -10,3 +10,8 @@ export { PageHeader, type PageHeaderProps } from "./page-header.js";
 export { Skeleton, type SkeletonProps } from "./skeleton.js";
 export { Switch, type SwitchProps } from "./switch.js";
 export { TextField, type TextFieldProps } from "./text-field.js";
+export {
+  TokenAutocomplete,
+  type TokenAutocompleteOption,
+  type TokenAutocompleteProps,
+} from "./token-autocomplete.js";

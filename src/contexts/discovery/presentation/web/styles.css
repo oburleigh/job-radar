@@ -487,6 +487,7 @@ table td a:hover {
 .filter-field > span,
 .search-field > span,
 .form-grid label > span,
+.form-grid .jr-field-label,
 .add-board-form label > span {
   display: block;
   margin: 0 0 5px;
@@ -1150,6 +1151,14 @@ table td a:hover {
   border-color: var(--jr-color-accent);
 }
 
+.form-grid .jr-token-autocomplete-input input {
+  width: auto;
+  padding: 0 var(--jr-space-1);
+  background: transparent;
+  border: 0;
+  outline: 0;
+}
+
 .form-field {
   position: relative;
   min-width: 0;
@@ -1161,86 +1170,6 @@ table td a:hover {
   color: var(--jr-color-text-muted);
   font-size: var(--jr-font-size-label);
   font-weight: var(--jr-font-weight-semibold);
-}
-
-.token-combobox-input {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--jr-space-2);
-  min-height: var(--jr-control-height-md);
-  padding: var(--jr-space-1) var(--jr-space-2);
-  color: var(--jr-color-text);
-  background: var(--jr-color-surface-subtle);
-  border: var(--jr-border-width) solid var(--jr-color-border);
-  border-radius: var(--jr-radius-sm);
-  transition:
-    background var(--jr-motion-duration-fast) var(--jr-motion-easing-standard),
-    border-color var(--jr-motion-duration-fast) var(--jr-motion-easing-standard),
-    box-shadow var(--jr-motion-duration-fast) var(--jr-motion-easing-standard);
-}
-
-.token-combobox-input:focus-within {
-  background: var(--jr-color-surface);
-  border-color: var(--jr-color-accent);
-  box-shadow: 0 0 0 var(--jr-space-1) var(--jr-color-focus-halo);
-}
-
-.token-combobox-input input {
-  flex: 1 1 13rem;
-  width: auto;
-  min-width: 10rem;
-  height: var(--jr-control-height-md);
-  padding: 0 var(--jr-space-1);
-  background: transparent;
-  border: 0;
-}
-
-.location-token {
-  display: inline-flex;
-  max-width: 100%;
-  align-items: center;
-  overflow: hidden;
-  color: var(--jr-color-text);
-  background: var(--jr-color-accent-subtle);
-  border: var(--jr-border-width) solid var(--jr-color-accent-border);
-  border-radius: var(--jr-radius-sm);
-  font-size: var(--jr-font-size-label);
-  line-height: 1.2;
-}
-
-.location-token-invalid {
-  color: var(--jr-color-danger);
-  background: var(--jr-color-danger-subtle);
-  border-color: var(--jr-color-danger);
-}
-
-.location-token-invalid > .location-token-remove {
-  color: var(--jr-color-danger);
-  border-left-color: var(--jr-color-danger);
-}
-
-.location-token-label {
-  min-width: 0;
-  padding: 0 var(--jr-space-3);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.location-token > .location-token-remove {
-  flex: 0 0 var(--jr-control-height-md);
-  color: var(--jr-color-text-muted);
-  background: transparent;
-  border: 0;
-  border-left: var(--jr-border-width) solid var(--jr-color-accent-border);
-  border-radius: 0;
-}
-
-.location-token > .location-token-remove:hover:not(:disabled) {
-  color: var(--jr-color-accent-strong);
-  background: var(--jr-color-surface);
-  border-color: var(--jr-color-accent-border);
 }
 
 .combobox-options {
