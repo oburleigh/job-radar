@@ -32,6 +32,22 @@ test("completes discovery and triage while profile editing remains responsive", 
     name: "Discovery controls",
   });
   await expect(discoveryControls.getByText(profileName, { exact: true })).toBeVisible();
+  const controlBoxes = await Promise.all([
+    discoveryControls.getByText(profileName, { exact: true }).boundingBox(),
+    discoveryControls.getByLabel("Search provider").boundingBox(),
+    discoveryControls.getByRole("button", { name: "Run discovery" }).boundingBox(),
+  ]);
+  if (controlBoxes.some((box) => box === null)) {
+    throw new Error("Discovery controls must be measurable.");
+  }
+  const controlCenters = controlBoxes.map((box) => (box?.y ?? 0) + (box?.height ?? 0) / 2);
+  expect(Math.max(...controlCenters) - Math.min(...controlCenters)).toBeLessThanOrEqual(2);
+  await page.screenshot({
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    path: "test-results/opportunities-discovery-controls.png",
+  });
 
   let releaseProviderNavigation = () => {};
   let providerNavigationIntercepted = false;

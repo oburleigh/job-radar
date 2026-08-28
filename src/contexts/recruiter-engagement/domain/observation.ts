@@ -24,6 +24,12 @@ export type RecruiterObservation = {
   readonly companyName: string;
   readonly linkedInUrl: string;
   readonly evidence: Evidence;
+  readonly workEmail?:
+    | {
+        readonly address: string;
+        readonly evidence: Evidence;
+      }
+    | undefined;
 };
 
 export type ResearchObservation = FirmObservation | RecruiterObservation;

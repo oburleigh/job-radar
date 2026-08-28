@@ -422,9 +422,16 @@ function ensureEvidenceMatchesFrozenPlan(
     throw new Error(`The frozen source plan has no ${stage} entry.`);
   }
   for (const observation of observations) {
+    const retainedEvidence = [
+      observation.evidence,
+      ...(observation.kind === "recruiter" && observation.workEmail
+        ? [observation.workEmail.evidence]
+        : []),
+    ];
     if (
-      observation.evidence.adapterId !== entry.adapterId ||
-      observation.evidence.policyVersion !== entry.policyVersion
+      retainedEvidence.some(
+        (item) => item.adapterId !== entry.adapterId || item.policyVersion !== entry.policyVersion,
+      )
     ) {
       throw new Error(`Codex ${stage}-stage evidence does not match the frozen source plan.`);
     }

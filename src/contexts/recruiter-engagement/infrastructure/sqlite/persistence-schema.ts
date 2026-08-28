@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import type { ResearchObservation } from "@/contexts/recruiter-engagement/domain/observation";
+import type { RecruiterDirectory } from "@/contexts/recruiter-engagement/domain/recruiter-directory";
 import type {
   ResearchRun,
   ResearchSourceFailure,
@@ -130,6 +131,7 @@ const recruiterObservation = z
     linkedInUrl: z.url().refine((value) => value.startsWith("https://")),
     name: z.string().min(1),
     title: z.string().min(1),
+    workEmail: z.object({ address: z.email(), evidence }).strict().optional(),
   })
   .strict();
 const researchObservation = z.discriminatedUnion("kind", [firmObservation, recruiterObservation]);
@@ -180,6 +182,69 @@ const sourceFailure = z
     stage: z.enum(["firms", "recruiters"]),
   })
   .strict();
+const directoryFirm = z
+  .object({
+    firstObservedAt: z.coerce.date(),
+    id: z.string().min(1),
+    lastObservedAt: z.coerce.date(),
+    mergedInto: z.string().min(1).nullable(),
+    name: z.string().min(1),
+    websiteUrl: z.url(),
+  })
+  .strict();
+const directoryRecruiter = z
+  .object({
+    companyName: z.string().min(1),
+    firmId: z.string().min(1).nullable(),
+    firstObservedAt: z.coerce.date(),
+    id: z.string().min(1),
+    lastObservedAt: z.coerce.date(),
+    linkedInUrl: z.url(),
+    mergedInto: z.string().min(1).nullable(),
+    name: z.string().min(1),
+    title: z.string().min(1),
+    workEmail: z.email().nullable().default(null),
+  })
+  .strict();
+const directoryEvidence = z
+  .object({
+    id: z.string().min(1),
+    observation: researchObservation,
+    recordId: z.string().min(1),
+    runIds: z.array(z.string().min(1)).min(1),
+  })
+  .strict();
+const directoryIdentityReview = z
+  .object({
+    candidateRecordId: z.string().min(1),
+    createdAt: z.coerce.date(),
+    decidedAt: z.coerce.date().nullable(),
+    id: z.string().min(1),
+    kind: z.enum(["firm", "recruiter"]),
+    primaryRecordId: z.string().min(1),
+    reason: z.string().min(1),
+    status: z.enum(["pending", "merged", "kept-separate"]),
+  })
+  .strict();
+const directoryCorrection = z
+  .object({
+    correctedAt: z.coerce.date(),
+    field: z.enum(["name", "title", "companyName", "workEmail"]),
+    kind: z.enum(["firm", "recruiter"]),
+    previousValue: z.string().nullable(),
+    recordId: z.string().min(1),
+    value: z.string().min(1),
+  })
+  .strict();
+const recruiterDirectory = z
+  .object({
+    corrections: z.array(directoryCorrection),
+    evidence: z.array(directoryEvidence),
+    firms: z.array(directoryFirm),
+    identityReviews: z.array(directoryIdentityReview),
+    recruiters: z.array(directoryRecruiter),
+  })
+  .strict();
 
 export function parsePersistedResearchRun(value: unknown): ResearchRun {
   return parsePersisted(researchRun, value, "research run");
@@ -191,6 +256,10 @@ export function parsePersistedObservation(value: unknown): ResearchObservation {
 
 export function parsePersistedSourceFailure(value: unknown): ResearchSourceFailure {
   return parsePersisted(sourceFailure, value, "research source failure");
+}
+
+export function parsePersistedRecruiterDirectory(value: unknown): RecruiterDirectory {
+  return parsePersisted(recruiterDirectory, value, "directory");
 }
 
 function parsePersisted<T>(schema: z.ZodType<T>, value: unknown, label: string): T {

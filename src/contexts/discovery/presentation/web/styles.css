@@ -319,6 +319,8 @@
 .run-controls {
   display: grid;
   width: 100%;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
   gap: 10px;
 }
 
@@ -329,7 +331,11 @@
 }
 
 .opportunity-toolbar .run-controls {
-  max-width: 620px;
+  max-width: none;
+}
+
+.run-control-profile {
+  min-width: 0;
 }
 
 .run-action-row {
@@ -358,6 +364,10 @@
   margin: 0;
   color: var(--jr-color-text-muted);
   font-size: var(--jr-font-size-xs);
+}
+
+.run-controls .action-message {
+  grid-column: 1 / -1;
 }
 
 table td small {
@@ -538,6 +548,10 @@ table td a:hover {
   font-weight: 800;
   letter-spacing: -0.02em;
   text-transform: uppercase;
+}
+
+.section-heading {
+  align-items: center;
 }
 
 .catalogue-count {
@@ -2060,6 +2074,10 @@ td a {
   .header-action-group,
   .run-action-row {
     justify-content: flex-start;
+  }
+
+  .opportunity-toolbar .run-controls {
+    grid-template-columns: 1fr;
   }
 
   .metric-grid {

@@ -1,6 +1,7 @@
 import { redirect } from "react-router";
 
 import { recruiterEngagementWeb } from "@/contexts/recruiter-engagement/composition/recruiter-engagement-web.server";
+import { parseRecruiterDirectoryRequest } from "@/contexts/recruiter-engagement/presentation/web/requests/recruiter-directory-request";
 import {
   parseRecruiterResearchStartRequest,
   recruiterTargetLocationValues,
@@ -11,8 +12,10 @@ import { assertLocalHost } from "@/platform/http/require-local-request";
 type RecruiterResearchActionDependencies = {
   readonly assertLocalHost: typeof assertLocalHost;
   readonly cancelResearchRun: typeof recruiterEngagementWeb.cancelResearchRun;
+  readonly correctDirectoryFact: typeof recruiterEngagementWeb.correctDirectoryFact;
   readonly resolveTargetLocations: typeof recruiterEngagementWeb.resolveTargetLocations;
   readonly retryResearchRun: typeof recruiterEngagementWeb.retryResearchRun;
+  readonly resolveDirectoryIdentity: typeof recruiterEngagementWeb.resolveDirectoryIdentity;
   readonly saveResearchExecutionSettings: typeof recruiterEngagementWeb.saveResearchExecutionSettings;
   readonly startResearchRun: typeof recruiterEngagementWeb.startResearchRun;
 };
@@ -20,8 +23,10 @@ type RecruiterResearchActionDependencies = {
 export const recruiterResearchAction = createRecruiterResearchAction({
   assertLocalHost,
   cancelResearchRun: recruiterEngagementWeb.cancelResearchRun,
+  correctDirectoryFact: recruiterEngagementWeb.correctDirectoryFact,
   resolveTargetLocations: recruiterEngagementWeb.resolveTargetLocations,
   retryResearchRun: recruiterEngagementWeb.retryResearchRun,
+  resolveDirectoryIdentity: recruiterEngagementWeb.resolveDirectoryIdentity,
   saveResearchExecutionSettings: recruiterEngagementWeb.saveResearchExecutionSettings,
   startResearchRun: recruiterEngagementWeb.startResearchRun,
 });
@@ -29,8 +34,10 @@ export const recruiterResearchAction = createRecruiterResearchAction({
 export function createRecruiterResearchAction({
   assertLocalHost,
   cancelResearchRun,
+  correctDirectoryFact,
   resolveTargetLocations,
   retryResearchRun,
+  resolveDirectoryIdentity,
   saveResearchExecutionSettings,
   startResearchRun,
 }: RecruiterResearchActionDependencies) {
@@ -58,6 +65,30 @@ export function createRecruiterResearchAction({
     const runId = formData.get("runId");
     if (typeof runId !== "string" || runId.length === 0) {
       return { error: "Select a research run first." };
+    }
+    if (intent === "resolve-identity" || intent === "correct-directory-fact") {
+      const parsed = parseRecruiterDirectoryRequest(intent, formData);
+      if (!parsed.ok) {
+        return { error: parsed.message };
+      }
+      try {
+        if (parsed.command.intent === "resolve-identity") {
+          await resolveDirectoryIdentity({
+            decision: parsed.command.decision,
+            reviewId: parsed.command.reviewId,
+          });
+        } else {
+          await correctDirectoryFact({
+            field: parsed.command.field,
+            kind: parsed.command.kind,
+            recordId: parsed.command.recordId,
+            value: parsed.command.value,
+          });
+        }
+        return redirect(`/recruiter-research?run=${encodeURIComponent(runId)}`);
+      } catch (error) {
+        return { error: error instanceof Error ? error.message : String(error) };
+      }
     }
     if (intent === "cancel") {
       await cancelResearchRun(runId);

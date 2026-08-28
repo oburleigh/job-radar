@@ -9,7 +9,10 @@ import {
   bootstrapRecruiterResearch,
   defaultRecruiterResearchSettings,
 } from "./bootstrap-recruiter-research";
-import { getRecruiterResearchSettings } from "./recruiter-research-settings";
+import {
+  getRecruiterResearchSettings,
+  replaceDirectoryMatchWeights,
+} from "./recruiter-research-settings";
 import { recruiterResearchSettings } from "./schema";
 
 describe("recruiter research settings", () => {
@@ -97,6 +100,88 @@ describe("recruiter research settings", () => {
     expect(() => getRecruiterResearchSettings(database)).toThrow(
       "Missing recruiter research settings in SQLite",
     );
+  });
+
+  it("persists configured directory match weights", () => {
+    const sqlite = new Database(":memory:");
+    const database = drizzle(sqlite);
+    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    bootstrapRecruiterResearch(database);
+    const weights = {
+      currentActivity: 10,
+      evidenceFreshnessAndQuality: 10,
+      recruiterRoleAndSeniority: 20,
+      specialism: 60,
+    };
+
+    replaceDirectoryMatchWeights(database, weights, new Date("2026-08-29T00:00:00.000Z"));
+
+    expect(getRecruiterResearchSettings(database).directoryMatchWeights).toEqual(weights);
+  });
+
+  it("moves legacy unavailable ranking weight to specialism", () => {
+    const sqlite = new Database(":memory:");
+    const database = drizzle(sqlite);
+    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    bootstrapRecruiterResearch(database);
+    const settings = getRecruiterResearchSettings(database);
+    database
+      .update(recruiterResearchSettings)
+      .set({
+        value: {
+          ...settings,
+          directoryMatchWeights: {
+            contactability: 10,
+            currentActivity: 10,
+            evidenceFreshnessAndQuality: 10,
+            geographicRelevance: 40,
+            recruiterRoleAndSeniority: 10,
+            specialism: 20,
+          },
+        },
+      })
+      .run();
+
+    bootstrapRecruiterResearch(database, new Date("2026-08-29T00:00:00.000Z"));
+
+    expect(getRecruiterResearchSettings(database).directoryMatchWeights).toEqual({
+      currentActivity: 10,
+      evidenceFreshnessAndQuality: 10,
+      recruiterRoleAndSeniority: 10,
+      specialism: 70,
+    });
+  });
+
+  it("migrates an intermediate contactability-only ranking row", () => {
+    const sqlite = new Database(":memory:");
+    const database = drizzle(sqlite);
+    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    bootstrapRecruiterResearch(database);
+    const settings = getRecruiterResearchSettings(database);
+    database
+      .update(recruiterResearchSettings)
+      .set({
+        value: {
+          ...settings,
+          directoryMatchWeights: {
+            contactability: 5,
+            currentActivity: 15,
+            evidenceFreshnessAndQuality: 10,
+            recruiterRoleAndSeniority: 15,
+            specialism: 55,
+          },
+        },
+      })
+      .run();
+
+    bootstrapRecruiterResearch(database, new Date("2026-08-29T00:00:00.000Z"));
+
+    expect(getRecruiterResearchSettings(database).directoryMatchWeights).toEqual({
+      currentActivity: 15,
+      evidenceFreshnessAndQuality: 10,
+      recruiterRoleAndSeniority: 15,
+      specialism: 60,
+    });
   });
 
   it("identifies the invalid field in a corrupted settings row", () => {

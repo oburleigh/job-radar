@@ -9,7 +9,7 @@ describe("local Codex process", () => {
       command: process.execPath,
       arguments: [
         "-e",
-        `process.stdout.write(${JSON.stringify(`${jsonLine}\n${"x".repeat(5_000)}`)}); process.stderr.write("codex failed"); process.exit(17);`,
+        `const fs = require("node:fs"); fs.writeSync(1, ${JSON.stringify(`${jsonLine}\n${"x".repeat(5_000)}`)}); fs.writeSync(2, "codex failed"); process.exit(17);`,
       ],
       cwd: process.cwd(),
       environment: process.env,

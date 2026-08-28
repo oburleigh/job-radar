@@ -1,3 +1,4 @@
+import type { ForMaintainingRecruiterDirectory } from "@/contexts/recruiter-engagement/application/directory/maintain-recruiter-directory";
 import type { FirmObservation } from "@/contexts/recruiter-engagement/domain/observation";
 import { isRunAcceptingObservations } from "@/contexts/recruiter-engagement/domain/research-run";
 import type { ResearchRunStore, ResearchSource } from "./port";
@@ -7,12 +8,14 @@ export interface ForExecutingResearchRuns {
 }
 
 type ResearchRunExecutionDependencies = {
+  readonly directory: Pick<ForMaintainingRecruiterDirectory, "reconcile">;
   readonly now: () => Date;
   readonly runs: ResearchRunStore;
   readonly source: ResearchSource;
 };
 
 export function createResearchRunExecution({
+  directory,
   now,
   runs,
   source,
@@ -44,7 +47,9 @@ export function createResearchRunExecution({
           if (signal?.aborted) {
             return;
           }
-          const updated = await runs.acceptStage(run.id, "firms", firms, now());
+          const recordedAt = now();
+          await directory.reconcile({ observations: firms, recordedAt, runId: run.id });
+          const updated = await runs.acceptStage(run.id, "firms", firms, recordedAt);
           if (!updated) {
             return;
           }
@@ -68,7 +73,9 @@ export function createResearchRunExecution({
           if (signal?.aborted) {
             return;
           }
-          const updated = await runs.acceptStage(run.id, "recruiters", recruiters, now());
+          const recordedAt = now();
+          await directory.reconcile({ observations: recruiters, recordedAt, runId: run.id });
+          const updated = await runs.acceptStage(run.id, "recruiters", recruiters, recordedAt);
           if (!updated) {
             return;
           }

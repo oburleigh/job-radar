@@ -249,6 +249,22 @@ test.describe
     test("saves runtime settings and keeps the settings page accessible", async ({ page }) => {
       await page.goto("/settings");
 
+      const settingsHeaderGroups = await Promise.all([
+        page.locator(".jr-page-title-block > div").boundingBox(),
+        page.locator(".header-action-group").boundingBox(),
+      ]);
+      const settingsSectionLabels = await Promise.all([
+        page.getByRole("heading", { level: 2, name: "Discovery and matching" }).boundingBox(),
+        page.getByText("No restart required", { exact: true }).boundingBox(),
+      ]);
+      for (const boxes of [settingsHeaderGroups, settingsSectionLabels]) {
+        if (boxes.some((box) => box === null)) {
+          throw new Error("Settings heading content must be measurable.");
+        }
+        const centers = boxes.map((box) => (box?.y ?? 0) + (box?.height ?? 0) / 2);
+        expect(Math.max(...centers) - Math.min(...centers)).toBeLessThanOrEqual(2);
+      }
+
       await page.getByLabel("Requested web results per query").fill("50");
       await page.getByRole("button", { name: "Save runtime settings" }).click();
 
@@ -262,6 +278,14 @@ test.describe
       await page.reload();
       await expect(page.getByLabel("Model")).toHaveValue("gpt-5.6");
       await expect(page.getByLabel("Reasoning effort")).toHaveValue("high");
+
+      await page.getByLabel("Specialism", { exact: true }).fill("65");
+      await page.getByLabel("Current activity", { exact: true }).fill("10");
+      await page.getByRole("button", { name: "Save directory ranking" }).click();
+      await expect(page.getByText("Directory ranking saved to SQLite.")).toBeVisible();
+      await page.reload();
+      await expect(page.getByLabel("Specialism", { exact: true })).toHaveValue("65");
+      await expect(page.getByLabel("Current activity", { exact: true })).toHaveValue("10");
 
       await page.getByLabel("First retry delay (ms)").fill("4000");
       const maximumRetryDelay = page.getByLabel("Maximum retry delay (ms)");

@@ -3,11 +3,13 @@ import { fileURLToPath } from "node:url";
 import { getConfiguredMarketVocabulary } from "@/contexts/discovery/composition/configured-market-vocabulary.server";
 import { localCodexProcess } from "@/contexts/recruiter-engagement/infrastructure/local-codex/local-codex-process";
 import { targetLocationOptions } from "@/contexts/recruiter-engagement/infrastructure/markets/target-location-catalogue";
+import { bootstrapRecruiterResearch } from "@/contexts/recruiter-engagement/infrastructure/sqlite/bootstrap-recruiter-research";
 import { recruiterResearchDatabase } from "@/contexts/recruiter-engagement/infrastructure/sqlite/database";
 import { getRecruiterResearchSettings } from "@/contexts/recruiter-engagement/infrastructure/sqlite/recruiter-research-settings";
 import { runRecruiterResearch } from "./command";
 
 export async function runCli(argumentsList: readonly string[]): Promise<void> {
+  bootstrapRecruiterResearch(recruiterResearchDatabase);
   const settings = getRecruiterResearchSettings(recruiterResearchDatabase);
   const argumentsInput = parseRecruiterResearchArguments(
     argumentsList,

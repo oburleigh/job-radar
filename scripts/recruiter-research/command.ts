@@ -30,6 +30,8 @@ export type RecruiterResearchRecruiter = {
   readonly linkedInUrl: string;
   readonly evidenceExcerpt: string;
   readonly observationDate: string;
+  readonly workEmail?: string;
+  readonly workEmailEvidenceExcerpt?: string;
 };
 
 export type RecruiterResearchResult = {
@@ -93,12 +95,20 @@ export async function runRecruiterResearch(
       observationDate: evidence.observedAt,
       ...company,
     })),
-    recruiters: recruiters.map(({ companyName, evidence, kind: _kind, ...recruiter }) => ({
-      company: companyName,
-      evidenceExcerpt: evidence.excerpt,
-      observationDate: evidence.observedAt,
-      ...recruiter,
-    })),
+    recruiters: recruiters.map(
+      ({ companyName, evidence, kind: _kind, workEmail, ...recruiter }) => ({
+        company: companyName,
+        evidenceExcerpt: evidence.excerpt,
+        observationDate: evidence.observedAt,
+        ...recruiter,
+        ...(workEmail
+          ? {
+              workEmail: workEmail.address,
+              workEmailEvidenceExcerpt: workEmail.evidence.excerpt,
+            }
+          : {}),
+      }),
+    ),
   };
 }
 

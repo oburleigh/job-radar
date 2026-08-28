@@ -6,6 +6,12 @@ import { recruiterResearchSettings } from "./schema";
 type Database<TSchema extends Record<string, unknown>> = BetterSQLite3Database<TSchema>;
 
 export const defaultRecruiterResearchSettings = {
+  directoryMatchWeights: {
+    currentActivity: 15,
+    evidenceFreshnessAndQuality: 10,
+    recruiterRoleAndSeniority: 15,
+    specialism: 60,
+  },
   defaultBrief: {
     criteria: {
       industries: [],
@@ -22,6 +28,15 @@ export const defaultRecruiterResearchSettings = {
     stageTimeoutMs: 600_000,
   },
 } as const satisfies RecruiterResearchSettings;
+
+const legacyDirectoryMatchWeights = {
+  contactability: 5,
+  currentActivity: 15,
+  evidenceFreshnessAndQuality: 10,
+  geographicRelevance: 20,
+  recruiterRoleAndSeniority: 15,
+  specialism: 35,
+} as const;
 
 const legacyTechnologyDefaultBrief = {
   criteria: {
@@ -49,12 +64,12 @@ const legacyDefaultRecruiterResearchSettings = {
     model: "gpt-5.6-terra",
     reasoningEffort: "medium",
   },
-} as const satisfies RecruiterResearchSettings;
+} as const;
 
 const legacyAccountDefaultRecruiterResearchSettings = {
   defaultBrief: legacyTechnologyDefaultBrief,
   execution: defaultRecruiterResearchSettings.execution,
-} as const satisfies RecruiterResearchSettings;
+} as const;
 
 export function bootstrapRecruiterResearch<TSchema extends Record<string, unknown>>(
   database: Database<TSchema>,
@@ -70,16 +85,81 @@ export function bootstrapRecruiterResearch<TSchema extends Record<string, unknow
     .from(recruiterResearchSettings)
     .where(eq(recruiterResearchSettings.key, "default"))
     .get()?.value;
-  if (
-    ![legacyDefaultRecruiterResearchSettings, legacyAccountDefaultRecruiterResearchSettings].some(
-      (legacy) => JSON.stringify(existing) === JSON.stringify(legacy),
-    )
-  ) {
+  const isLegacyDefault = [
+    legacyDefaultRecruiterResearchSettings,
+    legacyAccountDefaultRecruiterResearchSettings,
+    {
+      directoryMatchWeights: legacyDirectoryMatchWeights,
+      ...legacyDefaultRecruiterResearchSettings,
+    },
+    {
+      directoryMatchWeights: legacyDirectoryMatchWeights,
+      ...legacyAccountDefaultRecruiterResearchSettings,
+    },
+    {
+      directoryMatchWeights: defaultRecruiterResearchSettings.directoryMatchWeights,
+      ...legacyDefaultRecruiterResearchSettings,
+    },
+    {
+      directoryMatchWeights: defaultRecruiterResearchSettings.directoryMatchWeights,
+      ...legacyAccountDefaultRecruiterResearchSettings,
+    },
+  ].some((legacy) => JSON.stringify(existing) === JSON.stringify(legacy));
+  if (isLegacyDefault) {
+    database
+      .update(recruiterResearchSettings)
+      .set({ value: defaultRecruiterResearchSettings, updatedAt: now })
+      .where(eq(recruiterResearchSettings.key, "default"))
+      .run();
+    return;
+  }
+  if (!existing || typeof existing !== "object") {
+    return;
+  }
+  if ("directoryMatchWeights" in existing) {
+    const weights = existing.directoryMatchWeights;
+    if (
+      weights &&
+      typeof weights === "object" &&
+      "specialism" in weights &&
+      typeof weights.specialism === "number" &&
+      ("geographicRelevance" in weights || "contactability" in weights)
+    ) {
+      const legacyWeights = weights as Record<string, unknown>;
+      const {
+        contactability,
+        geographicRelevance: _geographicRelevance,
+        ...availableWeights
+      } = legacyWeights;
+      const reclaimedWeight =
+        (typeof contactability === "number" ? contactability : 0) +
+        (typeof _geographicRelevance === "number" ? _geographicRelevance : 0);
+      database
+        .update(recruiterResearchSettings)
+        .set({
+          value: {
+            ...existing,
+            directoryMatchWeights: {
+              ...availableWeights,
+              specialism: weights.specialism + reclaimedWeight,
+            },
+          },
+          updatedAt: now,
+        })
+        .where(eq(recruiterResearchSettings.key, "default"))
+        .run();
+    }
     return;
   }
   database
     .update(recruiterResearchSettings)
-    .set({ value: defaultRecruiterResearchSettings, updatedAt: now })
+    .set({
+      value: {
+        ...existing,
+        directoryMatchWeights: defaultRecruiterResearchSettings.directoryMatchWeights,
+      },
+      updatedAt: now,
+    })
     .where(eq(recruiterResearchSettings.key, "default"))
     .run();
 }

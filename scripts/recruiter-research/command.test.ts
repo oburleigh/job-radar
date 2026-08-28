@@ -12,6 +12,12 @@ import {
 
 const observationDate = "2026-08-27";
 const settings = {
+  directoryMatchWeights: {
+    currentActivity: 15,
+    evidenceFreshnessAndQuality: 10,
+    recruiterRoleAndSeniority: 15,
+    specialism: 60,
+  },
   defaultBrief: {
     criteria: {
       industries: ["Financial services", "Technology"],

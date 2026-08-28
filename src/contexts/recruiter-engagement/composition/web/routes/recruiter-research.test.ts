@@ -9,10 +9,12 @@ describe("recruiter research route action", () => {
     const action = createRecruiterResearchAction({
       assertLocalHost: vi.fn(),
       cancelResearchRun: vi.fn(),
+      correctDirectoryFact: vi.fn(),
       resolveTargetLocations: vi.fn(() => [
         { key: "city:ae:dubai", label: "Dubai, United Arab Emirates" },
       ]),
       retryResearchRun: vi.fn(),
+      resolveDirectoryIdentity: vi.fn(),
       saveResearchExecutionSettings,
       startResearchRun,
     });
@@ -30,10 +32,12 @@ describe("recruiter research route action", () => {
     const action = createRecruiterResearchAction({
       assertLocalHost: vi.fn(),
       cancelResearchRun: vi.fn(),
+      correctDirectoryFact: vi.fn(),
       resolveTargetLocations: vi.fn(() => []),
       retryResearchRun: vi.fn(async () => {
         throw new Error("Only a finished recruiter research run can be retried.");
       }),
+      resolveDirectoryIdentity: vi.fn(),
       saveResearchExecutionSettings: vi.fn(),
       startResearchRun: vi.fn(),
     });
@@ -42,7 +46,43 @@ describe("recruiter research route action", () => {
       error: "Only a finished recruiter research run can be retried.",
     });
   });
+
+  it("resolves a pending directory identity from the current run", async () => {
+    const resolveDirectoryIdentity = vi.fn();
+    const action = createRecruiterResearchAction({
+      assertLocalHost: vi.fn(),
+      cancelResearchRun: vi.fn(),
+      correctDirectoryFact: vi.fn(),
+      resolveTargetLocations: vi.fn(() => []),
+      retryResearchRun: vi.fn(),
+      resolveDirectoryIdentity,
+      saveResearchExecutionSettings: vi.fn(),
+      startResearchRun: vi.fn(),
+    });
+
+    const response = await action(directoryRequest());
+
+    expect(resolveDirectoryIdentity).toHaveBeenCalledWith({
+      decision: "merge",
+      reviewId: "review-1",
+    });
+    expect(response).toBeInstanceOf(Response);
+    expect((response as Response).headers.get("location")).toBe("/recruiter-research?run=run-1");
+  });
 });
+
+function directoryRequest(): Request {
+  const form = new FormData();
+  form.set("intent", "resolve-identity");
+  form.set("runId", "run-1");
+  form.set("reviewId", "review-1");
+  form.set("decision", "merge");
+  return new Request("http://localhost/recruiter-research", {
+    method: "POST",
+    headers: { host: "localhost" },
+    body: form,
+  });
+}
 
 function retryRequest(runId: string): Request {
   const form = new FormData();

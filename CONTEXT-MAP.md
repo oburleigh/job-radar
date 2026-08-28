@@ -1,9 +1,11 @@
 # Context Map
 
-## Current context
+## Current contexts
 
 - [Discovery](./src/contexts/discovery/CONTEXT.md) owns search profiles, source coverage, discovery
   runs, job listings, verification, and matching.
+- [Recruiter Engagement](./src/contexts/recruiter-engagement/CONTEXT.md) owns public recruitment
+  research, canonical firms and recruiters, evidence history, identity review, and directory ranking.
 
 ## Shared visual capabilities
 

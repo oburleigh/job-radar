@@ -146,11 +146,11 @@ describe("SQLite research run store", () => {
     migrate(database, { migrationsFolder });
 
     sqlite.exec(
-      "DROP TABLE recruiter_research_observations; DROP TABLE recruiter_research_source_failures; DROP TABLE recruiter_research_runs; DROP TABLE recruiter_research_settings;",
+      "DROP TABLE recruiter_directory_state; DROP TABLE recruiter_research_observations; DROP TABLE recruiter_research_source_failures; DROP TABLE recruiter_research_runs; DROP TABLE recruiter_research_settings;",
     );
     sqlite
       .prepare(
-        "DELETE FROM __drizzle_migrations WHERE created_at IN (SELECT created_at FROM __drizzle_migrations ORDER BY created_at DESC LIMIT 2)",
+        "DELETE FROM __drizzle_migrations WHERE created_at IN (SELECT created_at FROM __drizzle_migrations ORDER BY created_at DESC LIMIT 3)",
       )
       .run();
 

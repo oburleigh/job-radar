@@ -12,6 +12,8 @@ import {
   settingsUrl,
 } from "@/contexts/discovery/presentation/web/settings-selection";
 import {
+  DirectoryMatchSettingsForm,
+  parseDirectoryMatchSettingsRequest,
   parseResearchExecutionSettingsRequest,
   ResearchExecutionSettingsForm,
 } from "@/contexts/recruiter-engagement/public-contract";
@@ -52,6 +54,7 @@ export function loader({ request }: { readonly request: Request }) {
     data,
     editorIntegration,
     recruiterResearchExecution: recruiterResearchSettingsContract.getExecutionSettings(),
+    recruiterDirectoryMatchWeights: recruiterResearchSettingsContract.getDirectoryMatchWeights(),
     selection,
     selected,
   };
@@ -86,6 +89,14 @@ export async function action({ request }: ActionFunctionArgs) {
     }
     recruiterResearchSettingsContract.saveExecutionSettings(parsed.command);
     return { ok: true, message: "Local Codex settings saved to SQLite." };
+  }
+  if (intent === "save-directory-match-weights") {
+    const parsed = parseDirectoryMatchSettingsRequest(formData);
+    if (!parsed.ok) {
+      return parsed;
+    }
+    recruiterResearchSettingsContract.saveDirectoryMatchWeights(parsed.command);
+    return { ok: true, message: "Directory ranking saved to SQLite." };
   }
   if (intent === "save-integration") {
     const parsed = parseAtsIntegrationRequest(formData);
@@ -136,6 +147,7 @@ export default function SettingsPage() {
     createMode,
     data,
     editorIntegration,
+    recruiterDirectoryMatchWeights,
     recruiterResearchExecution,
     selected,
     selection,
@@ -188,6 +200,7 @@ export default function SettingsPage() {
         </div>
         <div className="profile-editor">
           <ResearchExecutionSettingsForm execution={recruiterResearchExecution} />
+          <DirectoryMatchSettingsForm weights={recruiterDirectoryMatchWeights} />
         </div>
       </section>
 

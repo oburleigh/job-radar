@@ -3,6 +3,7 @@ import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { z } from "zod";
 import type { ResearchExecutionSettingsCommand } from "@/contexts/recruiter-engagement/application/research-settings/save-execution-settings";
 import type { RecruiterResearchSettings } from "@/contexts/recruiter-engagement/application/research-settings/settings";
+import type { DirectoryMatchWeights } from "@/contexts/recruiter-engagement/domain/recruiter-directory";
 import { recruiterResearchSettings } from "./schema";
 
 type Database<TSchema extends Record<string, unknown>> = BetterSQLite3Database<TSchema>;
@@ -11,6 +12,14 @@ const positiveInteger = z.number().int().safe().positive();
 const briefItems = z.array(z.string().trim().min(1));
 const settingsSchema = z
   .object({
+    directoryMatchWeights: z
+      .object({
+        currentActivity: z.number().nonnegative(),
+        evidenceFreshnessAndQuality: z.number().nonnegative(),
+        recruiterRoleAndSeniority: z.number().nonnegative(),
+        specialism: z.number().nonnegative(),
+      })
+      .strict(),
     defaultBrief: z
       .object({
         criteria: z.object({ industries: briefItems, specialisms: briefItems }).strict(),
@@ -67,6 +76,19 @@ export function replaceResearchExecutionSettings<TSchema extends Record<string, 
       value: { ...settings, execution: { ...settings.execution, ...execution } },
       updatedAt: changedAt,
     })
+    .where(eq(recruiterResearchSettings.key, "default"))
+    .run();
+}
+
+export function replaceDirectoryMatchWeights<TSchema extends Record<string, unknown>>(
+  database: Database<TSchema>,
+  weights: DirectoryMatchWeights,
+  changedAt: Date,
+): void {
+  const settings = getRecruiterResearchSettings(database);
+  database
+    .update(recruiterResearchSettings)
+    .set({ value: { ...settings, directoryMatchWeights: weights }, updatedAt: changedAt })
     .where(eq(recruiterResearchSettings.key, "default"))
     .run();
 }

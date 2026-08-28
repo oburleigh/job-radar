@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
+import { createRecruiterDirectoryMaintenance } from "@/contexts/recruiter-engagement/application/directory/maintain-recruiter-directory";
 import { createResearchRun } from "@/contexts/recruiter-engagement/domain/research-run";
+import { createFakeRecruiterDirectoryStore } from "@/contexts/recruiter-engagement/test-support/recruiter-directory-fake";
 import {
   testAdapterPolicy,
   testEvidence,
@@ -23,6 +25,9 @@ describe("research run execution", () => {
       startedAt: new Date("2026-08-27T10:00:00.000Z"),
     });
     const runs = createFakeResearchRunStore([run]);
+    const directory = createRecruiterDirectoryMaintenance({
+      store: createFakeRecruiterDirectoryStore(),
+    });
     const source = createFakeResearchSource({
       firms: [
         {
@@ -47,6 +52,7 @@ describe("research run execution", () => {
       ],
     });
     const execution = createResearchRunExecution({
+      directory,
       now: () => new Date("2026-08-27T10:01:00.000Z"),
       runs,
       source,
@@ -60,11 +66,16 @@ describe("research run execution", () => {
       "firm",
       "recruiter",
     ]);
+    await expect(directory.getDirectory()).resolves.toMatchObject({
+      firms: [expect.objectContaining({ name: "Firm One" })],
+      recruiters: [expect.objectContaining({ name: "Amina Khan" })],
+    });
   });
 
   it("records an unavailable frozen policy before making an adapter request", async () => {
     const run = sampleRun("run-unavailable");
     const runs = createFakeResearchRunStore([run]);
+    const directory = emptyDirectory();
     const findFirms = vi.fn(async () => []);
     const source: ResearchSource = {
       assess: () => ({ available: false, message: "The source plan is disabled." }),
@@ -72,6 +83,7 @@ describe("research run execution", () => {
       findRecruiters: vi.fn(async () => []),
     };
     const execution = createResearchRunExecution({
+      directory,
       now: () => new Date("2026-08-27T10:01:00.000Z"),
       runs,
       source,
@@ -98,6 +110,7 @@ describe("research run execution", () => {
       startedAt: new Date("2026-08-27T10:00:00.000Z"),
     });
     const runs = createFakeResearchRunStore([run]);
+    const directory = emptyDirectory();
     const findFirms = vi.fn(async () => []);
     const source: ResearchSource = {
       assess: () => ({ available: true }),
@@ -105,6 +118,7 @@ describe("research run execution", () => {
       findRecruiters: vi.fn(async () => []),
     };
     const execution = createResearchRunExecution({
+      directory,
       now: () => new Date("2026-08-27T10:01:00.000Z"),
       runs,
       source,
@@ -122,6 +136,7 @@ describe("research run execution", () => {
   it("keeps committed firm observations when the recruiter stage fails", async () => {
     const run = sampleRun("run-partial");
     const runs = createFakeResearchRunStore([run]);
+    const directory = emptyDirectory();
     const firm = {
       kind: "firm" as const,
       companyName: "Firm One",
@@ -139,6 +154,7 @@ describe("research run execution", () => {
       },
     };
     const execution = createResearchRunExecution({
+      directory,
       now: () => new Date("2026-08-27T10:01:00.000Z"),
       runs,
       source,
@@ -148,11 +164,19 @@ describe("research run execution", () => {
 
     expect((await runs.get(run.id))?.status).toBe("partial");
     await expect(runs.observationsFor(run.id)).resolves.toEqual([firm]);
+    await expect(directory.getDirectory()).resolves.toMatchObject({
+      firms: [expect.objectContaining({ name: "Firm One" })],
+      recruiters: [],
+    });
     await expect(runs.failuresFor(run.id)).resolves.toEqual([
       expect.objectContaining({ stage: "recruiters" }),
     ]);
   });
 });
+
+function emptyDirectory() {
+  return createRecruiterDirectoryMaintenance({ store: createFakeRecruiterDirectoryStore() });
+}
 
 function sampleRun(id: string) {
   return createResearchRun({

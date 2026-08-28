@@ -1,12 +1,13 @@
 import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { describe, expect, it, vi } from "vitest";
+import { createRecruiterDirectoryMaintenance } from "@/contexts/recruiter-engagement/application/directory/maintain-recruiter-directory";
 import { createResearchRunExecution } from "@/contexts/recruiter-engagement/application/research-runs/execute-research-run";
-
 import {
   createResearchRun,
   createSearchBrief,
 } from "@/contexts/recruiter-engagement/domain/research-run";
+import { createFakeRecruiterDirectoryStore } from "@/contexts/recruiter-engagement/test-support/recruiter-directory-fake";
 import {
   testAdapterPolicy,
   testSearchBrief,
@@ -312,6 +313,7 @@ describe("local Codex research source", () => {
     const run = sampleRun(1);
     const runs = createFakeResearchRunStore([run]);
     const execution = createResearchRunExecution({
+      directory: emptyDirectory(),
       now: () => new Date("2026-08-27T10:01:00.000Z"),
       runs,
       source,
@@ -502,6 +504,7 @@ describe("local Codex research source", () => {
       });
       const runs = createFakeResearchRunStore([run]);
       const execution = createResearchRunExecution({
+        directory: emptyDirectory(),
         now: () => new Date("2026-08-27T10:01:00.000Z"),
         runs,
         source,
@@ -524,6 +527,10 @@ function sampleRun(recruiterTarget: number) {
     sourcePlan: testSourcePlan,
     startedAt: new Date("2026-08-27T10:00:00.000Z"),
   });
+}
+
+function emptyDirectory() {
+  return createRecruiterDirectoryMaintenance({ store: createFakeRecruiterDirectoryStore() });
 }
 
 function sampleFirm(companyName: string) {

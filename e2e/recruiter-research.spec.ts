@@ -72,15 +72,21 @@ test("starts recruiter research from the browser and renders firms before recrui
     timeout: 10_000,
   });
   await expect(page.getByText("Complete", { exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Evidence source" }).first()).toHaveAttribute(
-    "href",
-    /^https:\/\//,
-  );
+  await page.locator(".recruiter-evidence-history summary").first().click();
+  await expect(
+    page.locator(".recruiter-evidence-history").first().getByRole("link").first(),
+  ).toHaveAttribute("href", /^https:\/\//);
   await expect(page.getByRole("link", { name: "Public LinkedIn profile" }).first()).toHaveAttribute(
     "href",
     /^https:\/\/www\.linkedin\.com\/in\//,
   );
   await expect(page.getByText(/high confidence/).first()).toBeVisible();
+  await page.screenshot({ path: "test-results/recruiter-directory-desktop.png", fullPage: true });
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.screenshot({ path: "test-results/recruiter-directory-dark.png", fullPage: true });
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: "test-results/recruiter-directory-mobile.png", fullPage: true });
 });
 
 test("shows each invalid structured criterion on its own control", async ({ page }) => {
@@ -138,7 +144,7 @@ test("cancels an active recruiter run and retries with the frozen brief and plan
   }
   await page.getByRole("button", { name: "Cancel research" }).click();
   await expect(page.getByText("Cancelled", { exact: true })).toBeVisible();
-  await expect(page.getByText("Technology Recruiter 1", { exact: true })).not.toBeVisible();
+  await expect(page.getByText("Technology Recruiter 1", { exact: true })).toBeVisible();
   const sourcePlan = page.getByRole("region", { name: "Source plan" });
   await expect(sourcePlan.getByText("Public HTTPS firm pages", { exact: true })).toBeVisible();
   await expect(
@@ -160,6 +166,9 @@ test("cancels an active recruiter run and retries with the frozen brief and plan
   await expect(page.getByText("Technology Recruiter 1", { exact: true })).toBeVisible({
     timeout: 10_000,
   });
+  await expect(
+    page.getByRole("heading", { level: 3, name: "Recruitment Search 1", exact: true }),
+  ).toHaveCount(1);
 });
 
 test("uses the shared country catalogue in the location autocomplete and keeps compact desktop rows", async ({
