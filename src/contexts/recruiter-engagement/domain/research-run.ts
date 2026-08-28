@@ -1,6 +1,3 @@
-export const DEFAULT_RECRUITER_TARGET = 20;
-export const DEFAULT_FIRM_TARGET = 10;
-
 export type ResearchCriteria = {
   readonly industries: readonly string[];
   readonly specialisms: readonly string[];
@@ -10,6 +7,7 @@ export type ResearchCriteria = {
 export type SearchBrief = {
   readonly criteria: ResearchCriteria;
   readonly description: string;
+  readonly firmTarget: number;
   readonly recruiterTarget: number;
 };
 
@@ -21,8 +19,8 @@ export type AdapterPolicySnapshot = {
   readonly execution: {
     readonly automaticRetry: boolean;
     readonly ephemeral: boolean;
-    readonly model: string;
-    readonly reasoningEffort: string;
+    readonly model: string | null;
+    readonly reasoningEffort: string | null;
     readonly sandboxMode: string;
     readonly webSearchEnabled: boolean;
   };
@@ -109,56 +107,31 @@ export type ResearchCoverage = {
   readonly usedRequests: ResearchBudgetUsage;
 };
 
-const defaultCriteria: ResearchCriteria = {
-  industries: ["Financial services", "Technology", "Healthcare", "Retail and e-commerce"],
-  specialisms: [
-    "Software engineering",
-    "Data and AI",
-    "Cloud and DevOps",
-    "Cybersecurity",
-    "Product",
-    "Architecture",
-    "Technology leadership",
-  ],
-  targetLocations: ["United Arab Emirates"],
-};
-
-const defaultResearchBriefDescription =
-  "Research technology recruitment firms for software engineering, data and AI, cloud and DevOps, cybersecurity, product, architecture, and technology leadership roles.";
-
-export function createDefaultSearchBrief(targetLocations: readonly string[]): SearchBrief {
-  const defaults = createSearchBrief({ description: defaultResearchBriefDescription });
-  return {
-    ...defaults,
-    criteria: { ...defaults.criteria, targetLocations },
-  };
-}
-
 export function createSearchBrief(input: {
-  readonly criteria?: Partial<ResearchCriteria>;
+  readonly criteria: ResearchCriteria;
   readonly description: string;
-  readonly recruiterTarget?: number;
+  readonly firmTarget: number;
+  readonly recruiterTarget: number;
 }): SearchBrief {
-  const recruiterTarget = input.recruiterTarget ?? DEFAULT_RECRUITER_TARGET;
-  if (!Number.isSafeInteger(recruiterTarget) || recruiterTarget <= 0) {
+  if (!Number.isSafeInteger(input.recruiterTarget) || input.recruiterTarget <= 0) {
     throw new Error("Recruiter target must be a positive safe integer.");
+  }
+  if (!Number.isSafeInteger(input.firmTarget) || input.firmTarget <= 0) {
+    throw new Error("Firm target must be a positive safe integer.");
+  }
+  if (input.firmTarget > input.recruiterTarget) {
+    throw new Error("Firm target cannot exceed recruiter target.");
   }
   return {
     criteria: {
-      industries: normaliseCriteria(input.criteria?.industries, defaultCriteria.industries),
-      specialisms: normaliseCriteria(input.criteria?.specialisms, defaultCriteria.specialisms),
-      targetLocations: normaliseCriteria(
-        input.criteria?.targetLocations,
-        defaultCriteria.targetLocations,
-      ),
+      industries: requireCriteria(input.criteria.industries, "Target industries"),
+      specialisms: requireCriteria(input.criteria.specialisms, "Technology specialisms"),
+      targetLocations: requireCriteria(input.criteria.targetLocations, "Target locations"),
     },
     description: input.description.trim(),
-    recruiterTarget,
+    firmTarget: input.firmTarget,
+    recruiterTarget: input.recruiterTarget,
   };
-}
-
-export function firmTargetFor(recruiterTarget: number): number {
-  return Math.min(DEFAULT_FIRM_TARGET, recruiterTarget);
 }
 
 export function createResearchRun(input: {
@@ -176,7 +149,7 @@ export function createResearchRun(input: {
     policy: input.policy,
     sourcePlan: input.sourcePlan,
     budget: {
-      firmTarget: firmTargetFor(input.brief.recruiterTarget),
+      firmTarget: input.brief.firmTarget,
       recruiterTarget: input.brief.recruiterTarget,
       stageRequestAllowance: input.sourcePlan.stageRequestAllowance,
     },
@@ -262,10 +235,10 @@ export function isRunAcceptingObservations(run: ResearchRun): boolean {
   return run.status === "pending" || run.status === "running" || run.status === "interrupted";
 }
 
-function normaliseCriteria(
-  values: readonly string[] | undefined,
-  fallback: readonly string[],
-): readonly string[] {
-  const cleaned = values?.map((value) => value.trim()).filter(Boolean) ?? [];
-  return cleaned.length > 0 ? cleaned : fallback;
+function requireCriteria(values: readonly string[], label: string): readonly string[] {
+  const cleaned = values.map((value) => value.trim()).filter(Boolean);
+  if (cleaned.length === 0) {
+    throw new Error(`${label} must contain at least one value.`);
+  }
+  return [...new Set(cleaned)];
 }

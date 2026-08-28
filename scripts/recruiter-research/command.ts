@@ -1,19 +1,17 @@
+import type { RecruiterResearchSettings } from "@/contexts/recruiter-engagement/application/research-settings/settings";
 import {
   createResearchRun,
   createSearchBrief,
-  DEFAULT_RECRUITER_TARGET,
 } from "@/contexts/recruiter-engagement/domain/research-run";
 import {
-  localCodexAdapterPolicy,
-  publicRecruiterSourcePlan,
+  createLocalCodexAdapterPolicy,
+  createPublicRecruiterSourcePlan,
 } from "@/contexts/recruiter-engagement/infrastructure/local-codex/local-codex-policy";
 import {
   createLocalCodexResearchSource,
   type LocalCodexProcess,
   type LocalCodexProcessRequest,
 } from "@/contexts/recruiter-engagement/infrastructure/local-codex/local-codex-research-source";
-
-export { DEFAULT_RECRUITER_TARGET };
 
 export type RecruiterResearchCompany = {
   readonly name: string;
@@ -49,26 +47,37 @@ export interface RunRecruiterResearchOptions {
   readonly environment?: NodeJS.ProcessEnv;
   readonly process: RecruiterResearchProcess;
   readonly recruiterTarget?: number;
+  readonly settings: RecruiterResearchSettings;
+  readonly targetLocations: readonly string[];
 }
 
 export async function runRecruiterResearch(
   options: RunRecruiterResearchOptions,
 ): Promise<RecruiterResearchResult> {
-  const recruiterTarget = requestedRecruiterTarget(options.recruiterTarget);
+  const recruiterTarget = requestedRecruiterTarget(
+    options.recruiterTarget,
+    options.settings.defaultBrief.recruiterTarget,
+  );
   const run = createResearchRun({
     id: "cli-research",
     brief: createSearchBrief({
-      description: options.brief ?? "",
+      description: options.brief?.trim() || options.settings.defaultBrief.description,
+      criteria: {
+        ...options.settings.defaultBrief.criteria,
+        targetLocations: options.targetLocations,
+      },
+      firmTarget: options.settings.defaultBrief.firmTarget,
       recruiterTarget,
     }),
-    policy: localCodexAdapterPolicy,
-    sourcePlan: publicRecruiterSourcePlan,
+    policy: createLocalCodexAdapterPolicy(options.settings),
+    sourcePlan: createPublicRecruiterSourcePlan(options.settings),
     startedAt: new Date(),
   });
   const source = createLocalCodexResearchSource({
     ...(options.command ? { command: options.command } : {}),
     ...(options.environment ? { environment: options.environment } : {}),
     process: options.process,
+    stageTimeoutMs: options.settings.execution.stageTimeoutMs,
   });
   const firms = await source.findFirms({ run });
   const recruiters = await source.findRecruiters({ run, firms });
@@ -93,8 +102,8 @@ export async function runRecruiterResearch(
   };
 }
 
-function requestedRecruiterTarget(value: number | undefined): number {
-  const recruiterTarget = value ?? DEFAULT_RECRUITER_TARGET;
+function requestedRecruiterTarget(value: number | undefined, configuredDefault: number): number {
+  const recruiterTarget = value ?? configuredDefault;
   if (!Number.isSafeInteger(recruiterTarget) || recruiterTarget <= 0) {
     throw new Error("recruiterTarget must be a positive integer.");
   }

@@ -11,18 +11,8 @@ import type {
 } from "@/contexts/recruiter-engagement/domain/observation";
 import type { ResearchRun } from "@/contexts/recruiter-engagement/domain/research-run";
 
-const CODEX_MODEL = "gpt-5.6-terra";
 const POLICY_ID = "local-codex-cli-web-search-v1";
 const POLICY_VERSION = "1";
-const DEFAULT_LOCAL_CODEX_STAGE_TIMEOUT_MS = 600_000;
-const LOCAL_EXECUTION = {
-  automaticRetry: false,
-  ephemeral: true,
-  model: CODEX_MODEL,
-  reasoningEffort: "medium",
-  sandboxMode: "read-only",
-  webSearchEnabled: true,
-} as const;
 
 const observedAt = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const httpsUrl = z.url().refine((value) => value.startsWith("https://"), "Expected an HTTPS URL.");
@@ -84,7 +74,7 @@ type LocalCodexResearchSourceOptions = {
   readonly command?: string;
   readonly environment?: NodeJS.ProcessEnv;
   readonly process: LocalCodexProcess;
-  readonly stageTimeoutMs?: number;
+  readonly stageTimeoutMs: number;
 };
 
 export function createLocalCodexResearchSource(
@@ -105,7 +95,7 @@ export function createLocalCodexResearchSource(
         outputSchema: firmOutputSchema(companyTarget),
         prompt: firmPrompt(run, companyTarget),
         stage: "firm",
-        stageTimeoutMs: options.stageTimeoutMs ?? DEFAULT_LOCAL_CODEX_STAGE_TIMEOUT_MS,
+        stageTimeoutMs: options.stageTimeoutMs,
         ...(signal ? { signal } : {}),
       });
       const parsed = z
@@ -131,7 +121,7 @@ export function createLocalCodexResearchSource(
         outputSchema: recruiterOutputSchema(run.brief.recruiterTarget),
         prompt: recruiterPrompt(run, firms),
         stage: "recruiter",
-        stageTimeoutMs: options.stageTimeoutMs ?? DEFAULT_LOCAL_CODEX_STAGE_TIMEOUT_MS,
+        stageTimeoutMs: options.stageTimeoutMs,
         ...(signal ? { signal } : {}),
       });
       const parsed = z
@@ -163,12 +153,10 @@ function assessLocalCodexRun(
     };
   }
   if (
-    run.policy.execution.automaticRetry !== LOCAL_EXECUTION.automaticRetry ||
-    run.policy.execution.ephemeral !== LOCAL_EXECUTION.ephemeral ||
-    run.policy.execution.model !== LOCAL_EXECUTION.model ||
-    run.policy.execution.reasoningEffort !== LOCAL_EXECUTION.reasoningEffort ||
-    run.policy.execution.sandboxMode !== LOCAL_EXECUTION.sandboxMode ||
-    run.policy.execution.webSearchEnabled !== LOCAL_EXECUTION.webSearchEnabled
+    run.policy.execution.automaticRetry ||
+    !run.policy.execution.ephemeral ||
+    run.policy.execution.sandboxMode !== "read-only" ||
+    !run.policy.execution.webSearchEnabled
   ) {
     return {
       available: false,
@@ -261,10 +249,10 @@ async function runStage(input: {
         command: input.command,
         arguments: [
           ...(input.execution.webSearchEnabled ? ["--search"] : []),
-          "-m",
-          input.execution.model,
-          "-c",
-          `model_reasoning_effort="${input.execution.reasoningEffort}"`,
+          ...(input.execution.model ? ["-m", input.execution.model] : []),
+          ...(input.execution.reasoningEffort
+            ? ["-c", `model_reasoning_effort="${input.execution.reasoningEffort}"`]
+            : []),
           "exec",
           ...(input.execution.ephemeral ? ["--ephemeral"] : []),
           "--skip-git-repo-check",
@@ -354,7 +342,6 @@ function recruiterOutputSchema(recruiterTarget: number) {
       recruiters: {
         type: "array",
         minItems: recruiterTarget,
-        uniqueItems: true,
         items: {
           type: "object",
           additionalProperties: false,
@@ -378,11 +365,11 @@ function evidenceOutputSchema(input: { readonly source: "firm" | "linkedin" }) {
     additionalProperties: false,
     required: ["adapterId", "confidence", "excerpt", "observedAt", "policyVersion", "sourceUrl"],
     properties: {
-      adapterId: { const: POLICY_ID },
+      adapterId: { type: "string", const: POLICY_ID },
       confidence: { enum: ["high", "medium", "low"] },
       excerpt: { type: "string", minLength: 1, maxLength: 280 },
       observedAt: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
-      policyVersion: { const: POLICY_VERSION },
+      policyVersion: { type: "string", const: POLICY_VERSION },
       sourceUrl:
         input.source === "linkedin"
           ? { type: "string", pattern: "^https://.*linkedin\\.com/in/" }
@@ -393,9 +380,9 @@ function evidenceOutputSchema(input: { readonly source: "firm" | "linkedin" }) {
 
 function firmPrompt(run: ResearchRun, companyTarget: number): string {
   return [
-    "Research public sources only for UAE technology recruitment firms.",
+    "Research public sources only for recruitment firms relevant to the supplied criteria.",
     `Invocation identity: ${run.id}:firms. This identifies one durable research stage.`,
-    `Return at least ${companyTarget} distinct firms for this brief: ${run.brief.description || "UAE technology hiring"}.`,
+    `Return at least ${companyTarget} distinct firms for this brief: ${run.brief.description}.`,
     `Target locations: ${run.brief.criteria.targetLocations.join(", ")}.`,
     `Technology specialisms: ${run.brief.criteria.specialisms.join(", ")}.`,
     `Target industries: ${run.brief.criteria.industries.join(", ")}.`,
@@ -406,7 +393,7 @@ function firmPrompt(run: ResearchRun, companyTarget: number): string {
 
 function recruiterPrompt(run: ResearchRun, firms: readonly FirmObservation[]): string {
   return [
-    "Research public LinkedIn search results only for named technology recruiters at the listed UAE recruitment firms.",
+    "Research public LinkedIn search results only for named recruiters at the listed recruitment firms and supplied criteria.",
     `Invocation identity: ${run.id}:recruiters. This identifies one durable research stage.`,
     `Return at least ${run.brief.recruiterTarget} distinct named recruiters, with at least one recruiter for each listed firm.`,
     `Listed firms: ${firms.map((firm) => firm.companyName).join(", ")}.`,

@@ -55,3 +55,9 @@ export const recruiterResearchSourceFailures = sqliteTable(
     uniqueIndex("recruiter_research_source_failures_run_stage_idx").on(table.runId, table.stage),
   ],
 );
+
+export const recruiterResearchSettings = sqliteTable("recruiter_research_settings", {
+  key: text("key").primaryKey(),
+  value: text("value", { mode: "json" }).$type<unknown>().notNull(),
+  updatedAt: timestamp("updated_at").notNull(),
+});

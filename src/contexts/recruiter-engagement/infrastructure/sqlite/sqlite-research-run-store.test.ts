@@ -3,13 +3,11 @@ import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { describe, expect, it } from "vitest";
-import {
-  createResearchRun,
-  createSearchBrief,
-} from "@/contexts/recruiter-engagement/domain/research-run";
+import { createResearchRun } from "@/contexts/recruiter-engagement/domain/research-run";
 import {
   testAdapterPolicy,
   testEvidence,
+  testSearchBrief,
   testSourcePlan,
 } from "@/contexts/recruiter-engagement/test-support/research-policy-fixtures";
 import { createSqliteResearchRunStore } from "./sqlite-research-run-store";
@@ -22,7 +20,7 @@ describe("SQLite research run store", () => {
     migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
     const run = createResearchRun({
       id: "run-1",
-      brief: createSearchBrief({ description: "UAE technology", recruiterTarget: 1 }),
+      brief: testSearchBrief({ description: "UAE technology", recruiterTarget: 1 }),
       policy: testAdapterPolicy,
       retryOfRunId: "run-original",
       sourcePlan: testSourcePlan,
@@ -88,7 +86,7 @@ describe("SQLite research run store", () => {
     const store = createSqliteResearchRunStore(database);
     const run = createResearchRun({
       id: "run-2",
-      brief: createSearchBrief({ description: "UAE technology", recruiterTarget: 1 }),
+      brief: testSearchBrief({ description: "UAE technology", recruiterTarget: 1 }),
       policy: testAdapterPolicy,
       sourcePlan: testSourcePlan,
       startedAt: new Date("2026-08-27T10:00:00.000Z"),
@@ -127,7 +125,7 @@ describe("SQLite research run store", () => {
     const store = createSqliteResearchRunStore(database);
     const run = createResearchRun({
       id: "run-malformed",
-      brief: createSearchBrief({ description: "UAE technology", recruiterTarget: 1 }),
+      brief: testSearchBrief({ description: "UAE technology", recruiterTarget: 1 }),
       policy: testAdapterPolicy,
       sourcePlan: testSourcePlan,
       startedAt: new Date("2026-08-27T10:00:00.000Z"),
@@ -148,11 +146,11 @@ describe("SQLite research run store", () => {
     migrate(database, { migrationsFolder });
 
     sqlite.exec(
-      "DROP TABLE recruiter_research_observations; DROP TABLE recruiter_research_source_failures; DROP TABLE recruiter_research_runs;",
+      "DROP TABLE recruiter_research_observations; DROP TABLE recruiter_research_source_failures; DROP TABLE recruiter_research_runs; DROP TABLE recruiter_research_settings;",
     );
     sqlite
       .prepare(
-        "DELETE FROM __drizzle_migrations WHERE created_at = (SELECT MAX(created_at) FROM __drizzle_migrations)",
+        "DELETE FROM __drizzle_migrations WHERE created_at IN (SELECT created_at FROM __drizzle_migrations ORDER BY created_at DESC LIMIT 2)",
       )
       .run();
 

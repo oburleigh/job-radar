@@ -13,12 +13,14 @@ import {
 } from "@/contexts/discovery/infrastructure/sqlite/repair-legacy-job-evidence";
 import { searchProfiles } from "@/contexts/discovery/infrastructure/sqlite/schema";
 import { evaluateAndStore } from "@/contexts/discovery/infrastructure/sqlite/store-matches";
+import { bootstrapRecruiterResearch } from "@/contexts/recruiter-engagement/infrastructure/sqlite/bootstrap-recruiter-research";
 
 async function main() {
   migrate(db, {
     migrationsFolder: path.resolve(process.cwd(), "drizzle"),
   });
   bootstrapJobRadar(db);
+  bootstrapRecruiterResearch(db);
 
   const migratedExclusionReasons = migrateLegacyExclusionReasons(db);
   const repairedJobs = repairLegacyJobEvidence(db);

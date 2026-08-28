@@ -1,11 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  createResearchRun,
-  createSearchBrief,
-} from "@/contexts/recruiter-engagement/domain/research-run";
+import { createResearchRun } from "@/contexts/recruiter-engagement/domain/research-run";
 import {
   testAdapterPolicy,
   testEvidence,
+  testSearchBrief,
   testSourcePlan,
 } from "@/contexts/recruiter-engagement/test-support/research-policy-fixtures";
 import {
@@ -19,7 +17,7 @@ describe("research run execution", () => {
   it("persists firm observations before continuing to named recruiters", async () => {
     const run = createResearchRun({
       id: "run-1",
-      brief: createSearchBrief({ description: "UAE fintech engineering", recruiterTarget: 1 }),
+      brief: testSearchBrief({ description: "UAE fintech engineering", recruiterTarget: 1 }),
       policy: testAdapterPolicy,
       sourcePlan: testSourcePlan,
       startedAt: new Date("2026-08-27T10:00:00.000Z"),
@@ -91,7 +89,7 @@ describe("research run execution", () => {
   it("exhausts a frozen stage allowance before making an adapter request", async () => {
     const run = createResearchRun({
       id: "run-budget-exhausted",
-      brief: createSearchBrief({ description: "UAE technology", recruiterTarget: 1 }),
+      brief: testSearchBrief({ description: "UAE technology", recruiterTarget: 1 }),
       policy: testAdapterPolicy,
       sourcePlan: {
         ...testSourcePlan,
@@ -159,7 +157,7 @@ describe("research run execution", () => {
 function sampleRun(id: string) {
   return createResearchRun({
     id,
-    brief: createSearchBrief({ description: "UAE technology", recruiterTarget: 1 }),
+    brief: testSearchBrief({ description: "UAE technology", recruiterTarget: 1 }),
     policy: testAdapterPolicy,
     sourcePlan: testSourcePlan,
     startedAt: new Date("2026-08-27T10:00:00.000Z"),

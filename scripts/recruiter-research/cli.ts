@@ -1,15 +1,26 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-
+import { getConfiguredMarketVocabulary } from "@/contexts/discovery/composition/configured-market-vocabulary.server";
 import { localCodexProcess } from "@/contexts/recruiter-engagement/infrastructure/local-codex/local-codex-process";
-import { DEFAULT_RECRUITER_TARGET, runRecruiterResearch } from "./command";
+import { targetLocationOptions } from "@/contexts/recruiter-engagement/infrastructure/markets/target-location-catalogue";
+import { recruiterResearchDatabase } from "@/contexts/recruiter-engagement/infrastructure/sqlite/database";
+import { getRecruiterResearchSettings } from "@/contexts/recruiter-engagement/infrastructure/sqlite/recruiter-research-settings";
+import { runRecruiterResearch } from "./command";
 
 export async function runCli(argumentsList: readonly string[]): Promise<void> {
-  const argumentsInput = parseRecruiterResearchArguments(argumentsList);
+  const settings = getRecruiterResearchSettings(recruiterResearchDatabase);
+  const argumentsInput = parseRecruiterResearchArguments(
+    argumentsList,
+    settings.defaultBrief.recruiterTarget,
+  );
   const result = await runRecruiterResearch({
     brief: argumentsInput.brief,
     process: localCodexProcess,
     recruiterTarget: argumentsInput.recruiterTarget,
+    settings,
+    targetLocations: targetLocationOptions(getConfiguredMarketVocabulary())
+      .slice(0, 1)
+      .map((option) => option.label),
   });
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 }
@@ -21,9 +32,10 @@ export interface RecruiterResearchCliArguments {
 
 export function parseRecruiterResearchArguments(
   argumentsList: readonly string[],
+  defaultRecruiterTarget: number,
 ): RecruiterResearchCliArguments {
   const brief: string[] = [];
-  let recruiterTarget = DEFAULT_RECRUITER_TARGET;
+  let recruiterTarget = defaultRecruiterTarget;
   let recruiterTargetSpecified = false;
 
   for (let index = 0; index < argumentsList.length; index += 1) {

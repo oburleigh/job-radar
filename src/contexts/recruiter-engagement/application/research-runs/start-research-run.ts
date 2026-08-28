@@ -12,8 +12,9 @@ export type StartResearchRunResult = { readonly status: "started"; readonly runI
 export interface ForStartingResearchRuns {
   readonly startResearchRun: (command: {
     readonly brief: string;
-    readonly criteria?: Partial<ResearchCriteria>;
-    readonly recruiterTarget?: number;
+    readonly criteria: ResearchCriteria;
+    readonly firmTarget: number;
+    readonly recruiterTarget: number;
   }) => Promise<StartResearchRunResult>;
 }
 
@@ -41,10 +42,9 @@ export function createResearchRunStarter({
         id: createId(),
         brief: createSearchBrief({
           description: command.brief,
-          ...(command.criteria ? { criteria: command.criteria } : {}),
-          ...(command.recruiterTarget === undefined
-            ? {}
-            : { recruiterTarget: command.recruiterTarget }),
+          criteria: command.criteria,
+          firmTarget: command.firmTarget,
+          recruiterTarget: command.recruiterTarget,
         }),
         policy,
         sourcePlan,

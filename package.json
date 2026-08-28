@@ -49,6 +49,7 @@
     "evaluate:discovery": "tsx scripts/evaluate-discovery.ts",
     "reindex": "tsx scripts/reindex.ts",
     "research:recruiters": "tsx scripts/recruiter-research/cli.ts",
+    "smoke:recruiter-codex": "tsx scripts/recruiter-research/smoke-local-codex.ts",
     "sync": "tsx scripts/sync.ts",
     "verify:linkedin": "tsx scripts/verify-linkedin.ts"
   },

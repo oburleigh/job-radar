@@ -53,6 +53,13 @@
   gap: 7px;
 }
 
+.recruiter-target-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
 .recruiter-textarea-label > span,
 .recruiter-brief-form .jr-field-label {
   font-family: var(--jr-font-family-mono);
@@ -446,6 +453,10 @@
 
 @media (max-width: 760px) {
   .recruiter-brief-form {
+    grid-template-columns: 1fr;
+  }
+
+  .recruiter-target-fields {
     grid-template-columns: 1fr;
   }
 

@@ -25,11 +25,18 @@ describe("research run start", () => {
 
     const result = await starter.startResearchRun({
       brief: "UAE fintech platform engineering",
+      criteria: {
+        industries: ["Financial services"],
+        specialisms: ["Platform engineering"],
+        targetLocations: ["United Arab Emirates"],
+      },
+      firmTarget: 12,
       recruiterTarget: 24,
     });
 
     expect(result).toEqual({ status: "started", runId: "run-1" });
     expect((await runs.get("run-1"))?.brief.recruiterTarget).toBe(24);
+    expect((await runs.get("run-1"))?.brief.firmTarget).toBe(12);
     expect((await runs.get("run-1"))?.policy).toEqual(testAdapterPolicy);
     expect((await runs.get("run-1"))?.sourcePlan).toEqual(testSourcePlan);
     expect(scheduler.scheduledRunIds).toEqual(["run-1"]);

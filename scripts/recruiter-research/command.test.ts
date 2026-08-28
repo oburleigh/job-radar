@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 
 import { describe, expect, it } from "vitest";
+import type { RecruiterResearchSettings } from "@/contexts/recruiter-engagement/application/research-settings/settings";
 
 import {
   type RecruiterResearchProcess,
@@ -10,6 +11,24 @@ import {
 } from "./command";
 
 const observationDate = "2026-08-27";
+const settings = {
+  defaultBrief: {
+    criteria: {
+      industries: ["Financial services", "Technology"],
+      specialisms: ["Software engineering", "Data and AI"],
+    },
+    description: "Research technology recruiters.",
+    firmTarget: 10,
+    recruiterTarget: 20,
+  },
+  execution: {
+    model: null,
+    reasoningEffort: null,
+    stageRequestLimit: 1,
+    stageTimeoutMs: 10_000,
+  },
+} as const satisfies RecruiterResearchSettings;
+const targetLocations = ["United Arab Emirates"];
 const companies = Array.from({ length: 10 }, (_, index) => ({
   companyName: `Firm ${index + 1}`,
   websiteUrl: `https://firm-${index + 1}.example.com`,
@@ -61,6 +80,8 @@ describe("recruiter research command", () => {
       brief: "Prioritise fintech and healthtech firms.",
       environment: { OPENAI_API_KEY: "must-not-reach-codex", PATH: "/usr/bin" },
       process,
+      settings,
+      targetLocations,
     });
 
     expect(result.companies).toHaveLength(10);
@@ -79,18 +100,18 @@ describe("recruiter research command", () => {
         return { exitCode: 23 };
       },
     };
-    await expect(runRecruiterResearch({ process: failedProcess })).rejects.toThrow(
-      "Firm stage failed (exit code 23). Check the local server logs, then retry.",
-    );
+    await expect(
+      runRecruiterResearch({ process: failedProcess, settings, targetLocations }),
+    ).rejects.toThrow("Firm stage failed (exit code 23). Check the local server logs, then retry.");
 
     const missingOutputProcess: RecruiterResearchProcess = {
       async run() {
         return { exitCode: 0 };
       },
     };
-    await expect(runRecruiterResearch({ process: missingOutputProcess })).rejects.toThrow(
-      "Codex completed without final output.",
-    );
+    await expect(
+      runRecruiterResearch({ process: missingOutputProcess, settings, targetLocations }),
+    ).rejects.toThrow("Codex completed without final output.");
   });
 });
 

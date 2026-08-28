@@ -9,6 +9,7 @@ import {
 } from "@/contexts/recruiter-engagement/domain/research-run";
 import {
   testAdapterPolicy,
+  testSearchBrief,
   testSourcePlan,
 } from "@/contexts/recruiter-engagement/test-support/research-policy-fixtures";
 import { createFakeResearchRunStore } from "@/contexts/recruiter-engagement/test-support/research-run-fakes";
@@ -24,12 +25,14 @@ describe("local Codex research source", () => {
       readonly cwd: string;
       readonly environment: NodeJS.ProcessEnv;
     }[] = [];
+    const schemas: { properties: Record<string, unknown> }[] = [];
     const process: LocalCodexProcess = {
       async run(request) {
         requests.push(request);
         const schema = JSON.parse(
           await readFile(valueAfter(request.arguments, "--output-schema"), "utf8"),
         ) as { properties: Record<string, unknown> };
+        schemas.push(schema);
         const outputPath = valueAfter(request.arguments, "--output-last-message");
         if ("companies" in schema.properties) {
           await writeFile(
@@ -81,6 +84,7 @@ describe("local Codex research source", () => {
       },
     };
     const source = createLocalCodexResearchSource({
+      stageTimeoutMs: 10_000,
       environment: {
         NODE_OPTIONS: "--import=dotenv/config",
         OPENAI_API_KEY: "must-not-reach-codex",
@@ -90,7 +94,7 @@ describe("local Codex research source", () => {
     });
     const run = createResearchRun({
       id: "run-1",
-      brief: createSearchBrief({ description: "UAE financial technology", recruiterTarget: 1 }),
+      brief: testSearchBrief({ description: "UAE financial technology", recruiterTarget: 1 }),
       policy: testAdapterPolicy,
       sourcePlan: testSourcePlan,
       startedAt: new Date("2026-08-27T10:00:00.000Z"),
@@ -125,6 +129,88 @@ describe("local Codex research source", () => {
     expect(requests[0]?.arguments.at(-1)).toContain("run-1:firms");
     expect(requests[1]?.arguments.at(-1)).toContain("run-1:recruiters");
     expect(requests[1]?.arguments.at(-1)).toContain("Firm One");
+    const firmSchema = schemas[0] as {
+      properties: {
+        companies: {
+          items: { properties: { evidence: { properties: Record<string, unknown> } } };
+        };
+      };
+    };
+    expect(firmSchema.properties.companies.items.properties.evidence.properties.adapterId).toEqual({
+      const: "local-codex-cli-web-search-v1",
+      type: "string",
+    });
+    expect(schemas[1]?.properties.recruiters).not.toHaveProperty("uniqueItems");
+  });
+
+  it("derives each research prompt from the frozen run instead of embedding a market", async () => {
+    const prompts: string[] = [];
+    const process: LocalCodexProcess = {
+      async run(request) {
+        prompts.push(request.arguments.at(-1) ?? "");
+        await writeFile(
+          valueAfter(request.arguments, "--output-last-message"),
+          JSON.stringify({ companies: [sampleFirm("Singapore Search")] }),
+        );
+        return { exitCode: 0 };
+      },
+    };
+    const source = createLocalCodexResearchSource({ stageTimeoutMs: 10_000, process });
+    const run = createResearchRun({
+      id: "run-singapore",
+      brief: createSearchBrief({
+        criteria: {
+          industries: ["Logistics"],
+          specialisms: ["Platform engineering"],
+          targetLocations: ["Singapore"],
+        },
+        description: "Find platform recruitment specialists",
+        firmTarget: 1,
+        recruiterTarget: 1,
+      }),
+      policy: testAdapterPolicy,
+      sourcePlan: testSourcePlan,
+      startedAt: new Date("2026-08-27T10:00:00.000Z"),
+    });
+
+    await source.findFirms({ run });
+
+    expect(prompts).toHaveLength(1);
+    expect(prompts[0]).toContain("Target locations: Singapore.");
+    expect(prompts[0]).toContain("Technology specialisms: Platform engineering.");
+    expect(prompts[0]).toContain("Target industries: Logistics.");
+    expect(prompts[0]).not.toContain("UAE");
+  });
+
+  it("lets SQLite policy select the Codex account defaults without emitting model flags", async () => {
+    const argumentsList: (readonly string[])[] = [];
+    const process: LocalCodexProcess = {
+      async run(request) {
+        argumentsList.push(request.arguments);
+        await writeFile(
+          valueAfter(request.arguments, "--output-last-message"),
+          JSON.stringify({ companies: [sampleFirm("Account Default Search")] }),
+        );
+        return { exitCode: 0 };
+      },
+    };
+    const source = createLocalCodexResearchSource({ process, stageTimeoutMs: 10_000 });
+    const run = createResearchRun({
+      id: "run-account-defaults",
+      brief: testSearchBrief(),
+      policy: {
+        ...testAdapterPolicy,
+        execution: { ...testAdapterPolicy.execution, model: null, reasoningEffort: null },
+      },
+      sourcePlan: testSourcePlan,
+      startedAt: new Date("2026-08-27T10:00:00.000Z"),
+    });
+
+    await source.findFirms({ run });
+
+    expect(argumentsList).toHaveLength(1);
+    expect(argumentsList[0]).not.toContain("-m");
+    expect(argumentsList[0]).not.toContain("-c");
   });
 
   it("canonicalises recruiter company names to the frozen firm spelling", async () => {
@@ -152,7 +238,7 @@ describe("local Codex research source", () => {
         return { exitCode: 0 };
       },
     };
-    const source = createLocalCodexResearchSource({ process });
+    const source = createLocalCodexResearchSource({ stageTimeoutMs: 10_000, process });
     const run = sampleRun(1);
 
     const firms = await source.findFirms({ run });
@@ -185,7 +271,7 @@ describe("local Codex research source", () => {
         return { exitCode: 0 };
       },
     };
-    const source = createLocalCodexResearchSource({ process });
+    const source = createLocalCodexResearchSource({ stageTimeoutMs: 10_000, process });
     const run = sampleRun(1);
     const firms = await source.findFirms({ run });
 
@@ -219,7 +305,10 @@ describe("local Codex research source", () => {
     const codexProcess = {
       run: vi.fn(async () => ({ exitCode: 23, diagnostic: rawDiagnostic })),
     } satisfies LocalCodexProcess;
-    const source = createLocalCodexResearchSource({ process: codexProcess });
+    const source = createLocalCodexResearchSource({
+      stageTimeoutMs: 10_000,
+      process: codexProcess,
+    });
     const run = sampleRun(1);
     const runs = createFakeResearchRunStore([run]);
     const execution = createResearchRunExecution({
@@ -266,7 +355,10 @@ describe("local Codex research source", () => {
         return { exitCode: 1, diagnostic };
       },
     };
-    const source = createLocalCodexResearchSource({ process: codexProcess });
+    const source = createLocalCodexResearchSource({
+      stageTimeoutMs: 10_000,
+      process: codexProcess,
+    });
     const write = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
 
     try {
@@ -286,7 +378,7 @@ describe("local Codex research source", () => {
         return { exitCode: 0 };
       },
     };
-    const source = createLocalCodexResearchSource({ process });
+    const source = createLocalCodexResearchSource({ stageTimeoutMs: 10_000, process });
     const run = sampleRun(1);
 
     await expect(source.findFirms({ run })).rejects.toThrow(
@@ -315,7 +407,7 @@ describe("local Codex research source", () => {
         return { exitCode: 0 };
       },
     };
-    const source = createLocalCodexResearchSource({ process });
+    const source = createLocalCodexResearchSource({ stageTimeoutMs: 10_000, process });
 
     await expect(source.findFirms({ run: sampleRun(1) })).rejects.toThrow(
       "Codex firm-stage output is invalid",
@@ -352,7 +444,7 @@ describe("local Codex research source", () => {
         return { exitCode: 0 };
       },
     };
-    const source = createLocalCodexResearchSource({ process });
+    const source = createLocalCodexResearchSource({ stageTimeoutMs: 10_000, process });
     const run = sampleRun(2);
     const firms = await source.findFirms({ run });
 
@@ -374,7 +466,7 @@ describe("local Codex research source", () => {
       {
         policy: {
           ...testAdapterPolicy,
-          execution: { ...testAdapterPolicy.execution, reasoningEffort: "high" },
+          execution: { ...testAdapterPolicy.execution, sandboxMode: "workspace-write" },
         },
         sourcePlan: testSourcePlan,
       },
@@ -400,10 +492,10 @@ describe("local Codex research source", () => {
 
     for (const [index, variant] of variants.entries()) {
       const process = { run: vi.fn() } satisfies LocalCodexProcess;
-      const source = createLocalCodexResearchSource({ process });
+      const source = createLocalCodexResearchSource({ stageTimeoutMs: 10_000, process });
       const run = createResearchRun({
         id: `run-refusal-${index}`,
-        brief: createSearchBrief({ description: "UAE technology", recruiterTarget: 1 }),
+        brief: testSearchBrief({ description: "UAE technology", recruiterTarget: 1 }),
         policy: variant.policy,
         sourcePlan: variant.sourcePlan,
         startedAt: new Date("2026-08-27T10:00:00.000Z"),
@@ -427,7 +519,7 @@ describe("local Codex research source", () => {
 function sampleRun(recruiterTarget: number) {
   return createResearchRun({
     id: "run-sample",
-    brief: createSearchBrief({ description: "UAE financial technology", recruiterTarget }),
+    brief: testSearchBrief({ description: "UAE financial technology", recruiterTarget }),
     policy: testAdapterPolicy,
     sourcePlan: testSourcePlan,
     startedAt: new Date("2026-08-27T10:00:00.000Z"),

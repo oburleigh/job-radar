@@ -6,8 +6,6 @@ import {
   createResearchCoverage,
   createResearchRun,
   createSearchBrief,
-  DEFAULT_RECRUITER_TARGET,
-  firmTargetFor,
   isRunAcceptingObservations,
 } from "./research-run";
 
@@ -55,21 +53,45 @@ const testSourcePlan = {
 } as const;
 
 describe("search brief", () => {
-  it("defaults the recruiter target and rejects a non-positive target", () => {
-    expect(createSearchBrief({ description: "UAE fintech engineering" })).toMatchObject({
-      description: "UAE fintech engineering",
-      recruiterTarget: DEFAULT_RECRUITER_TARGET,
-      criteria: { targetLocations: ["United Arab Emirates"] },
+  it("preserves caller-controlled criteria and independently validates both targets", () => {
+    expect(
+      createSearchBrief({
+        criteria: {
+          industries: ["Logistics"],
+          specialisms: ["Platform engineering"],
+          targetLocations: ["Singapore"],
+        },
+        description: " Singapore platform recruitment ",
+        firmTarget: 12,
+        recruiterTarget: 31,
+      }),
+    ).toEqual({
+      criteria: {
+        industries: ["Logistics"],
+        specialisms: ["Platform engineering"],
+        targetLocations: ["Singapore"],
+      },
+      description: "Singapore platform recruitment",
+      firmTarget: 12,
+      recruiterTarget: 31,
     });
-    expect(() => createSearchBrief({ description: "UAE", recruiterTarget: 0 })).toThrow(
+    expect(() => brief({ recruiterTarget: 0 })).toThrow(
       "Recruiter target must be a positive safe integer.",
     );
+    expect(() => brief({ firmTarget: 0 })).toThrow("Firm target must be a positive safe integer.");
+    expect(() => brief({ firmTarget: 21, recruiterTarget: 20 })).toThrow(
+      "Firm target cannot exceed recruiter target.",
+    );
+    expect(brief({ firmTarget: 20, recruiterTarget: 20 })).toMatchObject({
+      firmTarget: 20,
+      recruiterTarget: 20,
+    });
   });
 
   it("makes cancellation terminal before a later source observation can be stored", () => {
     const run = createResearchRun({
       id: "run-1",
-      brief: createSearchBrief({ description: "UAE technology" }),
+      brief: brief(),
       policy: testAdapterPolicy,
       sourcePlan: testSourcePlan,
       startedAt: new Date("2026-08-27T10:00:00.000Z"),
@@ -84,20 +106,19 @@ describe("search brief", () => {
   it("reports coverage against the coupled firm and recruiter targets", () => {
     const run = createResearchRun({
       id: "run-coverage",
-      brief: createSearchBrief({ description: "UAE technology", recruiterTarget: 24 }),
+      brief: brief({ firmTarget: 14, recruiterTarget: 24 }),
       policy: testAdapterPolicy,
       sourcePlan: testSourcePlan,
       startedAt: new Date("2026-08-27T10:00:00.000Z"),
     });
 
-    expect(firmTargetFor(24)).toBe(10);
     expect(
       createResearchCoverage({
         run,
         observations: [{ kind: "firm" }, { kind: "recruiter" }, { kind: "recruiter" }],
       }),
     ).toMatchObject({
-      firmTarget: 10,
+      firmTarget: 14,
       observedFirmCount: 1,
       observedRecruiterCount: 2,
       recruiterTarget: 24,
@@ -107,7 +128,7 @@ describe("search brief", () => {
   it("records a terminal exhausted outcome when a stage request allowance is consumed", () => {
     const run = createResearchRun({
       id: "run-exhausted",
-      brief: createSearchBrief({ description: "UAE technology", recruiterTarget: 20 }),
+      brief: brief({ recruiterTarget: 20 }),
       policy: testAdapterPolicy,
       sourcePlan: {
         ...testSourcePlan,
@@ -128,3 +149,18 @@ describe("search brief", () => {
     });
   });
 });
+
+function brief(
+  overrides: { readonly firmTarget?: number; readonly recruiterTarget?: number } = {},
+) {
+  return createSearchBrief({
+    criteria: {
+      industries: ["Technology"],
+      specialisms: ["Software engineering"],
+      targetLocations: ["United Arab Emirates"],
+    },
+    description: "Technology recruitment",
+    firmTarget: overrides.firmTarget ?? 10,
+    recruiterTarget: overrides.recruiterTarget ?? 20,
+  });
+}

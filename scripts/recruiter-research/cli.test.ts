@@ -4,7 +4,7 @@ import { parseRecruiterResearchArguments } from "./cli";
 
 describe("recruiter research CLI arguments", () => {
   it("uses the default target and keeps a plain-language brief", () => {
-    expect(parseRecruiterResearchArguments(["Prioritise fintech firms."])).toEqual({
+    expect(parseRecruiterResearchArguments(["Prioritise fintech firms."], 20)).toEqual({
       brief: "Prioritise fintech firms.",
       recruiterTarget: 20,
     });
@@ -12,11 +12,10 @@ describe("recruiter research CLI arguments", () => {
 
   it("uses a caller-controlled recruiter target without treating the brief as an option", () => {
     expect(
-      parseRecruiterResearchArguments([
-        "--recruiters",
-        "24",
-        "Prioritise fintech and healthtech firms.",
-      ]),
+      parseRecruiterResearchArguments(
+        ["--recruiters", "24", "Prioritise fintech and healthtech firms."],
+        20,
+      ),
     ).toEqual({
       brief: "Prioritise fintech and healthtech firms.",
       recruiterTarget: 24,
@@ -24,10 +23,10 @@ describe("recruiter research CLI arguments", () => {
   });
 
   it("rejects a missing or non-positive recruiter target", () => {
-    expect(() => parseRecruiterResearchArguments(["--recruiters"])).toThrow(
+    expect(() => parseRecruiterResearchArguments(["--recruiters"], 20)).toThrow(
       "--recruiters requires a positive integer",
     );
-    expect(() => parseRecruiterResearchArguments(["--recruiters", "0"])).toThrow(
+    expect(() => parseRecruiterResearchArguments(["--recruiters", "0"], 20)).toThrow(
       "--recruiters requires a positive integer",
     );
   });

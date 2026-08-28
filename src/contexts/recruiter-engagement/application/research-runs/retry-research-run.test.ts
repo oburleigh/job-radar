@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
-import {
-  createResearchRun,
-  createSearchBrief,
-} from "@/contexts/recruiter-engagement/domain/research-run";
+import { createResearchRun } from "@/contexts/recruiter-engagement/domain/research-run";
 import {
   testAdapterPolicy,
+  testSearchBrief,
   testSourcePlan,
 } from "@/contexts/recruiter-engagement/test-support/research-policy-fixtures";
 import {
@@ -18,7 +16,7 @@ describe("research run retry", () => {
     const previous = {
       ...createResearchRun({
         id: "run-1",
-        brief: createSearchBrief({ description: "UAE fintech", recruiterTarget: 24 }),
+        brief: testSearchBrief({ description: "UAE fintech", recruiterTarget: 24 }),
         policy: testAdapterPolicy,
         sourcePlan: testSourcePlan,
         startedAt: new Date("2026-08-27T10:00:00.000Z"),

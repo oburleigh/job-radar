@@ -3,6 +3,7 @@ import type {
   AdapterPolicySnapshot,
   SourcePlanSnapshot,
 } from "@/contexts/recruiter-engagement/domain/research-run";
+import { createSearchBrief } from "@/contexts/recruiter-engagement/domain/research-run";
 
 export const testAdapterPolicy: AdapterPolicySnapshot = {
   allowedPublicSourceScope: ["Public HTTPS firm pages", "Public LinkedIn profile results"],
@@ -56,4 +57,23 @@ export function testEvidence(sourceUrl: string): Evidence {
     policyVersion: "1",
     sourceUrl,
   };
+}
+
+export function testSearchBrief(
+  overrides: {
+    readonly description?: string;
+    readonly firmTarget?: number;
+    readonly recruiterTarget?: number;
+  } = {},
+) {
+  return createSearchBrief({
+    criteria: {
+      industries: ["Technology"],
+      specialisms: ["Software engineering"],
+      targetLocations: ["United Arab Emirates"],
+    },
+    description: overrides.description ?? "Technology recruitment",
+    firmTarget: overrides.firmTarget ?? 1,
+    recruiterTarget: overrides.recruiterTarget ?? 1,
+  });
 }

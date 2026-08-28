@@ -19,22 +19,23 @@ export function createDeterministicStagedResearchSource(
         throw new Error("The firm source stage was unavailable.");
       }
       const count = run.budget.firmTarget;
+      const observedAt = run.startedAt.toISOString().slice(0, 10);
       return Array.from({ length: count }, (_, index): FirmObservation => {
         const number = index + 1;
         return {
           kind: "firm",
-          companyName: `UAE Technology Search ${number}`,
-          websiteUrl: `https://uae-technology-search-${number}.example`,
-          reason: "Deterministic technology recruitment fixture.",
-          industries: ["Financial services", "Technology"],
-          specialisms: ["Software engineering", "Data and AI"],
+          companyName: `Recruitment Search ${number}`,
+          websiteUrl: `https://recruitment-search-${number}.example`,
+          reason: run.brief.description,
+          industries: run.brief.criteria.industries,
+          specialisms: run.brief.criteria.specialisms,
           evidence: {
             adapterId: run.policy.id,
             confidence: "high",
             excerpt: "Deterministic public-source fixture for technology recruitment.",
-            observedAt: "2026-08-27",
+            observedAt,
             policyVersion: run.policy.version,
-            sourceUrl: `https://uae-technology-search-${number}.example/evidence`,
+            sourceUrl: `https://recruitment-search-${number}.example/evidence`,
           },
         };
       });
@@ -44,6 +45,7 @@ export function createDeterministicStagedResearchSource(
       if (options.failStage === "recruiters") {
         throw new Error("The recruiter source stage was unavailable.");
       }
+      const observedAt = run.startedAt.toISOString().slice(0, 10);
       return Array.from({ length: run.brief.recruiterTarget }, (_, index): RecruiterObservation => {
         const number = index + 1;
         const firm = firms[index % firms.length];
@@ -60,7 +62,7 @@ export function createDeterministicStagedResearchSource(
             adapterId: run.policy.id,
             confidence: "high",
             excerpt: "Deterministic public LinkedIn-profile fixture.",
-            observedAt: "2026-08-27",
+            observedAt,
             policyVersion: run.policy.version,
             sourceUrl: `https://www.linkedin.com/in/technology-recruiter-${number}`,
           },

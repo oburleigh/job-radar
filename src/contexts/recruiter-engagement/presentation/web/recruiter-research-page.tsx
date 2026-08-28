@@ -48,6 +48,7 @@ export function RecruiterResearchPage({
   const targetLocationsError = fieldError(actionError, "targetLocations");
   const specialismsError = fieldError(actionError, "specialisms");
   const industriesError = fieldError(actionError, "industries");
+  const firmTargetError = fieldError(actionError, "firmTarget");
   const recruiterTargetError = fieldError(actionError, "recruiterTarget");
   const brief = run?.brief ?? defaultBrief;
   const loadedBriefDescription = brief.description;
@@ -129,19 +130,34 @@ export function RecruiterResearchPage({
             options={targetLocationOptions}
             values={targetLocations}
           />
-          <TextField
-            defaultValue={String(brief.recruiterTarget)}
-            disabled={isSubmitting || isActive}
-            {...(recruiterTargetError ? { error: recruiterTargetError } : {})}
-            hint="Any positive whole number. There is no hard maximum."
-            id="recruiter-target"
-            inputMode="numeric"
-            label="Recruiters to find"
-            min="1"
-            name="recruiterTarget"
-            required
-            type="number"
-          />
+          <div className="recruiter-target-fields">
+            <TextField
+              defaultValue={String(brief.firmTarget)}
+              disabled={isSubmitting || isActive}
+              {...(firmTargetError ? { error: firmTargetError } : {})}
+              hint="Cannot exceed the recruiter target."
+              id="firm-target"
+              inputMode="numeric"
+              label="Firms to find"
+              min="1"
+              name="firmTarget"
+              required
+              type="number"
+            />
+            <TextField
+              defaultValue={String(brief.recruiterTarget)}
+              disabled={isSubmitting || isActive}
+              {...(recruiterTargetError ? { error: recruiterTargetError } : {})}
+              hint="Positive whole numbers with no fixed maximum."
+              id="recruiter-target"
+              inputMode="numeric"
+              label="Recruiters to find"
+              min="1"
+              name="recruiterTarget"
+              required
+              type="number"
+            />
+          </div>
           <label className="recruiter-textarea-label" htmlFor="recruiter-specialisms">
             <span>Technology specialisms</span>
             <textarea
@@ -308,8 +324,11 @@ function ResearchRunResult({
             Source plan {run.sourcePlan.id} v{run.sourcePlan.version}
           </span>
           <span>
-            Execution: {run.policy.execution.model}, {run.policy.execution.reasoningEffort} effort,{" "}
-            {run.policy.execution.webSearchEnabled ? "public web search" : "web search disabled"},{" "}
+            Execution: {run.policy.execution.model ?? "Codex account default"},{" "}
+            {run.policy.execution.reasoningEffort
+              ? `${run.policy.execution.reasoningEffort} effort`
+              : "default effort"}
+            , {run.policy.execution.webSearchEnabled ? "public web search" : "web search disabled"},{" "}
             {run.policy.execution.ephemeral ? "ephemeral" : "persistent"},{" "}
             {run.policy.execution.sandboxMode} sandbox,{" "}
             {run.policy.execution.automaticRetry ? "automatic retry" : "no automatic retry"}

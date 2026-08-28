@@ -22,7 +22,7 @@ test("starts recruiter research from the browser and renders firms before recrui
   await expect(page).toHaveURL(/\/recruiter-research\?run=/);
 
   await expect(
-    page.getByRole("heading", { level: 3, name: "UAE Technology Search 1", exact: true }),
+    page.getByRole("heading", { level: 3, name: "Recruitment Search 1", exact: true }),
   ).toBeVisible();
   await expect(page.getByText("Researching", { exact: true })).toBeVisible();
   await expect(
@@ -91,7 +91,7 @@ test("cancels an active recruiter run and retries with the frozen brief and plan
   await page.getByRole("button", { name: "Start research" }).click();
 
   await expect(
-    page.getByRole("heading", { level: 3, name: "UAE Technology Search 1", exact: true }),
+    page.getByRole("heading", { level: 3, name: "Recruitment Search 1", exact: true }),
   ).toBeVisible();
   const previousRunId = new URL(page.url()).searchParams.get("run");
   if (!previousRunId) {
@@ -150,17 +150,20 @@ test("uses configured market options in the shared token autocomplete and keeps 
       "Target locations",
       "Technology specialisms",
       "Target industries",
+      "Firms to find",
       "Recruiters to find",
     ].map(async (label) => page.getByLabel(label).boundingBox()),
   );
-  const [brief, locations, specialisms, industries, recruiterTarget] = requiredBoxes(controls);
-  if (!brief || !locations || !specialisms || !industries || !recruiterTarget) {
+  const [brief, locations, specialisms, industries, firmTarget, recruiterTarget] =
+    requiredBoxes(controls);
+  if (!brief || !locations || !specialisms || !industries || !firmTarget || !recruiterTarget) {
     throw new Error("Recruiter controls must be rendered before layout is measured.");
   }
   expect(brief.width).toBeGreaterThan(specialisms.width);
   expect(Math.abs(specialisms.y - industries.y)).toBeLessThan(4);
   expect(specialisms.x).toBeLessThan(industries.x);
   expect(Math.abs(locations.y - recruiterTarget.y)).toBeLessThan(4);
+  expect(Math.abs(firmTarget.y - recruiterTarget.y)).toBeLessThan(4);
   expect(locations.x).toBeLessThan(recruiterTarget.x);
   expect(locations.height).toBeGreaterThanOrEqual(44);
   expect(locations.height).toBeLessThan(100);
@@ -179,6 +182,7 @@ test("contains recruiter controls equally on mobile and clears the fixed navigat
       "Target locations",
       "Technology specialisms",
       "Target industries",
+      "Firms to find",
       "Recruiters to find",
     ].map(async (label) => page.getByLabel(label).boundingBox()),
   );

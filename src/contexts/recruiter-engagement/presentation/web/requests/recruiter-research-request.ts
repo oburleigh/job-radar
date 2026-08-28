@@ -7,6 +7,11 @@ import {
 
 const requestSchema = z.object({
   brief: z.string().trim().max(1_000),
+  firmTarget: z
+    .string()
+    .regex(/^[1-9]\d*$/)
+    .transform(Number)
+    .pipe(z.number().int().safe()),
   industries: z.string().trim().min(1).transform(criteriaItems),
   recruiterTarget: z
     .string()
@@ -27,6 +32,7 @@ export type RecruiterResearchStartRequest =
           readonly specialisms: readonly string[];
           readonly targetLocations: readonly string[];
         };
+        readonly firmTarget: number;
         readonly recruiterTarget: number;
       };
     }
@@ -38,6 +44,7 @@ export type RecruiterResearchStartRequest =
 
 export type RecruiterResearchStartField =
   | "brief"
+  | "firmTarget"
   | "industries"
   | "recruiterTarget"
   | "specialisms"
@@ -49,6 +56,7 @@ export function parseRecruiterResearchStartRequest(
 ): RecruiterResearchStartRequest {
   const result = requestSchema.safeParse({
     brief: formData.get("brief"),
+    firmTarget: formData.get("firmTarget"),
     industries: formData.get("industries"),
     recruiterTarget: formData.get("recruiterTarget"),
     specialisms: formData.get("specialisms"),
@@ -59,6 +67,13 @@ export function parseRecruiterResearchStartRequest(
   if (!result.success) {
     const field = validationField(result.error.issues[0]?.path[0]);
     return { status: "invalid", field, message: validationMessage(field) };
+  }
+  if (result.data.firmTarget > result.data.recruiterTarget) {
+    return {
+      status: "invalid",
+      field: "firmTarget",
+      message: "Firms to find cannot exceed recruiters to find.",
+    };
   }
   if (!areConfiguredTargetLocations(result.data.targetLocations, options)) {
     return {
@@ -76,6 +91,7 @@ export function parseRecruiterResearchStartRequest(
         specialisms: result.data.specialisms,
         targetLocations: canonicalTargetLocations(result.data.targetLocations, options),
       },
+      firmTarget: result.data.firmTarget,
       recruiterTarget: result.data.recruiterTarget,
     },
   };
@@ -96,6 +112,7 @@ function canonicalTargetLocations(
 function validationField(field: PropertyKey | undefined): RecruiterResearchStartField {
   switch (field) {
     case "industries":
+    case "firmTarget":
     case "recruiterTarget":
     case "specialisms":
     case "targetLocations":
@@ -109,6 +126,8 @@ function validationMessage(field: RecruiterResearchStartField): string {
   switch (field) {
     case "industries":
       return "Target industries are required.";
+    case "firmTarget":
+      return "Firms to find must be a positive integer.";
     case "recruiterTarget":
       return "Recruiters to find must be a positive integer.";
     case "specialisms":

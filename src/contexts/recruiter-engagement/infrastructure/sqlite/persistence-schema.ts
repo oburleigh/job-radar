@@ -57,8 +57,8 @@ const adapterPolicy = z
       .object({
         automaticRetry: z.boolean(),
         ephemeral: z.boolean(),
-        model: z.string().min(1),
-        reasoningEffort: z.string().min(1),
+        model: z.string().min(1).nullable(),
+        reasoningEffort: z.string().min(1).nullable(),
         sandboxMode: z.string().min(1),
         webSearchEnabled: z.boolean(),
       })
@@ -139,6 +139,7 @@ const researchRun = z
       .object({
         criteria: researchCriteria,
         description: z.string(),
+        firmTarget: positiveInteger.optional(),
         recruiterTarget: positiveInteger,
       })
       .strict(),
@@ -164,7 +165,14 @@ const researchRun = z
     ]),
     updatedAt: date,
   })
-  .strict();
+  .strict()
+  .transform((value) => ({
+    ...value,
+    brief: {
+      ...value.brief,
+      firmTarget: value.brief.firmTarget ?? value.budget.firmTarget,
+    },
+  }));
 const sourceFailure = z
   .object({
     message: z.string(),

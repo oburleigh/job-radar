@@ -16,6 +16,7 @@ describe("recruiter research request", () => {
       parseRecruiterResearchStartRequest(
         formData({
           brief: "UAE fintech engineering",
+          firmTarget: "12",
           industries: "Financial services, Healthcare",
           recruiterTarget: "24",
           specialisms: "Software engineering, Data and AI",
@@ -32,6 +33,7 @@ describe("recruiter research request", () => {
           specialisms: ["Software engineering", "Data and AI"],
           targetLocations: ["United Arab Emirates"],
         },
+        firmTarget: 12,
         recruiterTarget: 24,
       },
     });
@@ -42,6 +44,7 @@ describe("recruiter research request", () => {
       parseRecruiterResearchStartRequest(
         formData({
           brief: "UAE fintech engineering",
+          firmTarget: "12",
           industries: "Financial services, Healthcare",
           recruiterTarget: "24",
           specialisms: "Software engineering, Data and AI",
@@ -58,6 +61,7 @@ describe("recruiter research request", () => {
           specialisms: ["Software engineering", "Data and AI"],
           targetLocations: ["United Arab Emirates"],
         },
+        firmTarget: 12,
         recruiterTarget: 24,
       },
     });
@@ -68,6 +72,7 @@ describe("recruiter research request", () => {
       parseRecruiterResearchStartRequest(
         formData({
           brief: "UAE technology",
+          firmTarget: "10",
           industries: "Technology",
           recruiterTarget: "0",
           specialisms: "Software engineering",
@@ -82,11 +87,60 @@ describe("recruiter research request", () => {
     });
   });
 
+  it("rejects a non-positive firm target independently of the recruiter target", () => {
+    expect(
+      parseRecruiterResearchStartRequest(
+        formData({
+          brief: "Singapore technology",
+          firmTarget: "0",
+          industries: "Technology",
+          recruiterTarget: "20",
+          specialisms: "Platform engineering",
+          targetLocations: "Dubai",
+        }),
+        targetLocationOptions,
+      ),
+    ).toEqual({
+      status: "invalid",
+      field: "firmTarget",
+      message: "Firms to find must be a positive integer.",
+    });
+  });
+
+  it("accepts equal targets and rejects one more firm than recruiters", () => {
+    const values = {
+      brief: "Singapore technology",
+      firmTarget: "20",
+      industries: "Technology",
+      recruiterTarget: "20",
+      specialisms: "Platform engineering",
+      targetLocations: "Dubai",
+    };
+    expect(
+      parseRecruiterResearchStartRequest(formData(values), targetLocationOptions),
+    ).toMatchObject({
+      status: "valid",
+      command: { firmTarget: 20, recruiterTarget: 20 },
+    });
+
+    expect(
+      parseRecruiterResearchStartRequest(
+        formData({ ...values, firmTarget: "21" }),
+        targetLocationOptions,
+      ),
+    ).toEqual({
+      status: "invalid",
+      field: "firmTarget",
+      message: "Firms to find cannot exceed recruiters to find.",
+    });
+  });
+
   it("reports the invalid structured criterion instead of blaming the recruiter target", () => {
     expect(
       parseRecruiterResearchStartRequest(
         formData({
           brief: "UAE technology",
+          firmTarget: "10",
           industries: "Technology",
           recruiterTarget: "20",
           specialisms: "Software engineering",
@@ -106,6 +160,7 @@ describe("recruiter research request", () => {
       parseRecruiterResearchStartRequest(
         formData({
           brief: "UAE technology",
+          firmTarget: "10",
           industries: "Technology",
           recruiterTarget: "20",
           specialisms: "Software engineering",
