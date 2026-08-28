@@ -94,12 +94,21 @@ describe("generic UI public contract", () => {
 
   it("renders a context-neutral page heading with optional actions", () => {
     const html = renderToStaticMarkup(
-      <PageHeader index="02" title="Profiles" description="Manage saved criteria" actions="Add" />,
+      <PageHeader title="Profiles" description="Manage saved criteria" actions="Add" />,
     );
 
-    expect(html).toContain("02");
+    expect(html).not.toContain("jr-page-index");
+    expect(html).toContain('data-has-actions="true"');
     expect(html).toContain("Profiles");
     expect(html).toContain("Manage saved criteria");
     expect(html).toContain("Add");
+  });
+
+  it("lets a page header without actions use its full width", () => {
+    const html = renderToStaticMarkup(
+      <PageHeader title="Recruiter research" description="Research public sources" />,
+    );
+
+    expect(html).not.toContain("data-has-actions");
   });
 });

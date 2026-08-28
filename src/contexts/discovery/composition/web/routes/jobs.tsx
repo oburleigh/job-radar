@@ -1,4 +1,4 @@
-import { buttonAttributes, PageHeader } from "@job-radar/design-ui";
+import { buttonAttributes } from "@job-radar/design-ui";
 import { Bookmark, BriefcaseBusiness, CheckCircle2, Radar, Waypoints } from "lucide-react";
 import { type ActionFunctionArgs, Link, redirect, useLoaderData } from "react-router";
 import { discoveryWeb } from "@/contexts/discovery/composition/discovery-web.server";
@@ -60,24 +60,18 @@ export default function JobsPage() {
 
   return (
     <div className="page">
-      <PageHeader
-        index="01"
-        title="The roles worth your attention"
-        description="Search widely, then use explicit rules to keep the shortlist focused."
-        actions={
-          data.profile ? (
+      <h1 className="sr-only">Opportunities</h1>
+      {data.profile ? (
+        <>
+          <div className="opportunity-toolbar">
             <RunControls
               profile={{ id: data.profile.id, name: data.profile.name }}
               provider={selectedProvider}
               providers={searchProviders}
               activeBoardCount={data.activeBoards}
             />
-          ) : null
-        }
-      />
+          </div>
 
-      {data.profile ? (
-        <>
           <section className="metric-grid" aria-label="Opportunity index summary">
             <Metric
               icon={<BriefcaseBusiness size={19} />}
@@ -112,12 +106,7 @@ export default function JobsPage() {
           />
 
           <div className="catalogue-heading">
-            <div className="heading-with-index">
-              <span className="section-index" aria-hidden="true">
-                04
-              </span>
-              <h2>{data.profile.name}</h2>
-            </div>
+            <h2>{data.profile.name}</h2>
             <div className="catalogue-count">
               <strong>{data.jobs.length}</strong>
               <span>role{data.jobs.length === 1 ? "" : "s"} shown</span>

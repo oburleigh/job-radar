@@ -177,7 +177,7 @@ describe("local Codex research source", () => {
 
     expect(prompts).toHaveLength(1);
     expect(prompts[0]).toContain("Target locations: Singapore.");
-    expect(prompts[0]).toContain("Technology specialisms: Platform engineering.");
+    expect(prompts[0]).toContain("Specialisms: Platform engineering.");
     expect(prompts[0]).toContain("Target industries: Logistics.");
     expect(prompts[0]).not.toContain("UAE");
   });

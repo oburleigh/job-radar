@@ -79,4 +79,42 @@ describe("token autocomplete", () => {
     expect(html).toContain('aria-label="Remove Saint Lucia"');
     expect(html).not.toContain('aria-label="Remove St Lucia"');
   });
+
+  it("accepts provider search terms without exposing them as labels", () => {
+    const html = renderToStaticMarkup(
+      <TokenAutocomplete
+        label="Locations"
+        name="locations"
+        onChange={() => undefined}
+        options={[
+          {
+            label: "United Arab Emirates",
+            searchTerms: ["UAE", "AE", "ARE"],
+            value: "United Arab Emirates",
+          },
+        ]}
+        values={["United Arab Emirates"]}
+      />,
+    );
+
+    expect(html).toContain('aria-label="Remove United Arab Emirates"');
+    expect(html).not.toContain(">UAE<");
+  });
+
+  it("exposes asynchronous loading and result status accessibly", () => {
+    const html = renderToStaticMarkup(
+      <TokenAutocomplete
+        busy
+        label="Locations"
+        name="locations"
+        onChange={() => undefined}
+        options={[]}
+        statusMessage="Searching locations."
+        values={[]}
+      />,
+    );
+
+    expect(html).toContain('aria-busy="true"');
+    expect(html).toContain('role="status">Searching locations.</p>');
+  });
 });

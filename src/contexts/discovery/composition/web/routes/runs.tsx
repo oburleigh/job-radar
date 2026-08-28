@@ -14,7 +14,6 @@ export default function RunsPage() {
   return (
     <div className="page">
       <PageHeader
-        index="04"
         title="Discovery history"
         description="See what each search found, how many boards expanded successfully, and where a provider or adapter failed."
       />

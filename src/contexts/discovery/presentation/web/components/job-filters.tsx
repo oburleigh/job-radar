@@ -54,10 +54,6 @@ export function JobFilters({ profiles, currentProfileId, atsLabels }: JobFilters
       className={`filter-bar${isPending ? " filter-pending" : ""}`}
       aria-label="Filter opportunity catalogue"
     >
-      <div className="filter-index" aria-hidden="true">
-        <strong>03</strong>
-        <span>Filter index</span>
-      </div>
       <label className="filter-field profile-filter">
         <span>Profile</span>
         <select

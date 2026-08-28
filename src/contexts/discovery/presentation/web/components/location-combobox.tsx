@@ -1,61 +1,41 @@
-import { TokenAutocomplete, type TokenAutocompleteOption } from "@job-radar/design-ui";
-
+import { LocationAutocomplete } from "@/platform/http/location-autocomplete";
+import type { LocationOption } from "@/platform/http/location-option";
 import {
   type CountryCurrencyOption,
-  countryCurrencyOptions,
-  countryOptionFor,
-  normaliseCountryName,
+  countryCurrencyOptionForCode,
 } from "./country-currency-catalogue";
 
 interface LocationComboboxProps {
   readonly error?: string | undefined;
   readonly name: string;
+  readonly initialOptions?: readonly LocationOption[] | undefined;
   readonly onCountrySelected?: ((option: CountryCurrencyOption) => void) | undefined;
   readonly values: readonly string[];
   readonly onChange: (values: readonly string[]) => void;
 }
 
-const options: readonly TokenAutocompleteOption[] = countryCurrencyOptions.map((country) => ({
-  detail: country.currencyCode,
-  label: country.countryName,
-  value: country.countryName,
-}));
-
 export function LocationCombobox({
   error,
+  initialOptions,
   name,
   onChange,
   onCountrySelected,
   values,
 }: LocationComboboxProps) {
-  const canonicalValues = values.map((value) => countryOptionFor(value)?.countryName ?? value);
-  const legacyValues = canonicalValues.filter((value) => countryOptionFor(value) === undefined);
-
   return (
-    <>
-      <TokenAutocomplete
-        {...(error ? { error } : {})}
-        includeUnavailableValuesInFormValue={false}
-        invalidSelectionMessage="Choose a target location from the suggestions."
-        invalidValueMessage="Replace saved target locations that are not in the location catalogue."
-        label="Target locations"
-        name={name}
-        onChange={onChange}
-        onOptionSelected={(option) => {
-          const country = countryOptionFor(option.value);
-          if (country) {
-            onCountrySelected?.(country);
-          }
-        }}
-        options={options}
-        placeholder="United Arab Emirates or China"
-        secondaryPlaceholder="Add another location"
-        valueNormalizer={normaliseCountryName}
-        values={canonicalValues}
-      />
-      {legacyValues.length > 0 ? (
-        <input name="legacyLocationTerms" type="hidden" value={legacyValues.join("\n")} readOnly />
-      ) : null}
-    </>
+    <LocationAutocomplete
+      {...(error ? { error } : {})}
+      hint="Choose countries, administrative areas, or cities to include in discovery."
+      {...(initialOptions ? { initialOptions } : {})}
+      name={name}
+      onChange={onChange}
+      onLocationSelected={(location) => {
+        const country = countryCurrencyOptionForCode(location.countryCode);
+        if (country) {
+          onCountrySelected?.(country);
+        }
+      }}
+      values={values}
+    />
   );
 }

@@ -41,7 +41,6 @@ export default function RunDetailPage() {
   return (
     <div className="page">
       <PageHeader
-        index="04"
         title={`Run #${run.id}`}
         description={`${run.profileName} · ${run.provider || "No web provider"} · ${run.queryCount} web requests`}
         actions={

@@ -12,4 +12,5 @@ export default [
   ),
   route("settings", "./routes/settings.tsx"),
   route("api/discovery-runs", "./routes/discovery-runs.ts"),
+  route("api/location-options", "./routes/location-options.ts"),
 ] satisfies RouteConfig;

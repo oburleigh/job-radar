@@ -1,5 +1,5 @@
+import { eq } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-
 import type { RecruiterResearchSettings } from "@/contexts/recruiter-engagement/application/research-settings/settings";
 import { recruiterResearchSettings } from "./schema";
 
@@ -8,28 +8,52 @@ type Database<TSchema extends Record<string, unknown>> = BetterSQLite3Database<T
 export const defaultRecruiterResearchSettings = {
   defaultBrief: {
     criteria: {
-      industries: ["Financial services", "Technology", "Healthcare", "Retail and e-commerce"],
-      specialisms: [
-        "Software engineering",
-        "Data and AI",
-        "Cloud and DevOps",
-        "Cybersecurity",
-        "Product",
-        "Architecture",
-        "Technology leadership",
-      ],
+      industries: [],
+      specialisms: [],
     },
-    description:
-      "Research recruitment firms for software engineering, data and AI, cloud and DevOps, cybersecurity, product, architecture, and technology leadership roles.",
+    description: "",
     firmTarget: 10,
     recruiterTarget: 20,
   },
   execution: {
-    model: "gpt-5.6-terra",
-    reasoningEffort: "medium",
+    model: null,
+    reasoningEffort: null,
     stageRequestLimit: 1,
     stageTimeoutMs: 600_000,
   },
+} as const satisfies RecruiterResearchSettings;
+
+const legacyTechnologyDefaultBrief = {
+  criteria: {
+    industries: ["Financial services", "Technology", "Healthcare", "Retail and e-commerce"],
+    specialisms: [
+      "Software engineering",
+      "Data and AI",
+      "Cloud and DevOps",
+      "Cybersecurity",
+      "Product",
+      "Architecture",
+      "Technology leadership",
+    ],
+  },
+  description:
+    "Research recruitment firms for software engineering, data and AI, cloud and DevOps, cybersecurity, product, architecture, and technology leadership roles.",
+  firmTarget: 10,
+  recruiterTarget: 20,
+} as const;
+
+const legacyDefaultRecruiterResearchSettings = {
+  defaultBrief: legacyTechnologyDefaultBrief,
+  execution: {
+    ...defaultRecruiterResearchSettings.execution,
+    model: "gpt-5.6-terra",
+    reasoningEffort: "medium",
+  },
+} as const satisfies RecruiterResearchSettings;
+
+const legacyAccountDefaultRecruiterResearchSettings = {
+  defaultBrief: legacyTechnologyDefaultBrief,
+  execution: defaultRecruiterResearchSettings.execution,
 } as const satisfies RecruiterResearchSettings;
 
 export function bootstrapRecruiterResearch<TSchema extends Record<string, unknown>>(
@@ -40,5 +64,22 @@ export function bootstrapRecruiterResearch<TSchema extends Record<string, unknow
     .insert(recruiterResearchSettings)
     .values({ key: "default", value: defaultRecruiterResearchSettings, updatedAt: now })
     .onConflictDoNothing()
+    .run();
+  const existing = database
+    .select({ value: recruiterResearchSettings.value })
+    .from(recruiterResearchSettings)
+    .where(eq(recruiterResearchSettings.key, "default"))
+    .get()?.value;
+  if (
+    ![legacyDefaultRecruiterResearchSettings, legacyAccountDefaultRecruiterResearchSettings].some(
+      (legacy) => JSON.stringify(existing) === JSON.stringify(legacy),
+    )
+  ) {
+    return;
+  }
+  database
+    .update(recruiterResearchSettings)
+    .set({ value: defaultRecruiterResearchSettings, updatedAt: now })
+    .where(eq(recruiterResearchSettings.key, "default"))
     .run();
 }

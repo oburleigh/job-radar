@@ -680,6 +680,14 @@ Vite prints the selected development port when it starts. You can choose one exp
 pnpm dev --port 3001
 ```
 
+## Reference data
+
+Location autocomplete uses
+[`@tansuasici/country-state-city`](https://www.npmjs.com/package/@tansuasici/country-state-city).
+Its code is MIT-licensed. Its country, administrative-area, and city data is derived from
+[`countries-states-cities-database`](https://github.com/dr5hn/countries-states-cities-database)
+and provided under the [Open Database License 1.0](https://opendatacommons.org/licenses/odbl/1-0/).
+
 ## Data and security
 
 The default database is `data/job-radar.sqlite`. SQLite also creates temporary

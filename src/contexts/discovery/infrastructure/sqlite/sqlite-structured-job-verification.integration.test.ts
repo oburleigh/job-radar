@@ -2,20 +2,22 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import Database from "better-sqlite3";
 import { eq } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { searchProfileIdFrom } from "@/contexts/discovery/domain/identifiers";
 import { bootstrapJobRadar } from "@/contexts/discovery/infrastructure/configuration/bootstrap-job-radar";
 import type { RawJob } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
 import { makeDedupeKey } from "@/contexts/discovery/infrastructure/job-sources/urls";
+import * as schema from "@/contexts/discovery/infrastructure/sqlite/schema";
+import { createSqliteJobDiscoveryCatalog } from "@/contexts/discovery/infrastructure/sqlite/sqlite-job-discovery-catalog";
+import { createSqliteJobMatchEvaluator } from "@/contexts/discovery/infrastructure/sqlite/sqlite-job-match-evaluator";
 
 const testDirectory = mkdtempSync(path.join(tmpdir(), "job-radar-structured-verification-"));
-const previousDatabasePath = process.env.DB_PATH;
-process.env.DB_PATH = path.join(testDirectory, "job-radar.sqlite");
-
-const { db } = await import("@/contexts/discovery/infrastructure/sqlite/database");
-const { sqlite } = await import("@/platform/sqlite/client");
+const sqlite = new Database(path.join(testDirectory, "job-radar.sqlite"));
+const db = drizzle(sqlite, { schema });
 const {
   appSettings,
   atsIntegrations,
@@ -25,13 +27,7 @@ const {
   jobMatches,
   jobs,
   searchProfiles,
-} = await import("@/contexts/discovery/infrastructure/sqlite/schema");
-const { createSqliteJobDiscoveryCatalog } = await import(
-  "@/contexts/discovery/infrastructure/sqlite/sqlite-job-discovery-catalog"
-);
-const { createSqliteJobMatchEvaluator } = await import(
-  "@/contexts/discovery/infrastructure/sqlite/sqlite-job-match-evaluator"
-);
+} = schema;
 
 const checkedAt = new Date("2026-08-24T09:00:00.000Z");
 
@@ -52,11 +48,6 @@ describe("structured Web3 job verification", () => {
 
   afterAll(() => {
     sqlite.close();
-    if (previousDatabasePath === undefined) {
-      delete process.env.DB_PATH;
-    } else {
-      process.env.DB_PATH = previousDatabasePath;
-    }
     rmSync(testDirectory, { recursive: true, force: true });
   });
 

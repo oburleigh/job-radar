@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useFetcher } from "react-router";
 
 import type { ActionState } from "@/contexts/discovery/presentation/web/action-state";
+import type { LocationOption } from "@/platform/http/location-option";
 import { CurrencyCombobox } from "./currency-combobox";
 import { LocationCombobox } from "./location-combobox";
 
@@ -13,6 +14,7 @@ interface ProfileFormProps {
     minimumScore: number;
     salaryCurrency: string;
   };
+  initialLocationOptions?: readonly LocationOption[];
   profile?: {
     id?: number;
     name: string;
@@ -34,7 +36,7 @@ interface ProfileFormProps {
 
 const initialState: ActionState = { ok: false, message: "" };
 
-export function ProfileForm({ profile, defaults }: ProfileFormProps) {
+export function ProfileForm({ profile, defaults, initialLocationOptions }: ProfileFormProps) {
   const fetcher = useFetcher<ActionState>();
   const state = fetcher.data ?? initialState;
   const pending = fetcher.state !== "idle";
@@ -56,7 +58,6 @@ export function ProfileForm({ profile, defaults }: ProfileFormProps) {
 
       <section className="form-section">
         <div className="form-section-copy">
-          <span className="form-step">01</span>
           <div>
             <h2>Name and thresholds</h2>
             <p>Set the age and score cutoffs used before a role appears.</p>
@@ -69,7 +70,7 @@ export function ProfileForm({ profile, defaults }: ProfileFormProps) {
               name="name"
               required
               defaultValue={profile?.name ?? ""}
-              placeholder="UAE engineering leadership"
+              placeholder="Example profile name"
             />
           </label>
           <label>
@@ -139,7 +140,6 @@ export function ProfileForm({ profile, defaults }: ProfileFormProps) {
 
       <section className="form-section">
         <div className="form-section-copy">
-          <span className="form-step">02</span>
           <div>
             <h2>Titles and locations</h2>
             <p>Enter title phrases by line and add each target location separately.</p>
@@ -158,6 +158,7 @@ export function ProfileForm({ profile, defaults }: ProfileFormProps) {
           </label>
           <LocationCombobox
             error={locationError}
+            {...(initialLocationOptions ? { initialOptions: initialLocationOptions } : {})}
             name="locationTerms"
             onChange={setLocationTerms}
             onCountrySelected={(country) => {
@@ -195,7 +196,6 @@ export function ProfileForm({ profile, defaults }: ProfileFormProps) {
 
       <section className="form-section">
         <div className="form-section-copy">
-          <span className="form-step">03</span>
           <div>
             <h2>Job context</h2>
             <p>
@@ -210,7 +210,7 @@ export function ProfileForm({ profile, defaults }: ProfileFormProps) {
               name="requiredJobTerms"
               rows={5}
               defaultValue={profile?.requiredJobTerms.join("\n") ?? ""}
-              placeholder={"Software\nTechnology\nPlatform\nCloud"}
+              placeholder={"Keyword one\nKeyword two"}
             />
           </label>
         </div>
@@ -218,7 +218,6 @@ export function ProfileForm({ profile, defaults }: ProfileFormProps) {
 
       <section className="form-section">
         <div className="form-section-copy">
-          <span className="form-step">04</span>
           <div>
             <h2>Exclusions</h2>
             <p>Reject obvious false positives before scoring.</p>

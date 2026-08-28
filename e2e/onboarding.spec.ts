@@ -21,6 +21,7 @@ test.describe
     });
 
     test("creates a salary-aware profile from an empty database", async ({ page }) => {
+      await page.setViewportSize({ width: 1440, height: 1000 });
       await page.goto("/profiles?new=1");
 
       await page.getByLabel("Profile name").fill("UAE engineering leadership");
@@ -37,6 +38,26 @@ test.describe
         page.getByRole("heading", { level: 2, name: "UAE engineering leadership" }),
       ).toBeVisible();
       await expect(page.getByLabel("Salary currency")).toHaveValue("AED");
+
+      const profileActions = await Promise.all([
+        page.getByRole("link", { name: "Clone profile" }).boundingBox(),
+        page.getByRole("button", { name: "Delete profile" }).boundingBox(),
+        page.getByRole("link", { name: "New profile" }).boundingBox(),
+        page.locator(".profile-header-actions").boundingBox(),
+        page.locator(".jr-header-actions").boundingBox(),
+      ]);
+      const [cloneProfile, deleteProfile, newProfile, actionGroup, actionPanel] = profileActions;
+      if (!cloneProfile || !deleteProfile || !newProfile || !actionGroup || !actionPanel) {
+        throw new Error("Profile header actions must be measurable.");
+      }
+      expect(Math.abs(cloneProfile.y - deleteProfile.y)).toBeLessThan(2);
+      expect(Math.abs(deleteProfile.y - newProfile.y)).toBeLessThan(2);
+      expect(cloneProfile.height).toBe(deleteProfile.height);
+      expect(deleteProfile.height).toBe(newProfile.height);
+      expect(Math.abs(center(actionGroup) - center(actionPanel))).toBeLessThanOrEqual(1);
+      await page.screenshot({ path: "test-results/profiles-desktop.png", fullPage: true });
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.screenshot({ path: "test-results/profiles-mobile.png", fullPage: true });
     });
 
     test("adds an unknown ATS URL as a configurable search integration", async ({ page }) => {
@@ -110,6 +131,15 @@ test.describe
 
       await expect(page.getByText("Runtime settings saved to SQLite.")).toBeVisible();
 
+      await expect(page.getByText("Local Codex CLI", { exact: true })).toBeVisible();
+      await page.getByLabel("Model").fill("gpt-5.6");
+      await page.getByLabel("Reasoning effort").fill("high");
+      await page.getByRole("button", { name: "Save local Codex settings" }).click();
+      await expect(page.getByText("Local Codex settings saved to SQLite.")).toBeVisible();
+      await page.reload();
+      await expect(page.getByLabel("Model")).toHaveValue("gpt-5.6");
+      await expect(page.getByLabel("Reasoning effort")).toHaveValue("high");
+
       await page.getByLabel("First retry delay (ms)").fill("4000");
       const maximumRetryDelay = page.getByLabel("Maximum retry delay (ms)");
       await maximumRetryDelay.fill("500");
@@ -128,11 +158,113 @@ test.describe
       await maximumRetryDelay.fill("4000");
       await page.getByRole("button", { name: "Save runtime settings" }).click();
       await expect(page.getByText("Runtime settings saved to SQLite.")).toBeVisible();
+      await page.setViewportSize({ width: 1440, height: 1000 });
+      await page.screenshot({ path: "test-results/settings-desktop.png", fullPage: true });
+      await page.emulateMedia({ colorScheme: "dark" });
+      await page.reload();
+      await page.screenshot({ path: "test-results/settings-desktop-dark.png", fullPage: true });
+      await page.emulateMedia({ colorScheme: "light" });
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.screenshot({ path: "test-results/settings-mobile.png", fullPage: true });
+    });
+
+    test("uses a compact contextual source registry control", async ({ page }) => {
+      await page.setViewportSize({ width: 1440, height: 1000 });
+      await page.goto("/sources");
+
+      const refreshRegistry = page.getByRole("button", { name: "Refresh board registry" });
+      const sourceHeadingActions = page.locator(".source-heading-actions");
+      const activeSourceCount = page
+        .locator(".source-section")
+        .first()
+        .locator(".source-heading-actions > span");
+      await expect(page.getByText("Source registry actions", { exact: true })).toHaveCount(0);
+      await expect(page.getByRole("link", { name: "Add ATS integration" })).toHaveCount(0);
+      await expect(refreshRegistry).toHaveAttribute("title", "Refresh board registry");
+      await expect(activeSourceCount).toHaveText(/^\d+ active$/);
+      const refreshBox = await refreshRegistry.boundingBox();
+      if (!refreshBox) {
+        throw new Error("Source registry control must be measurable.");
+      }
+      expect(refreshBox.width).toBe(refreshBox.height);
+      const [
+        pageHeader,
+        pageTitle,
+        sourceHeadingRule,
+        sourceHeading,
+        sourceHeadingActionsBox,
+        activeSourceCountBox,
+        sourceGrid,
+        firstSourceIcon,
+      ] = await Promise.all([
+        page.locator(".jr-page-header").boundingBox(),
+        page.getByRole("heading", { level: 1, name: "Sources and company boards" }).boundingBox(),
+        page.locator(".source-section").first().locator(".section-heading").boundingBox(),
+        page.getByRole("heading", { level: 2, name: "Where discovery looks" }).boundingBox(),
+        sourceHeadingActions.boundingBox(),
+        activeSourceCount.boundingBox(),
+        page.locator(".source-grid").boundingBox(),
+        page.locator(".source-grid .source-card-icon").first().boundingBox(),
+      ]);
+      if (
+        !pageHeader ||
+        !pageTitle ||
+        !sourceHeadingRule ||
+        !sourceHeading ||
+        !sourceHeadingActionsBox ||
+        !activeSourceCountBox ||
+        !sourceGrid ||
+        !firstSourceIcon
+      ) {
+        throw new Error("Source header and content edges must be measurable.");
+      }
+      await expect(page.locator(".jr-page-header")).not.toHaveAttribute("data-has-actions");
+      await expect(page.locator(".jr-header-actions")).toHaveCount(0);
+      expect(Math.abs(pageHeader.x - sourceHeadingRule.x)).toBeLessThanOrEqual(1);
+      expect(Math.abs(pageHeader.width - sourceHeadingRule.width)).toBeLessThanOrEqual(1);
+      expect(Math.abs(pageHeader.x - sourceGrid.x)).toBeLessThanOrEqual(1);
+      expect(Math.abs(pageHeader.width - sourceGrid.width)).toBeLessThanOrEqual(1);
+      expect(Math.abs(pageTitle.x - sourceHeading.x)).toBeLessThanOrEqual(1);
+      expect(Math.abs(pageTitle.x - firstSourceIcon.x)).toBeLessThanOrEqual(1);
+      expect(
+        Math.abs(
+          sourceHeadingActionsBox.x +
+            sourceHeadingActionsBox.width -
+            (sourceGrid.x + sourceGrid.width - (pageTitle.x - pageHeader.x)),
+        ),
+      ).toBeLessThanOrEqual(2);
+      expect(refreshBox.x).toBeGreaterThan(activeSourceCountBox.x);
+      expect(refreshBox.x + refreshBox.width).toBeLessThanOrEqual(
+        sourceHeadingActionsBox.x + sourceHeadingActionsBox.width,
+      );
+      expect(Math.abs(refreshBox.y - activeSourceCountBox.y)).toBeLessThanOrEqual(12);
+      const appearance = await refreshRegistry.evaluate((element) => {
+        const styles = getComputedStyle(element);
+        return { background: styles.backgroundColor, borderColor: styles.borderTopColor };
+      });
+      expect(appearance.background).not.toBe("rgba(0, 0, 0, 0)");
+      expect(appearance.borderColor).not.toBe("rgba(0, 0, 0, 0)");
+      const sourceNames = await page.locator(".source-card-copy strong").allTextContents();
+      expect(sourceNames).toEqual(sourceNames.toSorted((left, right) => left.localeCompare(right)));
+      await page.screenshot({ path: "test-results/sources-desktop.png", fullPage: true });
+      await page.emulateMedia({ colorScheme: "dark" });
+      await page.reload();
+      await expect(
+        page.getByRole("heading", { level: 1, name: "Sources and company boards" }),
+      ).toBeVisible();
+      await page.screenshot({ path: "test-results/sources-desktop-dark.png", fullPage: true });
+      await page.emulateMedia({ colorScheme: "light" });
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.screenshot({ path: "test-results/sources-mobile.png", fullPage: true });
     });
 
     test("loads every primary workspace route from the clean-start dataset", async ({ page }) => {
+      await page.goto("/");
+      await expect(page.getByText("The roles worth your attention", { exact: true })).toHaveCount(
+        0,
+      );
+
       const routes = [
-        ["/", "The roles worth your attention"],
         ["/profiles", "Profiles"],
         ["/sources", "Sources and company boards"],
         ["/runs", "Discovery history"],
@@ -146,6 +278,10 @@ test.describe
     });
   });
 
+function center(box: { readonly x: number; readonly width: number }): number {
+  return box.x + box.width / 2;
+}
+
 async function chooseComboboxOption(
   page: import("@playwright/test").Page,
   label: string,
@@ -153,6 +289,9 @@ async function chooseComboboxOption(
 ) {
   const input = page.getByRole("combobox", { name: label });
   await input.fill(value);
+  if (label === "Target locations") {
+    await expect(page.getByRole("option").filter({ hasText: value }).first()).toBeVisible();
+  }
   await input.press("ArrowDown");
   await input.press("Enter");
 }

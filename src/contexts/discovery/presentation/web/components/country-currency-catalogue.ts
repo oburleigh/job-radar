@@ -70,6 +70,12 @@ export function countryOptionFor(value: string): CountryCurrencyOption | undefin
   );
 }
 
+export function countryCurrencyOptionForCode(
+  countryCode: string,
+): CountryCurrencyOption | undefined {
+  return countryCurrencyOptions.find((option) => option.countryCode === countryCode);
+}
+
 export function currencyOptionsMatching(value: string): readonly CurrencyOption[] {
   const query = normaliseCountryName(value);
   return currencyOptions.filter(

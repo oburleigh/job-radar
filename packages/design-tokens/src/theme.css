@@ -65,7 +65,6 @@
     --jr-palette-navy-950: oklch(22.805% 0.0616 267.86deg);
     --jr-palette-navy-muted: oklch(78.634% 0.0417 268.44deg);
     --jr-palette-navy-subtle: oklch(86.06% 0.032 267.94deg);
-    --jr-palette-navy-index: oklch(71.633% 0.0697 266deg);
     --jr-palette-navy-hover: oklch(56.549% 0.0633 268.08deg);
     --jr-palette-navy-list-muted: oklch(74.508% 0.0485 267.79deg);
     --jr-palette-navy-list-active: oklch(92.701% 0.0347 265.99deg);
@@ -145,7 +144,6 @@
     --jr-color-nav-text: var(--jr-palette-white);
     --jr-color-nav-muted: var(--jr-palette-navy-muted);
     --jr-color-nav-subtle: var(--jr-palette-navy-subtle);
-    --jr-color-nav-index: var(--jr-palette-navy-index);
     --jr-color-nav-panel-border: light-dark(var(--jr-palette-navy-700), var(--jr-palette-navy-750));
     --jr-color-nav-hover-border: var(--jr-palette-navy-hover);
     --jr-color-nav-list-muted: var(--jr-palette-navy-list-muted);

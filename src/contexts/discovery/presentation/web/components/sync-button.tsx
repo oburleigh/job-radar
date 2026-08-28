@@ -1,4 +1,4 @@
-import { Button } from "@job-radar/design-ui";
+import { IconButton } from "@job-radar/design-ui";
 import { RefreshCw } from "lucide-react";
 import { useFetcher } from "react-router";
 
@@ -11,16 +11,16 @@ export function SyncButton() {
 
   return (
     <div className="inline-action">
-      <Button
+      <IconButton
         busy={pending}
-        disabled={pending}
+        label="Refresh board registry"
         onClick={() =>
           void fetcher.submit({ intent: "sync-boards" }, { method: "post", action: "/sources" })
         }
+        title="Refresh board registry"
       >
         <RefreshCw size={17} className={pending ? "spin" : ""} />
-        {pending ? "Refreshing registry..." : "Refresh board registry"}
-      </Button>
+      </IconButton>
       {message ? <span>{message}</span> : null}
     </div>
   );

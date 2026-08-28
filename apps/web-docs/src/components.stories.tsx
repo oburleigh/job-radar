@@ -63,7 +63,6 @@ export const Loading: Story = {
 export const Heading: Story = {
   render: () => (
     <PageHeader
-      index="01"
       title="Page title"
       description="A short explanation of what the page owns."
       actions={<Button variant="primary">Action</Button>}

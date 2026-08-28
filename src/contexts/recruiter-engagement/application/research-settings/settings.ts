@@ -1,8 +1,4 @@
-import {
-  createSearchBrief,
-  type ResearchCriteria,
-  type SearchBrief,
-} from "@/contexts/recruiter-engagement/domain/research-run";
+import type { ResearchCriteria } from "@/contexts/recruiter-engagement/domain/research-run";
 
 export type RecruiterResearchSettings = {
   readonly defaultBrief: {
@@ -18,15 +14,3 @@ export type RecruiterResearchSettings = {
     readonly stageTimeoutMs: number;
   };
 };
-
-export function searchBriefFromSettings(
-  settings: RecruiterResearchSettings,
-  targetLocations: readonly string[],
-): SearchBrief {
-  return createSearchBrief({
-    criteria: { ...settings.defaultBrief.criteria, targetLocations },
-    description: settings.defaultBrief.description,
-    firmTarget: settings.defaultBrief.firmTarget,
-    recruiterTarget: settings.defaultBrief.recruiterTarget,
-  });
-}

@@ -3,12 +3,12 @@ export type TargetLocationOption = {
   readonly label: string;
 };
 
-export function areConfiguredTargetLocations(
+export function areCatalogueTargetLocations(
   values: readonly string[],
   options: readonly TargetLocationOption[],
 ): boolean {
-  const configuredLabels = new Set(options.map((option) => option.label.toLocaleLowerCase()));
+  const catalogueLabels = new Set(options.map((option) => option.label.toLocaleLowerCase()));
   return (
-    values.length > 0 && values.every((value) => configuredLabels.has(value.toLocaleLowerCase()))
+    values.length > 0 && values.every((value) => catalogueLabels.has(value.toLocaleLowerCase()))
   );
 }

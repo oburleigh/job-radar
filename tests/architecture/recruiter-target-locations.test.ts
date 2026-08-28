@@ -13,7 +13,6 @@ describe("recruiter target location control", () => {
     const source = readFileSync(recruiterPresentation, "utf8");
 
     expect(source).toContain('name="targetLocations"');
-    expect(source).toContain("targetLocationOptions");
     expect(source).toContain("RecruiterLocationCombobox");
     expect(source).not.toMatch(/<select\b/);
     expect(source).not.toMatch(/\bgeography\b/i);

@@ -1,14 +1,19 @@
 # Recruiter Engagement
 
-Recruiter Engagement records public research about recruitment firms and named technology recruiters for a user-supplied market brief. It does not hold candidate records, contact details, outreach activity, or a shared people directory.
+Recruiter Engagement records public research about recruitment firms and named recruiters for a user-supplied search brief. It does not hold candidate records, contact details, outreach activity, or a shared people directory.
 
 ## Language
 
-**Search brief**
-: The user's plain-language hiring focus and requested firm and recruiter counts.
+**Search brief**:
+The user's plain-language hiring focus and requested firm and recruiter counts.
+_Avoid_: Technology brief, research brief
 
-**Research criteria**
-: The catalogue-backed target locations, technology specialisms, and target industries that focus both research stages. Target locations come from the configured market vocabulary.
+**Research criteria**:
+The catalogue-backed target locations, specialisms, and target industries that focus both research stages. Target locations come from the configured market vocabulary.
+
+**Specialism**:
+A professional discipline used to focus firm and recruiter research. It is not limited to one sector.
+_Avoid_: Technology specialism
 
 **Research run**
 : One durable attempt to research firms first, then named recruiters, against a frozen policy and source plan.

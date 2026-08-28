@@ -431,26 +431,15 @@
     border: var(--jr-border-width) solid var(--jr-color-border-strong);
   }
 
-  .jr-page-title-block {
-    display: grid;
-    grid-template-columns: 1.5625rem minmax(0, 1fr);
-    align-items: start;
-    justify-content: center;
-    gap: var(--jr-space-3);
-    padding: var(--jr-space-5) var(--jr-space-6);
+  .jr-page-header:not([data-has-actions]) {
+    grid-template-columns: 1fr;
   }
 
-  .jr-page-index {
-    display: inline-grid;
-    min-width: 1.5625rem;
-    height: 1.25rem;
-    place-items: center;
-    margin-top: var(--jr-space-1);
-    color: var(--jr-color-text-on-accent);
-    background: var(--jr-color-accent);
-    font-family: var(--jr-font-family-mono);
-    font-size: var(--jr-font-size-xs);
-    font-weight: var(--jr-font-weight-bold);
+  .jr-page-title-block {
+    display: block;
+    align-items: start;
+    justify-content: center;
+    padding: var(--jr-space-5) var(--jr-space-6);
   }
 
   .jr-page-header h1 {

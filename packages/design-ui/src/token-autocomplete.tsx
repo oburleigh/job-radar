@@ -5,10 +5,12 @@ import { IconButton } from "./icon-button.js";
 export type TokenAutocompleteOption = {
   readonly detail?: string;
   readonly label: string;
+  readonly searchTerms?: readonly string[];
   readonly value: string;
 };
 
 export type TokenAutocompleteProps = {
+  readonly busy?: boolean;
   readonly className?: string;
   readonly disabled?: boolean;
   readonly error?: string;
@@ -21,15 +23,19 @@ export type TokenAutocompleteProps = {
   readonly name: string;
   readonly onChange: (values: readonly string[]) => void;
   readonly onOptionSelected?: (option: TokenAutocompleteOption) => void;
+  readonly onQueryChange?: (query: string) => void;
   readonly options: readonly TokenAutocompleteOption[];
   readonly placeholder?: string;
   readonly required?: boolean;
+  readonly selectedOptions?: readonly TokenAutocompleteOption[];
   readonly secondaryPlaceholder?: string;
+  readonly statusMessage?: string;
   readonly valueNormalizer?: (value: string) => string;
   readonly values: readonly string[];
 };
 
 export function TokenAutocomplete({
+  busy = false,
   className,
   disabled = false,
   error,
@@ -42,10 +48,13 @@ export function TokenAutocomplete({
   name,
   onChange,
   onOptionSelected,
+  onQueryChange,
   options,
   placeholder = "Add a value",
   required = false,
+  selectedOptions: suppliedSelectedOptions = [],
   secondaryPlaceholder = "Add another value",
+  statusMessage = "",
   valueNormalizer = normalise,
   values,
 }: TokenAutocompleteProps) {
@@ -65,17 +74,27 @@ export function TokenAutocomplete({
     () => new Map(options.map((option) => [valueNormalizer(option.value), option])),
     [options, valueNormalizer],
   );
+  const selectedOptionsByValue = useMemo(
+    () =>
+      new Map(
+        [...options, ...suppliedSelectedOptions].map((option) => [
+          valueNormalizer(option.value),
+          option,
+        ]),
+      ),
+    [options, suppliedSelectedOptions, valueNormalizer],
+  );
   const selectedOptions = withUniqueTokenKeys(
     "selected",
     values.flatMap((value) => {
-      const option = optionsByValue.get(valueNormalizer(value));
+      const option = selectedOptionsByValue.get(valueNormalizer(value));
       return option ? [{ keyValue: option.value, option, value }] : [];
     }),
   );
   const invalidValues = withUniqueTokenKeys(
     "invalid",
     values
-      .filter((value) => !optionsByValue.has(valueNormalizer(value)))
+      .filter((value) => !selectedOptionsByValue.has(valueNormalizer(value)))
       .map((value) => ({ keyValue: value, value })),
   );
   const formValues = includeUnavailableValuesInFormValue
@@ -86,10 +105,15 @@ export function TokenAutocomplete({
       return [];
     }
     const query = valueNormalizer(inputValue);
+    const selectedValues = new Set(values.map(valueNormalizer));
     return options.filter(
-      (option) => query === "" || valueNormalizer(option.label).includes(query),
+      (option) =>
+        !selectedValues.has(valueNormalizer(option.value)) &&
+        [option.label, ...(option.searchTerms ?? [])].some(
+          (term) => query === "" || valueNormalizer(term).includes(query),
+        ),
     );
-  }, [hasInteracted, inputValue, options, valueNormalizer]);
+  }, [hasInteracted, inputValue, options, valueNormalizer, values]);
   const isPopupVisible = open && suggestions.length > 0;
   const activeOption = isPopupVisible && activeIndex >= 0 ? suggestions[activeIndex] : undefined;
   const visibleError =
@@ -122,7 +146,7 @@ export function TokenAutocomplete({
   }
 
   function removeValue(value: string) {
-    const option = optionsByValue.get(valueNormalizer(value));
+    const option = selectedOptionsByValue.get(valueNormalizer(value));
     onChange(values.filter((current) => current !== value));
     setAnnouncement(`${option?.label ?? value} removed.`);
   }
@@ -182,6 +206,7 @@ export function TokenAutocomplete({
         <input
           aria-activedescendant={activeOption ? `${listboxId}-${activeIndex}` : undefined}
           aria-autocomplete="list"
+          aria-busy={busy || undefined}
           aria-controls={listboxId}
           aria-describedby={describedBy || undefined}
           aria-expanded={isPopupVisible}
@@ -199,6 +224,8 @@ export function TokenAutocomplete({
           onChange={(event) => {
             setHasInteracted(true);
             setInputValue(event.target.value);
+            onQueryChange?.(event.target.value);
+            setAnnouncement("");
             setSelectionError("");
             setActiveIndex(-1);
             setOpen(true);
@@ -206,6 +233,7 @@ export function TokenAutocomplete({
           onFocus={() => {
             setHasInteracted(true);
             setOpen(true);
+            onQueryChange?.(inputValue);
           }}
           onKeyDown={(event) => {
             if (event.key === "ArrowDown") {
@@ -276,7 +304,7 @@ export function TokenAutocomplete({
         </small>
       ) : null}
       <p className="jr-token-autocomplete-announcement" role="status">
-        {announcement}
+        {announcement || statusMessage}
       </p>
     </div>
   );

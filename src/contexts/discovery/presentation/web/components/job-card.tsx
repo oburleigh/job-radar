@@ -36,7 +36,6 @@ export function JobCard({ profileId, atsLabel, job }: JobCardProps) {
 
   return (
     <article className="job-card">
-      <div className="job-record-index" aria-hidden="true" />
       <div className="job-card-heading">
         <div className="record-stamps">
           <span className={job.verified ? "verified-tag" : "lead-tag"}>

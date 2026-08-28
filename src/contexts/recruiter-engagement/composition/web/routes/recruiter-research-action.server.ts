@@ -1,30 +1,37 @@
 import { redirect } from "react-router";
 
 import { recruiterEngagementWeb } from "@/contexts/recruiter-engagement/composition/recruiter-engagement-web.server";
-import { parseRecruiterResearchStartRequest } from "@/contexts/recruiter-engagement/presentation/web/requests/recruiter-research-request";
+import {
+  parseRecruiterResearchStartRequest,
+  recruiterTargetLocationValues,
+} from "@/contexts/recruiter-engagement/presentation/web/requests/recruiter-research-request";
+import { parseResearchExecutionSettingsRequest } from "@/contexts/recruiter-engagement/presentation/web/requests/research-execution-settings-request";
 import { assertLocalHost } from "@/platform/http/require-local-request";
 
 type RecruiterResearchActionDependencies = {
   readonly assertLocalHost: typeof assertLocalHost;
   readonly cancelResearchRun: typeof recruiterEngagementWeb.cancelResearchRun;
-  readonly getTargetLocationOptions: typeof recruiterEngagementWeb.getTargetLocationOptions;
+  readonly resolveTargetLocations: typeof recruiterEngagementWeb.resolveTargetLocations;
   readonly retryResearchRun: typeof recruiterEngagementWeb.retryResearchRun;
+  readonly saveResearchExecutionSettings: typeof recruiterEngagementWeb.saveResearchExecutionSettings;
   readonly startResearchRun: typeof recruiterEngagementWeb.startResearchRun;
 };
 
 export const recruiterResearchAction = createRecruiterResearchAction({
   assertLocalHost,
   cancelResearchRun: recruiterEngagementWeb.cancelResearchRun,
-  getTargetLocationOptions: recruiterEngagementWeb.getTargetLocationOptions,
+  resolveTargetLocations: recruiterEngagementWeb.resolveTargetLocations,
   retryResearchRun: recruiterEngagementWeb.retryResearchRun,
+  saveResearchExecutionSettings: recruiterEngagementWeb.saveResearchExecutionSettings,
   startResearchRun: recruiterEngagementWeb.startResearchRun,
 });
 
 export function createRecruiterResearchAction({
   assertLocalHost,
   cancelResearchRun,
-  getTargetLocationOptions,
+  resolveTargetLocations,
   retryResearchRun,
+  saveResearchExecutionSettings,
   startResearchRun,
 }: RecruiterResearchActionDependencies) {
   return async (request: Request) => {
@@ -33,10 +40,18 @@ export function createRecruiterResearchAction({
     const intent = formData.get("intent");
 
     if (intent === "start") {
-      const parsed = parseRecruiterResearchStartRequest(formData, getTargetLocationOptions());
+      const parsed = parseRecruiterResearchStartRequest(
+        formData,
+        resolveTargetLocations(recruiterTargetLocationValues(formData)),
+      );
       if (parsed.status === "invalid") {
         return { error: parsed.message, field: parsed.field };
       }
+      const execution = parseResearchExecutionSettingsRequest(formData);
+      if (!execution.ok) {
+        return { error: execution.message };
+      }
+      saveResearchExecutionSettings(execution.command);
       const started = await startResearchRun(parsed.command);
       return redirect(`/recruiter-research?run=${encodeURIComponent(started.runId)}`);
     }

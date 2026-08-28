@@ -11,6 +11,11 @@ import {
   resolveSettingsSelection,
   settingsUrl,
 } from "@/contexts/discovery/presentation/web/settings-selection";
+import {
+  parseResearchExecutionSettingsRequest,
+  ResearchExecutionSettingsForm,
+} from "@/contexts/recruiter-engagement/public-contract";
+import { recruiterResearchSettingsContract } from "@/contexts/recruiter-engagement/public-contract.server";
 import { assertLocalHost } from "@/platform/http/require-local-request";
 
 export function loader({ request }: { readonly request: Request }) {
@@ -46,6 +51,7 @@ export function loader({ request }: { readonly request: Request }) {
     createMode,
     data,
     editorIntegration,
+    recruiterResearchExecution: recruiterResearchSettingsContract.getExecutionSettings(),
     selection,
     selected,
   };
@@ -72,6 +78,14 @@ export async function action({ request }: ActionFunctionArgs) {
       };
     }
     return { ok: true, message: "Runtime settings saved to SQLite." };
+  }
+  if (intent === "save-research-execution-settings") {
+    const parsed = parseResearchExecutionSettingsRequest(formData);
+    if (!parsed.ok) {
+      return parsed;
+    }
+    recruiterResearchSettingsContract.saveExecutionSettings(parsed.command);
+    return { ok: true, message: "Local Codex settings saved to SQLite." };
   }
   if (intent === "save-integration") {
     const parsed = parseAtsIntegrationRequest(formData);
@@ -117,13 +131,19 @@ function validatedSelection(searchParams: URLSearchParams) {
 }
 
 export default function SettingsPage() {
-  const { canConfigureSync, createMode, data, editorIntegration, selected, selection } =
-    useLoaderData<typeof loader>();
+  const {
+    canConfigureSync,
+    createMode,
+    data,
+    editorIntegration,
+    recruiterResearchExecution,
+    selected,
+    selection,
+  } = useLoaderData<typeof loader>();
 
   return (
     <div className="page">
       <PageHeader
-        index="06"
         title="Settings"
         description="Edit runtime defaults and ATS integration rules. Changes are stored in the local database and take effect on the next operation."
         actions={
@@ -158,6 +178,16 @@ export default function SettingsPage() {
               profileDefaults: data.profileDefaults,
             }}
           />
+        </div>
+      </section>
+
+      <section className="settings-section" id="recruiter-research">
+        <div className="section-heading">
+          <h2>Recruiter research</h2>
+          <span>Local settings</span>
+        </div>
+        <div className="profile-editor">
+          <ResearchExecutionSettingsForm execution={recruiterResearchExecution} />
         </div>
       </section>
 

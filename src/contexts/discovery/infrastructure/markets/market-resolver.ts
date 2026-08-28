@@ -5,6 +5,7 @@ import type {
   MarketVocabularyEntry,
 } from "@/contexts/discovery/application/runtime-settings/settings";
 import type { ResolvedMarket } from "@/contexts/discovery/domain/market";
+import { type LocationOption, resolveLocations } from "@/platform/locations/location-search.server";
 
 export interface MarketResolver {
   readonly resolve: (value: string) => ResolvedMarket;
@@ -52,19 +53,40 @@ export function createMarketResolver(vocabulary: MarketVocabulary): MarketResolv
   return {
     resolve(value) {
       const label = value.trim();
-      return (
-        byTerm.get(normalize(label)) ?? {
+      const configured = byTerm.get(normalize(label));
+      if (configured) {
+        return configured;
+      }
+      const location = resolveLocations([label])[0];
+      if (location) {
+        return {
           scope: {
-            key: `literal:${normalize(label).replaceAll(" ", "-")}`,
-            label,
-            terms: [label],
+            key: location.id,
+            label: location.label,
+            terms: discoveryTerms(location),
           },
-          countryCode: null,
-          searchLanguage: null,
-        }
-      );
+          countryCode: location.countryCode,
+          searchLanguage: resolved.get(`country:${location.countryCode}`)?.searchLanguage ?? null,
+        };
+      }
+      return {
+        scope: {
+          key: `literal:${normalize(label).replaceAll(" ", "-")}`,
+          label,
+          terms: [label],
+        },
+        countryCode: null,
+        searchLanguage: null,
+      };
     },
   };
+}
+
+function discoveryTerms(location: LocationOption): readonly string[] {
+  if (location.kind === "country") {
+    return location.searchTerms;
+  }
+  return uniqueTerms([location.label.split(",", 1)[0] ?? location.label, location.label]);
 }
 
 function labelFor(entry: MarketVocabularyEntry): string {

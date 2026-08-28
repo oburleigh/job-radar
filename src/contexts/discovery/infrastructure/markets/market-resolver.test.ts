@@ -74,18 +74,40 @@ describe("market resolution", () => {
     });
   });
 
+  it("resolves unconfigured countries and cities through the shared catalogue", () => {
+    const resolver = createMarketResolver(vocabulary);
+
+    expect(resolver.resolve("United Kingdom")).toEqual({
+      scope: {
+        key: "csc:country:232",
+        label: "United Kingdom",
+        terms: ["United Kingdom", "GB", "GBR", "UK"],
+      },
+      countryCode: "GB",
+      searchLanguage: null,
+    });
+    expect(resolver.resolve("Dubai, Dubai, United Arab Emirates")).toEqual({
+      scope: {
+        key: "csc:city:32",
+        label: "Dubai, United Arab Emirates",
+        terms: ["Dubai", "Dubai, United Arab Emirates"],
+      },
+      countryCode: "AE",
+      searchLanguage: "en",
+    });
+  });
+
   it("keeps unknown text as one literal market", () => {
     const resolver = createMarketResolver(vocabulary);
 
-    expect(resolver.resolve("  Busan  ")).toEqual({
+    expect(resolver.resolve("Narnia")).toEqual({
       scope: {
-        key: "literal:busan",
-        label: "Busan",
-        terms: ["Busan"],
+        key: "literal:narnia",
+        label: "Narnia",
+        terms: ["Narnia"],
       },
       countryCode: null,
       searchLanguage: null,
     });
-    expect(resolver.resolve("  South Korea  ").scope.key).toBe("literal:south-korea");
   });
 });

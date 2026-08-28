@@ -46,7 +46,6 @@ export function RuntimeSettingsForm({ settings }: RuntimeSettingsFormProps) {
       <input type="hidden" name="intent" value="save-runtime-settings" />
       <section className="form-section">
         <div className="form-section-copy">
-          <span className="form-step">01</span>
           <div>
             <h2>Network and discovery</h2>
             <p>Control request behavior and how much work each run performs.</p>
@@ -266,7 +265,6 @@ export function RuntimeSettingsForm({ settings }: RuntimeSettingsFormProps) {
 
       <section className="form-section">
         <div className="form-section-copy">
-          <span className="form-step">02</span>
           <div>
             <h2>Match scoring</h2>
             <p>These weights determine whether a fetched job qualifies.</p>
@@ -358,7 +356,6 @@ export function RuntimeSettingsForm({ settings }: RuntimeSettingsFormProps) {
 
       <section className="form-section">
         <div className="form-section-copy">
-          <span className="form-step">03</span>
           <div>
             <h2>Search providers</h2>
             <p>Provider credentials remain in .env; non-secret defaults live here.</p>
@@ -410,7 +407,6 @@ export function RuntimeSettingsForm({ settings }: RuntimeSettingsFormProps) {
 
       <section className="form-section">
         <div className="form-section-copy">
-          <span className="form-step">04</span>
           <div>
             <h2>New profile defaults</h2>
             <p>Choose the starting values used when you create a search profile.</p>
@@ -442,7 +438,6 @@ export function RuntimeSettingsForm({ settings }: RuntimeSettingsFormProps) {
 
       <section className="form-section">
         <div className="form-section-copy">
-          <span className="form-step">05</span>
           <div>
             <h2>ATS registry defaults</h2>
             <p>Set the ordering used when Job Radar creates a search-only integration.</p>

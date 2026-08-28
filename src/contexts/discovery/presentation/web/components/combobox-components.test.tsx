@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import { createMemoryRouter, RouterProvider } from "react-router";
 import { describe, expect, it } from "vitest";
 
 import { CurrencyCombobox } from "./currency-combobox";
@@ -6,7 +7,7 @@ import { LocationCombobox } from "./location-combobox";
 
 describe("profile editor comboboxes", () => {
   it("renders an input-backed target-location combobox with removable values", () => {
-    const markup = renderToStaticMarkup(
+    const markup = renderWithRouter(
       <LocationCombobox name="locationTerms" onChange={() => undefined} values={["China"]} />,
     );
 
@@ -19,8 +20,8 @@ describe("profile editor comboboxes", () => {
     expect(markup).not.toContain('role="option"');
   });
 
-  it("keeps an unmatched saved location visible and marks it for replacement", () => {
-    const markup = renderToStaticMarkup(
+  it("keeps saved city locations visible for canonical validation on submission", () => {
+    const markup = renderWithRouter(
       <LocationCombobox
         name="locationTerms"
         onChange={() => undefined}
@@ -28,19 +29,13 @@ describe("profile editor comboboxes", () => {
       />,
     );
 
-    expect(markup).toContain('name="locationTerms" value="China"');
-    expect(markup).toContain('name="legacyLocationTerms"');
-    expect(markup).toContain('name="legacyLocationTerms" value="Dubai"');
-    expect(markup).toContain('aria-invalid="true"');
-    expect(markup).toContain("aria-describedby=");
-    expect(markup).toContain(
-      "Replace saved target locations that are not in the location catalogue.",
-    );
+    expect(markup).toContain('name="locationTerms" value="China\nDubai"');
+    expect(markup).not.toContain('name="legacyLocationTerms"');
     expect(markup).toContain('aria-label="Remove Dubai"');
   });
 
   it("does not server-render localized currency options while the popup is closed", () => {
-    const markup = renderToStaticMarkup(
+    const markup = renderWithRouter(
       <CurrencyCombobox name="salaryCurrency" onChange={() => undefined} value="GBP" />,
     );
 
@@ -66,7 +61,7 @@ describe("profile editor comboboxes", () => {
   });
 
   it("renders an invalid target-location chooser with a field-specific error relation", () => {
-    const markup = renderToStaticMarkup(
+    const markup = renderWithRouter(
       <LocationCombobox
         error="Add at least one target location."
         name="locationTerms"
@@ -80,3 +75,8 @@ describe("profile editor comboboxes", () => {
     expect(markup).toContain("Add at least one target location.");
   });
 });
+
+function renderWithRouter(element: React.ReactNode): string {
+  const router = createMemoryRouter([{ path: "/", element }]);
+  return renderToStaticMarkup(<RouterProvider router={router} />);
+}

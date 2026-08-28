@@ -1,13 +1,12 @@
 import { randomUUID } from "node:crypto";
 
-import { getConfiguredMarketVocabulary } from "@/contexts/discovery/composition/configured-market-vocabulary.server";
 import { createResearchRunCanceller } from "@/contexts/recruiter-engagement/application/research-runs/cancel-research-run";
 import { createResearchRunExecution } from "@/contexts/recruiter-engagement/application/research-runs/execute-research-run";
 import { createResearchRunGetter } from "@/contexts/recruiter-engagement/application/research-runs/get-research-run";
 import { createResearchRunResumer } from "@/contexts/recruiter-engagement/application/research-runs/resume-research-runs";
 import { createResearchRunRetrier } from "@/contexts/recruiter-engagement/application/research-runs/retry-research-run";
 import { createResearchRunStarter } from "@/contexts/recruiter-engagement/application/research-runs/start-research-run";
-import { searchBriefFromSettings } from "@/contexts/recruiter-engagement/application/research-settings/settings";
+import { createSaveResearchExecutionSettings } from "@/contexts/recruiter-engagement/application/research-settings/save-execution-settings";
 import { createAfterResponseResearchRunScheduler } from "@/contexts/recruiter-engagement/infrastructure/background/after-response-research-run-scheduler";
 import { createDeterministicStagedResearchSource } from "@/contexts/recruiter-engagement/infrastructure/deterministic/deterministic-staged-research-source";
 import {
@@ -16,23 +15,24 @@ import {
 } from "@/contexts/recruiter-engagement/infrastructure/local-codex/local-codex-policy";
 import { localCodexProcess } from "@/contexts/recruiter-engagement/infrastructure/local-codex/local-codex-process";
 import { createLocalCodexResearchSource } from "@/contexts/recruiter-engagement/infrastructure/local-codex/local-codex-research-source";
-import { targetLocationOptions } from "@/contexts/recruiter-engagement/infrastructure/markets/target-location-catalogue";
+import { resolveTargetLocationOptions } from "@/contexts/recruiter-engagement/infrastructure/markets/target-location-catalogue";
 import { bootstrapRecruiterResearch } from "@/contexts/recruiter-engagement/infrastructure/sqlite/bootstrap-recruiter-research";
 import { recruiterResearchDatabase } from "@/contexts/recruiter-engagement/infrastructure/sqlite/database";
-import { getRecruiterResearchSettings } from "@/contexts/recruiter-engagement/infrastructure/sqlite/recruiter-research-settings";
+import {
+  getRecruiterResearchSettings,
+  replaceResearchExecutionSettings,
+} from "@/contexts/recruiter-engagement/infrastructure/sqlite/recruiter-research-settings";
 import { createSqliteResearchRunStore } from "@/contexts/recruiter-engagement/infrastructure/sqlite/sqlite-research-run-store";
 
 const runs = createSqliteResearchRunStore(recruiterResearchDatabase);
 bootstrapRecruiterResearch(recruiterResearchDatabase);
-const settings = getRecruiterResearchSettings(recruiterResearchDatabase);
-const policy = createLocalCodexAdapterPolicy(settings);
-const sourcePlan = createPublicRecruiterSourcePlan(settings);
+const initialSettings = getRecruiterResearchSettings(recruiterResearchDatabase);
 const source =
   process.env.JOB_RADAR_RECRUITER_RESEARCH_SOURCE === "deterministic"
     ? createDeterministicStagedResearchSource({ pauseRecruiters: pauseDeterministicRecruiters })
     : createLocalCodexResearchSource({
         process: localCodexProcess,
-        stageTimeoutMs: settings.execution.stageTimeoutMs,
+        stageTimeoutMs: initialSettings.execution.stageTimeoutMs,
       });
 const execution = createResearchRunExecution({ now: () => new Date(), runs, source });
 const scheduler = createAfterResponseResearchRunScheduler({
@@ -46,13 +46,12 @@ const scheduler = createAfterResponseResearchRunScheduler({
     console.error(message);
   },
 });
-const starter = createResearchRunStarter({
-  createId: randomUUID,
+const saveResearchExecutionSettings = createSaveResearchExecutionSettings({
   now: () => new Date(),
-  policy,
-  runs,
-  scheduler,
-  sourcePlan,
+  settings: {
+    replaceExecution: (execution, changedAt) =>
+      replaceResearchExecutionSettings(recruiterResearchDatabase, execution, changedAt),
+  },
 });
 const canceller = createResearchRunCanceller({ now: () => new Date(), runs, scheduler });
 const retrier = createResearchRunRetrier({
@@ -69,17 +68,35 @@ void resumer.resumeResearchRuns();
 export const recruiterEngagementWeb = {
   cancelResearchRun: canceller.cancelResearchRun,
   getResearchRun: getter.getResearchRun,
-  getDefaultResearchBrief: () => {
-    const options = targetLocationOptions(getConfiguredMarketVocabulary());
-    return searchBriefFromSettings(
-      settings,
-      options.slice(0, 1).map((option) => option.label),
-    );
+  getDefaultSearchTargets: () => ({
+    firmTarget: currentSettings().defaultBrief.firmTarget,
+    recruiterTarget: currentSettings().defaultBrief.recruiterTarget,
+  }),
+  getResearchExecutionSettings: () => {
+    const execution = currentSettings().execution;
+    return { model: execution.model, reasoningEffort: execution.reasoningEffort };
   },
-  getTargetLocationOptions: () => targetLocationOptions(getConfiguredMarketVocabulary()),
+  resolveTargetLocations: resolveTargetLocationOptions,
   retryResearchRun: retrier.retryResearchRun,
-  startResearchRun: starter.startResearchRun,
+  saveResearchExecutionSettings,
+  startResearchRun(
+    command: Parameters<ReturnType<typeof createResearchRunStarter>["startResearchRun"]>[0],
+  ) {
+    const settings = currentSettings();
+    return createResearchRunStarter({
+      createId: randomUUID,
+      now: () => new Date(),
+      policy: createLocalCodexAdapterPolicy(settings),
+      runs,
+      scheduler,
+      sourcePlan: createPublicRecruiterSourcePlan(settings),
+    }).startResearchRun(command);
+  },
 };
+
+function currentSettings() {
+  return getRecruiterResearchSettings(recruiterResearchDatabase);
+}
 
 function pauseDeterministicRecruiters(): Promise<void> {
   return new Promise((resolve) => {

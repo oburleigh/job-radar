@@ -7,10 +7,8 @@ import {
   createSearchProfileDefinition,
   type SearchProfileDefinitionResult,
 } from "@/contexts/discovery/domain/search-profile";
-import {
-  countryOptionFor,
-  isIso4217Currency,
-} from "@/contexts/discovery/presentation/web/components/country-currency-catalogue";
+import { isIso4217Currency } from "@/contexts/discovery/presentation/web/components/country-currency-catalogue";
+import type { LocationOption } from "@/platform/http/location-option";
 
 export type ProfileRequestResult =
   | { readonly ok: true; readonly command: SaveSearchProfileCommand }
@@ -26,23 +24,7 @@ const profileSchema = z
     id: z.coerce.number().int().positive().optional(),
     name: z.string().trim().min(2).max(120),
     titleTerms: z.string().transform(splitLines).pipe(z.array(z.string()).min(1)),
-    locationTerms: z.string().transform((value, context) => {
-      const locations = splitLines(value);
-      const countryNames: string[] = [];
-      for (const location of locations) {
-        const country = countryOptionFor(location);
-        if (!country) {
-          context.addIssue({
-            code: "custom",
-            message: "Choose each target location from the suggestions.",
-          });
-          return z.NEVER;
-        }
-        countryNames.push(country.countryName);
-      }
-      return countryNames;
-    }),
-    legacyLocationTerms: z.string().transform(splitLines),
+    locationTerms: z.string().transform(splitLocationLines),
     requiredJobTerms: z.string().transform(splitLines),
     excludedTitleTerms: z.string().transform(splitLines),
     excludedLocationTerms: z.string().transform(splitLines),
@@ -73,12 +55,6 @@ const profileSchema = z
     minScore: z.coerce.number().int().min(0).max(100),
   })
   .superRefine((profile, context) => {
-    if (profile.legacyLocationTerms.length > 0) {
-      context.addIssue({
-        code: "custom",
-        message: "Replace saved target locations that are not in the location catalogue.",
-      });
-    }
     if (
       (profile.salaryMin !== null || profile.salaryMax !== null) &&
       profile.salaryCurrency === null
@@ -102,13 +78,15 @@ const profileSchema = z
     }
   });
 
-export function parseProfileRequest(formData: FormData): ProfileRequestResult {
+export function parseProfileRequest(
+  formData: FormData,
+  locationOptions: readonly Pick<LocationOption, "label">[],
+): ProfileRequestResult {
   const parsed = profileSchema.safeParse({
     id: optionalFormValue(formData, "id"),
     name: formData.get("name"),
     titleTerms: formData.get("titleTerms"),
     locationTerms: formData.get("locationTerms"),
-    legacyLocationTerms: formData.get("legacyLocationTerms") ?? "",
     requiredJobTerms: formData.get("requiredJobTerms") ?? "",
     excludedTitleTerms: formData.get("excludedTitleTerms") ?? "",
     excludedLocationTerms: formData.get("excludedLocationTerms") ?? "",
@@ -129,11 +107,16 @@ export function parseProfileRequest(formData: FormData): ProfileRequestResult {
     };
   }
 
+  const canonicalLocations = canonicalLocationLabels(parsed.data.locationTerms, locationOptions);
+  if (canonicalLocations.length !== parsed.data.locationTerms.length) {
+    return { ok: false, message: "Choose each target location from the suggestions." };
+  }
+
   const values = parsed.data;
   const definition = createSearchProfileDefinition({
     name: values.name,
     targetTitles: values.titleTerms,
-    targetLocations: values.locationTerms,
+    targetLocations: canonicalLocations,
     requiredJobTerms: values.requiredJobTerms,
     excludedTitleTerms: values.excludedTitleTerms,
     excludedLocationTerms: values.excludedLocationTerms,
@@ -158,6 +141,35 @@ export function parseProfileRequest(formData: FormData): ProfileRequestResult {
       profile: definition.profile,
     },
   };
+}
+
+export function profileTargetLocationValues(formData: FormData): readonly string[] {
+  const value = formData.get("locationTerms");
+  return typeof value === "string" ? splitLocationLines(value) : [];
+}
+
+function canonicalLocationLabels(
+  values: readonly string[],
+  options: readonly Pick<LocationOption, "label">[],
+): readonly string[] {
+  return values.flatMap((value) => {
+    const option = options.find(
+      (candidate) => normaliseLocationLabel(candidate.label) === normaliseLocationLabel(value),
+    );
+    return option ? [option.label] : [];
+  });
+}
+
+function normaliseLocationLabel(value: string): string {
+  return value
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part, index, parts) => {
+      const previous = parts[index - 1];
+      return previous === undefined || part.toLocaleLowerCase() !== previous.toLocaleLowerCase();
+    })
+    .join(", ")
+    .toLocaleLowerCase();
 }
 
 function profileDefinitionError(
@@ -186,6 +198,17 @@ function splitLines(value: string): string[] {
     ...new Set(
       value
         .split(/\r?\n|,/)
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  ];
+}
+
+function splitLocationLines(value: string): string[] {
+  return [
+    ...new Set(
+      value
+        .split(/\r?\n/)
         .map((item) => item.trim())
         .filter(Boolean),
     ),

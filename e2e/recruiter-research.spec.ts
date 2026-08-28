@@ -1,22 +1,51 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
+test("shows guidance without applying research criteria to a new run", async ({ page }) => {
+  await page.goto("/recruiter-research");
+
+  await expect(
+    page.getByText(/public-source scan of recruitment firms and their named recruiters/i),
+  ).toBeVisible();
+  await expect(page.getByLabel("Search brief")).toHaveValue("");
+  await expect(page.getByLabel("Search brief")).toHaveAttribute(
+    "placeholder",
+    /roles, sectors, seniority, or market focus/i,
+  );
+  await expect(page.getByLabel("Target locations")).toHaveValue("");
+  await expect(page.getByRole("button", { name: /^Remove / })).toHaveCount(0);
+  await expect(page.getByLabel("Specialisms")).toHaveValue("");
+  await expect(page.getByLabel("Specialisms")).toHaveAttribute("placeholder", /clinical research/i);
+  await expect(page.getByLabel("Target industries")).toHaveValue("");
+  await expect(page.getByLabel("Target industries")).toHaveAttribute(
+    "placeholder",
+    /life sciences/i,
+  );
+  await expect(page.getByLabel("Firms to find")).toHaveValue("10");
+  await expect(page.getByLabel("Recruiters to find")).toHaveValue("20");
+  await expect(page.getByLabel("Technology brief")).toHaveCount(0);
+  await expect(page.getByLabel("Research brief")).toHaveCount(0);
+  await expect(page.getByLabel("Technology specialisms")).toHaveCount(0);
+});
+
 test("starts recruiter research from the browser and renders firms before recruiters complete", async ({
   page,
 }) => {
   await page.goto("/recruiter-research");
 
   await expect(page.getByRole("heading", { level: 1, name: "Recruiter research" })).toBeVisible();
+  await page.getByLabel("Search brief").fill("UAE fintech cybersecurity leadership");
+  await page.getByLabel("Codex model").fill("gpt-5.6");
+  await page.getByLabel("Reasoning effort").fill("high");
+  await selectRecruiterLocation(page, "Dubai");
+  await page.getByLabel("Specialisms").fill("Cybersecurity, Technology leadership");
+  await page.getByLabel("Target industries").fill("Financial services, Health technology");
   await page.getByLabel("Recruiters to find").fill("0");
   await page.getByRole("button", { name: "Start research" }).click();
   await expect(page.getByRole("alert")).toContainText("highlighted field");
   await expect(page.getByLabel("Recruiters to find")).toHaveAttribute("aria-invalid", "true");
   await expect(page).toHaveURL(/\/recruiter-research$/);
 
-  await page.getByLabel("Technology brief").fill("UAE fintech cybersecurity leadership");
-  await selectRecruiterLocation(page, "Dubai");
-  await page.getByLabel("Technology specialisms").fill("Cybersecurity, Technology leadership");
-  await page.getByLabel("Target industries").fill("Financial services, Health technology");
   await page.getByLabel("Recruiters to find").fill("10");
   await page.getByRole("button", { name: "Start research" }).click();
   await expect(page).toHaveURL(/\/recruiter-research\?run=/);
@@ -27,7 +56,13 @@ test("starts recruiter research from the browser and renders firms before recrui
   await expect(page.getByText("Researching", { exact: true })).toBeVisible();
   await expect(
     page.getByText(
-      "Criteria: Dubai; Cybersecurity, Technology leadership; Financial services, Health technology",
+      "Criteria: Dubai, United Arab Emirates; Cybersecurity, Technology leadership; Financial services, Health technology",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      "Execution: gpt-5.6, high effort, public web search, ephemeral, read-only sandbox, no automatic retry",
       { exact: true },
     ),
   ).toBeVisible();
@@ -50,8 +85,8 @@ test("starts recruiter research from the browser and renders firms before recrui
 
 test("shows each invalid structured criterion on its own control", async ({ page }) => {
   await page.goto("/recruiter-research");
-  await clearRecruiterLocations(page);
-  await page.getByLabel("Recruiters to find").fill("20");
+  await page.getByLabel("Specialisms").fill("Executive search");
+  await page.getByLabel("Target industries").fill("Financial services");
   await page.getByRole("button", { name: "Start research" }).click();
 
   await expect(page.getByRole("alert")).toContainText("highlighted field");
@@ -67,25 +102,29 @@ test("keeps edited recruiter research fields after a recoverable validation reva
 }) => {
   await page.goto("/recruiter-research");
 
-  const brief = page.getByLabel("Technology brief");
+  const brief = page.getByLabel("Search brief");
   await brief.fill("Edited applied AI leadership brief");
   await selectRecruiterLocation(page, "Dubai");
+  await page.getByLabel("Specialisms").fill("Data and AI");
+  await page.getByLabel("Target industries").fill("Technology");
   await page.getByLabel("Recruiters to find").fill("0");
   await page.getByRole("button", { name: "Start research" }).click();
 
   await expect(page.getByRole("alert")).toContainText("highlighted field");
   await expect(page.getByLabel("Recruiters to find")).toHaveAttribute("aria-invalid", "true");
   await expect(brief).toHaveValue("Edited applied AI leadership brief");
-  await expect(page.getByRole("button", { name: "Remove Dubai" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Remove Dubai, United Arab Emirates" }),
+  ).toBeVisible();
 });
 
 test("cancels an active recruiter run and retries with the frozen brief and plan", async ({
   page,
 }) => {
   await page.goto("/recruiter-research");
-  await page.getByLabel("Technology brief").fill("UAE data and AI hiring");
+  await page.getByLabel("Search brief").fill("UAE data and AI hiring");
   await selectRecruiterLocation(page, "Abu Dhabi");
-  await page.getByLabel("Technology specialisms").fill("Data and AI, Architecture");
+  await page.getByLabel("Specialisms").fill("Data and AI, Architecture");
   await page.getByLabel("Target industries").fill("Government, Energy");
   await page.getByLabel("Recruiters to find").fill("10");
   await page.getByRole("button", { name: "Start research" }).click();
@@ -111,44 +150,79 @@ test("cancels an active recruiter run and retries with the frozen brief and plan
   await expect(page).toHaveURL(/\/recruiter-research\?run=/);
   await expect(page.getByText(`Retry of ${previousRunId}`, { exact: true })).toBeVisible();
   await expect(
-    page.getByText("Criteria: Abu Dhabi; Data and AI, Architecture; Government, Energy", {
-      exact: true,
-    }),
+    page.getByText(
+      "Criteria: Abu Dhabi Emirate, United Arab Emirates; Data and AI, Architecture; Government, Energy",
+      { exact: true },
+    ),
   ).toBeVisible();
-  await expect(page.getByLabel("Technology brief")).toHaveValue("UAE data and AI hiring");
+  await expect(page.getByLabel("Search brief")).toHaveValue("UAE data and AI hiring");
   await expect(page.getByLabel("Recruiters to find")).toHaveValue("10");
   await expect(page.getByText("Technology Recruiter 1", { exact: true })).toBeVisible({
     timeout: 10_000,
   });
 });
 
-test("uses configured market options in the shared token autocomplete and keeps compact desktop rows", async ({
+test("uses the shared country catalogue in the location autocomplete and keeps compact desktop rows", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 1200 });
   await page.goto("/recruiter-research");
 
+  await expect(page.getByText("Local search brief", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Research settings" })).toHaveCount(0);
+  await expect(page.getByLabel("Codex model")).toBeVisible();
+  await expect(page.getByLabel("Reasoning effort")).toBeVisible();
+  const [pageTitle, briefHeading, briefLabel] = await Promise.all([
+    page.getByRole("heading", { level: 1, name: "Recruiter research" }).boundingBox(),
+    page.getByRole("heading", { level: 2, name: "Set the market focus" }).boundingBox(),
+    page.getByText("Search brief", { exact: true }).boundingBox(),
+  ]);
+  if (!pageTitle || !briefHeading || !briefLabel) {
+    throw new Error("Recruiter research content edges must be measurable.");
+  }
+  expect(Math.abs(pageTitle.x - briefHeading.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(pageTitle.x - briefLabel.x)).toBeLessThanOrEqual(1);
+
   const targetLocations = page.getByLabel("Target locations");
   await expect(targetLocations).toHaveAttribute("role", "combobox");
   await expect(page.locator('select[name="targetLocations"]')).toHaveCount(0);
-  await targetLocations.fill("Du");
-  await expect(page.getByRole("option")).toHaveText(["Dubai"]);
-  await targetLocations.press("ArrowDown");
-  await targetLocations.press("Enter");
-  await expect(page.getByLabel("Remove Dubai")).toHaveCount(1);
-  await targetLocations.fill("Dubai");
-  await targetLocations.press("ArrowDown");
-  await targetLocations.press("Enter");
-  await expect(page.getByLabel("Remove Dubai")).toHaveCount(1);
+  const browseResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/location-options.data?q=") && response.status() === 200,
+  );
+  await targetLocations.click();
+  await browseResponse;
+  await expect(targetLocations).toBeEditable();
+  const locationListboxId = (await targetLocations.getAttribute("aria-controls")) ?? "";
+  const locationListbox = page.locator(`#${locationListboxId}`);
+  const zimbabwe = locationListbox.getByRole("option", { name: "Zimbabwe Country · ZW" });
+  await expect(zimbabwe).toBeVisible();
+  expect(await locationListbox.getByRole("option").count()).toBeGreaterThan(200);
+  await zimbabwe.scrollIntoViewIfNeeded();
+  expect(await locationListbox.evaluate((listbox) => listbox.scrollTop)).toBeGreaterThan(0);
+  await zimbabwe.click();
+  await expect(page.getByLabel("Remove Zimbabwe")).toBeVisible();
+  await targetLocations.fill("Chi");
+  await expect(targetLocations).toHaveValue("Chi");
+  await expect(page.getByRole("option").filter({ hasText: "Chile" }).first()).toBeVisible();
+  await expect(page.getByRole("option").filter({ hasText: "China" }).first()).toBeVisible();
+  await page.getByRole("option").filter({ hasText: "China" }).first().click();
+  await expect(page.getByLabel("Remove China")).toHaveCount(1);
+  await targetLocations.fill("China");
+  await expect(page.getByRole("option").filter({ hasText: "China" })).toHaveCount(0);
+  await expect(page.getByLabel("Remove China")).toHaveCount(1);
+  await targetLocations.fill("");
   await targetLocations.press("Backspace");
-  await expect(page.getByLabel("Remove Dubai")).toHaveCount(0);
+  await expect(page.getByLabel("Remove China")).toHaveCount(0);
+  await targetLocations.press("Escape");
+  await page.getByLabel("Remove Zimbabwe").click();
   await expect(page.getByLabel("Geography")).toHaveCount(0);
 
   const controls = await Promise.all(
     [
-      "Technology brief",
+      "Search brief",
       "Target locations",
-      "Technology specialisms",
+      "Specialisms",
       "Target industries",
       "Firms to find",
       "Recruiters to find",
@@ -167,6 +241,7 @@ test("uses configured market options in the shared token autocomplete and keeps 
   expect(locations.x).toBeLessThan(recruiterTarget.x);
   expect(locations.height).toBeGreaterThanOrEqual(44);
   expect(locations.height).toBeLessThan(100);
+  await targetLocations.press("Escape");
   await page.screenshot({ path: "test-results/recruiter-desktop.png", fullPage: true });
 });
 
@@ -178,9 +253,9 @@ test("contains recruiter controls equally on mobile and clears the fixed navigat
 
   const controls = await Promise.all(
     [
-      "Technology brief",
+      "Search brief",
       "Target locations",
-      "Technology specialisms",
+      "Specialisms",
       "Target industries",
       "Firms to find",
       "Recruiters to find",
@@ -194,6 +269,7 @@ test("contains recruiter controls equally on mobile and clears the fixed navigat
     expect(control.x).toBeGreaterThanOrEqual(first.x);
     expect(control.x + control.width).toBeLessThanOrEqual(390);
   }
+  await page.screenshot({ path: "test-results/recruiter-mobile.png" });
 
   const recruiterTarget = page.getByLabel("Recruiters to find");
   await recruiterTarget.scrollIntoViewIfNeeded();
@@ -210,7 +286,6 @@ test("contains recruiter controls equally on mobile and clears the fixed navigat
     targetBox.y + targetBox.height <= navigationBox.y ||
       targetBox.y >= navigationBox.y + navigationBox.height,
   ).toBe(true);
-  await page.screenshot({ path: "test-results/recruiter-mobile.png", fullPage: true });
 });
 
 for (const theme of ["light", "dark"] as const) {
@@ -239,6 +314,7 @@ async function selectRecruiterLocation(page: import("@playwright/test").Page, la
   await clearRecruiterLocations(page);
   const locations = page.getByLabel("Target locations");
   await locations.fill(label);
+  await expect(page.getByRole("option").first()).toBeVisible();
   await locations.press("ArrowDown");
   await locations.press("Enter");
 }

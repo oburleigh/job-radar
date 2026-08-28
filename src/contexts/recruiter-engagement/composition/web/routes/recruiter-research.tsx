@@ -2,14 +2,17 @@ import { type ActionFunctionArgs, useActionData, useLoaderData } from "react-rou
 
 import { recruiterEngagementWeb } from "@/contexts/recruiter-engagement/composition/recruiter-engagement-web.server";
 import { RecruiterResearchPage } from "@/contexts/recruiter-engagement/presentation/web/recruiter-research-page";
+import { resolveLocations } from "@/platform/locations/location-search.server";
 import { recruiterResearchAction } from "./recruiter-research-action.server";
 
 export async function loader({ request }: { readonly request: Request }) {
   const runId = new URL(request.url).searchParams.get("run");
+  const research = runId ? await recruiterEngagementWeb.getResearchRun(runId) : undefined;
   return {
-    research: runId ? await recruiterEngagementWeb.getResearchRun(runId) : undefined,
-    defaultBrief: recruiterEngagementWeb.getDefaultResearchBrief(),
-    targetLocationOptions: recruiterEngagementWeb.getTargetLocationOptions(),
+    research,
+    defaultTargets: recruiterEngagementWeb.getDefaultSearchTargets(),
+    execution: recruiterEngagementWeb.getResearchExecutionSettings(),
+    initialLocationOptions: resolveLocations(research?.run.brief.criteria.targetLocations ?? []),
   };
 }
 
@@ -18,7 +21,8 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function RecruiterResearchRoute() {
-  const { defaultBrief, research, targetLocationOptions } = useLoaderData<typeof loader>();
+  const { defaultTargets, execution, initialLocationOptions, research } =
+    useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   return (
     <RecruiterResearchPage
@@ -31,8 +35,9 @@ export default function RecruiterResearchRoute() {
           }
         : {})}
       {...(research ? { research } : {})}
-      defaultBrief={defaultBrief}
-      targetLocationOptions={targetLocationOptions}
+      defaultTargets={defaultTargets}
+      execution={execution}
+      initialLocationOptions={initialLocationOptions}
     />
   );
 }

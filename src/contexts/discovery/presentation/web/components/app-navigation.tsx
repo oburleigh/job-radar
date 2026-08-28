@@ -120,7 +120,7 @@ export function AppNavigation() {
       </Link>
 
       <nav className="nav-list" aria-label="Primary navigation">
-        {navigation.map((item, index) => {
+        {navigation.map((item) => {
           const Icon = item.icon;
           const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
           return (
@@ -130,9 +130,6 @@ export function AppNavigation() {
               className={`nav-link${active ? " nav-link-active" : ""}`}
               aria-current={active ? "page" : undefined}
             >
-              <span className="nav-index" aria-hidden="true">
-                {String(index + 1).padStart(2, "0")}
-              </span>
               <Icon className="nav-icon" size={17} aria-hidden="true" />
               <span className="nav-label">{item.label}</span>
               <span className="nav-label-short">{item.shortLabel}</span>

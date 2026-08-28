@@ -45,7 +45,6 @@ export function IntegrationSettingsForm({
 
       <section className="form-section">
         <div className="form-section-copy">
-          <span className="form-step">01</span>
           <div>
             <h2>Search coverage</h2>
             <p>Patterns are used to build targeted web search queries.</p>
@@ -96,7 +95,6 @@ export function IntegrationSettingsForm({
 
       <section className="form-section">
         <div className="form-section-copy">
-          <span className="form-step">02</span>
           <div>
             <h2>URL recognition</h2>
             <p>Exact hosts and suffixes determine which ATS owns a result.</p>
@@ -121,7 +119,6 @@ export function IntegrationSettingsForm({
       {canConfigureSync ? (
         <section className="form-section">
           <div className="form-section-copy">
-            <span className="form-step">03</span>
             <div>
               <h2>Direct board sync</h2>
               <p>Endpoint templates accept placeholders such as {"{slug}"}.</p>
@@ -169,7 +166,6 @@ export function IntegrationSettingsForm({
           <input type="hidden" name="pageSize" value="" />
           <input type="hidden" name="endpoints" value="{}" />
           <div className="form-section-copy">
-            <span className="form-step">03</span>
             <div>
               <h2>Search-only integration</h2>
               <p>

@@ -598,6 +598,7 @@ async function configureDiscoveryFixtures(
   serperEndpoint = `${fixtureUrl}/serper/success`,
 ): Promise<void> {
   await page.goto("/settings?ats=greenhouse");
+  await page.waitForLoadState("networkidle");
   await page.getByLabel("Run status polling (ms)").fill("1000");
   await page.getByLabel("Requested web results per query").fill("1");
   await page.getByLabel("Background work batch size").fill("1");
@@ -742,6 +743,9 @@ async function createProfile(
   await page.getByLabel("Target job titles").fill("Head of Engineering");
   const locations = page.getByRole("combobox", { name: "Target locations" });
   await locations.fill("United Arab Emirates");
+  await expect(
+    page.getByRole("option").filter({ hasText: "United Arab Emirates" }).first(),
+  ).toBeVisible();
   await locations.press("Enter");
   if (options.includeUnverified) {
     await page.getByLabel("Include unverified web-search leads").check();

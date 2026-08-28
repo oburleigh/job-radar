@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import {
-  areConfiguredTargetLocations,
+  areCatalogueTargetLocations,
   type TargetLocationOption,
 } from "@/contexts/recruiter-engagement/application/research-runs/target-locations";
 
@@ -75,7 +75,7 @@ export function parseRecruiterResearchStartRequest(
       message: "Firms to find cannot exceed recruiters to find.",
     };
   }
-  if (!areConfiguredTargetLocations(result.data.targetLocations, options)) {
+  if (!areCatalogueTargetLocations(result.data.targetLocations, options)) {
     return {
       status: "invalid",
       field: "targetLocations",
@@ -95,6 +95,14 @@ export function parseRecruiterResearchStartRequest(
       recruiterTarget: result.data.recruiterTarget,
     },
   };
+}
+
+export function recruiterTargetLocationValues(formData: FormData): readonly string[] {
+  return formData
+    .getAll("targetLocations")
+    .flatMap((value) => (typeof value === "string" ? value.split("\n") : []))
+    .map((value) => value.trim())
+    .filter(Boolean);
 }
 
 function canonicalTargetLocations(
@@ -131,11 +139,11 @@ function validationMessage(field: RecruiterResearchStartField): string {
     case "recruiterTarget":
       return "Recruiters to find must be a positive integer.";
     case "specialisms":
-      return "Technology specialisms are required.";
+      return "Specialisms are required.";
     case "targetLocations":
       return "Choose at least one target location from the catalogue.";
     default:
-      return "Technology brief details are invalid.";
+      return "Search brief details are invalid.";
   }
 }
 

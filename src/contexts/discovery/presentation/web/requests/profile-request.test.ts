@@ -4,11 +4,11 @@ import { parseProfileRequest } from "./profile-request";
 
 describe("profile request", () => {
   it("normalizes form fields into an application command", () => {
-    const result = parseProfileRequest(
+    const result = parseProfile(
       profileForm({
         name: "  UAE engineering leadership  ",
         titleTerms: "VP Engineering\nHead of Engineering\nVP Engineering",
-        locationTerms: "united arab emirates, china",
+        locationTerms: "united arab emirates\nchina",
         includeRemote: "on",
         includeUnverified: "on",
         salaryCurrency: "gbp",
@@ -44,7 +44,7 @@ describe("profile request", () => {
   });
 
   it("keeps an unspecified salary as an allowed empty preference", () => {
-    const result = parseProfileRequest(profileForm());
+    const result = parseProfile(profileForm());
 
     expect(result.ok && result.command.profile.salaryPreference).toEqual({
       currency: null,
@@ -54,42 +54,38 @@ describe("profile request", () => {
   });
 
   it("requires a currency when a salary boundary is present", () => {
-    expect(parseProfileRequest(profileForm({ salaryMin: "100000" }))).toEqual({
+    expect(parseProfile(profileForm({ salaryMin: "100000" }))).toEqual({
       ok: false,
       message: "Add a salary currency when setting a salary range.",
     });
   });
 
   it("uses the stable target-location message when no location is supplied", () => {
-    expect(parseProfileRequest(profileForm({ locationTerms: " " }))).toEqual({
+    expect(parseProfile(profileForm({ locationTerms: " " }))).toEqual({
       ok: false,
       message: "Add at least one target location.",
     });
   });
 
   it("rejects a target location that is not selected from the catalogue", () => {
-    expect(parseProfileRequest(profileForm({ locationTerms: "oli" }))).toEqual({
+    expect(parseProfile(profileForm({ locationTerms: "oli" }))).toEqual({
       ok: false,
       message: "Choose each target location from the suggestions.",
     });
   });
 
-  it("requires unmatched saved locations to be replaced before saving", () => {
-    expect(
-      parseProfileRequest(
-        profileForm({
-          locationTerms: "China",
-          legacyLocationTerms: "Dubai",
-        }),
-      ),
-    ).toEqual({
-      ok: false,
-      message: "Replace saved target locations that are not in the location catalogue.",
-    });
+  it("canonicalizes a legacy repeated city segment to the catalogue label", () => {
+    const result = parseProfile(
+      profileForm({ locationTerms: "Dubai, Dubai, United Arab Emirates" }),
+    );
+
+    expect(result.ok && result.command.profile.targetLocations).toEqual([
+      "Dubai, United Arab Emirates",
+    ]);
   });
 
   it("rejects a three-letter value that is not an ISO 4217 currency", () => {
-    expect(parseProfileRequest(profileForm({ salaryCurrency: "ZZZ" }))).toEqual({
+    expect(parseProfile(profileForm({ salaryCurrency: "ZZZ" }))).toEqual({
       ok: false,
       message: "Salary currency must be a valid ISO 4217 code such as GBP.",
     });
@@ -97,7 +93,7 @@ describe("profile request", () => {
 
   it("rejects an inverted salary range", () => {
     expect(
-      parseProfileRequest(
+      parseProfile(
         profileForm({ salaryCurrency: "GBP", salaryMin: "150000", salaryMax: "100000" }),
       ),
     ).toEqual({
@@ -113,7 +109,6 @@ function profileForm(overrides: Record<string, string> = {}): FormData {
     name: "UAE engineering leadership",
     titleTerms: "VP Engineering",
     locationTerms: "United Arab Emirates",
-    legacyLocationTerms: "",
     requiredJobTerms: "",
     excludedTitleTerms: "",
     excludedLocationTerms: "",
@@ -133,4 +128,12 @@ function profileForm(overrides: Record<string, string> = {}): FormData {
     }
   }
   return formData;
+}
+
+function parseProfile(formData: FormData) {
+  return parseProfileRequest(formData, [
+    { label: "China" },
+    { label: "Dubai, United Arab Emirates" },
+    { label: "United Arab Emirates" },
+  ]);
 }

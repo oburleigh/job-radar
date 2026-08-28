@@ -4,8 +4,12 @@ import { type ActionFunctionArgs, Link, redirect, useLoaderData } from "react-ro
 import { discoveryWeb } from "@/contexts/discovery/composition/discovery-web.server";
 import { DeleteProfileButton } from "@/contexts/discovery/presentation/web/components/delete-profile-button";
 import { ProfileForm } from "@/contexts/discovery/presentation/web/components/profile-form";
-import { parseProfileRequest } from "@/contexts/discovery/presentation/web/requests/profile-request";
+import {
+  parseProfileRequest,
+  profileTargetLocationValues,
+} from "@/contexts/discovery/presentation/web/requests/profile-request";
 import { assertLocalHost } from "@/platform/http/require-local-request";
+import { resolveLocations } from "@/platform/locations/location-search.server";
 
 export function loader({ request }: { readonly request: Request }) {
   const profiles = discoveryWeb.getProfiles();
@@ -51,6 +55,7 @@ export function loader({ request }: { readonly request: Request }) {
     profiles,
     selected,
     selectedId,
+    initialLocationOptions: resolveLocations(selected?.locationTerms ?? []),
   };
 }
 
@@ -59,7 +64,10 @@ export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
   const intent = formData.get("intent");
   if (intent === "save-profile") {
-    const parsed = parseProfileRequest(formData);
+    const parsed = parseProfileRequest(
+      formData,
+      resolveLocations(profileTargetLocationValues(formData)),
+    );
     if (!parsed.ok) {
       return parsed;
     }
@@ -87,17 +95,23 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function ProfilesPage() {
-  const { activeProfileId, cloneSourceId, profileDefaults, profiles, selected, selectedId } =
-    useLoaderData<typeof loader>();
+  const {
+    activeProfileId,
+    cloneSourceId,
+    initialLocationOptions,
+    profileDefaults,
+    profiles,
+    selected,
+    selectedId,
+  } = useLoaderData<typeof loader>();
 
   return (
     <div className="page">
       <PageHeader
-        index="02"
         title="Profiles"
         description="Control which titles qualify, where they must be based, and what gets rejected."
         actions={
-          <div className="header-action-group">
+          <div className="header-action-group profile-header-actions">
             {selectedId ? (
               <>
                 <Link {...buttonAttributes()} to={`/profiles?clone=${selectedId}`}>
@@ -138,6 +152,7 @@ export default function ProfilesPage() {
           </div>
           <ProfileForm
             defaults={profileDefaults}
+            initialLocationOptions={initialLocationOptions}
             key={
               cloneSourceId
                 ? `clone-${cloneSourceId}`

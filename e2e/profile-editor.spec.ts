@@ -6,6 +6,17 @@ test("edits profile locations and salary currency through keyboard comboboxes", 
 }) => {
   await page.goto("/profiles?new=1");
 
+  await expect(page.getByLabel("Profile name")).toHaveAttribute(
+    "placeholder",
+    "Example profile name",
+  );
+  await expect(page.getByLabel("Required job keywords, one per line")).toHaveAttribute(
+    "placeholder",
+    "Keyword one\nKeyword two",
+  );
+  await expect(page.locator('input[placeholder="UAE engineering leadership"]')).toHaveCount(0);
+  await expect(page.locator('textarea[placeholder*="Technology"]')).toHaveCount(0);
+
   const locations = page.getByRole("combobox", { name: "Target locations" });
   const locationLabelStyles = await page
     .getByText("Target locations", { exact: true })
@@ -52,6 +63,9 @@ test("edits profile locations and salary currency through keyboard comboboxes", 
 
   await locations.fill("united arab");
   await expect(locations).not.toHaveAttribute("aria-activedescendant");
+  await expect(
+    page.getByRole("option").filter({ hasText: "United Arab Emirates" }).first(),
+  ).toBeVisible();
   await locations.press("ArrowDown");
   await locations.press("Enter");
 
@@ -62,9 +76,10 @@ test("edits profile locations and salary currency through keyboard comboboxes", 
   ).toBeVisible();
 
   await locations.fill("St Lucia");
+  await expect(page.getByRole("option").filter({ hasText: "Saint Lucia" }).first()).toBeVisible();
   await locations.press("ArrowDown");
   await locations.press("Enter");
-  await expect(page.getByRole("button", { name: "Remove St. Lucia" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Remove Saint Lucia" })).toBeVisible();
 
   await page.getByRole("combobox", { name: "Salary currency" }).fill("british pound");
   await page.getByRole("combobox", { name: "Salary currency" }).press("ArrowDown");
@@ -72,20 +87,19 @@ test("edits profile locations and salary currency through keyboard comboboxes", 
   await expect(page.getByRole("combobox", { name: "Salary currency" })).toHaveValue("GBP");
 
   await locations.fill("united arab");
-  await locations.press("ArrowDown");
-  await locations.press("Enter");
+  await expect(page.getByRole("option").filter({ hasText: "United Arab Emirates" })).toHaveCount(0);
   await expect(page.getByRole("combobox", { name: "Salary currency" })).toHaveValue("GBP");
-  await expect(
-    page.getByRole("status").filter({ hasText: "United Arab Emirates is already included" }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Remove United Arab Emirates" })).toBeVisible();
 
   await locations.fill("Canada");
+  await expect(page.getByRole("option").filter({ hasText: "Canada" }).first()).toBeVisible();
   await locations.press("ArrowDown");
   await locations.press("Tab");
   await expect(page.getByRole("button", { name: "Remove Canada" })).toBeVisible();
   await expect(page.getByLabel("Include remote roles")).toBeFocused();
 
   await locations.fill("china");
+  await expect(page.getByRole("option").filter({ hasText: "China" }).first()).toBeVisible();
   await locations.press("Enter");
   await expect(page.getByRole("button", { name: "Remove China" })).toBeVisible();
   await expect(locations).toHaveValue("");
@@ -95,7 +109,7 @@ test("edits profile locations and salary currency through keyboard comboboxes", 
   await expect(page.getByRole("button", { name: "Remove oli" })).toHaveCount(0);
   await expect(locations).toHaveValue("oli");
   await expect(locations).toHaveAttribute("aria-invalid", "true");
-  await expect(page.locator(`#${await locations.getAttribute("aria-describedby")}`)).toHaveText(
+  await expect(await describedError(page, locations)).toHaveText(
     "Choose a target location from the suggestions.",
   );
 
@@ -112,6 +126,7 @@ test("adds the active target-location suggestion with Tab from an empty query", 
 
   const locations = page.getByRole("combobox", { name: "Target locations" });
   await locations.focus();
+  await expect(page.getByRole("option").first()).toBeVisible();
   await locations.press("ArrowDown");
   await locations.press("Tab");
 
@@ -132,7 +147,7 @@ test("shows the target-location validation error on an empty profile submission"
   const locations = page.getByRole("combobox", { name: "Target locations" });
   await expect(locations).toHaveAttribute("aria-invalid", "true");
   await expect(locations).toHaveAttribute("aria-describedby", /.+/);
-  await expect(page.locator(`#${await locations.getAttribute("aria-describedby")}`)).toHaveText(
+  await expect(await describedError(page, locations)).toHaveText(
     "Add at least one target location.",
   );
 });
@@ -172,7 +187,7 @@ test("presents shared currencies without assigning them to an arbitrary country"
   await expect(eurOption).not.toContainText("Andorra");
 });
 
-test("browses complete currency and location catalogues beyond the initial viewport", async ({
+test("browses the currency catalogue and searches the complete location catalogue", async ({
   page,
 }) => {
   await page.goto("/profiles?new=1");
@@ -223,10 +238,11 @@ test("browses complete currency and location catalogues beyond the initial viewp
   const locationListboxId = (await locations.getAttribute("aria-controls")) ?? "";
   const locationListbox = page.locator(`#${locationListboxId}`);
   await expect(locationListbox).toBeVisible();
-  expect(await locationListbox.getByRole("option").count()).toBeGreaterThan(10);
-  await expect(locationListbox.getByRole("option").first()).toHaveText("AfghanistanAFN");
+  expect(await locationListbox.getByRole("option").count()).toBeGreaterThan(200);
+  await expect(locationListbox.getByRole("option").first()).toHaveText("AfghanistanCountry · AF");
 
-  const zambia = locationListbox.getByRole("option", { name: "Zambia ZMW" });
+  const zambia = locationListbox.getByRole("option", { name: "Zambia Country · ZM" });
+  await expect(zambia).toBeVisible();
   await zambia.scrollIntoViewIfNeeded();
   expect(await locationListbox.evaluate((listbox) => listbox.scrollTop)).toBeGreaterThan(0);
   await zambia.click();
@@ -257,6 +273,8 @@ for (const theme of ["light", "dark"] as const) {
     await expect(currency).not.toHaveAttribute("aria-activedescendant");
 
     const locations = page.getByRole("combobox", { name: "Target locations" });
+    await locations.focus();
+    await expect(page.getByRole("option").first()).toBeVisible();
     await locations.press("ArrowDown");
     await expect(locations).toHaveAttribute("aria-expanded", "true");
     const locationListboxId = (await locations.getAttribute("aria-controls")) ?? "";
@@ -265,5 +283,18 @@ for (const theme of ["light", "dark"] as const) {
     await expect(page.locator(`#${locationActiveId}`)).toHaveRole("option");
     const locationResults = await new AxeBuilder({ page }).analyze();
     expect(locationResults.violations).toEqual([]);
+  });
+}
+
+function describedError(
+  page: import("@playwright/test").Page,
+  control: import("@playwright/test").Locator,
+): Promise<import("@playwright/test").Locator> {
+  return control.getAttribute("aria-describedby").then((describedBy) => {
+    const errorId = describedBy?.split(/\s+/).at(-1);
+    if (!errorId) {
+      throw new Error("Expected the target-location control to reference an error.");
+    }
+    return page.locator(`#${errorId}`);
   });
 }

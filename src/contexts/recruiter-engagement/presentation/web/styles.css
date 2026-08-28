@@ -1,6 +1,6 @@
 .recruiter-research-page {
   display: grid;
-  gap: 26px;
+  gap: var(--jr-space-5);
 }
 
 .recruiter-run-panel {
@@ -13,10 +13,10 @@
 
 .recruiter-panel-heading {
   display: flex;
-  align-items: end;
+  align-items: center;
   justify-content: space-between;
-  gap: 18px;
-  padding: 18px;
+  gap: var(--jr-space-5);
+  padding: var(--jr-space-5) var(--jr-space-6);
   background: var(--jr-color-info-subtle);
   border-bottom: 1px solid var(--jr-color-border-strong);
 }
@@ -32,8 +32,18 @@
 }
 
 .recruiter-panel-heading > span,
-.recruiter-kicker,
 .recruiter-record-label {
+  color: var(--jr-color-text-muted);
+  font-family: var(--jr-font-family-mono);
+  font-size: var(--jr-font-size-caption);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.recruiter-panel-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--jr-space-3);
   color: var(--jr-color-text-muted);
   font-family: var(--jr-font-family-mono);
   font-size: var(--jr-font-size-caption);
@@ -44,8 +54,8 @@
 .recruiter-brief-form {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-  padding: 18px;
+  gap: var(--jr-space-5);
+  padding: var(--jr-space-5) var(--jr-space-6);
 }
 
 .recruiter-textarea-label {
@@ -81,6 +91,48 @@
 
 .recruiter-textarea-label:first-of-type {
   grid-column: 1 / -1;
+}
+
+.recruiter-execution {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: var(--jr-space-5);
+  margin: 0;
+  padding: var(--jr-space-5) 0 0;
+  border: 0;
+  border-top: var(--jr-border-width) solid var(--jr-color-border);
+}
+
+.recruiter-execution-copy {
+  display: grid;
+  align-content: start;
+  gap: var(--jr-space-2);
+}
+
+.recruiter-execution-copy h3,
+.recruiter-execution-copy p {
+  margin: 0;
+}
+
+.recruiter-execution-copy h3 {
+  font-family: var(--jr-font-family-display);
+  font-size: var(--jr-font-size-heading-md);
+  font-stretch: condensed;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.recruiter-execution-copy p {
+  color: var(--jr-color-text-muted);
+  font-size: var(--jr-font-size-caption);
+  line-height: 1.45;
+}
+
+.recruiter-execution-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--jr-space-3);
 }
 
 .recruiter-textarea-label small,
@@ -457,6 +509,14 @@
   }
 
   .recruiter-target-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .recruiter-execution {
+    grid-template-columns: 1fr;
+  }
+
+  .recruiter-execution-fields {
     grid-template-columns: 1fr;
   }
 

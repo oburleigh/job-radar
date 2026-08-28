@@ -1,6 +1,6 @@
-import { buttonAttributes, PageHeader } from "@job-radar/design-ui";
-import { DatabaseZap, Plus, Search } from "lucide-react";
-import { type ActionFunctionArgs, Link, useLoaderData } from "react-router";
+import { PageHeader } from "@job-radar/design-ui";
+import { DatabaseZap, Search } from "lucide-react";
+import { type ActionFunctionArgs, useLoaderData } from "react-router";
 import type { AddJobSourceResult } from "@/contexts/discovery/application/source-coverage/add/result";
 import { discoveryWeb } from "@/contexts/discovery/composition/discovery-web.server";
 import { AddBoardForm } from "@/contexts/discovery/presentation/web/components/add-board-form";
@@ -78,31 +78,21 @@ export default function SourcesPage() {
   return (
     <div className="page">
       <PageHeader
-        index="03"
         title="Sources and company boards"
         description="Maintain the source registry and refresh known boards when an ATS integration needs attention. Discovery handles the routine run."
-        actions={
-          <div className="header-action-group">
-            <Link {...buttonAttributes("primary")} to="/settings?new=1">
-              <Plus size={17} />
-              Add ATS integration
-            </Link>
-            <SyncButton />
-          </div>
-        }
       />
 
       <section className="source-section">
         <div className="section-heading">
           <h2>Where discovery looks</h2>
-          <span>{data.sources.filter((source) => source.enabled).length} active</span>
+          <div className="source-heading-actions">
+            <span>{data.sources.filter((source) => source.enabled).length} active</span>
+            <SyncButton />
+          </div>
         </div>
         <ol className="source-grid">
-          {data.sources.map((source, index) => (
+          {data.sources.map((source) => (
             <li className="source-card" key={source.id}>
-              <span className="source-record-index" aria-hidden="true">
-                {String(index + 1).padStart(2, "0")}
-              </span>
               <div className="source-card-icon">
                 {source.supportsBoardSync ? <DatabaseZap size={19} /> : <Search size={19} />}
               </div>

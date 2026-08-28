@@ -1,12 +1,17 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
-test("loads the opportunity workspace and route index", async ({ page }) => {
+test("loads the opportunity workspace without decorative numbering or a redundant header", async ({
+  page,
+}) => {
   await page.goto("/");
 
+  await expect(page.getByText("The roles worth your attention", { exact: true })).toHaveCount(0);
   await expect(
-    page.getByRole("heading", { level: 1, name: "The roles worth your attention" }),
-  ).toBeVisible();
+    page.locator(
+      ".jr-page-index, .nav-index, .filter-index, .section-index, .job-record-index, .source-record-index, .form-step",
+    ),
+  ).toHaveCount(0);
   await expect(page.getByRole("navigation", { name: "Primary navigation" })).toBeVisible();
   await expect(page.getByRole("link", { name: /Source coverage/i })).toBeVisible();
 });

@@ -2,7 +2,6 @@ import { Button, PageHeader, TextField } from "@job-radar/design-ui";
 import { CheckCircle2, CircleAlert, CircleX, LoaderCircle, RotateCcw, Square } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Form, useNavigation, useRevalidator } from "react-router";
-import type { TargetLocationOption } from "@/contexts/recruiter-engagement/application/research-runs/target-locations";
 import type { ResearchObservation } from "@/contexts/recruiter-engagement/domain/observation";
 import type {
   ResearchCoverage,
@@ -10,6 +9,7 @@ import type {
   ResearchSourceFailure,
 } from "@/contexts/recruiter-engagement/domain/research-run";
 import type { RecruiterResearchStartField } from "@/contexts/recruiter-engagement/presentation/web/requests/recruiter-research-request";
+import type { LocationOption } from "@/platform/http/location-option";
 import { RecruiterLocationCombobox } from "./recruiter-location-combobox";
 
 import "./styles.css";
@@ -26,18 +26,20 @@ type RecruiterResearchPageProps = {
     readonly field?: RecruiterResearchStartField;
     readonly message: string;
   };
-  readonly defaultBrief: ResearchRun["brief"];
+  readonly defaultTargets: Pick<ResearchRun["brief"], "firmTarget" | "recruiterTarget">;
+  readonly execution: Pick<ResearchRun["policy"]["execution"], "model" | "reasoningEffort">;
+  readonly initialLocationOptions?: readonly LocationOption[];
   readonly research?: RecruiterResearchRunView;
-  readonly targetLocationOptions: readonly TargetLocationOption[];
 };
 
 const activeStatuses = new Set<ResearchRun["status"]>(["pending", "running", "interrupted"]);
 
 export function RecruiterResearchPage({
   actionError,
-  defaultBrief,
+  defaultTargets,
+  execution,
+  initialLocationOptions,
   research,
-  targetLocationOptions,
 }: RecruiterResearchPageProps) {
   const navigation = useNavigation();
   const revalidator = useRevalidator();
@@ -50,9 +52,8 @@ export function RecruiterResearchPage({
   const industriesError = fieldError(actionError, "industries");
   const firmTargetError = fieldError(actionError, "firmTarget");
   const recruiterTargetError = fieldError(actionError, "recruiterTarget");
-  const brief = run?.brief ?? defaultBrief;
-  const loadedBriefDescription = brief.description;
-  const loadedTargetLocations = brief.criteria.targetLocations.join("\n");
+  const loadedBriefDescription = run?.brief.description ?? "";
+  const loadedTargetLocations = run?.brief.criteria.targetLocations.join("\n") ?? "";
   const loadedBriefKey = run?.id ?? "new-research";
   const previousLoadedBriefKey = useRef(loadedBriefKey);
   const [briefDescription, setBriefDescription] = useState(loadedBriefDescription);
@@ -80,18 +81,18 @@ export function RecruiterResearchPage({
   return (
     <div className="page recruiter-research-page">
       <PageHeader
-        index="05"
         title="Recruiter research"
-        description="Run a local, public-source scan of technology recruitment firms and their named recruiters. Counts describe this run, not the whole market."
+        description="Run a local, public-source scan of recruitment firms and their named recruiters. Counts describe this run, not the whole market."
       />
 
       <section className="panel recruiter-brief-panel" aria-labelledby="recruiter-brief-title">
         <div className="recruiter-panel-heading">
           <div>
-            <span className="recruiter-kicker">Local research brief</span>
             <h2 id="recruiter-brief-title">Set the market focus</h2>
           </div>
-          <span>Public web only</span>
+          <div className="recruiter-panel-heading-actions">
+            <span>Public web only</span>
+          </div>
         </div>
         <Form
           key={run?.id ?? "new-research"}
@@ -101,7 +102,7 @@ export function RecruiterResearchPage({
         >
           <input name="intent" type="hidden" value="start" />
           <label className="recruiter-textarea-label" htmlFor="recruiter-brief">
-            <span>Technology brief</span>
+            <span>Search brief</span>
             <textarea
               value={briefDescription}
               disabled={isSubmitting || isActive}
@@ -110,11 +111,11 @@ export function RecruiterResearchPage({
               maxLength={1000}
               name="brief"
               onChange={(event) => setBriefDescription(event.target.value)}
+              placeholder="Describe the roles, sectors, seniority, or market focus for this run"
               rows={5}
             />
             <small id="recruiter-brief-hint">
-              Industries in this brief guide prioritisation. Without one, the scan covers major
-              technology-hiring sectors.
+              Add any plain-language context that is not captured by the structured criteria.
             </small>
             {briefError ? (
               <small className="jr-field-error" id="recruiter-brief-error">
@@ -125,14 +126,14 @@ export function RecruiterResearchPage({
           <RecruiterLocationCombobox
             disabled={isSubmitting || isActive}
             {...(targetLocationsError ? { error: targetLocationsError } : {})}
+            {...(initialLocationOptions ? { initialOptions: initialLocationOptions } : {})}
             name="targetLocations"
             onChange={setTargetLocations}
-            options={targetLocationOptions}
             values={targetLocations}
           />
           <div className="recruiter-target-fields">
             <TextField
-              defaultValue={String(brief.firmTarget)}
+              defaultValue={String(run?.brief.firmTarget ?? defaultTargets.firmTarget)}
               disabled={isSubmitting || isActive}
               {...(firmTargetError ? { error: firmTargetError } : {})}
               hint="Cannot exceed the recruiter target."
@@ -145,7 +146,7 @@ export function RecruiterResearchPage({
               type="number"
             />
             <TextField
-              defaultValue={String(brief.recruiterTarget)}
+              defaultValue={String(run?.brief.recruiterTarget ?? defaultTargets.recruiterTarget)}
               disabled={isSubmitting || isActive}
               {...(recruiterTargetError ? { error: recruiterTargetError } : {})}
               hint="Positive whole numbers with no fixed maximum."
@@ -159,13 +160,14 @@ export function RecruiterResearchPage({
             />
           </div>
           <label className="recruiter-textarea-label" htmlFor="recruiter-specialisms">
-            <span>Technology specialisms</span>
+            <span>Specialisms</span>
             <textarea
-              defaultValue={brief.criteria.specialisms.join(", ")}
+              defaultValue={run?.brief.criteria.specialisms.join(", ") ?? ""}
               disabled={isSubmitting || isActive}
               {...textareaAccessibility("recruiter-specialisms", specialismsError, true)}
               id="recruiter-specialisms"
               name="specialisms"
+              placeholder="e.g. Executive search, Clinical research"
               rows={2}
             />
             <small id="recruiter-specialisms-hint">
@@ -180,11 +182,12 @@ export function RecruiterResearchPage({
           <label className="recruiter-textarea-label" htmlFor="recruiter-industries">
             <span>Target industries</span>
             <textarea
-              defaultValue={brief.criteria.industries.join(", ")}
+              defaultValue={run?.brief.criteria.industries.join(", ") ?? ""}
               disabled={isSubmitting || isActive}
               {...textareaAccessibility("recruiter-industries", industriesError, true)}
               id="recruiter-industries"
               name="industries"
+              placeholder="e.g. Life sciences, Consumer goods"
               rows={2}
             />
             <small id="recruiter-industries-hint">
@@ -196,6 +199,33 @@ export function RecruiterResearchPage({
               </small>
             ) : null}
           </label>
+          <section className="recruiter-execution" aria-labelledby="research-adapter-title">
+            <div className="recruiter-execution-copy">
+              <h3 id="research-adapter-title">Research adapter</h3>
+              <p>
+                <strong>Local Codex CLI.</strong> Choose a model or leave it empty to use your Codex
+                account default. These values are saved locally and frozen with this run.
+              </p>
+            </div>
+            <div className="recruiter-execution-fields">
+              <TextField
+                defaultValue={execution.model ?? ""}
+                disabled={isSubmitting || isActive}
+                id="recruiter-codex-model"
+                label="Codex model"
+                name="model"
+                placeholder="Use Codex account default"
+              />
+              <TextField
+                defaultValue={execution.reasoningEffort ?? ""}
+                disabled={isSubmitting || isActive}
+                id="recruiter-reasoning-effort"
+                label="Reasoning effort"
+                name="reasoningEffort"
+                placeholder="Use Codex account default"
+              />
+            </div>
+          </section>
           <div className="recruiter-brief-actions">
             <Button
               busy={isSubmitting}
@@ -260,7 +290,7 @@ function EmptyResearchState() {
       </span>
       <h2>Ready for a local scan</h2>
       <p>
-        Start with a technology brief and a recruiter target. Firm observations appear before the
+        Start with a search brief and recruiter target. Firm observations appear before the
         recruiter stage completes.
       </p>
     </section>

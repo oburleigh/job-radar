@@ -11,7 +11,7 @@ const targetLocationOptions = [
 ] as const satisfies readonly TargetLocationOption[];
 
 describe("recruiter research request", () => {
-  it("accepts a plain-language brief and a positive caller-controlled target", () => {
+  it("accepts a search brief and caller-controlled targets", () => {
     expect(
       parseRecruiterResearchStartRequest(
         formData({

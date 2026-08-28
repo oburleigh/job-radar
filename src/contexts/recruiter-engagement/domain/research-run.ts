@@ -125,7 +125,7 @@ export function createSearchBrief(input: {
   return {
     criteria: {
       industries: requireCriteria(input.criteria.industries, "Target industries"),
-      specialisms: requireCriteria(input.criteria.specialisms, "Technology specialisms"),
+      specialisms: requireCriteria(input.criteria.specialisms, "Specialisms"),
       targetLocations: requireCriteria(input.criteria.targetLocations, "Target locations"),
     },
     description: input.description.trim(),

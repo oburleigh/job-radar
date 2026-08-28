@@ -1,20 +1,20 @@
 import { eq } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { z } from "zod";
-
+import type { ResearchExecutionSettingsCommand } from "@/contexts/recruiter-engagement/application/research-settings/save-execution-settings";
 import type { RecruiterResearchSettings } from "@/contexts/recruiter-engagement/application/research-settings/settings";
 import { recruiterResearchSettings } from "./schema";
 
 type Database<TSchema extends Record<string, unknown>> = BetterSQLite3Database<TSchema>;
 
 const positiveInteger = z.number().int().safe().positive();
-const nonEmptyItems = z.array(z.string().trim().min(1)).min(1);
+const briefItems = z.array(z.string().trim().min(1));
 const settingsSchema = z
   .object({
     defaultBrief: z
       .object({
-        criteria: z.object({ industries: nonEmptyItems, specialisms: nonEmptyItems }).strict(),
-        description: z.string().trim().min(1).max(1_000),
+        criteria: z.object({ industries: briefItems, specialisms: briefItems }).strict(),
+        description: z.string().trim().max(1_000),
         firmTarget: positiveInteger,
         recruiterTarget: positiveInteger,
       })
@@ -53,4 +53,20 @@ export function getRecruiterResearchSettings<TSchema extends Record<string, unkn
     );
   }
   return parsed.data;
+}
+
+export function replaceResearchExecutionSettings<TSchema extends Record<string, unknown>>(
+  database: Database<TSchema>,
+  execution: ResearchExecutionSettingsCommand,
+  changedAt: Date,
+): void {
+  const settings = getRecruiterResearchSettings(database);
+  database
+    .update(recruiterResearchSettings)
+    .set({
+      value: { ...settings, execution: { ...settings.execution, ...execution } },
+      updatedAt: changedAt,
+    })
+    .where(eq(recruiterResearchSettings.key, "default"))
+    .run();
 }
