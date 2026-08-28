@@ -1,4 +1,4 @@
-import { buttonAttributes } from "@job-radar/design-ui";
+import { buttonAttributes, PageHeader } from "@job-radar/design-ui";
 import { Bookmark, BriefcaseBusiness, CheckCircle2, Radar, Waypoints } from "lucide-react";
 import { type ActionFunctionArgs, Link, redirect, useLoaderData } from "react-router";
 import { discoveryWeb } from "@/contexts/discovery/composition/discovery-web.server";
@@ -60,7 +60,10 @@ export default function JobsPage() {
 
   return (
     <div className="page">
-      <h1 className="sr-only">Opportunities</h1>
+      <PageHeader
+        title="Opportunities"
+        description="Review jobs matched to the selected search profile."
+      />
       {data.profile ? (
         <>
           <div className="opportunity-toolbar">

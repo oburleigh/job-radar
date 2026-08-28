@@ -291,12 +291,6 @@
   gap: 8px;
 }
 
-.profile-header-actions {
-  width: 100%;
-  justify-content: center;
-  flex-wrap: nowrap;
-}
-
 .settings-static-value {
   display: flex;
   min-height: var(--jr-control-height-md);
@@ -906,45 +900,128 @@ table td a:hover {
   margin-inline: 4px;
 }
 
-.profile-link {
+.profile-tile {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   min-height: 58px;
-  align-content: center;
-  gap: 3px;
   margin-bottom: 4px;
-  padding: 10px 12px;
-  color: var(--jr-color-nav-subtle);
+  background: var(--jr-color-nav);
   border: 1px solid var(--jr-color-nav-panel-border);
   transition:
-    color 120ms ease,
     background-color 120ms ease,
     border-color 120ms ease;
 }
 
-.profile-link:hover {
-  color: var(--jr-color-nav-text);
+.profile-tile:hover {
   border-color: var(--jr-color-nav-hover-border);
 }
 
-.profile-link.active {
-  color: var(--jr-color-text-on-accent);
+.profile-tile.active {
   background: var(--jr-color-accent);
   border-color: var(--jr-color-accent-bright);
+}
+
+.profile-link {
+  display: grid;
+  min-width: 0;
+  align-content: center;
+  padding: 10px 12px;
+  color: var(--jr-color-nav-subtle);
+  border: 0;
+  transition:
+    color 120ms ease,
+    background-color 120ms ease;
+}
+
+.profile-link:hover {
+  color: var(--jr-color-nav-text);
+}
+
+.profile-tile.active .profile-link {
+  color: var(--jr-color-text-on-accent);
 }
 
 .profile-link span {
   font-weight: 700;
 }
 
-.profile-link small {
-  color: var(--jr-color-nav-list-muted);
-  font-family: var(--jr-font-family-mono);
-  font-size: var(--jr-font-size-micro);
-  text-transform: uppercase;
+.profile-tile-actions {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  padding: 6px;
+  border-left: 1px solid var(--jr-color-nav-panel-border);
 }
 
-.profile-link.active small {
+.profile-tile-actions .jr-icon-button {
+  color: var(--jr-color-nav-text);
+}
+
+.profile-tile-actions .jr-icon-button:hover:not(:disabled) {
+  color: var(--jr-color-accent-strong);
+  background: var(--jr-color-accent-subtle);
+  border-color: var(--jr-color-accent-border);
+}
+
+.profile-tile-actions .profile-tile-action {
+  text-decoration: none;
+}
+
+.delete-profile-control,
+.inline-action {
+  position: relative;
+}
+
+.profile-tile-actions .delete-profile-control {
+  display: flex;
+}
+
+.profile-tile-actions .delete-profile-control .jr-icon-button {
+  color: var(--jr-color-danger);
+}
+
+.profile-tile-actions .delete-profile-control .jr-icon-button:hover:not(:disabled) {
+  color: var(--jr-color-text-on-action);
+  background: var(--jr-color-danger);
+  border-color: var(--jr-color-danger);
+}
+
+.profile-tile.active .profile-tile-actions {
+  border-left-color: var(--jr-color-overlay-border);
+}
+
+.profile-tile.active .profile-tile-actions .jr-icon-button {
   color: var(--jr-color-text-on-accent);
+}
+
+.profile-tile.active .profile-tile-actions .delete-profile-control .jr-icon-button {
+  color: var(--jr-color-text-on-accent);
+}
+
+.profile-new-tile {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 8px 12px;
+  color: var(--jr-color-nav-text);
+  font-weight: 700;
+  text-decoration: none;
+  background: var(--jr-color-nav-panel);
+  border: 1px dashed var(--jr-color-nav-hover-border);
+  transition:
+    color 120ms ease,
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+
+.profile-new-tile:hover {
+  color: var(--jr-color-accent-strong);
+  background: var(--jr-color-accent-subtle);
+  border-color: var(--jr-color-accent-border);
 }
 
 .profile-editor {
@@ -1292,15 +1369,6 @@ table td a:hover {
 .form-error,
 .board-form-message.error {
   color: var(--jr-color-danger);
-}
-
-.delete-profile-control,
-.inline-action {
-  position: relative;
-}
-
-.profile-header-actions .delete-profile-control {
-  display: flex;
 }
 
 .delete-error {
@@ -2252,7 +2320,13 @@ td a {
   }
 
   .profile-link {
-    min-width: 180px;
+    min-width: 0;
+  }
+
+  .profile-tile,
+  .profile-new-tile {
+    flex: 0 0 180px;
+    width: 180px;
     margin: 0;
   }
 
@@ -2383,6 +2457,21 @@ td a {
 
   .source-card .source-toggle {
     grid-column: 2;
+  }
+}
+
+@media (max-width: 760px) {
+  .profile-list {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 5px;
+    overflow: visible;
+  }
+
+  .profile-tile,
+  .profile-new-tile {
+    width: 100%;
+    flex: none;
   }
 }
 

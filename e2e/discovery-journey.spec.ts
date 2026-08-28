@@ -685,7 +685,9 @@ async function verifyJobActionsVisualLayout(page: Page): Promise<void> {
   for (const width of [1440, 1240, 980]) {
     await page.setViewportSize({ width, height: 900 });
     expect(await page.evaluate(() => window.innerWidth)).toBe(width);
-    await jobCard.scrollIntoViewIfNeeded();
+    await jobCard.evaluate((element) => {
+      element.scrollIntoView({ block: "center", inline: "nearest" });
+    });
 
     for (const name of ["Save job", "Mark as applied", "Hide job"]) {
       const button = actions.getByRole("button", { name });
@@ -715,10 +717,10 @@ async function verifyJobActionsVisualLayout(page: Page): Promise<void> {
     const screenshotBuffer = { top: 8, right: 20, bottom: 8, left: 8 };
     const clip = await jobCard.evaluate((element, buffer) => {
       const box = element.getBoundingClientRect();
-      const x = Math.max(0, Math.floor(window.scrollX + box.left - buffer.left));
-      const y = Math.max(0, Math.floor(window.scrollY + box.top - buffer.top));
-      const right = Math.ceil(window.scrollX + box.right + buffer.right);
-      const bottom = Math.ceil(window.scrollY + box.bottom + buffer.bottom);
+      const x = Math.max(0, Math.floor(box.left - buffer.left));
+      const y = Math.max(0, Math.floor(box.top - buffer.top));
+      const right = Math.ceil(box.right + buffer.right);
+      const bottom = Math.ceil(box.bottom + buffer.bottom);
       return { x, y, width: right - x, height: bottom - y };
     }, screenshotBuffer);
     const screenshot = await page.screenshot({

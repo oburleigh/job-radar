@@ -1,4 +1,4 @@
-import { Button } from "@job-radar/design-ui";
+import { IconButton } from "@job-radar/design-ui";
 import { Trash2 } from "lucide-react";
 import { useFetcher } from "react-router";
 
@@ -30,10 +30,14 @@ export function DeleteProfileButton({ profileId, profileName }: DeleteProfileBut
 
   return (
     <div className="delete-profile-control">
-      <Button busy={pending} disabled={pending} onClick={handleDelete} variant="danger">
+      <IconButton
+        busy={pending}
+        label={`Delete ${profileName}`}
+        onClick={handleDelete}
+        title={`Delete ${profileName}`}
+      >
         <Trash2 size={17} />
-        {pending ? "Deleting..." : "Delete profile"}
-      </Button>
+      </IconButton>
       {message ? <span className="delete-error">{message}</span> : null}
     </div>
   );

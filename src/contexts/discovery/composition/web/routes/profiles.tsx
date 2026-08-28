@@ -1,4 +1,4 @@
-import { buttonAttributes, PageHeader } from "@job-radar/design-ui";
+import { PageHeader } from "@job-radar/design-ui";
 import { Copy, Plus } from "lucide-react";
 import { type ActionFunctionArgs, Link, redirect, useLoaderData } from "react-router";
 import { discoveryWeb } from "@/contexts/discovery/composition/discovery-web.server";
@@ -110,41 +110,42 @@ export default function ProfilesPage() {
       <PageHeader
         title="Profiles"
         description="Control which titles qualify, where they must be based, and what gets rejected."
-        actions={
-          <div className="header-action-group profile-header-actions">
-            {selectedId ? (
-              <>
-                <Link {...buttonAttributes()} to={`/profiles?clone=${selectedId}`}>
-                  <Copy size={17} />
-                  Clone profile
-                </Link>
-                <DeleteProfileButton
-                  profileId={selectedId}
-                  profileName={selected?.name ?? "profile"}
-                />
-              </>
-            ) : null}
-            <Link {...buttonAttributes("primary")} to="/profiles?new=1">
-              <Plus size={17} />
-              New profile
-            </Link>
-          </div>
-        }
       />
 
       <div className="profile-layout">
-        <aside className="profile-list">
+        <aside className="profile-list" aria-label="Saved profiles">
           <p className="index-label">Saved profiles</p>
-          {profiles.map((profile) => (
-            <Link
-              key={profile.id}
-              to={`/profiles?profile=${profile.id}`}
-              className={activeProfileId === profile.id ? "profile-link active" : "profile-link"}
-            >
-              <span>{profile.name}</span>
-              <small>{profile.titleTerms.length} target titles</small>
-            </Link>
-          ))}
+          {profiles.map((profile) => {
+            const isActive = activeProfileId === profile.id;
+
+            return (
+              <div className={isActive ? "profile-tile active" : "profile-tile"} key={profile.id}>
+                <Link
+                  aria-current={isActive ? "page" : undefined}
+                  aria-label={profile.name}
+                  className="profile-link"
+                  to={`/profiles?profile=${profile.id}`}
+                >
+                  <span>{profile.name}</span>
+                </Link>
+                <div className="profile-tile-actions">
+                  <Link
+                    aria-label={`Clone ${profile.name}`}
+                    className="jr-icon-button profile-tile-action"
+                    title={`Clone ${profile.name}`}
+                    to={`/profiles?clone=${profile.id}`}
+                  >
+                    <Copy size={17} />
+                  </Link>
+                  <DeleteProfileButton profileId={profile.id} profileName={profile.name} />
+                </div>
+              </div>
+            );
+          })}
+          <Link aria-label="New profile" className="profile-new-tile" to="/profiles?new=1">
+            <Plus size={17} />
+            <span>New profile</span>
+          </Link>
         </aside>
         <div className="profile-editor">
           <div className="editor-heading">

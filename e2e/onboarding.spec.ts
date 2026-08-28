@@ -20,7 +20,7 @@ test.describe
       await expect(page.getByRole("heading", { level: 2, name: "No runs recorded" })).toBeVisible();
     });
 
-    test("creates a salary-aware profile from an empty database", async ({ page }) => {
+    test("keeps profile actions with their saved profile tiles", async ({ page }) => {
       await page.setViewportSize({ width: 1440, height: 1000 });
       await page.goto("/profiles?new=1");
 
@@ -39,24 +39,147 @@ test.describe
       ).toBeVisible();
       await expect(page.getByLabel("Salary currency")).toHaveValue("AED");
 
-      const profileActions = await Promise.all([
-        page.getByRole("link", { name: "Clone profile" }).boundingBox(),
-        page.getByRole("button", { name: "Delete profile" }).boundingBox(),
-        page.getByRole("link", { name: "New profile" }).boundingBox(),
-        page.locator(".profile-header-actions").boundingBox(),
-        page.locator(".jr-header-actions").boundingBox(),
+      const profileList = page.locator(".profile-list");
+      const firstProfile = profileList.getByRole("link", {
+        name: "UAE engineering leadership",
+        exact: true,
+      });
+      const [cloneActions, deleteActions, newProfileTiles] = await Promise.all([
+        profileList.getByRole("link", { name: "Clone UAE engineering leadership" }).count(),
+        profileList.getByRole("button", { name: "Delete UAE engineering leadership" }).count(),
+        profileList.getByRole("link", { name: "New profile", exact: true }).count(),
       ]);
-      const [cloneProfile, deleteProfile, newProfile, actionGroup, actionPanel] = profileActions;
-      if (!cloneProfile || !deleteProfile || !newProfile || !actionGroup || !actionPanel) {
-        throw new Error("Profile header actions must be measurable.");
+      expect({ cloneActions, deleteActions, newProfileTiles }).toEqual({
+        cloneActions: 1,
+        deleteActions: 1,
+        newProfileTiles: 1,
+      });
+      await expect(page.locator(".jr-header-actions")).toHaveCount(0);
+      await expect(firstProfile.locator("button")).toHaveCount(0);
+
+      const newProfileTile = profileList.getByRole("link", { name: "New profile", exact: true });
+      await expect(newProfileTile).toBeVisible();
+      await newProfileTile.focus();
+      await expect(newProfileTile).toBeFocused();
+      await page.keyboard.press("Enter");
+      await expect(page).toHaveURL(/\/profiles\?new=1$/);
+
+      await page.getByLabel("Profile name").fill("Product leadership");
+      await page.getByLabel("Target job titles").fill("Head of Product");
+      await chooseComboboxOption(page, "Target locations", "United Arab Emirates");
+      await page.getByRole("button", { name: "Save profile" }).click();
+      await expect(
+        page.getByRole("heading", { level: 2, name: "Product leadership" }),
+      ).toBeVisible();
+
+      await firstProfile.click();
+      await expect(
+        page.getByRole("heading", { level: 2, name: "UAE engineering leadership" }),
+      ).toBeVisible();
+
+      const secondProfile = profileList.getByRole("link", {
+        name: "Product leadership",
+        exact: true,
+      });
+      const secondProfileTile = secondProfile.locator("xpath=..");
+      const cloneSecondProfile = profileList.getByRole("link", {
+        name: "Clone Product leadership",
+      });
+      const deleteSecondProfile = profileList.getByRole("button", {
+        name: "Delete Product leadership",
+        exact: true,
+      });
+      await expect(secondProfile.locator("button")).toHaveCount(0);
+      await expect(cloneSecondProfile).toBeVisible();
+      await expect(deleteSecondProfile).toBeVisible();
+
+      const [secondProfileBox, cloneBox, deleteBox, newProfileBox] = await Promise.all([
+        secondProfileTile.boundingBox(),
+        cloneSecondProfile.boundingBox(),
+        deleteSecondProfile.boundingBox(),
+        newProfileTile.boundingBox(),
+      ]);
+      if (!secondProfileBox || !cloneBox || !deleteBox || !newProfileBox) {
+        throw new Error("Profile tile controls must be measurable.");
       }
-      expect(Math.abs(cloneProfile.y - deleteProfile.y)).toBeLessThan(2);
-      expect(Math.abs(deleteProfile.y - newProfile.y)).toBeLessThan(2);
-      expect(cloneProfile.height).toBe(deleteProfile.height);
-      expect(deleteProfile.height).toBe(newProfile.height);
-      expect(Math.abs(center(actionGroup) - center(actionPanel))).toBeLessThanOrEqual(1);
+      const titleCount = await secondProfileTile.getByText(/\d+ target titles/i).count();
+      const actionGeometry = {
+        actionsShareColumn: Math.abs(cloneBox.x - deleteBox.x) <= 1,
+        actionsStackVertically: deleteBox.y >= cloneBox.y + cloneBox.height,
+        titleCount,
+      };
+      expect(actionGeometry).toEqual({
+        actionsShareColumn: true,
+        actionsStackVertically: true,
+        titleCount: 0,
+      });
+      for (const actionBox of [cloneBox, deleteBox]) {
+        expect(actionBox.width).toBeGreaterThanOrEqual(44);
+        expect(actionBox.width).toBeLessThanOrEqual(48);
+        expect(actionBox.height).toBeGreaterThanOrEqual(44);
+        expect(actionBox.height).toBeLessThanOrEqual(48);
+        expect(actionBox.x).toBeGreaterThanOrEqual(secondProfileBox.x);
+        expect(actionBox.x + actionBox.width).toBeLessThanOrEqual(
+          secondProfileBox.x + secondProfileBox.width,
+        );
+        expect(actionBox.y).toBeGreaterThanOrEqual(secondProfileBox.y);
+        expect(actionBox.y + actionBox.height).toBeLessThanOrEqual(
+          secondProfileBox.y + secondProfileBox.height,
+        );
+      }
+      expect(newProfileBox.y).toBeGreaterThanOrEqual(secondProfileBox.y + secondProfileBox.height);
+
+      await cloneSecondProfile.focus();
+      await expect(cloneSecondProfile).toBeFocused();
+      await page.keyboard.press("Enter");
+      await expect(page).toHaveURL(/\/profiles\?clone=\d+$/);
+      await expect(page.getByLabel("Profile name")).toHaveValue("Product leadership copy");
+      await page.getByRole("button", { name: "Save profile" }).click();
+      await expect(
+        page.getByRole("heading", { level: 2, name: "Product leadership copy" }),
+      ).toBeVisible();
+
+      await deleteSecondProfile.focus();
+      await expect(deleteSecondProfile).toBeFocused();
+      page.once("dialog", async (dialog) => {
+        expect(dialog.type()).toBe("confirm");
+        await dialog.accept();
+      });
+      await page.keyboard.press("Enter");
+      await expect(
+        profileList.getByRole("link", { name: "Product leadership", exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        profileList.getByRole("link", { name: "Product leadership copy", exact: true }),
+      ).toBeVisible();
+
       await page.screenshot({ path: "test-results/profiles-desktop.png", fullPage: true });
+      await page.emulateMedia({ colorScheme: "dark" });
+      await page.reload();
+      await page.screenshot({ path: "test-results/profiles-desktop-dark.png", fullPage: true });
+      await page.emulateMedia({ colorScheme: "light" });
       await page.setViewportSize({ width: 390, height: 844 });
+      await page.reload();
+      const mobileProfileList = page.locator(".profile-list");
+      const mobileNewProfileTile = mobileProfileList.getByRole("link", {
+        name: "New profile",
+        exact: true,
+      });
+      const mobileLastSavedProfile = mobileProfileList.locator(".profile-tile").last();
+      const [mobileNewProfileBox, mobileLastSavedProfileBox] = await Promise.all([
+        mobileNewProfileTile.boundingBox(),
+        mobileLastSavedProfile.boundingBox(),
+      ]);
+      if (!mobileNewProfileBox || !mobileLastSavedProfileBox) {
+        throw new Error("The mobile profile list must be measurable.");
+      }
+      expect(mobileNewProfileBox.y).toBeGreaterThanOrEqual(
+        mobileLastSavedProfileBox.y + mobileLastSavedProfileBox.height,
+      );
+      expect(Math.abs(mobileNewProfileBox.x - mobileLastSavedProfileBox.x)).toBeLessThanOrEqual(1);
+      expect(
+        Math.abs(mobileNewProfileBox.width - mobileLastSavedProfileBox.width),
+      ).toBeLessThanOrEqual(1);
       await page.screenshot({ path: "test-results/profiles-mobile.png", fullPage: true });
     });
 
@@ -159,12 +282,68 @@ test.describe
       await page.getByRole("button", { name: "Save runtime settings" }).click();
       await expect(page.getByText("Runtime settings saved to SQLite.")).toBeVisible();
       await page.setViewportSize({ width: 1440, height: 1000 });
+      const marketVocabulary = page.getByLabel("Market vocabulary (JSON)");
+      const providerExecution = page.getByRole("group", { name: "Provider execution" });
+      const structuredVerificationSources = page.getByLabel("Structured verification source IDs");
+      const closedListingMarkers = page.getByLabel("Closed-listing markers");
+      const [marketBox, providerBox, structuredBox, closedListingBox] = await Promise.all([
+        marketVocabulary.boundingBox(),
+        providerExecution.boundingBox(),
+        structuredVerificationSources.boundingBox(),
+        closedListingMarkers.boundingBox(),
+      ]);
+      if (!marketBox || !providerBox || !structuredBox || !closedListingBox) {
+        throw new Error("The runtime settings editors must be measurable.");
+      }
+      const desktopSettingsGeometry = {
+        marketAndProviderAlign:
+          Math.abs(marketBox.x - providerBox.x) <= 1 &&
+          Math.abs(marketBox.width - providerBox.width) <= 1,
+        providerBelowMarket: providerBox.y >= marketBox.y + marketBox.height,
+        textAreasAlign:
+          Math.abs(structuredBox.y - closedListingBox.y) <= 1 &&
+          Math.abs(structuredBox.width - closedListingBox.width) <= 1,
+      };
+      expect(desktopSettingsGeometry).toEqual({
+        marketAndProviderAlign: true,
+        providerBelowMarket: true,
+        textAreasAlign: true,
+      });
       await page.screenshot({ path: "test-results/settings-desktop.png", fullPage: true });
       await page.emulateMedia({ colorScheme: "dark" });
       await page.reload();
       await page.screenshot({ path: "test-results/settings-desktop-dark.png", fullPage: true });
       await page.emulateMedia({ colorScheme: "light" });
       await page.setViewportSize({ width: 390, height: 844 });
+      await page.reload();
+      const [mobileMarketBox, mobileProviderBox, mobileStructuredBox, mobileClosedListingBox] =
+        await Promise.all([
+          marketVocabulary.boundingBox(),
+          providerExecution.boundingBox(),
+          structuredVerificationSources.boundingBox(),
+          closedListingMarkers.boundingBox(),
+        ]);
+      if (
+        !mobileMarketBox ||
+        !mobileProviderBox ||
+        !mobileStructuredBox ||
+        !mobileClosedListingBox
+      ) {
+        throw new Error("The mobile runtime settings editors must be measurable.");
+      }
+      for (const box of [
+        mobileMarketBox,
+        mobileProviderBox,
+        mobileStructuredBox,
+        mobileClosedListingBox,
+      ]) {
+        expect(box.x).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width).toBeLessThanOrEqual(390);
+      }
+      expect(Math.abs(mobileMarketBox.width - mobileProviderBox.width)).toBeLessThanOrEqual(1);
+      expect(
+        Math.abs(mobileStructuredBox.width - mobileClosedListingBox.width),
+      ).toBeLessThanOrEqual(1);
       await page.screenshot({ path: "test-results/settings-mobile.png", fullPage: true });
     });
 
@@ -277,10 +456,6 @@ test.describe
       }
     });
   });
-
-function center(box: { readonly x: number; readonly width: number }): number {
-  return box.x + box.width / 2;
-}
 
 async function chooseComboboxOption(
   page: import("@playwright/test").Page,
