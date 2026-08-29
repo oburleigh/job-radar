@@ -1,5 +1,6 @@
 import { Button } from "@job-radar/design-ui";
 import { Save } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { useFetcher } from "react-router";
 import type { ActionState } from "@/contexts/discovery/presentation/web/action-state";
 
@@ -31,6 +32,13 @@ export function IntegrationSettingsForm({
   const fetcher = useFetcher<ActionState>();
   const state = fetcher.data ?? initialState;
   const pending = fetcher.state !== "idle";
+  const integrationIdRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isNew) {
+      integrationIdRef.current?.focus();
+    }
+  }, [isNew]);
 
   return (
     <fetcher.Form
@@ -55,6 +63,7 @@ export function IntegrationSettingsForm({
             <label>
               <span>Integration ID</span>
               <input
+                ref={integrationIdRef}
                 name="atsType"
                 required
                 pattern="[a-z][a-z0-9-]{1,39}"

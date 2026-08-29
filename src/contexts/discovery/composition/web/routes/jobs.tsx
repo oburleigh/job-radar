@@ -1,5 +1,5 @@
 import { buttonAttributes, PageHeader } from "@job-radar/design-ui";
-import { Bookmark, BriefcaseBusiness, CheckCircle2, Radar, Waypoints } from "lucide-react";
+import { Radar } from "lucide-react";
 import { type ActionFunctionArgs, Link, redirect, useLoaderData } from "react-router";
 import { discoveryWeb } from "@/contexts/discovery/composition/discovery-web.server";
 import {
@@ -68,48 +68,19 @@ export default function JobsPage() {
         <>
           <div className="opportunity-toolbar">
             <RunControls
-              profile={{ id: data.profile.id, name: data.profile.name }}
+              profileId={data.profile.id}
+              profiles={data.profiles}
               provider={selectedProvider}
               providers={searchProviders}
+              activeSourceCount={data.activeSources}
               activeBoardCount={data.activeBoards}
             />
           </div>
 
-          <section className="metric-grid" aria-label="Opportunity index summary">
-            <Metric
-              icon={<BriefcaseBusiness size={19} />}
-              label="Matched roles"
-              value={data.counts.matched}
-              detail={`${data.counts.new} need review`}
-            />
-            <Metric
-              icon={<Bookmark size={19} />}
-              label="Saved"
-              value={data.counts.saved}
-              detail="Personal shortlist"
-            />
-            <Metric
-              icon={<CheckCircle2 size={19} />}
-              label="Applied"
-              value={data.counts.applied}
-              detail="Application tracker"
-            />
-            <Metric
-              icon={<Waypoints size={19} />}
-              label="Active coverage"
-              value={data.activeSources}
-              detail={`${data.activeBoards} known company boards`}
-            />
-          </section>
-
-          <JobFilters
-            profiles={data.profiles}
-            currentProfileId={data.profile.id}
-            atsLabels={atsLabels}
-          />
+          <JobFilters atsLabels={atsLabels} counts={data.counts} />
 
           <div className="catalogue-heading">
-            <h2>{data.profile.name}</h2>
+            <h2>Matches</h2>
             <div className="catalogue-count">
               <strong>{data.jobs.length}</strong>
               <span>role{data.jobs.length === 1 ? "" : "s"} shown</span>
@@ -160,29 +131,6 @@ export default function JobsPage() {
         </section>
       )}
     </div>
-  );
-}
-
-function Metric({
-  icon,
-  label,
-  value,
-  detail,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: number;
-  detail: string;
-}) {
-  return (
-    <article className="metric-card">
-      <span className="metric-icon">{icon}</span>
-      <div className="metric-copy">
-        <span className="metric-label">{label}</span>
-        <strong>{value}</strong>
-        <small>{detail}</small>
-      </div>
-    </article>
   );
 }
 

@@ -3,18 +3,17 @@ import { Search, X } from "lucide-react";
 import { type SyntheticEvent, useState, useTransition } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 
-interface ProfileOption {
-  id: number;
-  name: string;
-}
-
 interface JobFiltersProps {
-  profiles: ProfileOption[];
-  currentProfileId: number;
   atsLabels: Record<string, string>;
+  counts: {
+    matched: number;
+    new: number;
+    saved: number;
+    applied: number;
+  };
 }
 
-export function JobFilters({ profiles, currentProfileId, atsLabels }: JobFiltersProps) {
+export function JobFilters({ atsLabels, counts }: JobFiltersProps) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [current] = useSearchParams();
@@ -54,20 +53,6 @@ export function JobFilters({ profiles, currentProfileId, atsLabels }: JobFilters
       className={`filter-bar${isPending ? " filter-pending" : ""}`}
       aria-label="Filter opportunity catalogue"
     >
-      <label className="filter-field profile-filter">
-        <span>Profile</span>
-        <select
-          value={String(currentProfileId)}
-          onChange={(event) => update("profile", event.target.value)}
-        >
-          {profiles.map((profile) => (
-            <option key={profile.id} value={profile.id}>
-              {profile.name}
-            </option>
-          ))}
-        </select>
-      </label>
-
       <label className="filter-field">
         <span>Source</span>
         <select
@@ -89,10 +74,10 @@ export function JobFilters({ profiles, currentProfileId, atsLabels }: JobFilters
           value={current.get("state") ?? "all"}
           onChange={(event) => update("state", event.target.value)}
         >
-          <option value="all">All active jobs</option>
-          <option value="new">New</option>
-          <option value="saved">Saved</option>
-          <option value="applied">Applied</option>
+          <option value="all">All active jobs ({counts.matched})</option>
+          <option value="new">New ({counts.new})</option>
+          <option value="saved">Saved ({counts.saved})</option>
+          <option value="applied">Applied ({counts.applied})</option>
           <option value="hidden">Hidden</option>
         </select>
       </label>

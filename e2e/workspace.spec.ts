@@ -17,6 +17,21 @@ test("loads the opportunity workspace with its visible page header and without d
   ).toHaveCount(0);
   await expect(page.getByRole("navigation", { name: "Primary navigation" })).toBeVisible();
   await expect(page.getByRole("link", { name: /Source coverage/i })).toBeVisible();
+  const profileSelect = page.getByRole("combobox", { name: "Search profile" });
+  const profileName = await profileSelect.locator("option:checked").textContent();
+  if (!profileName) {
+    throw new Error("The selected search profile must have a visible name.");
+  }
+  await expect(page.getByText(profileName, { exact: true })).toHaveCount(1);
+  await expect(page.getByRole("heading", { level: 2, name: "Matches" })).toBeVisible();
+  await expect(page.getByText("Matched roles", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Personal shortlist", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Application tracker", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Active coverage", { exact: true })).toHaveCount(0);
+
+  await page.getByRole("combobox", { name: "Web search provider" }).selectOption("serpapi");
+  await expect(page.getByText("Company boards will run without web search.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Configure Google via SerpAPI" })).toBeVisible();
   const [pageHeader, toolbar] = await Promise.all([
     page.locator(".jr-page-header").boundingBox(),
     page.locator(".opportunity-toolbar").boundingBox(),
@@ -34,7 +49,36 @@ test("loads the opportunity workspace with its visible page header and without d
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
   await expect(opportunitiesHeading).toBeVisible();
+  const mobileMatches = await page
+    .getByRole("heading", { level: 2, name: "Matches" })
+    .boundingBox();
+  if (!mobileMatches) {
+    throw new Error("The mobile result heading must be measurable.");
+  }
+  expect(mobileMatches.y).toBeLessThan(776);
   await page.screenshot({ path: "test-results/opportunities-mobile.png", fullPage: true });
+});
+
+test("opens the ATS integration editor where the action is presented", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/settings");
+
+  await expect(page.getByText("SQLite backed", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("No restart required", { exact: true })).toHaveCount(0);
+  await expect(page.locator(".jr-page-header").getByRole("link")).toHaveCount(0);
+  await page.screenshot({ path: "test-results/settings-actions-desktop.png", fullPage: true });
+
+  const addIntegration = page.getByRole("link", { name: "Add integration" });
+  await addIntegration.click();
+
+  await expect(page).toHaveURL(/\/settings\?.*new=1#ats-integration-editor$/);
+  const integrationId = page.getByRole("textbox", { name: /^Integration ID\b/ });
+  await expect(integrationId).toBeFocused();
+  await expect(integrationId).toBeInViewport();
+  await page.screenshot({
+    path: "test-results/settings-integration-editor-desktop.png",
+    fullPage: true,
+  });
 });
 
 test("captures primary route review evidence at desktop and mobile widths", async ({ page }) => {

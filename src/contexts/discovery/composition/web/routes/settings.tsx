@@ -1,5 +1,5 @@
 import { buttonAttributes, PageHeader } from "@job-radar/design-ui";
-import { Database, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { type ActionFunctionArgs, Link, redirect, useLoaderData } from "react-router";
 import type { SaveAtsIntegrationResult } from "@/contexts/discovery/application/ats-integrations/save/result";
 import { discoveryWeb } from "@/contexts/discovery/composition/discovery-web.server";
@@ -158,24 +158,11 @@ export default function SettingsPage() {
       <PageHeader
         title="Settings"
         description="Edit runtime defaults and ATS integration rules. Changes are stored in the local database and take effect on the next operation."
-        actions={
-          <div className="header-action-group">
-            <span className="database-badge">
-              <Database size={16} />
-              SQLite backed
-            </span>
-            <Link {...buttonAttributes("primary")} to={settingsUrl(selection, { create: true })}>
-              <Plus size={17} />
-              New integration
-            </Link>
-          </div>
-        }
       />
 
       <section className="settings-section">
         <div className="section-heading">
           <h2>Discovery and matching</h2>
-          <span>No restart required</span>
         </div>
         <div className="profile-editor">
           <RuntimeSettingsForm
@@ -196,7 +183,6 @@ export default function SettingsPage() {
       <section className="settings-section" id="recruiter-research">
         <div className="section-heading">
           <h2>Recruiter research</h2>
-          <span>Local settings</span>
         </div>
         <div className="profile-editor">
           <ResearchExecutionSettingsForm execution={recruiterResearchExecution} />
@@ -204,10 +190,19 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <section className="settings-section">
+      <section className="settings-section" id="ats-registry">
         <div className="section-heading">
           <h2>ATS registry</h2>
-          <span>{data.integrations.length} configured systems</span>
+          <div className="section-heading-actions">
+            <span>{data.integrations.length} configured systems</span>
+            <Link
+              {...buttonAttributes("primary")}
+              to={`${settingsUrl(selection, { create: true })}#ats-integration-editor`}
+            >
+              <Plus size={17} />
+              Add integration
+            </Link>
+          </div>
         </div>
         <div className="profile-layout">
           <aside className="profile-list">
@@ -230,7 +225,7 @@ export default function SettingsPage() {
               </Link>
             ))}
           </aside>
-          <div className="profile-editor">
+          <div className="profile-editor" id="ats-integration-editor">
             {editorIntegration ? (
               <>
                 <div className="editor-heading">

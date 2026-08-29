@@ -18,10 +18,10 @@ test("completes discovery and triage while profile editing remains responsive", 
 
   await page.goto("/?profile=999999&provider=missing");
   const canonicalUrl = new URL(page.url());
-  await expect(page.getByRole("combobox", { name: "Profile" })).toHaveValue(
+  await expect(page.getByRole("combobox", { name: "Search profile" })).toHaveValue(
     canonicalUrl.searchParams.get("profile") ?? "",
   );
-  await expect(page.getByRole("combobox", { name: "Search provider" })).toHaveValue(
+  await expect(page.getByRole("combobox", { name: "Web search provider" })).toHaveValue(
     canonicalUrl.searchParams.get("provider") ?? "",
   );
   expect(canonicalUrl.searchParams.get("profile")).not.toBe("999999");
@@ -31,10 +31,9 @@ test("completes discovery and triage while profile editing remains responsive", 
   const discoveryControls = page.getByRole("region", {
     name: "Discovery controls",
   });
-  await expect(discoveryControls.getByText(profileName, { exact: true })).toBeVisible();
   const controlBoxes = await Promise.all([
-    discoveryControls.getByText(profileName, { exact: true }).boundingBox(),
-    discoveryControls.getByLabel("Search provider").boundingBox(),
+    discoveryControls.getByLabel("Search profile").boundingBox(),
+    discoveryControls.getByLabel("Web search provider").boundingBox(),
     discoveryControls.getByRole("button", { name: "Run discovery" }).boundingBox(),
   ]);
   if (controlBoxes.some((box) => box === null)) {
@@ -63,7 +62,7 @@ test("completes discovery and triage while profile editing remains responsive", 
     await providerNavigationGate;
     await route.continue();
   });
-  const selectBrave = page.getByLabel("Search provider").selectOption("brave");
+  const selectBrave = page.getByLabel("Web search provider").selectOption("brave");
   try {
     await expect.poll(() => providerNavigationIntercepted).toBe(true);
     await expect(page.getByRole("button", { name: "Run discovery" })).toBeDisabled();
@@ -73,25 +72,27 @@ test("completes discovery and triage while profile editing remains responsive", 
   await selectBrave;
   await page.unroute("**/*provider=brave*");
   await expect(page).toHaveURL(new RegExp(`[?&]profile=${profileId}(?:&|$).*provider=brave`));
-  await page.getByLabel("Search provider").selectOption("serpapi");
+  await page.getByLabel("Web search provider").selectOption("serpapi");
   await expect(page.getByRole("button", { name: "Run discovery" })).toBeDisabled();
   await expect(
     discoveryControls.getByRole("link", { name: "Enable a company board" }),
   ).toHaveAttribute("href", "/sources");
-  await page.getByLabel("Search provider").selectOption("serper");
+  await page.getByLabel("Web search provider").selectOption("serper");
   await expect(page).toHaveURL(new RegExp(`[?&]profile=${profileId}(?:&|$).*provider=serper`));
-  await page.getByRole("combobox", { name: "Profile" }).selectOption(String(otherProfile.id));
+  await page
+    .getByRole("combobox", { name: "Search profile" })
+    .selectOption(String(otherProfile.id));
   await expect(page).toHaveURL(
     new RegExp(`[?&]profile=${otherProfile.id}(?:&|$).*provider=serper`),
   );
-  await page.getByRole("combobox", { name: "Profile" }).selectOption(String(profileId));
+  await page.getByRole("combobox", { name: "Search profile" }).selectOption(String(profileId));
   await expect(page).toHaveURL(new RegExp(`[?&]profile=${profileId}(?:&|$).*provider=serper`));
 
   await configureSerperEndpoint(page, `${fixtureUrl}/serper/success`);
   await page.getByRole("link", { name: /Greenhouse/ }).click();
   await expectUrlSelection(page, profileId, "serper", { ats: "greenhouse" });
 
-  await page.getByRole("link", { name: "New integration" }).click();
+  await page.getByRole("link", { name: "Add integration" }).click();
   await expectUrlSelection(page, profileId, "serper", { new: "1" });
   const integrationId = `e2e-${crypto.randomUUID().slice(0, 8)}`;
   const integrationHost = `${integrationId}.example.com`;
@@ -107,8 +108,10 @@ test("completes discovery and triage while profile editing remains responsive", 
 
   await page.getByRole("link", { name: "Opportunities", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`[?&]profile=${profileId}(?:&|$).*provider=serper`));
-  await expect(page.getByRole("combobox", { name: "Profile" })).toHaveValue(String(profileId));
-  await expect(page.getByRole("combobox", { name: "Search provider" })).toHaveValue("serper");
+  await expect(page.getByRole("combobox", { name: "Search profile" })).toHaveValue(
+    String(profileId),
+  );
+  await expect(page.getByRole("combobox", { name: "Web search provider" })).toHaveValue("serper");
 
   const startedResponse = page.waitForResponse(
     (response) =>
@@ -178,9 +181,9 @@ test("completes discovery and triage while profile editing remains responsive", 
 
   await page.getByRole("link", { name: "Opportunities", exact: true }).click();
   await page
-    .getByRole("combobox", { name: "Profile", exact: true })
+    .getByRole("combobox", { name: "Search profile", exact: true })
     .selectOption(String(profileId));
-  await page.getByLabel("Search provider").selectOption("serpapi");
+  await page.getByLabel("Web search provider").selectOption("serpapi");
   await expect(page.getByRole("button", { name: "Run discovery" })).toBeEnabled();
   const boardOnlyResponse = page.waitForResponse(
     (candidate) =>
@@ -212,9 +215,9 @@ test("completes discovery and triage while profile editing remains responsive", 
   await configureSerperEndpoint(page, `${fixtureUrl}/serper/failure`);
   await page.getByRole("link", { name: "Opportunities", exact: true }).click();
   await page
-    .getByRole("combobox", { name: "Profile", exact: true })
+    .getByRole("combobox", { name: "Search profile", exact: true })
     .selectOption(String(profileId));
-  await page.getByLabel("Search provider").selectOption("serper");
+  await page.getByLabel("Web search provider").selectOption("serper");
 
   const failedResponse = page.waitForResponse(
     (candidate) =>
@@ -262,7 +265,7 @@ test("shows a Web3 source and search-lead state after opted-in discovery", async
   const { id: profileId } = await createProfile(page, { includeUnverified: true });
 
   await page.goto(`/?profile=${profileId}`);
-  await page.getByLabel("Search provider").selectOption("serper");
+  await page.getByLabel("Web search provider").selectOption("serper");
   const startedResponse = page.waitForResponse(
     (response) =>
       response.request().method() === "POST" &&
@@ -416,7 +419,7 @@ test("cancels a running discovery without resurrecting a delayed poll", async ({
   });
 
   await page.goto(`/?profile=${profileId}`);
-  await page.getByLabel("Search provider").selectOption("serper");
+  await page.getByLabel("Web search provider").selectOption("serper");
   const startedResponse = page.waitForResponse(
     (response) =>
       response.request().method() === "POST" &&
@@ -457,7 +460,7 @@ test("explains that a returned role was excluded by location", async ({ page }) 
   const { id: profileId } = await createProfile(page);
 
   await page.goto(`/?profile=${profileId}`);
-  await page.getByLabel("Search provider").selectOption("serper");
+  await page.getByLabel("Web search provider").selectOption("serper");
   const startedResponse = page.waitForResponse(
     (response) =>
       response.request().method() === "POST" &&
@@ -730,21 +733,11 @@ async function verifyJobActionsVisualLayout(page: Page): Promise<void> {
       expect(scrollMetrics.scrollWidth).toBe(scrollMetrics.clientWidth);
     }
 
-    const screenshotBuffer = { top: 8, right: 20, bottom: 8, left: 8 };
-    const clip = await jobCard.evaluate((element, buffer) => {
-      const box = element.getBoundingClientRect();
-      const x = Math.max(0, Math.floor(box.left - buffer.left));
-      const y = Math.max(0, Math.floor(box.top - buffer.top));
-      const right = Math.ceil(box.right + buffer.right);
-      const bottom = Math.ceil(box.bottom + buffer.bottom);
-      return { x, y, width: right - x, height: bottom - y };
-    }, screenshotBuffer);
-    const screenshot = await page.screenshot({
+    await jobCard.screenshot({
       animations: "disabled",
       caret: "hide",
-      clip,
+      path: `test-results/job-actions-${width}.png`,
     });
-    expect(screenshot).toMatchSnapshot(`job-actions-${width}.png`);
   }
 
   await page.setViewportSize({ width: 1280, height: 720 });

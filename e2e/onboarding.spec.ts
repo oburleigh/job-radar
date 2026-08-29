@@ -249,21 +249,21 @@ test.describe
     test("saves runtime settings and keeps the settings page accessible", async ({ page }) => {
       await page.goto("/settings");
 
-      const settingsHeaderGroups = await Promise.all([
-        page.locator(".jr-page-title-block > div").boundingBox(),
-        page.locator(".header-action-group").boundingBox(),
+      await expect(page.locator(".jr-page-header").getByRole("link")).toHaveCount(0);
+      const atsHeading = page.locator("#ats-registry > .section-heading");
+      const atsHeadingBoxes = await Promise.all([
+        atsHeading.getByRole("heading", { level: 2, name: "ATS registry" }).boundingBox(),
+        atsHeading.locator(".section-heading-actions").boundingBox(),
       ]);
-      const settingsSectionLabels = await Promise.all([
-        page.getByRole("heading", { level: 2, name: "Discovery and matching" }).boundingBox(),
-        page.getByText("No restart required", { exact: true }).boundingBox(),
-      ]);
-      for (const boxes of [settingsHeaderGroups, settingsSectionLabels]) {
-        if (boxes.some((box) => box === null)) {
-          throw new Error("Settings heading content must be measurable.");
-        }
-        const centers = boxes.map((box) => (box?.y ?? 0) + (box?.height ?? 0) / 2);
-        expect(Math.max(...centers) - Math.min(...centers)).toBeLessThanOrEqual(2);
+      if (atsHeadingBoxes.some((box) => box === null)) {
+        throw new Error("ATS registry actions must be measurable.");
       }
+      const atsHeadingCenters = atsHeadingBoxes.map(
+        (box) => (box?.y ?? 0) + (box?.height ?? 0) / 2,
+      );
+      expect(Math.max(...atsHeadingCenters) - Math.min(...atsHeadingCenters)).toBeLessThanOrEqual(
+        2,
+      );
 
       await page.getByLabel("Requested web results per query").fill("50");
       await page.getByRole("button", { name: "Save runtime settings" }).click();

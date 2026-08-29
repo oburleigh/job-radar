@@ -5,20 +5,29 @@ import { Link, useLocation, useNavigate, useNavigation, useSearchParams } from "
 import { DISCOVERY_RUN_STARTED_EVENT } from "@/contexts/discovery/presentation/web/client-events";
 
 interface RunControlsProps {
-  profile: {
+  profileId: number;
+  profiles: {
     id: number;
     name: string;
-  };
+  }[];
   provider: string;
   providers: {
     name: string;
     label: string;
     configured: boolean;
   }[];
+  activeSourceCount: number;
   activeBoardCount: number;
 }
 
-export function RunControls({ profile, provider, providers, activeBoardCount }: RunControlsProps) {
+export function RunControls({
+  profileId,
+  profiles,
+  provider,
+  providers,
+  activeSourceCount,
+  activeBoardCount,
+}: RunControlsProps) {
   const navigate = useNavigate();
   const navigation = useNavigation();
   const { pathname } = useLocation();
@@ -29,9 +38,9 @@ export function RunControls({ profile, provider, providers, activeBoardCount }: 
   const selectedProvider = providers.find((item) => item.name === provider);
   const canRun = activeBoardCount > 0 || selectedProvider?.configured === true;
 
-  function selectProvider(value: string) {
+  function selectContext(key: "profile" | "provider", value: string) {
     const params = new URLSearchParams(searchParams.toString());
-    params.set("provider", value);
+    params.set(key, value);
     void navigate(`${pathname}?${params.toString()}`, { replace: true });
   }
 
@@ -43,7 +52,7 @@ export function RunControls({ profile, provider, providers, activeBoardCount }: 
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            profileId: profile.id,
+            profileId,
             ...(provider ? { provider } : {}),
           }),
         });
@@ -70,34 +79,59 @@ export function RunControls({ profile, provider, providers, activeBoardCount }: 
 
   return (
     <section className="run-controls" aria-label="Discovery controls">
-      <strong className="run-control-profile">{profile.name}</strong>
-      <div className="run-action-row">
-        {providers.length > 0 ? (
-          <label className="compact-select">
-            <span className="sr-only">Search provider</span>
-            <select
-              value={provider}
-              onChange={(event) => selectProvider(event.target.value)}
-              disabled={isPending || isSelectionPending}
-            >
-              {providers.map((item) => (
-                <option key={item.name} value={item.name}>
-                  {item.label}
-                  {item.configured ? "" : " (key missing)"}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : null}
-        <Button
-          busy={isPending || isSelectionPending}
-          onClick={runDiscovery}
-          disabled={isPending || isSelectionPending || !canRun}
-          variant="primary"
+      <label className="run-control-field">
+        <span>Search profile</span>
+        <select
+          value={String(profileId)}
+          onChange={(event) => selectContext("profile", event.target.value)}
+          disabled={isPending || isSelectionPending}
         >
-          <Play size={16} fill="currentColor" />
-          {isPending ? "Working..." : "Run discovery"}
-        </Button>
+          {profiles.map((profile) => (
+            <option key={profile.id} value={profile.id}>
+              {profile.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      {providers.length > 0 ? (
+        <label className="run-control-field">
+          <span>Web search provider</span>
+          <select
+            value={provider}
+            onChange={(event) => selectContext("provider", event.target.value)}
+            disabled={isPending || isSelectionPending}
+          >
+            {providers.map((item) => (
+              <option key={item.name} value={item.name}>
+                {item.label}
+                {item.configured ? "" : " (unavailable)"}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+      <Button
+        busy={isPending || isSelectionPending}
+        onClick={runDiscovery}
+        disabled={isPending || isSelectionPending || !canRun}
+        variant="primary"
+      >
+        <Play size={16} fill="currentColor" />
+        {isPending ? "Working..." : "Run discovery"}
+      </Button>
+      <div className="run-scope-summary">
+        <Link to="/sources">
+          {activeSourceCount} active source{activeSourceCount === 1 ? "" : "s"} · {activeBoardCount}{" "}
+          company board{activeBoardCount === 1 ? "" : "s"}
+        </Link>
+        {selectedProvider && !selectedProvider.configured && activeBoardCount > 0 ? (
+          <span>
+            Company boards will run without web search.{" "}
+            <Link to={`/settings?profile=${profileId}&provider=${provider}`}>
+              Configure {selectedProvider.label}
+            </Link>
+          </span>
+        ) : null}
       </div>
       {!canRun ? (
         <p className="action-message">
