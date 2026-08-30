@@ -27,12 +27,12 @@ recording metrics, so an empty-state page cannot produce a passing report.
 
 ## Client asset budgets
 
-Size Limit checks `build/client/assets/*.js` and `build/client/assets/*.css`. The starting production build
-produced 23 files of JavaScript totaling 390,540 raw bytes and 109,711 Brotli bytes. Its one CSS file was
-53,382 raw bytes and 8,404 Brotli bytes.
+Size Limit checks `build/client/assets/*.js` and `build/client/assets/*.css`. The reference production build
+produced 27 files of JavaScript totaling 509,726 raw bytes and 140,335 Brotli bytes. Its two CSS files total
+74,772 raw bytes and 11,146 Brotli bytes.
 
-The JavaScript limit is 130 kB and the CSS limit is 11 kB. Those thresholds left 20,289 bytes of
-JavaScript headroom and 2,596 bytes of CSS headroom at calibration. `@size-limit/file` aggregates the
+The JavaScript limit is 165 kB and the CSS limit is 14 kB. Those thresholds left 24,665 bytes of
+JavaScript headroom and 2,854 bytes of CSS headroom at calibration. `@size-limit/file` aggregates the
 Brotli size of every matched file.
 
 Run this surface with:
