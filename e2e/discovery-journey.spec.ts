@@ -276,6 +276,7 @@ test("completes discovery and triage while profile editing remains responsive", 
 
 test("shows a Web3 source and search-lead state after opted-in discovery", async ({ page }) => {
   test.setTimeout(90_000);
+  await disableAllKnownBoards(page);
   await configureDiscoveryFixtures(page, `${fixtureUrl}/serper/web3-lead`);
   await page
     .getByLabel("Structured verification source IDs")
