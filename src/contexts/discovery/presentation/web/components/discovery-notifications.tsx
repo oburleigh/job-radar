@@ -1,5 +1,5 @@
-import { Button, buttonAttributes, IconButton } from "@job-radar/design-ui";
-import { CheckCircle2, CircleAlert, CircleX, LoaderCircle, X } from "lucide-react";
+import { IconButton } from "@job-radar/design-ui";
+import { CheckCircle2, CircleAlert, CircleX, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useRevalidator } from "react-router";
 import type { DiscoveryRunOutcome } from "@/contexts/discovery/application/discovery-runs/outcome/derive-discovery-run-outcome";
@@ -48,52 +48,7 @@ export function DiscoveryNotifications({ pollIntervalMs }: DiscoveryNotification
   const pendingIds = useRef(new Set<number>());
   const suppressedIds = useRef(new Set<number>());
   const polling = useRef(false);
-  const [runningRuns, setRunningRuns] = useState<DiscoveryRunStatus[]>([]);
   const [notices, setNotices] = useState<DiscoveryRunStatus[]>([]);
-  const [cancellingIds, setCancellingIds] = useState<Set<number>>(() => new Set());
-
-  async function cancelRun(run: DiscoveryRunStatus) {
-    if (cancellingIds.has(run.id)) {
-      return;
-    }
-    setCancellingIds((current) => new Set(current).add(run.id));
-    try {
-      const response = await fetch("/api/discovery-runs", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ runId: run.id }),
-      });
-      const result = (await response.json()) as { status?: string };
-      if (response.ok && result.status === "cancelled") {
-        suppressedIds.current.add(run.id);
-        pendingIds.current.delete(run.id);
-        persistPendingRuns(pendingIds);
-        setRunningRuns((current) => current.filter((item) => item.id !== run.id));
-        setNotices((current) =>
-          current.some((item) => item.id === run.id)
-            ? current
-            : [
-                ...current,
-                {
-                  ...run,
-                  status: "cancelled",
-                  outcome: "cancelled",
-                  errorSummary: "Cancelled by user",
-                },
-              ],
-        );
-        void revalidator.revalidate();
-      }
-    } catch {
-      // The next poll will keep the active run visible when the request fails.
-    } finally {
-      setCancellingIds((current) => {
-        const next = new Set(current);
-        next.delete(run.id);
-        return next;
-      });
-    }
-  }
 
   useEffect(() => {
     let active = true;
@@ -127,14 +82,10 @@ export function DiscoveryNotifications({ pollIntervalMs }: DiscoveryNotification
       for (const run of activeRuns) {
         trackRun(run.id);
       }
-      setRunningRuns(activeRuns);
     }
 
     async function pollRuns() {
       if (polling.current || pendingIds.current.size === 0) {
-        if (pendingIds.current.size === 0) {
-          setRunningRuns([]);
-        }
         return;
       }
       polling.current = true;
@@ -154,9 +105,7 @@ export function DiscoveryNotifications({ pollIntervalMs }: DiscoveryNotification
         pendingIds.current,
         suppressedIds.current,
       );
-      const stillRunning = currentRuns.filter((run) => run.status === "running");
       const finished = currentRuns.filter((run) => run.status !== "running");
-      setRunningRuns(stillRunning);
       if (finished.length > 0) {
         for (const run of finished) {
           pendingIds.current.delete(run.id);
@@ -196,9 +145,6 @@ export function DiscoveryNotifications({ pollIntervalMs }: DiscoveryNotification
         parseRunIds(event.newValue),
         suppressedIds.current,
       );
-      setRunningRuns((current) =>
-        filterCurrentDiscoveryRuns(current, pendingIds.current, suppressedIds.current),
-      );
       persistPendingRuns(pendingIds);
       void pollRuns();
     };
@@ -215,35 +161,6 @@ export function DiscoveryNotifications({ pollIntervalMs }: DiscoveryNotification
 
   return (
     <aside className="discovery-notification-layer" aria-label="Discovery status">
-      <div className="discovery-running-list" role="status" aria-live="polite" aria-atomic="true">
-        {runningRuns.map((run) => (
-          <div className="discovery-running" key={run.id}>
-            <LoaderCircle className="spin" size={18} />
-            <div className="discovery-running-copy">
-              <strong>{run.profileName}</strong>
-              <span>{describeDiscoveryProgress(run)}</span>
-            </div>
-            <div className="discovery-running-actions">
-              <Link
-                {...buttonAttributes("secondary")}
-                aria-label={`View results for ${run.profileName}`}
-                to={`/?profile=${run.profileId}`}
-              >
-                View results
-              </Link>
-              <Button
-                busy={cancellingIds.has(run.id)}
-                disabled={cancellingIds.has(run.id)}
-                onClick={() => void cancelRun(run)}
-                variant="danger"
-                aria-label={`Cancel discovery #${run.id}`}
-              >
-                {cancellingIds.has(run.id) ? "Cancelling…" : "Cancel"}
-              </Button>
-            </div>
-          </div>
-        ))}
-      </div>
       {notices.map((run) => {
         const presentation = describeDiscoveryNotice(run);
         const failed = presentation.kind === "failed";
@@ -271,7 +188,9 @@ export function DiscoveryNotifications({ pollIntervalMs }: DiscoveryNotification
                 {!failed && !cancelled ? (
                   <Link to={`/?profile=${run.profileId}`}>View results</Link>
                 ) : null}
-                <Link to="/runs">Run history</Link>
+                <Link to={`/runs/${run.id}`} aria-label={`View run #${run.id}`}>
+                  View run
+                </Link>
               </div>
             </div>
             <IconButton
@@ -368,45 +287,6 @@ function describeFinalDiscoveryTotals(
   const completedBoards = run.knownBoardCompletedCount ?? run.knownBoardCount ?? 0;
   const webCoverage = run.webCoverageStatus ?? "not recorded";
   return `${completedBoards} board${completedBoards === 1 ? "" : "s"} completed, ${run.jobsUpserted} job${run.jobsUpserted === 1 ? "" : "s"} changed, web coverage ${webCoverage}, and ${run.matchesFound} current profile match${run.matchesFound === 1 ? "" : "es"}`;
-}
-
-export function describeDiscoveryPhase(
-  run: Pick<DiscoveryRunStatus, "phase" | "knownBoardCount" | "id">,
-): string {
-  if (run.phase === "known-boards") {
-    return "Refreshing known boards";
-  }
-  if (run.phase === "web-coverage") {
-    return run.knownBoardCount === 0
-      ? "No enabled company boards; expanding web coverage"
-      : "Expanding web coverage";
-  }
-  if (run.phase === "matching") {
-    return "Matching jobs to profile";
-  }
-  return `Discovery #${run.id} is running in the background`;
-}
-
-export function describeDiscoveryProgress(
-  run: Pick<
-    DiscoveryRunStatus,
-    | "phase"
-    | "knownBoardCount"
-    | "knownBoardCompletedCount"
-    | "activeBoardName"
-    | "jobsUpserted"
-    | "matchesFound"
-    | "id"
-  >,
-): string {
-  const details = [
-    describeDiscoveryPhase(run),
-    `${run.knownBoardCompletedCount ?? 0} of ${run.knownBoardCount ?? 0} boards`,
-    run.activeBoardName ? `Active board: ${run.activeBoardName}` : "",
-    `${run.jobsUpserted} job${run.jobsUpserted === 1 ? "" : "s"} changed`,
-    `${run.matchesFound} match${run.matchesFound === 1 ? "" : "es"} found`,
-  ];
-  return details.filter(Boolean).join(" · ");
 }
 
 export function reconcilePendingRunIds(

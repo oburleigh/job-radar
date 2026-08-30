@@ -2,24 +2,57 @@ import { PageHeader } from "@job-radar/design-ui";
 import { CheckCircle2, CircleAlert, CircleX, Clock3, LoaderCircle } from "lucide-react";
 import { Link, useLoaderData } from "react-router";
 import { discoveryWeb } from "@/contexts/discovery/composition/discovery-web.server";
+import {
+  ActiveDiscoveryRun,
+  ActiveDiscoveryRunPolling,
+} from "@/contexts/discovery/presentation/web/components/active-discovery-run";
 import { presentDiscoveryRunOutcome } from "@/contexts/discovery/presentation/web/run-outcome-presentation";
 
 export function loader() {
-  return { runs: discoveryWeb.getRunsData() };
+  return {
+    runs: discoveryWeb.getRunsData(),
+    pollIntervalMs: discoveryWeb.getUiSettings().discoveryPollIntervalMs,
+  };
 }
 
 export default function RunsPage() {
-  const { runs } = useLoaderData<typeof loader>();
+  const { runs, pollIntervalMs } = useLoaderData<typeof loader>();
+  const activeRuns = runs.filter((run) => run.status === "running");
+  const recordedRuns = runs.filter((run) => run.status !== "running");
 
   return (
     <div className="page">
+      <ActiveDiscoveryRunPolling enabled={activeRuns.length > 0} pollIntervalMs={pollIntervalMs} />
       <PageHeader
         title="Discovery history"
         description="See what each search found, how many boards expanded successfully, and where a provider or adapter failed."
       />
 
+      {activeRuns.length > 0 ? (
+        <section className="active-discovery-runs" aria-label="Active Discovery Runs">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">In progress</p>
+              <h2>Active Discovery Runs</h2>
+            </div>
+            <span>{activeRuns.length} running</span>
+          </div>
+          <div className="active-discovery-run-list">
+            {activeRuns.map((run) => (
+              <article
+                className="active-discovery-run-card"
+                aria-label={`Discovery Run #${run.id}`}
+                key={run.id}
+              >
+                <ActiveDiscoveryRun run={run} showRunLink />
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       <section className="panel run-panel">
-        {runs.length > 0 ? (
+        {recordedRuns.length > 0 ? (
           <div className="table-wrap">
             <table>
               <thead>
@@ -36,7 +69,7 @@ export default function RunsPage() {
                 </tr>
               </thead>
               <tbody>
-                {runs.map((run) => {
+                {recordedRuns.map((run) => {
                   const outcome = presentDiscoveryRunOutcome(run.outcome);
                   return (
                     <tr key={run.id}>
@@ -82,13 +115,21 @@ export default function RunsPage() {
               </tbody>
             </table>
           </div>
-        ) : (
+        ) : runs.length === 0 ? (
           <div className="empty-state compact">
             <span className="empty-icon">
               <Clock3 size={27} />
             </span>
             <h2>No runs recorded</h2>
             <p>Start discovery from the Jobs page to create the first run.</p>
+          </div>
+        ) : (
+          <div className="empty-state compact">
+            <span className="empty-icon">
+              <Clock3 size={27} />
+            </span>
+            <h2>No completed runs yet</h2>
+            <p>Active progress is shown above and will move into history when it finishes.</p>
           </div>
         )}
       </section>

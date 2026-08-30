@@ -3,8 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   type DiscoveryRunStatus,
   describeDiscoveryNotice,
-  describeDiscoveryPhase,
-  describeDiscoveryProgress,
   filterCurrentDiscoveryRuns,
   reconcilePendingRunIds,
 } from "./discovery-notifications";
@@ -208,57 +206,6 @@ describe("discovery notification polling reconciliation", () => {
       message:
         "Asia leadership: 2 boards completed, 1 job changed, web coverage completed, and 2 current profile matches.",
     });
-  });
-
-  it.each([
-    [{ phase: "known-boards", knownBoardCount: 2 }, "Refreshing known boards"],
-    [
-      { phase: "web-coverage", knownBoardCount: 0 },
-      "No enabled company boards; expanding web coverage",
-    ],
-    [{ phase: "web-coverage", knownBoardCount: 2 }, "Expanding web coverage"],
-    [{ phase: "matching", knownBoardCount: 2 }, "Matching jobs to profile"],
-  ] as const)("describes the active discovery phase", (overrides, expected) => {
-    expect(describeDiscoveryPhase(completedRun({ ...overrides, outcome: "running" }))).toBe(
-      expected,
-    );
-  });
-
-  it("describes persisted board progress and matches in one running update", () => {
-    expect(
-      describeDiscoveryProgress(
-        completedRun({
-          status: "running",
-          outcome: "running",
-          phase: "known-boards",
-          knownBoardCount: 5,
-          knownBoardCompletedCount: 2,
-          knownBoardSuccessCount: 2,
-          activeBoardName: "Beta Systems",
-          jobsUpserted: 7,
-          matchesFound: 3,
-        }),
-      ),
-    ).toBe(
-      "Refreshing known boards · 2 of 5 boards · Active board: Beta Systems · 7 jobs changed · 3 matches found",
-    );
-  });
-
-  it("omits an absent active board while preserving singular running totals", () => {
-    expect(
-      describeDiscoveryProgress(
-        completedRun({
-          status: "running",
-          outcome: "running",
-          phase: "known-boards",
-          knownBoardCount: null,
-          knownBoardCompletedCount: null,
-          activeBoardName: null,
-          jobsUpserted: 1,
-          matchesFound: 1,
-        }),
-      ),
-    ).toBe("Refreshing known boards · 0 of 0 boards · 1 job changed · 1 match found");
   });
 });
 
