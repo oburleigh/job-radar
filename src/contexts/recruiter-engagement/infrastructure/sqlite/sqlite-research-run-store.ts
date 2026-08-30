@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type { ResearchRunStore } from "@/contexts/recruiter-engagement/application/research-runs/port";
 import { observationIdentity } from "@/contexts/recruiter-engagement/domain/observation";
@@ -56,6 +56,14 @@ export function createSqliteResearchRunStore<TSchema extends Record<string, unkn
         .where(eq(recruiterResearchRuns.id, runId))
         .get();
       return row ? toResearchRun(row) : undefined;
+    },
+    async listAll() {
+      return database
+        .select()
+        .from(recruiterResearchRuns)
+        .orderBy(desc(recruiterResearchRuns.startedAt))
+        .all()
+        .map(toResearchRun);
     },
     async listResumable() {
       return database

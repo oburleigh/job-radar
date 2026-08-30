@@ -60,7 +60,7 @@ export function createRecruiterResearchAction({
       }
       saveResearchExecutionSettings(execution.command);
       const started = await startResearchRun(parsed.command);
-      return redirect(`/recruiter-research?run=${encodeURIComponent(started.runId)}`);
+      return redirect(`/recruiter-search?run=${encodeURIComponent(started.runId)}`);
     }
     const runId = formData.get("runId");
     if (typeof runId !== "string" || runId.length === 0) {
@@ -85,19 +85,19 @@ export function createRecruiterResearchAction({
             value: parsed.command.value,
           });
         }
-        return redirect(`/recruiter-research?run=${encodeURIComponent(runId)}`);
+        return redirect(`/recruiter-search?run=${encodeURIComponent(runId)}`);
       } catch (error) {
         return { error: error instanceof Error ? error.message : String(error) };
       }
     }
     if (intent === "cancel") {
       await cancelResearchRun(runId);
-      return redirect(`/recruiter-research?run=${encodeURIComponent(runId)}`);
+      return redirect(`/recruiter-search?run=${encodeURIComponent(runId)}`);
     }
     if (intent === "retry") {
       try {
         const started = await retryResearchRun(runId);
-        return redirect(`/recruiter-research?run=${encodeURIComponent(started.runId)}`);
+        return redirect(`/recruiter-search?run=${encodeURIComponent(started.runId)}`);
       } catch (error) {
         return { error: error instanceof Error ? error.message : String(error) };
       }

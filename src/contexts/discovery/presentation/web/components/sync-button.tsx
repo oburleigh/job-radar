@@ -15,7 +15,10 @@ export function SyncButton() {
         busy={pending}
         label="Refresh board registry"
         onClick={() =>
-          void fetcher.submit({ intent: "sync-boards" }, { method: "post", action: "/sources" })
+          void fetcher.submit(
+            { intent: "sync-boards" },
+            { method: "post", action: "/settings/adapters/source-coverage" },
+          )
         }
         title="Refresh board registry"
       >

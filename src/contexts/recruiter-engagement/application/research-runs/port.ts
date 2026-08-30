@@ -12,6 +12,7 @@ import type {
 export interface ResearchRunStore {
   readonly create: (run: ResearchRun) => Promise<void>;
   readonly get: (runId: string) => Promise<ResearchRun | undefined>;
+  readonly listAll: () => Promise<readonly ResearchRun[]>;
   readonly listResumable: () => Promise<readonly ResearchRun[]>;
   readonly observationsFor: (runId: string) => Promise<readonly ResearchObservation[]>;
   readonly failuresFor: (runId: string) => Promise<readonly ResearchSourceFailure[]>;

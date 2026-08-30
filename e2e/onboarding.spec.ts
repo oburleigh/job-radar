@@ -9,14 +9,14 @@ test.describe
         page.getByRole("heading", { level: 2, name: "Create a search profile first" }),
       ).toBeVisible();
 
-      await page.goto("/sources");
+      await page.goto("/settings/adapters/source-coverage");
       await expect(page.getByText("15 active", { exact: true })).toBeVisible();
       await expect(page.getByText("0 registered", { exact: true })).toBeVisible();
       await expect(
         page.getByText("Add a known ATS URL or run discovery to populate this registry."),
       ).toBeVisible();
 
-      await page.goto("/runs");
+      await page.goto("/activity");
       await expect(page.getByRole("heading", { level: 2, name: "No runs recorded" })).toBeVisible();
     });
 
@@ -184,7 +184,7 @@ test.describe
     });
 
     test("adds an unknown ATS URL as a configurable search integration", async ({ page }) => {
-      await page.goto("/sources");
+      await page.goto("/settings/adapters/source-coverage");
 
       await page.getByLabel("Company").fill("Example");
       await page
@@ -196,11 +196,13 @@ test.describe
       await expect(page.getByText("careers.example.com", { exact: true })).toBeVisible();
 
       await page.getByRole("link", { name: /System settings/i }).click();
+      await page.getByRole("link", { name: "Adapters" }).click();
+      await page.getByRole("link", { name: "ATS Registry" }).click();
       await expect(page.getByRole("link", { name: /Example/ })).toBeVisible();
     });
 
     test("sorts known company career sites through accessible column headers", async ({ page }) => {
-      await page.goto("/sources");
+      await page.goto("/settings/adapters/source-coverage");
 
       const companyField = page.getByLabel("Company", { exact: true });
       const urlField = page.getByLabel("Public ATS job, careers, or board URL");
@@ -250,29 +252,19 @@ test.describe
     });
 
     test("saves runtime settings and keeps the settings page accessible", async ({ page }) => {
-      await page.goto("/settings");
+      await page.goto("/settings/opportunities");
 
       await expect(page.locator(".jr-page-header").getByRole("link")).toHaveCount(0);
-      const atsHeading = page.locator("#ats-registry > .section-heading");
-      const atsHeadingBoxes = await Promise.all([
-        atsHeading.getByRole("heading", { level: 2, name: "ATS registry" }).boundingBox(),
-        atsHeading.locator(".section-heading-actions").boundingBox(),
-      ]);
-      if (atsHeadingBoxes.some((box) => box === null)) {
-        throw new Error("ATS registry actions must be measurable.");
-      }
-      const atsHeadingCenters = atsHeadingBoxes.map(
-        (box) => (box?.y ?? 0) + (box?.height ?? 0) / 2,
-      );
-      expect(Math.max(...atsHeadingCenters) - Math.min(...atsHeadingCenters)).toBeLessThanOrEqual(
-        2,
-      );
 
       await page.getByLabel("Requested web results per query").fill("50");
       await page.getByRole("button", { name: "Save runtime settings" }).click();
 
       await expect(page.getByText("Runtime settings saved to SQLite.")).toBeVisible();
 
+      await page
+        .getByRole("navigation", { name: "Settings" })
+        .getByRole("link", { name: "Recruiter Search" })
+        .click();
       await expect(page.getByText("Local Codex CLI", { exact: true })).toBeVisible();
       await page.getByLabel("Model").fill("gpt-5.6");
       await page.getByLabel("Reasoning effort").fill("high");
@@ -290,6 +282,10 @@ test.describe
       await expect(page.getByLabel("Specialism", { exact: true })).toHaveValue("65");
       await expect(page.getByLabel("Current activity", { exact: true })).toHaveValue("10");
 
+      await page
+        .getByRole("navigation", { name: "Settings" })
+        .getByRole("link", { name: "Opportunities" })
+        .click();
       await page.getByLabel("First retry delay (ms)").fill("4000");
       const maximumRetryDelay = page.getByLabel("Maximum retry delay (ms)");
       await maximumRetryDelay.fill("500");
@@ -376,7 +372,7 @@ test.describe
 
     test("uses a compact contextual source registry control", async ({ page }) => {
       await page.setViewportSize({ width: 1440, height: 1000 });
-      await page.goto("/sources");
+      await page.goto("/settings/adapters/source-coverage");
 
       const refreshRegistry = page.getByRole("button", { name: "Refresh board registry" });
       const sourceHeadingActions = page.locator(".source-heading-actions");
@@ -404,7 +400,7 @@ test.describe
         firstSourceIcon,
       ] = await Promise.all([
         page.locator(".jr-page-header").boundingBox(),
-        page.getByRole("heading", { level: 1, name: "Sources and company boards" }).boundingBox(),
+        page.getByRole("heading", { level: 2, name: "Source Coverage" }).boundingBox(),
         page.locator(".source-section").first().locator(".section-heading").boundingBox(),
         page.getByRole("heading", { level: 2, name: "Where discovery looks" }).boundingBox(),
         sourceHeadingActions.boundingBox(),
@@ -430,13 +426,13 @@ test.describe
       expect(Math.abs(pageHeader.width - sourceHeadingRule.width)).toBeLessThanOrEqual(1);
       expect(Math.abs(pageHeader.x - sourceGrid.x)).toBeLessThanOrEqual(1);
       expect(Math.abs(pageHeader.width - sourceGrid.width)).toBeLessThanOrEqual(1);
-      expect(Math.abs(pageTitle.x - sourceHeading.x)).toBeLessThanOrEqual(1);
-      expect(Math.abs(pageTitle.x - firstSourceIcon.x)).toBeLessThanOrEqual(1);
+      expect(Math.abs(pageHeader.x - pageTitle.x)).toBeLessThanOrEqual(1);
+      expect(Math.abs(sourceHeading.x - firstSourceIcon.x)).toBeLessThanOrEqual(1);
       expect(
         Math.abs(
           sourceHeadingActionsBox.x +
             sourceHeadingActionsBox.width -
-            (sourceGrid.x + sourceGrid.width - (pageTitle.x - pageHeader.x)),
+            (sourceGrid.x + sourceGrid.width - (sourceHeading.x - sourceHeadingRule.x)),
         ),
       ).toBeLessThanOrEqual(2);
       expect(refreshBox.x).toBeGreaterThan(activeSourceCountBox.x);
@@ -455,9 +451,7 @@ test.describe
       await page.screenshot({ path: "test-results/sources-desktop.png", fullPage: true });
       await page.emulateMedia({ colorScheme: "dark" });
       await page.reload();
-      await expect(
-        page.getByRole("heading", { level: 1, name: "Sources and company boards" }),
-      ).toBeVisible();
+      await expect(page.getByRole("heading", { level: 2, name: "Source Coverage" })).toBeVisible();
       await page.screenshot({ path: "test-results/sources-desktop-dark.png", fullPage: true });
       await page.emulateMedia({ colorScheme: "light" });
       await page.setViewportSize({ width: 390, height: 844 });
@@ -472,9 +466,9 @@ test.describe
 
       const routes = [
         ["/profiles", "Search profiles"],
-        ["/sources", "Sources and company boards"],
-        ["/runs", "Discovery history"],
-        ["/settings", "Settings"],
+        ["/activity", "Activity"],
+        ["/settings/adapters/source-coverage", "Settings"],
+        ["/settings/opportunities", "Settings"],
       ] as const;
 
       for (const [path, heading] of routes) {

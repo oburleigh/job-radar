@@ -4,6 +4,10 @@ Recruiter Engagement records public research about recruitment firms and named r
 
 ## Language
 
+**Recruiter Search**:
+The user-facing feature for setting a market focus, running public-source research, and reviewing recruitment firms and recruiters in the Directory.
+_Avoid_: Recruiter research as a feature or page label
+
 **Search brief**:
 The user's plain-language hiring focus and requested firm and recruiter counts.
 _Avoid_: Technology brief, research brief

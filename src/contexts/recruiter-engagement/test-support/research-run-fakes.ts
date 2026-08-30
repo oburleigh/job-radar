@@ -41,6 +41,11 @@ export function createFakeResearchRunStore(
       runs.set(run.id, run);
     },
     get: async (runId) => runs.get(runId),
+    async listAll() {
+      return [...runs.values()].toSorted(
+        (left, right) => right.startedAt.getTime() - left.startedAt.getTime(),
+      );
+    },
     async listResumable() {
       return [...runs.values()].filter(isRunAcceptingObservations);
     },

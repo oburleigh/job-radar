@@ -15,6 +15,33 @@ import {
 import { createSqliteResearchRunStore } from "./sqlite-research-run-store";
 
 describe("SQLite research run store", () => {
+  it("lists every Research Run newest first for Activity", async () => {
+    const sqlite = new Database(":memory:");
+    sqlite.pragma("foreign_keys = ON");
+    const database = drizzle(sqlite);
+    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    const store = createSqliteResearchRunStore(database);
+    const older = createResearchRun({
+      id: "run-older",
+      brief: testSearchBrief({ description: "UAE technology", recruiterTarget: 1 }),
+      policy: testAdapterPolicy,
+      sourcePlan: testSourcePlan,
+      startedAt: new Date("2026-08-27T10:00:00.000Z"),
+    });
+    const newer = createResearchRun({
+      id: "run-newer",
+      brief: older.brief,
+      policy: older.policy,
+      sourcePlan: older.sourcePlan,
+      startedAt: new Date("2026-08-28T10:00:00.000Z"),
+    });
+
+    await store.create(older);
+    await store.create(newer);
+
+    await expect(store.listAll()).resolves.toEqual([newer, older]);
+  });
+
   it("resumes at the durable checkpoint without duplicating an earlier firm observation", async () => {
     const sqlite = new Database(":memory:");
     sqlite.pragma("foreign_keys = ON");

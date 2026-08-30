@@ -88,7 +88,7 @@ export function RecruiterResearchPage({
   return (
     <div className="page recruiter-research-page">
       <PageHeader
-        title="Recruiter research"
+        title="Recruiter Search"
         description="Run a local, public-source scan of recruitment firms and their named recruiters. Counts describe this run, not the whole market."
       />
 

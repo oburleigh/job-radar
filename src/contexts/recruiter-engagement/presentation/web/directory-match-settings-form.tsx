@@ -6,14 +6,16 @@ import type { DirectoryMatchWeights } from "@/contexts/recruiter-engagement/doma
 type SettingsActionState = { readonly message: string; readonly ok: boolean };
 
 export function DirectoryMatchSettingsForm({
+  action = "/settings/recruiter-search",
   weights,
 }: {
+  readonly action?: string;
   readonly weights: DirectoryMatchWeights;
 }) {
   const fetcher = useFetcher<SettingsActionState>();
   const pending = fetcher.state !== "idle";
   return (
-    <fetcher.Form action="/settings" className="profile-form" method="post">
+    <fetcher.Form action={action} className="profile-form" method="post">
       <input name="intent" type="hidden" value="save-directory-match-weights" />
       <section className="form-section">
         <div className="form-section-copy">

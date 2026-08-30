@@ -27,7 +27,7 @@ export function createAfterResponseResearchRunScheduler({
           await execution.executeResearchRun(runId, controller.signal);
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
-          reportFailure(`Recruiter research run ${runId} failed: ${message}`);
+          reportFailure(`Research Run ${runId} failed: ${message}`);
         } finally {
           controllers.delete(runId);
         }

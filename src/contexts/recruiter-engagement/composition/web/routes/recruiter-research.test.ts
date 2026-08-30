@@ -67,7 +67,7 @@ describe("recruiter research route action", () => {
       reviewId: "review-1",
     });
     expect(response).toBeInstanceOf(Response);
-    expect((response as Response).headers.get("location")).toBe("/recruiter-research?run=run-1");
+    expect((response as Response).headers.get("location")).toBe("/recruiter-search?run=run-1");
   });
 });
 

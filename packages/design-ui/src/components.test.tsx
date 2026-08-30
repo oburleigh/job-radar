@@ -106,7 +106,7 @@ describe("generic UI public contract", () => {
 
   it("lets a page header without actions use its full width", () => {
     const html = renderToStaticMarkup(
-      <PageHeader title="Recruiter research" description="Research public sources" />,
+      <PageHeader title="Recruiter Search" description="Research public sources" />,
     );
 
     expect(html).not.toContain("data-has-actions");

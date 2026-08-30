@@ -81,7 +81,10 @@ export function describeZeroMatchOutcome(
     return {
       heading: "Returned results did not match a supported source",
       detail: `The provider returned ${counts.providerHits} results, but none could enter structured verification.`,
-      action: { href: "/sources", label: "Review source coverage" },
+      action: {
+        href: "/settings/adapters/source-coverage",
+        label: "Review source coverage",
+      },
     };
   }
   const dominant = Math.max(

@@ -120,23 +120,21 @@ export function RunControls({
         {isPending ? "Working..." : "Run discovery"}
       </Button>
       <div className="run-scope-summary">
-        <Link to="/sources">
+        <Link to="/settings/adapters/source-coverage">
           {activeSourceCount} active source{activeSourceCount === 1 ? "" : "s"} · {activeBoardCount}{" "}
           company board{activeBoardCount === 1 ? "" : "s"}
         </Link>
         {selectedProvider && !selectedProvider.configured && activeBoardCount > 0 ? (
           <span>
             Company boards will run without web search.{" "}
-            <Link to={`/settings?profile=${profileId}&provider=${provider}`}>
-              Configure {selectedProvider.label}
-            </Link>
+            <Link to="/settings/opportunities">Configure {selectedProvider.label}</Link>
           </span>
         ) : null}
       </div>
       {!canRun ? (
         <p className="action-message">
-          <Link to="/sources">Enable a company board</Link> or configure a web search provider to
-          run discovery.
+          <Link to="/settings/adapters/source-coverage">Enable a company board</Link> or configure a
+          web search provider to run discovery.
         </p>
       ) : message ? (
         <p className="action-message" role="status">

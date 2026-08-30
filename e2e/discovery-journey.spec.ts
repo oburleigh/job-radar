@@ -76,7 +76,7 @@ test("completes discovery and triage while profile editing remains responsive", 
   await expect(page.getByRole("button", { name: "Run discovery" })).toBeDisabled();
   await expect(
     discoveryControls.getByRole("link", { name: "Enable a company board" }),
-  ).toHaveAttribute("href", "/sources");
+  ).toHaveAttribute("href", "/settings/adapters/source-coverage");
   await page.getByLabel("Web search provider").selectOption("serper");
   await expect(page).toHaveURL(new RegExp(`[?&]profile=${profileId}(?:&|$).*provider=serper`));
   await page
@@ -89,11 +89,12 @@ test("completes discovery and triage while profile editing remains responsive", 
   await expect(page).toHaveURL(new RegExp(`[?&]profile=${profileId}(?:&|$).*provider=serper`));
 
   await configureSerperEndpoint(page, `${fixtureUrl}/serper/success`);
+  await page.goto("/settings/adapters/ats-registry?ats=greenhouse");
   await page.getByRole("link", { name: /Greenhouse/ }).click();
-  await expectUrlSelection(page, profileId, "serper", { ats: "greenhouse" });
+  await expect(page).toHaveURL("/settings/adapters/ats-registry?ats=greenhouse");
 
   await page.getByRole("link", { name: "Add integration" }).click();
-  await expectUrlSelection(page, profileId, "serper", { new: "1" });
+  await expect(page).toHaveURL(/\/settings\/adapters\/ats-registry\?new=1/);
   const integrationId = `e2e-${crypto.randomUUID().slice(0, 8)}`;
   const integrationHost = `${integrationId}.example.com`;
   await page.getByRole("textbox", { name: /^Integration ID\b/ }).fill(integrationId);
@@ -101,16 +102,18 @@ test("completes discovery and triage while profile editing remains responsive", 
   await page.getByLabel("Source patterns, one per line").fill(integrationHost);
   await page.getByLabel("Exact hostnames").fill(integrationHost);
   await page.getByRole("button", { name: "Add integration" }).click();
-  await expectUrlSelection(page, profileId, "serper", { ats: integrationId });
+  await expect(page).toHaveURL(`/settings/adapters/ats-registry?ats=${integrationId}`);
   await expect(
-    page.getByRole("heading", { level: 2, name: `E2E ${integrationId}` }).first(),
+    page.getByRole("heading", { level: 3, name: `E2E ${integrationId}` }).first(),
   ).toBeVisible();
 
-  await page.getByRole("link", { name: "Opportunities", exact: true }).click();
+  await page
+    .getByRole("navigation", { name: "Primary navigation" })
+    .getByRole("link", { name: "Opportunities", exact: true })
+    .click();
+  await page.getByRole("combobox", { name: "Search profile" }).selectOption(String(profileId));
+  await page.getByLabel("Web search provider").selectOption("serper");
   await expect(page).toHaveURL(new RegExp(`[?&]profile=${profileId}(?:&|$).*provider=serper`));
-  await expect(page.getByRole("combobox", { name: "Search profile" })).toHaveValue(
-    String(profileId),
-  );
   await expect(page.getByRole("combobox", { name: "Web search provider" })).toHaveValue("serper");
 
   const startedResponse = page.waitForResponse(
@@ -161,7 +164,7 @@ test("completes discovery and triage while profile editing remains responsive", 
   await page.getByRole("button", { name: "Save job" }).click();
   await expect(page.getByRole("button", { name: "Remove saved status" })).toBeVisible();
 
-  await page.getByRole("link", { name: /Discovery runs/i }).click();
+  await page.getByRole("link", { name: "Activity" }).click();
   await page.getByRole("link", { name: new RegExp(`#${started.runId}`) }).click();
   await expect(
     page.getByRole("heading", { level: 1, name: `Run #${started.runId}` }),
@@ -184,7 +187,10 @@ test("completes discovery and triage while profile editing remains responsive", 
   await expect(page.getByRole("cell", { name: "Head of Engineering" }).first()).toBeVisible();
   await captureRunStateMatrix(page, "completed");
 
-  await page.getByRole("link", { name: "Opportunities", exact: true }).click();
+  await page
+    .getByRole("navigation", { name: "Primary navigation" })
+    .getByRole("link", { name: "Opportunities", exact: true })
+    .click();
   await page
     .getByRole("combobox", { name: "Search profile", exact: true })
     .selectOption(String(profileId));
@@ -215,7 +221,10 @@ test("completes discovery and triage while profile editing remains responsive", 
   await expect(page.getByText(/Web coverage skipped/)).toBeVisible();
 
   await configureSerperEndpoint(page, `${fixtureUrl}/serper/failure`);
-  await page.getByRole("link", { name: "Opportunities", exact: true }).click();
+  await page
+    .getByRole("navigation", { name: "Primary navigation" })
+    .getByRole("link", { name: "Opportunities", exact: true })
+    .click();
   await page
     .getByRole("combobox", { name: "Search profile", exact: true })
     .selectOption(String(profileId));
@@ -344,7 +353,7 @@ test("shows persisted board progress and matches while later boards continue", a
     ).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Run discovery" })).toBeVisible();
 
-    await page.getByRole("link", { name: /Discovery runs/i }).click();
+    await page.getByRole("link", { name: "Activity" }).click();
     const activeRuns = page.getByRole("region", { name: "Active Discovery Runs" });
     await expect(activeRuns.getByRole("heading", { name: "Active Discovery Runs" })).toBeVisible();
     await expect(activeRuns.getByText("In progress", { exact: true })).toHaveCount(0);
@@ -507,7 +516,7 @@ test("cancels a running discovery without resurrecting a delayed poll", async ({
   const started = (await (await startedResponse).json()) as { runId: number };
   await delayedPollRequest;
 
-  await page.getByRole("link", { name: /Discovery runs/i }).click();
+  await page.getByRole("link", { name: "Activity" }).click();
   const activeRun = page.getByRole("article", {
     name: `Discovery Run #${started.runId}`,
   });
@@ -556,7 +565,7 @@ test("cancels a running discovery without resurrecting a delayed poll", async ({
   expect((await request.post(`${fixtureUrl}/control/release-success`)).ok()).toBe(true);
 
   await page.getByRole("button", { name: "Dismiss discovery notification" }).click();
-  await page.getByRole("link", { name: /Discovery runs/i }).click();
+  await page.getByRole("link", { name: "Activity" }).click();
   await expect(
     page.getByRole("link", { name: new RegExp(`Run #${started.runId} Cancelled`) }),
   ).toBeVisible();
@@ -583,7 +592,7 @@ test("explains that a returned role was excluded by location", async ({ page }) 
     timeout: 30_000,
   });
 
-  await page.getByRole("link", { name: /Discovery runs/i }).click();
+  await page.getByRole("link", { name: "Activity" }).click();
   await page.getByRole("link", { name: new RegExp(`#${started.runId}`) }).click();
   await page
     .getByLabel("Public job URL")
@@ -676,7 +685,10 @@ test("explains every zero-match funnel state", async ({ page }) => {
         finalMatches: 0,
       },
       heading: "Returned results did not match a supported source",
-      action: { label: "Review source coverage", href: "/sources" },
+      action: {
+        label: "Review source coverage",
+        href: "/settings/adapters/source-coverage",
+      },
     },
     {
       endpoint: `${fixtureUrl}/serper/classified-without-job`,
@@ -727,7 +739,7 @@ async function configureDiscoveryFixtures(
   page: Page,
   serperEndpoint = `${fixtureUrl}/serper/success`,
 ): Promise<void> {
-  await page.goto("/settings?ats=greenhouse");
+  await page.goto("/settings/opportunities");
   await page.waitForLoadState("networkidle");
   await page.getByLabel("Run status polling (ms)").fill("1000");
   await page.getByLabel("Requested web results per query").fill("1");
@@ -743,11 +755,14 @@ async function configureDiscoveryFixtures(
   await page.getByRole("button", { name: "Save runtime settings" }).click();
   await expect(page.getByText("Runtime settings saved to SQLite.")).toBeVisible();
 
+  await page.goto("/settings/adapters/ats-registry?ats=greenhouse");
+  await page.waitForLoadState("networkidle");
   await page
     .getByLabel("Endpoint templates")
     .fill(JSON.stringify({ jobs: `${fixtureUrl}/greenhouse/{slug}/jobs` }, null, 2));
   await page.getByRole("button", { name: "Save Greenhouse" }).click();
   await expect(page.getByText("Greenhouse settings saved to SQLite.")).toBeVisible();
+  await page.goto("/settings/opportunities");
 }
 
 async function captureRunStateMatrix(page: Page, state: string): Promise<void> {
@@ -782,26 +797,57 @@ async function selectTheme(page: Page, theme: "light" | "dark" | "system"): Prom
 }
 
 async function disableAllKnownBoards(page: Page): Promise<void> {
-  await page.goto("/sources");
-  await disableSwitches(page, page.getByRole("list").getByRole("switch", { name: /^Disable / }));
+  await page.goto("/settings/adapters/source-coverage");
+  await disableSwitches(
+    page,
+    page.getByRole("list").getByRole("switch", { name: /^Disable / }),
+    "toggle-source",
+  );
 
   const table = page.getByRole("table");
   if ((await table.count()) === 0) {
     return;
   }
 
-  const enabledHeader = table.getByRole("button", { name: /^Sort by Enabled/ });
-  await enabledHeader.click();
-  await enabledHeader.click();
-  await expect(page.getByRole("columnheader", { name: /^Sort by Enabled/ })).toHaveAttribute(
-    "aria-sort",
-    "descending",
-  );
+  const enabledBoardSwitch = table.getByRole("switch", { name: /^Disable / }).first();
+  if ((await enabledBoardSwitch.count()) > 0) {
+    const saved = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.request().postData()?.includes("intent=toggle-board") === true,
+    );
+    await enabledBoardSwitch.click();
+    const response = await saved;
+    expect(response.ok()).toBe(true);
+    expect(response.request().postData()).toContain("enabled=false");
+  }
 
-  await disableSwitches(page, table.getByRole("switch", { name: /^Disable / }));
+  const maxFixtureBoardId = 64;
+  const responses = await Promise.all(
+    Array.from({ length: maxFixtureBoardId }, (_, index) =>
+      page.request.post("/settings/adapters/source-coverage.data", {
+        form: {
+          intent: "toggle-board",
+          id: String(index + 1),
+          enabled: "false",
+        },
+      }),
+    ),
+  );
+  for (const response of responses) {
+    expect(response.ok()).toBe(true);
+  }
+
+  await page.reload();
+  await page.waitForLoadState("networkidle");
+  await expect(table.getByRole("switch", { name: /^Disable / })).toHaveCount(0);
 }
 
-async function disableSwitches(page: Page, enabledSwitches: Locator): Promise<void> {
+async function disableSwitches(
+  page: Page,
+  enabledSwitches: Locator,
+  intent: "toggle-source" | "toggle-board",
+): Promise<void> {
   while ((await enabledSwitches.count()) > 0) {
     const previousCount = await enabledSwitches.count();
     const enabledSwitch = enabledSwitches.first();
@@ -809,10 +855,18 @@ async function disableSwitches(page: Page, enabledSwitches: Locator): Promise<vo
     if (!label) {
       throw new Error("Expected the enabled source switch to have an accessible name.");
     }
+    const saved = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        new URL(response.url()).pathname.startsWith("/settings/adapters/source-coverage"),
+    );
     await enabledSwitch.click();
-    await expect(
-      page.getByRole("switch", { name: label.replace(/^Disable /, "Enable ") }),
-    ).toBeEnabled();
+    const response = await saved;
+    expect(response.request().postData()).toContain(`intent=${intent}`);
+    expect(response.request().postData()).toContain("enabled=false");
+    expect(response.ok()).toBe(true);
+    await page.reload();
+    await page.waitForLoadState("networkidle");
     await expect(enabledSwitches).toHaveCount(previousCount - 1);
   }
 }
@@ -828,7 +882,7 @@ async function addKnownBoard(
   page: Page,
   board: { readonly companyName: string; readonly url: string },
 ): Promise<void> {
-  await page.goto("/sources");
+  await page.goto("/settings/adapters/source-coverage");
   await page.getByRole("textbox", { name: "Company", exact: true }).fill(board.companyName);
   await page.getByLabel("Public ATS job, careers, or board URL").fill(board.url);
   await page.getByRole("button", { name: "Add ATS URL" }).click();
@@ -848,18 +902,6 @@ async function runDiscovery(page: Page, profileId: number): Promise<number> {
     timeout: 30_000,
   });
   return started.runId;
-}
-
-async function expectUrlSelection(
-  page: Page,
-  profileId: number,
-  provider: string,
-  extra: Record<string, string> = {},
-): Promise<void> {
-  const expected = { profile: String(profileId), provider, ...extra };
-  for (const [key, value] of Object.entries(expected)) {
-    await expect.poll(() => new URL(page.url()).searchParams.get(key)).toBe(value);
-  }
 }
 
 async function verifyJobActionsVisualLayout(page: Page): Promise<void> {

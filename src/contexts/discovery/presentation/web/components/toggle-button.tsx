@@ -24,7 +24,7 @@ export function ToggleButton({ id, enabled, kind, label }: ToggleButtonProps) {
           id: String(id),
           enabled: String(next),
         },
-        { method: "post", action: "/sources" },
+        { method: "post", action: "/settings/adapters/source-coverage" },
       );
     });
   }

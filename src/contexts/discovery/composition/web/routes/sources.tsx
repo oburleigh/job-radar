@@ -1,4 +1,3 @@
-import { PageHeader } from "@job-radar/design-ui";
 import { DatabaseZap, Search } from "lucide-react";
 import { type ActionFunctionArgs, useLoaderData } from "react-router";
 import type { AddJobSourceResult } from "@/contexts/discovery/application/source-coverage/add/result";
@@ -76,11 +75,13 @@ export default function SourcesPage() {
   const { atsLabels, data } = useLoaderData<typeof loader>();
 
   return (
-    <div className="page">
-      <PageHeader
-        title="Sources and company boards"
-        description="Maintain the source registry and refresh known boards when an ATS integration needs attention. Discovery handles the routine run."
-      />
+    <section className="settings-section" aria-labelledby="source-coverage-title">
+      <div className="section-heading">
+        <div>
+          <h2 id="source-coverage-title">Source Coverage</h2>
+          <p>Choose where Opportunities searches and maintain known company boards.</p>
+        </div>
+      </div>
 
       <section className="source-section">
         <div className="section-heading">
@@ -125,6 +126,6 @@ export default function SourcesPage() {
           <CompanySitesTable boards={data.boards} atsLabels={atsLabels} />
         </div>
       </section>
-    </div>
+    </section>
   );
 }

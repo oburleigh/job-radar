@@ -53,7 +53,7 @@ export default function RunDetailPage() {
         title={`Run #${run.id}`}
         description={`${run.profileName} · ${run.provider || "No web provider"} · ${run.queryCount} web requests`}
         actions={
-          <Link {...buttonAttributes()} to="/runs">
+          <Link {...buttonAttributes()} to="/activity">
             <ArrowLeft size={16} />
             Run history
           </Link>

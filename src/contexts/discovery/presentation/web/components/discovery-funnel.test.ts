@@ -14,7 +14,10 @@ describe("zero-match discovery explanation", () => {
     expect(describeZeroMatchOutcome(funnel({ providerHits: 3 }), 7)).toEqual({
       heading: "Returned results did not match a supported source",
       detail: "The provider returned 3 results, but none could enter structured verification.",
-      action: { href: "/sources", label: "Review source coverage" },
+      action: {
+        href: "/settings/adapters/source-coverage",
+        label: "Review source coverage",
+      },
     });
   });
 

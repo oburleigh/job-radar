@@ -4,6 +4,14 @@ Discovery finds job listings and evaluates them against a person's search criter
 
 ## Language
 
+**Activity**:
+The feature-agnostic workspace view that presents Discovery Runs and Research Runs together while keeping each run's canonical type and destination.
+_Avoid_: Discovery history, Run as a generic domain type
+
+**Adapter settings**:
+The Settings section for source coverage and ATS integration rules. It groups configuration without changing the canonical Source, ATS integration, or ATS adapter terms.
+_Avoid_: Connector settings
+
 **Search profile**:
 A named set of titles, locations, exclusions, age limits, score thresholds, and optional salary preferences used to decide which job listings qualify.
 _Avoid_: Job alert, search settings

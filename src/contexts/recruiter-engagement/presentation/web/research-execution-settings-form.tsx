@@ -11,16 +11,20 @@ type SettingsActionState = {
 };
 
 type ResearchExecutionSettingsFormProps = {
+  readonly action?: string;
   readonly execution: Pick<RecruiterResearchSettings["execution"], "model" | "reasoningEffort">;
 };
 
-export function ResearchExecutionSettingsForm({ execution }: ResearchExecutionSettingsFormProps) {
+export function ResearchExecutionSettingsForm({
+  action = "/settings/recruiter-search",
+  execution,
+}: ResearchExecutionSettingsFormProps) {
   const fetcher = useFetcher<SettingsActionState>();
   const pending = fetcher.state !== "idle";
   const state = fetcher.data;
 
   return (
-    <fetcher.Form action="/settings" className="profile-form" method="post">
+    <fetcher.Form action={action} className="profile-form" method="post">
       <input name="intent" type="hidden" value="save-research-execution-settings" />
       <section className="form-section">
         <div className="form-section-copy">

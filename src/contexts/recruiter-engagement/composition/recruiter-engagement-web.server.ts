@@ -4,6 +4,7 @@ import { createRecruiterDirectoryMaintenance } from "@/contexts/recruiter-engage
 import { createResearchRunCanceller } from "@/contexts/recruiter-engagement/application/research-runs/cancel-research-run";
 import { createResearchRunExecution } from "@/contexts/recruiter-engagement/application/research-runs/execute-research-run";
 import { createResearchRunGetter } from "@/contexts/recruiter-engagement/application/research-runs/get-research-run";
+import { createResearchRunActivityReader } from "@/contexts/recruiter-engagement/application/research-runs/list-research-runs";
 import { createResearchRunResumer } from "@/contexts/recruiter-engagement/application/research-runs/resume-research-runs";
 import { createResearchRunRetrier } from "@/contexts/recruiter-engagement/application/research-runs/retry-research-run";
 import { createResearchRunStarter } from "@/contexts/recruiter-engagement/application/research-runs/start-research-run";
@@ -77,6 +78,7 @@ const retrier = createResearchRunRetrier({
 });
 const resumer = createResearchRunResumer({ runs, scheduler });
 const getter = createResearchRunGetter({ runs });
+const activity = createResearchRunActivityReader({ runs });
 
 void resumer.resumeResearchRuns();
 
@@ -99,6 +101,7 @@ export const recruiterEngagementWeb = {
       }),
     };
   },
+  listResearchRuns: activity.listResearchRuns,
   getDefaultSearchTargets: () => ({
     firmTarget: currentSettings().defaultBrief.firmTarget,
     recruiterTarget: currentSettings().defaultBrief.recruiterTarget,

@@ -8,12 +8,16 @@ import type { ActionState } from "@/contexts/discovery/presentation/web/action-s
 import { CurrencyCombobox } from "./currency-combobox";
 
 interface RuntimeSettingsFormProps {
+  readonly action?: string;
   settings: RuntimeSettings;
 }
 
 const initialState: ActionState = { ok: false, message: "" };
 
-export function RuntimeSettingsForm({ settings }: RuntimeSettingsFormProps) {
+export function RuntimeSettingsForm({
+  action = "/settings/opportunities",
+  settings,
+}: RuntimeSettingsFormProps) {
   const fetcher = useFetcher<ActionState>();
   const state = fetcher.data ?? initialState;
   const pending = fetcher.state !== "idle";
@@ -42,7 +46,7 @@ export function RuntimeSettingsForm({ settings }: RuntimeSettingsFormProps) {
   }, [state]);
 
   return (
-    <fetcher.Form method="post" action="/settings" className="profile-form runtime-settings-form">
+    <fetcher.Form method="post" action={action} className="profile-form runtime-settings-form">
       <input type="hidden" name="intent" value="save-runtime-settings" />
       <section className="form-section">
         <div className="form-section-copy">

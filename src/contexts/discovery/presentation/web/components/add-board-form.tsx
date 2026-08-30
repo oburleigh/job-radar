@@ -12,7 +12,11 @@ export function AddBoardForm() {
   const pending = fetcher.state !== "idle";
 
   return (
-    <fetcher.Form method="post" action="/sources" className="add-board-form">
+    <fetcher.Form
+      method="post"
+      action="/settings/adapters/source-coverage"
+      className="add-board-form"
+    >
       <input type="hidden" name="intent" value="add-board" />
       <label>
         <span>Company</span>

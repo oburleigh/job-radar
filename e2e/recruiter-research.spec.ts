@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
 test("shows guidance without applying research criteria to a new run", async ({ page }) => {
-  await page.goto("/recruiter-research");
+  await page.goto("/recruiter-search");
 
   await expect(
     page.getByText(/public-source scan of recruitment firms and their named recruiters/i),
@@ -31,9 +31,10 @@ test("shows guidance without applying research criteria to a new run", async ({ 
 test("starts recruiter research from the browser and renders firms before recruiters complete", async ({
   page,
 }) => {
-  await page.goto("/recruiter-research");
+  await page.goto("/recruiter-search");
 
-  await expect(page.getByRole("heading", { level: 1, name: "Recruiter research" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Recruiter Search" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Recruiter research" })).toHaveCount(0);
   await page.getByLabel("Search brief").fill("UAE fintech cybersecurity leadership");
   await page.getByLabel("Codex model").fill("gpt-5.6");
   await page.getByLabel("Reasoning effort").fill("high");
@@ -44,11 +45,11 @@ test("starts recruiter research from the browser and renders firms before recrui
   await page.getByRole("button", { name: "Start research" }).click();
   await expect(page.getByRole("alert")).toContainText("highlighted field");
   await expect(page.getByLabel("Recruiters to find")).toHaveAttribute("aria-invalid", "true");
-  await expect(page).toHaveURL(/\/recruiter-research$/);
+  await expect(page).toHaveURL(/\/recruiter-search$/);
 
   await page.getByLabel("Recruiters to find").fill("10");
   await page.getByRole("button", { name: "Start research" }).click();
-  await expect(page).toHaveURL(/\/recruiter-research\?run=/);
+  await expect(page).toHaveURL(/\/recruiter-search\?run=/);
 
   await expect(
     page.getByRole("heading", { level: 3, name: "Recruitment Search 1", exact: true }),
@@ -87,10 +88,14 @@ test("starts recruiter research from the browser and renders firms before recrui
   await page.emulateMedia({ colorScheme: "light" });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: "test-results/recruiter-directory-mobile.png", fullPage: true });
+  await page.getByRole("link", { name: "Activity" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Activity" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Discovery history" })).toHaveCount(0);
+  await expect(page.getByRole("cell", { name: "Research Run", exact: true })).toBeVisible();
 });
 
 test("shows each invalid structured criterion on its own control", async ({ page }) => {
-  await page.goto("/recruiter-research");
+  await page.goto("/recruiter-search");
   await page.getByLabel("Specialisms").fill("Executive search");
   await page.getByLabel("Target industries").fill("Financial services");
   await page.getByRole("button", { name: "Start research" }).click();
@@ -106,7 +111,7 @@ test("shows each invalid structured criterion on its own control", async ({ page
 test("keeps edited recruiter research fields after a recoverable validation revalidation", async ({
   page,
 }) => {
-  await page.goto("/recruiter-research");
+  await page.goto("/recruiter-search");
 
   const brief = page.getByLabel("Search brief");
   await brief.fill("Edited applied AI leadership brief");
@@ -127,7 +132,7 @@ test("keeps edited recruiter research fields after a recoverable validation reva
 test("cancels an active recruiter run and retries with the frozen brief and plan", async ({
   page,
 }) => {
-  await page.goto("/recruiter-research");
+  await page.goto("/recruiter-search");
   await page.getByLabel("Search brief").fill("UAE data and AI hiring");
   await selectRecruiterLocation(page, "Abu Dhabi");
   await page.getByLabel("Specialisms").fill("Data and AI, Architecture");
@@ -153,7 +158,7 @@ test("cancels an active recruiter run and retries with the frozen brief and plan
   await expect(sourcePlan.getByText("Skipped", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Retry with the same plan" }).click();
 
-  await expect(page).toHaveURL(/\/recruiter-research\?run=/);
+  await expect(page).toHaveURL(/\/recruiter-search\?run=/);
   await expect(page.getByText(`Retry of ${previousRunId}`, { exact: true })).toBeVisible();
   await expect(
     page.getByText(
@@ -175,14 +180,14 @@ test("uses the shared country catalogue in the location autocomplete and keeps c
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 1200 });
-  await page.goto("/recruiter-research");
+  await page.goto("/recruiter-search");
 
   await expect(page.getByText("Local search brief", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Research settings" })).toHaveCount(0);
   await expect(page.getByLabel("Codex model")).toBeVisible();
   await expect(page.getByLabel("Reasoning effort")).toBeVisible();
   const [pageTitle, briefHeading, briefLabel] = await Promise.all([
-    page.getByRole("heading", { level: 1, name: "Recruiter research" }).boundingBox(),
+    page.getByRole("heading", { level: 1, name: "Recruiter Search" }).boundingBox(),
     page.getByRole("heading", { level: 2, name: "Set the market focus" }).boundingBox(),
     page.getByText("Search brief", { exact: true }).boundingBox(),
   ]);
@@ -258,7 +263,7 @@ test("contains recruiter controls equally on mobile and clears the fixed navigat
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/recruiter-research");
+  await page.goto("/recruiter-search");
 
   const controls = await Promise.all(
     [
@@ -304,7 +309,7 @@ for (const theme of ["light", "dark"] as const) {
     await page.addInitScript((selectedTheme) => {
       window.localStorage.setItem("job-radar-theme", selectedTheme);
     }, theme);
-    await page.goto("/recruiter-research");
+    await page.goto("/recruiter-search");
 
     const results = await new AxeBuilder({ page }).analyze();
     expect(results.violations).toEqual([]);

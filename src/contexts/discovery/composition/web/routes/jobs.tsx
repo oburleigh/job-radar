@@ -114,7 +114,7 @@ export default function JobsPage() {
                 <Link {...buttonAttributes()} to={`/profiles?profile=${data.profile.id}`}>
                   Review profile
                 </Link>
-                <Link {...buttonAttributes()} to="/sources">
+                <Link {...buttonAttributes()} to="/settings/adapters/source-coverage">
                   Review sources
                 </Link>
               </div>

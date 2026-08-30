@@ -10,10 +10,9 @@ import {
   SlidersHorizontal,
   Sun,
   UsersRound,
-  Waypoints,
 } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { Link, useLocation, useNavigation, useSearchParams } from "react-router";
+import { Link, useLocation, useNavigation } from "react-router";
 
 type ThemeMode = "system" | "light" | "dark";
 
@@ -51,15 +50,8 @@ const primaryNavigation = [
     icon: BriefcaseBusiness,
   },
   {
-    href: "/sources",
-    label: "Source coverage",
-    shortLabel: "Sources",
-    icon: Waypoints,
-  },
-  { href: "/runs", label: "Discovery runs", shortLabel: "Runs", icon: History },
-  {
-    href: "/recruiter-research",
-    label: "Recruiter research",
+    href: "/recruiter-search",
+    label: "Recruiter Search",
     shortLabel: "Recruiters",
     icon: UsersRound,
   },
@@ -68,7 +60,6 @@ const primaryNavigation = [
 export function AppNavigation() {
   const { pathname } = useLocation();
   const routeNavigation = useNavigation();
-  const [searchParams] = useSearchParams();
   const theme = useSyncExternalStore(subscribeToTheme, getThemeSnapshot, getServerThemeSnapshot);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -82,18 +73,9 @@ export function AppNavigation() {
   const settingsPending = pendingPathname
     ? matchesNavigationPath("/settings", pendingPathname)
     : false;
-
-  function withSelection(href: string) {
-    const selection = new URLSearchParams();
-    for (const key of ["profile", "provider"] as const) {
-      const value = searchParams.get(key);
-      if (value) {
-        selection.set(key, value);
-      }
-    }
-    const suffix = selection.toString();
-    return suffix ? `${href}?${suffix}` : href;
-  }
+  const activityPending = pendingPathname
+    ? matchesNavigationPath("/activity", pendingPathname)
+    : false;
 
   function cycleTheme() {
     const next: ThemeMode = theme === "system" ? "light" : theme === "light" ? "dark" : "system";
@@ -142,7 +124,7 @@ export function AppNavigation() {
 
   return (
     <header className="masthead">
-      <Link className="brand" to={withSelection("/")} aria-label="Job Radar opportunities">
+      <Link className="brand" to="/" aria-label="Job Radar opportunities">
         <span className="brand-mark" aria-hidden="true">
           <Radar size={21} strokeWidth={2.4} />
         </span>
@@ -163,7 +145,7 @@ export function AppNavigation() {
             <Link
               aria-busy={pending || undefined}
               key={item.href}
-              to={withSelection(item.href)}
+              to={item.href}
               className={`nav-link${active ? " nav-link-active" : ""}${pending ? " nav-link-pending" : ""}`}
               aria-current={active ? "page" : undefined}
             >
@@ -206,7 +188,7 @@ export function AppNavigation() {
                 }}
                 ref={profileMenuItemRef}
                 role="menuitem"
-                to={withSelection("/profiles")}
+                to="/profiles"
               >
                 <SlidersHorizontal size={17} aria-hidden="true" />
                 Search profiles
@@ -215,11 +197,20 @@ export function AppNavigation() {
           ) : null}
         </div>
         <Link
+          aria-busy={activityPending || undefined}
+          aria-current={matchesNavigationPath("/activity", pathname) ? "page" : undefined}
+          aria-label="Activity"
+          className={`utility-link${matchesNavigationPath("/activity", pathname) ? " utility-control-active" : ""}${activityPending ? " utility-control-pending" : ""}`}
+          to="/activity"
+        >
+          <History size={19} aria-hidden="true" />
+        </Link>
+        <Link
           aria-busy={settingsPending || undefined}
           aria-current={matchesNavigationPath("/settings", pathname) ? "page" : undefined}
           aria-label="System settings"
           className={`utility-link${matchesNavigationPath("/settings", pathname) ? " utility-control-active" : ""}${settingsPending ? " utility-control-pending" : ""}`}
-          to={withSelection("/settings")}
+          to="/settings/opportunities"
         >
           <Cog size={19} aria-hidden="true" />
         </Link>
