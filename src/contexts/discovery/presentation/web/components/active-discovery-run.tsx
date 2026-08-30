@@ -22,10 +22,15 @@ interface CancellationResponse {
 
 interface ActiveDiscoveryRunProps {
   readonly run: ActiveDiscoveryRunState;
+  readonly showProfileName?: boolean;
   readonly showRunLink?: boolean;
 }
 
-export function ActiveDiscoveryRun({ run, showRunLink = false }: ActiveDiscoveryRunProps) {
+export function ActiveDiscoveryRun({
+  run,
+  showProfileName = true,
+  showRunLink = false,
+}: ActiveDiscoveryRunProps) {
   const revalidator = useRevalidator();
   const [cancelling, setCancelling] = useState(false);
   const [cancellationError, setCancellationError] = useState("");
@@ -59,7 +64,7 @@ export function ActiveDiscoveryRun({ run, showRunLink = false }: ActiveDiscovery
     <div className="active-discovery-run">
       <div className="active-discovery-run-heading">
         <div>
-          <strong>{run.profileName}</strong>
+          {showProfileName ? <strong>{run.profileName}</strong> : null}
           <p aria-live="polite">{describeDiscoveryProgress(run)}</p>
         </div>
         <span className="run-status run-running">

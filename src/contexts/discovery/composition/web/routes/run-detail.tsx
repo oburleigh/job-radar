@@ -60,29 +60,29 @@ export default function RunDetailPage() {
         }
       />
 
-      <section
-        className={`panel run-panel run-outcome run-outcome-${outcome.kind}`}
-        aria-labelledby="run-outcome-heading"
-      >
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Run outcome</p>
-            <h2 id="run-outcome-heading">{outcome.title}</h2>
+      {run.status !== "running" ? (
+        <section
+          className={`panel run-panel run-outcome run-outcome-${outcome.kind}`}
+          aria-labelledby="run-outcome-heading"
+        >
+          <div className="section-heading">
+            <div>
+              <h2 id="run-outcome-heading">{outcome.title}</h2>
+            </div>
           </div>
-          <span>{outcome.label}</span>
-        </div>
-        <p className="run-outcome-detail">
-          {boardEvidence} · {webEvidence}
-          {run.error ? ` · ${run.error}` : ""}
-        </p>
-      </section>
+          <p className="run-outcome-detail">
+            {boardEvidence} · {webEvidence}
+            {run.error ? ` · ${run.error}` : ""}
+          </p>
+        </section>
+      ) : null}
 
       {run.status === "running" ? (
         <section
           className="panel run-panel active-discovery-run-detail"
           aria-label={`Discovery Run #${run.id} progress`}
         >
-          <ActiveDiscoveryRun run={run} />
+          <ActiveDiscoveryRun run={run} showProfileName={false} />
         </section>
       ) : null}
 

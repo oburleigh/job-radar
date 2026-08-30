@@ -32,7 +32,6 @@ export default function RunsPage() {
         <section className="active-discovery-runs" aria-label="Active Discovery Runs">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">In progress</p>
               <h2>Active Discovery Runs</h2>
             </div>
             <span>{activeRuns.length} running</span>
