@@ -134,7 +134,8 @@ test("completes discovery and triage while profile editing remains responsive", 
   await expect(
     page.getByRole("button", { name: `Cancel discovery #${started.runId}` }),
   ).toHaveCount(0);
-  await page.getByRole("link", { name: /Search profiles/i }).click();
+  await page.getByRole("button", { name: "Search profiles" }).click();
+  await page.getByRole("menuitem", { name: "Search profiles" }).click();
   await page.getByLabel("Required job keywords, one per line").fill("platform");
   await page.getByRole("button", { name: "Save profile" }).click();
   await expect(page.getByText("Profile saved.")).toBeVisible();

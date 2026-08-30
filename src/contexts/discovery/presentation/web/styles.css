@@ -95,7 +95,7 @@
   z-index: 40;
   display: grid;
   min-height: 72px;
-  grid-template-columns: 250px minmax(620px, 1fr) 190px 72px;
+  grid-template-columns: 250px minmax(500px, 1fr) auto;
   color: var(--jr-color-nav-text);
   background: var(--jr-color-nav);
   border-bottom: 4px solid var(--jr-color-accent);
@@ -152,7 +152,7 @@
 
 .nav-list {
   display: grid;
-  grid-template-columns: repeat(6, minmax(112px, 1fr));
+  grid-template-columns: repeat(4, minmax(112px, 1fr));
 }
 
 .nav-link {
@@ -207,63 +207,84 @@
   display: none;
 }
 
-.workspace-status {
+.utility-controls {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 18px;
+  min-width: 0;
 }
 
-.workspace-status strong,
-.workspace-status span {
-  display: block;
+.profile-menu {
+  position: relative;
 }
 
-.workspace-status strong {
-  font-family: var(--jr-font-family-mono);
-  font-size: var(--jr-font-size-caption);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.workspace-status div > span {
-  margin-top: 3px;
-  color: var(--jr-color-nav-muted);
-  font-size: var(--jr-font-size-xs);
-}
-
-.status-dot {
-  width: 9px;
-  height: 9px;
-  flex: 0 0 auto;
-  background: var(--jr-color-success);
-  border: 2px solid var(--jr-color-success-bright);
-  border-radius: 50%;
-}
-
-.theme-toggle {
+.utility-control,
+.utility-link {
   display: inline-flex;
-  min-width: 72px;
+  width: 68px;
+  min-width: 52px;
   min-height: 68px;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 0 10px;
   color: var(--jr-color-nav-subtle);
   background: var(--jr-color-nav);
   border: 0;
   border-left: 1px solid var(--jr-color-nav-border);
 }
 
-.theme-toggle:hover {
+.utility-control:hover,
+.utility-link:hover {
   color: var(--jr-color-nav-text);
   background: var(--jr-color-nav-raised);
+}
+
+.utility-control-active {
+  color: var(--jr-color-text-on-accent);
+  background: var(--jr-color-accent);
+}
+
+.theme-toggle {
+  width: 72px;
+  gap: 6px;
+  padding: 0 10px;
 }
 
 .theme-toggle span {
   font-family: var(--jr-font-family-mono);
   font-size: var(--jr-font-size-micro);
   text-transform: uppercase;
+}
+
+.profile-menu-content {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + 8px);
+  right: 8px;
+  min-width: 190px;
+  padding: 6px;
+  background: var(--jr-color-nav);
+  border: 1px solid var(--jr-color-nav-border);
+  box-shadow: var(--jr-shadow-raised);
+}
+
+.profile-menu-item {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  color: var(--jr-color-nav-text);
+  font-family: var(--jr-font-family-display);
+  font-size: var(--jr-font-size-body-lg);
+  font-stretch: condensed;
+  font-weight: 750;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+.profile-menu-item:hover,
+.profile-menu-item:focus-visible {
+  color: var(--jr-color-text-on-accent);
+  background: var(--jr-color-accent);
 }
 
 .app-main {
@@ -1991,18 +2012,13 @@ td a {
 
 @media (max-width: 1240px) {
   .masthead {
-    grid-template-columns: 210px minmax(560px, 1fr) 130px 52px;
+    grid-template-columns: 210px minmax(430px, 1fr) auto;
   }
 
   .brand {
     padding-inline: 15px;
   }
 
-  .workspace-status {
-    padding-inline: 13px;
-  }
-
-  .workspace-status div > span,
   .brand-kicker,
   .theme-toggle span {
     display: none;
@@ -2041,11 +2057,7 @@ td a {
 
 @media (max-width: 980px) {
   .masthead {
-    grid-template-columns: 190px 1fr 52px;
-  }
-
-  .workspace-status {
-    display: none;
+    grid-template-columns: 190px 1fr auto;
   }
 
   .nav-link {
@@ -2126,7 +2138,7 @@ td a {
   .masthead {
     position: sticky;
     min-height: 60px;
-    grid-template-columns: 1fr 52px;
+    grid-template-columns: 1fr auto;
     border-bottom-width: 3px;
   }
 
@@ -2135,6 +2147,8 @@ td a {
     border-right: 0;
   }
 
+  .utility-control,
+  .utility-link,
   .theme-toggle {
     min-width: 52px;
     min-height: 57px;
@@ -2159,7 +2173,7 @@ td a {
     inset: auto 0 0;
     z-index: 50;
     height: 68px;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     background: var(--jr-color-nav);
     border-top: 3px solid var(--jr-color-accent);
   }
