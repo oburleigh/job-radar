@@ -39,7 +39,6 @@ export function DiscoveryFunnel({
     <section className="panel run-panel" aria-labelledby="discovery-funnel-heading">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">Run outcome</p>
           <h2 id="discovery-funnel-heading">Discovery funnel</h2>
         </div>
         <span>From provider response to profile match</span>

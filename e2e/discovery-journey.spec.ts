@@ -165,8 +165,11 @@ test("completes discovery and triage while profile editing remains responsive", 
   await expect(
     page.getByRole("heading", { level: 1, name: `Run #${started.runId}` }),
   ).toBeVisible();
-  await expect(page.getByRole("heading", { level: 2, name: "Discovery completed" })).toBeVisible();
-  await expect(page.getByText("Completed", { exact: true }).first()).toBeVisible();
+  const completedOutcome = page.getByRole("region", { name: "Discovery completed" });
+  await expect(completedOutcome).toBeVisible();
+  await expect(completedOutcome.getByText("Completed", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Run outcome", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Discovery funnel" })).toBeVisible();
   await expect(page.getByText("1 unique search hits")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Requests by market and lane" })).toBeVisible();
   const requestEvidence = page.getByRole("table", { name: "Discovery request evidence" });
@@ -205,8 +208,9 @@ test("completes discovery and triage while profile editing remains responsive", 
   await expect(boardOnlyNotice).toContainText("No web search provider was configured.");
   await boardOnlyNotice.getByRole("link", { name: `View run #${boardOnlyStarted.runId}` }).click();
   await page.getByRole("button", { name: "Dismiss discovery notification" }).click();
-  await expect(page.getByRole("heading", { level: 2, name: "Discovery completed" })).toBeVisible();
-  await expect(page.getByText("Completed", { exact: true }).first()).toBeVisible();
+  const boardOnlyOutcome = page.getByRole("region", { name: "Discovery completed" });
+  await expect(boardOnlyOutcome).toBeVisible();
+  await expect(boardOnlyOutcome.getByText("Completed", { exact: true })).toHaveCount(0);
   await expect(page.getByText(/Web coverage skipped/)).toBeVisible();
 
   await configureSerperEndpoint(page, `${fixtureUrl}/serper/failure`);
@@ -238,10 +242,9 @@ test("completes discovery and triage while profile editing remains responsive", 
   await expect(
     page.getByRole("heading", { level: 1, name: `Run #${failedStart.runId}` }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { level: 2, name: "Discovery partially completed" }),
-  ).toBeVisible();
-  await expect(page.getByText("Partial", { exact: true }).first()).toBeVisible();
+  const partialOutcome = page.getByRole("region", { name: "Discovery partially completed" });
+  await expect(partialOutcome).toBeVisible();
+  await expect(partialOutcome.getByText("Partial", { exact: true })).toHaveCount(0);
   await expect(
     page.getByText(/serper transient server-error after 3 attempts; skipped \d+ queries/),
   ).toBeVisible();
@@ -264,14 +267,16 @@ test("completes discovery and triage while profile editing remains responsive", 
   const failedNotice = page.getByRole("alert").filter({ hasText: "Discovery failed" });
   await expect(failedNotice).toContainText("ATS request returned HTTP 404", { timeout: 30_000 });
   await failedNotice.getByRole("link", { name: `View run #${allFailedStart.runId}` }).click();
-  await expect(page.getByRole("heading", { level: 2, name: "Discovery failed" })).toBeVisible();
-  await expect(page.getByText("Failed", { exact: true }).first()).toBeVisible();
+  const failedOutcome = page.getByRole("region", { name: "Discovery failed" });
+  await expect(failedOutcome).toBeVisible();
+  await expect(failedOutcome.getByText("Failed", { exact: true })).toHaveCount(0);
   await captureRunStateMatrix(page, "failed");
   await disableAllKnownBoards(page);
 });
 
 test("shows a Web3 source and search-lead state after opted-in discovery", async ({ page }) => {
   test.setTimeout(90_000);
+  await disableAllKnownBoards(page);
   await configureDiscoveryFixtures(page, `${fixtureUrl}/serper/web3-lead`);
   await page
     .getByLabel("Structured verification source IDs")
@@ -322,7 +327,7 @@ test("shows persisted board progress and matches while later boards continue", a
       companyName: "Beta Systems",
       url: `https://boards.greenhouse.io/progress-delayed-${token}/jobs/67890`,
     });
-    const { id: profileId } = await createProfile(page);
+    const { id: profileId, name: profileName } = await createProfile(page);
 
     await page.goto(`/?profile=${profileId}&provider=serpapi`);
     const discoveryLayer = page.getByRole("complementary", { name: "Discovery status" });
@@ -340,9 +345,12 @@ test("shows persisted board progress and matches while later boards continue", a
 
     await page.getByRole("link", { name: /Discovery runs/i }).click();
     const activeRuns = page.getByRole("region", { name: "Active Discovery Runs" });
+    await expect(activeRuns.getByRole("heading", { name: "Active Discovery Runs" })).toBeVisible();
+    await expect(activeRuns.getByText("In progress", { exact: true })).toHaveCount(0);
     const activeRun = activeRuns.getByRole("article", {
       name: `Discovery Run #${started.runId}`,
     });
+    await expect(activeRun.getByText(profileName, { exact: true })).toBeVisible();
     await expect(activeRun).toContainText("Refreshing known boards · 1 of 2 boards", {
       timeout: 30_000,
     });
@@ -390,11 +398,17 @@ test("shows persisted board progress and matches while later boards continue", a
     const runProgress = page.getByRole("region", {
       name: `Discovery Run #${started.runId} progress`,
     });
+    await expect(page.getByRole("heading", { level: 2, name: "Discovery is running" })).toHaveCount(
+      0,
+    );
+    await expect(page.getByText("Running", { exact: true })).toHaveCount(1);
+    await expect(runProgress.getByText(profileName, { exact: true })).toHaveCount(0);
     await expect(runProgress).toContainText("Refreshing known boards · 1 of 2 boards");
     await expect(runProgress).toContainText("Active board: Beta Systems");
     await expect(
       runProgress.getByRole("button", { name: `Cancel discovery #${started.runId}` }),
     ).toBeVisible();
+    await captureRunStateMatrix(page, "running-detail");
 
     await page.reload();
     const restoredProgress = page.getByRole("region", {
@@ -747,7 +761,7 @@ async function captureRunStateMatrix(page: Page, state: string): Promise<void> {
         animations: "disabled",
         caret: "hide",
         fullPage: true,
-        path: `test-results/adm-200/${state}-${viewport.name}-${theme}.png`,
+        path: `test-results/adm-206/${state}-${viewport.name}-${theme}.png`,
       });
     }
   }
