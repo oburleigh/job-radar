@@ -251,6 +251,7 @@ export const jobs = sqliteTable(
   (table) => [
     index("jobs_ats_external_idx").on(table.atsType, table.externalId),
     index("jobs_active_published_idx").on(table.isActive, table.publishedAt),
+    index("jobs_active_id_idx").on(table.isActive, table.id),
   ],
 );
 
@@ -270,11 +271,28 @@ export const jobMatches = sqliteTable(
     exclusionReasons: text("exclusion_reasons", { mode: "json" })
       .$type<readonly ExclusionReason[]>()
       .notNull(),
+    excludedTitleReasonCount: integer("excluded_title_reason_count"),
+    excludedLocationReasonCount: integer("excluded_location_reason_count"),
+    staleReasonCount: integer("stale_reason_count"),
+    unverifiedReasonCount: integer("unverified_reason_count"),
+    contextReasonCount: integer("context_reason_count"),
+    salaryReasonCount: integer("salary_reason_count"),
     updatedAt: timestamp("updated_at").notNull(),
   },
   (table) => [
     uniqueIndex("job_matches_profile_job_idx").on(table.profileId, table.jobId),
     index("job_matches_status_score_idx").on(table.status, table.score),
+    index("job_matches_screening_summary_idx").on(
+      table.profileId,
+      table.status,
+      table.jobId,
+      table.excludedTitleReasonCount,
+      table.excludedLocationReasonCount,
+      table.staleReasonCount,
+      table.unverifiedReasonCount,
+      table.contextReasonCount,
+      table.salaryReasonCount,
+    ),
   ],
 );
 

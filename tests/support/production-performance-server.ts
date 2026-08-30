@@ -100,7 +100,7 @@ async function runPnpm(
 
 async function waitForReady(server: ChildProcess): Promise<void> {
   const timeoutAt = Date.now() + 120_000;
-  const url = `http://${hostname}:${port}/`;
+  const url = `http://${hostname}:${port}/profiles?new=1`;
 
   while (Date.now() < timeoutAt) {
     if (server.exitCode !== null) {

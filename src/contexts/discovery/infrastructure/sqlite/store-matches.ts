@@ -11,6 +11,7 @@ import {
   jobs,
   type searchProfiles,
 } from "@/contexts/discovery/infrastructure/sqlite/schema";
+import { screeningCountColumns } from "@/contexts/discovery/infrastructure/sqlite/screening-count-columns";
 
 type ProfileRow = typeof searchProfiles.$inferSelect;
 type Database = typeof db;
@@ -64,6 +65,7 @@ export async function evaluateAndStore(
     );
     matched += Number(result.status === "matched");
     excluded += Number(result.status === "excluded");
+    const screeningCounts = screeningCountColumns(result.exclusionReasons);
     database
       .insert(jobMatches)
       .values({
@@ -73,6 +75,7 @@ export async function evaluateAndStore(
         score: result.score,
         reasons: result.reasons,
         exclusionReasons: result.exclusionReasons,
+        ...screeningCounts,
         updatedAt: now,
       })
       .onConflictDoUpdate({
@@ -82,6 +85,7 @@ export async function evaluateAndStore(
           score: result.score,
           reasons: result.reasons,
           exclusionReasons: result.exclusionReasons,
+          ...screeningCounts,
           updatedAt: now,
         },
       })

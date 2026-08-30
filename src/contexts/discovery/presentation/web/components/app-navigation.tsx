@@ -12,7 +12,7 @@ import {
   Waypoints,
 } from "lucide-react";
 import { useSyncExternalStore } from "react";
-import { Link, useLocation, useSearchParams } from "react-router";
+import { Link, useLocation, useNavigation, useSearchParams } from "react-router";
 
 type ThemeMode = "system" | "light" | "dark";
 
@@ -78,8 +78,14 @@ const navigation = [
 
 export function AppNavigation() {
   const { pathname } = useLocation();
+  const routeNavigation = useNavigation();
   const [searchParams] = useSearchParams();
   const theme = useSyncExternalStore(subscribeToTheme, getThemeSnapshot, getServerThemeSnapshot);
+  const pendingPathname =
+    routeNavigation.state === "loading" ? routeNavigation.location?.pathname : undefined;
+  const pendingDestination = navigation.find((item) =>
+    pendingPathname ? matchesNavigationPath(item.href, pendingPathname) : false,
+  );
 
   function withSelection(href: string) {
     const selection = new URLSearchParams();
@@ -122,12 +128,16 @@ export function AppNavigation() {
       <nav className="nav-list" aria-label="Primary navigation">
         {navigation.map((item) => {
           const Icon = item.icon;
-          const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+          const active = matchesNavigationPath(item.href, pathname);
+          const pending = pendingPathname
+            ? matchesNavigationPath(item.href, pendingPathname)
+            : false;
           return (
             <Link
+              aria-busy={pending || undefined}
               key={item.href}
               to={withSelection(item.href)}
-              className={`nav-link${active ? " nav-link-active" : ""}`}
+              className={`nav-link${active ? " nav-link-active" : ""}${pending ? " nav-link-pending" : ""}`}
               aria-current={active ? "page" : undefined}
             >
               <Icon className="nav-icon" size={17} aria-hidden="true" />
@@ -137,6 +147,9 @@ export function AppNavigation() {
           );
         })}
       </nav>
+      <span className="sr-only" role="status" aria-live="polite">
+        {pendingDestination ? `Loading ${pendingDestination.label}.` : ""}
+      </span>
 
       <div className="workspace-status">
         <span className="status-dot" aria-hidden="true" />
@@ -157,4 +170,8 @@ export function AppNavigation() {
       </Button>
     </header>
   );
+}
+
+function matchesNavigationPath(href: string, pathname: string): boolean {
+  return href === "/" ? pathname === "/" : pathname.startsWith(href);
 }

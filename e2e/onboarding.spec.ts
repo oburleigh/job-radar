@@ -215,8 +215,8 @@ test.describe
       await page.getByRole("button", { name: "Add ATS URL" }).click();
 
       const table = page.getByRole("table");
-      const companyLinks = table.getByRole("link", { name: /^Sort (?:Alpha|Zebra) 8472$/ });
-      await expect(companyLinks).toHaveText(["Sort Alpha 8472", "Sort Zebra 8472"]);
+      const firstCompanyLink = table.locator("tbody tr").first().getByRole("link");
+      await expect(firstCompanyLink).toHaveText("Sort Alpha 8472");
       await expect(
         table.getByRole("columnheader", { name: /^Sort by Company or slug/ }),
       ).toHaveAttribute("aria-sort", "ascending");
@@ -234,8 +234,8 @@ test.describe
           label === "Company or slug" ? "descending" : "ascending",
         );
 
-        if (label === "ATS") {
-          await expect(companyLinks).toHaveText(["Sort Zebra 8472", "Sort Alpha 8472"]);
+        if (label === "Company or slug" || label === "ATS") {
+          await expect(firstCompanyLink).toHaveText("Sort Zebra 8472");
         }
 
         await button.click();
@@ -243,6 +243,9 @@ test.describe
           "aria-sort",
           label === "Company or slug" ? "ascending" : "descending",
         );
+        if (label === "Company or slug" || label === "ATS") {
+          await expect(firstCompanyLink).toHaveText("Sort Alpha 8472");
+        }
       }
     });
 

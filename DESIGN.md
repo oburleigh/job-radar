@@ -57,6 +57,18 @@ values, not domain entities. The current public set is:
 Application code must use these controls instead of restyling native buttons. A new shared component
 must represent repeated generic interaction, not a single Discovery feature.
 
+## Application patterns
+
+Workspace navigation keeps the current page readable while the next route loads. The destination
+link shows the pending state with semantic navigation tokens, exposes `aria-busy`, and announces the
+destination through a live status region. Focus stays on the link after the route commits.
+
+Context-owned tables with hundreds of rows use `TableVirtuoso` directly. Keep native table, header,
+row, and cell semantics. Sort the complete loader-owned data set before virtualization, use stable
+row keys, and retain window scrolling unless the product calls for a bounded scrolling region. Do
+not promote this pattern into `@job-radar/design-ui` until a second context needs the same table
+contract.
+
 ## Accessibility
 
 - Interactive targets are at least 44 by 44 CSS pixels.

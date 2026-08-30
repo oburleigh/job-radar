@@ -1,6 +1,7 @@
 import { Button } from "@job-radar/design-ui";
 import { CheckCircle2, CircleAlert } from "lucide-react";
 import { useMemo, useState } from "react";
+import { TableVirtuoso } from "react-virtuoso";
 
 import { ToggleButton } from "./toggle-button";
 
@@ -31,7 +32,6 @@ interface CompanySitesTableProps {
 
 const defaultSort: CompanySitesSort = { key: "company", direction: "ascending" };
 const textCollator = new Intl.Collator("en", { sensitivity: "base", numeric: true });
-
 export function CompanySitesTable({ boards, atsLabels }: CompanySitesTableProps) {
   const [sort, setSort] = useState<CompanySitesSort>(defaultSort);
   const sortedBoards = useMemo(
@@ -48,9 +48,12 @@ export function CompanySitesTable({ boards, atsLabels }: CompanySitesTableProps)
   }
 
   return (
-    <div className="table-wrap">
-      <table>
-        <thead>
+    <div className="table-wrap company-sites-table">
+      <TableVirtuoso
+        computeItemKey={(_index, board) => board.id}
+        data={sortedBoards}
+        useWindowScroll
+        fixedHeaderContent={() => (
           <tr>
             <SortableHeader
               label="Company or slug"
@@ -68,46 +71,44 @@ export function CompanySitesTable({ boards, atsLabels }: CompanySitesTableProps)
             <SortableHeader label="Health" sortKey="health" sort={sort} onSort={setSort} />
             <SortableHeader label="Enabled" sortKey="enabled" sort={sort} onSort={setSort} />
           </tr>
-        </thead>
-        <tbody>
-          {sortedBoards.map((board) => {
-            const companyDisplayName = getCompanyDisplayName(board);
-            const health = getCompanySiteHealth(board);
+        )}
+        itemContent={(_index, board) => {
+          const companyDisplayName = getCompanyDisplayName(board);
+          const health = getCompanySiteHealth(board);
 
-            return (
-              <tr key={board.id}>
-                <td>
-                  <a href={board.baseUrl} target="_blank" rel="noreferrer">
-                    {companyDisplayName}
-                  </a>
-                  <small>{board.baseUrl}</small>
-                </td>
-                <td>{getAtsLabel(board, atsLabels)}</td>
-                <td>{formatDate(board.lastSyncedAt)}</td>
-                <td>
-                  <span className={health.className}>
-                    {health.label === "Ready" ? (
-                      <CheckCircle2 size={14} />
-                    ) : (
-                      <CircleAlert size={14} />
-                    )}
-                    {health.label}
-                  </span>
-                  {health.detail ? <small className="health-detail">{health.detail}</small> : null}
-                </td>
-                <td>
-                  <ToggleButton
-                    id={board.id}
-                    enabled={board.enabled}
-                    kind="board"
-                    label={companyDisplayName}
-                  />
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+          return (
+            <>
+              <td>
+                <a href={board.baseUrl} target="_blank" rel="noreferrer">
+                  {companyDisplayName}
+                </a>
+                <small>{board.baseUrl}</small>
+              </td>
+              <td>{getAtsLabel(board, atsLabels)}</td>
+              <td>{formatDate(board.lastSyncedAt)}</td>
+              <td>
+                <span className={health.className}>
+                  {health.label === "Ready" ? (
+                    <CheckCircle2 size={14} />
+                  ) : (
+                    <CircleAlert size={14} />
+                  )}
+                  {health.label}
+                </span>
+                {health.detail ? <small className="health-detail">{health.detail}</small> : null}
+              </td>
+              <td>
+                <ToggleButton
+                  id={board.id}
+                  enabled={board.enabled}
+                  kind="board"
+                  label={companyDisplayName}
+                />
+              </td>
+            </>
+          );
+        }}
+      />
     </div>
   );
 }
