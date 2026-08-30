@@ -471,7 +471,7 @@ test.describe
       );
 
       const routes = [
-        ["/profiles", "Profiles"],
+        ["/profiles", "Search profiles"],
         ["/sources", "Sources and company boards"],
         ["/runs", "Discovery history"],
         ["/settings", "Settings"],

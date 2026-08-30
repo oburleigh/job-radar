@@ -1,7 +1,8 @@
 import { Button } from "@job-radar/design-ui";
 import {
   BriefcaseBusiness,
-  Database,
+  CircleUserRound,
+  Cog,
   History,
   Laptop,
   Moon,
@@ -11,7 +12,7 @@ import {
   UsersRound,
   Waypoints,
 } from "lucide-react";
-import { useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Link, useLocation, useNavigation, useSearchParams } from "react-router";
 
 type ThemeMode = "system" | "light" | "dark";
@@ -42,18 +43,12 @@ function subscribeToTheme(onStoreChange: () => void) {
   };
 }
 
-const navigation = [
+const primaryNavigation = [
   {
     href: "/",
     label: "Opportunities",
     shortLabel: "Jobs",
     icon: BriefcaseBusiness,
-  },
-  {
-    href: "/profiles",
-    label: "Search profiles",
-    shortLabel: "Profiles",
-    icon: SlidersHorizontal,
   },
   {
     href: "/sources",
@@ -68,12 +63,6 @@ const navigation = [
     shortLabel: "Recruiters",
     icon: UsersRound,
   },
-  {
-    href: "/settings",
-    label: "System settings",
-    shortLabel: "Settings",
-    icon: Database,
-  },
 ] as const;
 
 export function AppNavigation() {
@@ -81,9 +70,13 @@ export function AppNavigation() {
   const routeNavigation = useNavigation();
   const [searchParams] = useSearchParams();
   const theme = useSyncExternalStore(subscribeToTheme, getThemeSnapshot, getServerThemeSnapshot);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+  const profileMenuItemRef = useRef<HTMLAnchorElement>(null);
+  const profileActive = matchesNavigationPath("/profiles", pathname);
   const pendingPathname =
     routeNavigation.state === "loading" ? routeNavigation.location?.pathname : undefined;
-  const pendingDestination = navigation.find((item) =>
+  const pendingDestination = primaryNavigation.find((item) =>
     pendingPathname ? matchesNavigationPath(item.href, pendingPathname) : false,
   );
 
@@ -113,6 +106,37 @@ export function AppNavigation() {
 
   const ThemeIcon = theme === "light" ? Sun : theme === "dark" ? Moon : Laptop;
 
+  useEffect(() => {
+    if (profileMenuOpen) {
+      profileMenuItemRef.current?.focus();
+    }
+  }, [profileMenuOpen]);
+
+  useEffect(() => {
+    if (!profileMenuOpen) {
+      return;
+    }
+
+    function dismissWhenClickedOutside(event: PointerEvent) {
+      if (!profileMenuRef.current?.contains(event.target as Node)) {
+        setProfileMenuOpen(false);
+      }
+    }
+
+    function dismissWhenFocusMovesOutside(event: FocusEvent) {
+      if (!profileMenuRef.current?.contains(event.target as Node)) {
+        setProfileMenuOpen(false);
+      }
+    }
+
+    window.addEventListener("pointerdown", dismissWhenClickedOutside);
+    window.addEventListener("focusin", dismissWhenFocusMovesOutside);
+    return () => {
+      window.removeEventListener("pointerdown", dismissWhenClickedOutside);
+      window.removeEventListener("focusin", dismissWhenFocusMovesOutside);
+    };
+  }, [profileMenuOpen]);
+
   return (
     <header className="masthead">
       <Link className="brand" to={withSelection("/")} aria-label="Job Radar opportunities">
@@ -126,7 +150,7 @@ export function AppNavigation() {
       </Link>
 
       <nav className="nav-list" aria-label="Primary navigation">
-        {navigation.map((item) => {
+        {primaryNavigation.map((item) => {
           const Icon = item.icon;
           const active = matchesNavigationPath(item.href, pathname);
           const pending = pendingPathname
@@ -151,23 +175,60 @@ export function AppNavigation() {
         {pendingDestination ? `Loading ${pendingDestination.label}.` : ""}
       </span>
 
-      <div className="workspace-status">
-        <span className="status-dot" aria-hidden="true" />
-        <div>
-          <strong>Local workspace</strong>
-          <span>SQLite · private</span>
+      <div className="utility-controls">
+        <div className="profile-menu" ref={profileMenuRef}>
+          <Button
+            aria-controls="search-profiles-menu"
+            aria-current={profileActive ? "page" : undefined}
+            aria-expanded={profileMenuOpen}
+            aria-haspopup="menu"
+            className={`utility-control${profileActive ? " utility-control-active" : ""}`}
+            id="search-profiles-trigger"
+            onClick={() => setProfileMenuOpen((open) => !open)}
+          >
+            <CircleUserRound size={19} aria-hidden="true" />
+            <span className="sr-only">Search profiles</span>
+          </Button>
+          {profileMenuOpen ? (
+            <div className="profile-menu-content" id="search-profiles-menu" role="menu">
+              <Link
+                className="profile-menu-item"
+                onClick={() => setProfileMenuOpen(false)}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    setProfileMenuOpen(false);
+                    document.getElementById("search-profiles-trigger")?.focus();
+                  }
+                }}
+                ref={profileMenuItemRef}
+                role="menuitem"
+                to={withSelection("/profiles")}
+              >
+                <SlidersHorizontal size={17} aria-hidden="true" />
+                Search profiles
+              </Link>
+            </div>
+          ) : null}
         </div>
+        <Link
+          aria-current={matchesNavigationPath("/settings", pathname) ? "page" : undefined}
+          aria-label="System settings"
+          className={`utility-link${matchesNavigationPath("/settings", pathname) ? " utility-control-active" : ""}`}
+          to={withSelection("/settings")}
+        >
+          <Cog size={19} aria-hidden="true" />
+        </Link>
+        <Button
+          className="theme-toggle utility-control"
+          onClick={cycleTheme}
+          aria-label={`Theme: ${theme}. Change theme`}
+          title={`Theme: ${theme}. Click for the next mode.`}
+        >
+          <ThemeIcon size={16} aria-hidden="true" />
+          <span>{theme}</span>
+        </Button>
       </div>
-
-      <Button
-        className="theme-toggle"
-        onClick={cycleTheme}
-        aria-label={`Theme: ${theme}. Change theme`}
-        title={`Theme: ${theme}. Click for the next mode.`}
-      >
-        <ThemeIcon size={16} aria-hidden="true" />
-        <span>{theme}</span>
-      </Button>
     </header>
   );
 }

@@ -1,6 +1,55 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
+test("keeps personal and system controls in the masthead without crowding primary navigation", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/");
+
+  await expect(page.getByText("Local workspace", { exact: true })).toHaveCount(0);
+  const profileMenu = page.getByRole("button", { name: "Search profiles" });
+  const settings = page.getByRole("link", { name: "System settings" });
+  await expect(profileMenu).toBeVisible();
+  await expect(settings).toBeVisible();
+  await expect(
+    page.getByRole("navigation", { name: "Primary navigation" }).getByRole("link"),
+  ).toHaveCount(4);
+
+  await profileMenu.click();
+  const profileLink = page.getByRole("menuitem", { name: "Search profiles" });
+  await expect(profileLink).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(profileLink).toHaveCount(0);
+  await expect(settings).toBeFocused();
+
+  await profileMenu.click();
+  await expect(profileLink).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(profileMenu).toBeFocused();
+
+  await profileMenu.press("Enter");
+  await profileLink.click();
+  await expect(page).toHaveURL(/\/profiles\?profile=\d+&provider=serper$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Search profiles" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Profiles", exact: true })).toHaveCount(
+    0,
+  );
+  await expect(profileMenu).toHaveAttribute("aria-current", "page");
+
+  await settings.click();
+  await expect(page).toHaveURL(/\/settings\?profile=\d+&provider=serper$/);
+  await expect(settings).toHaveAttribute("aria-current", "page");
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await expect(
+    page.getByRole("navigation", { name: "Primary navigation" }).getByRole("link"),
+  ).toHaveCount(4);
+  await expect(profileMenu).toBeVisible();
+  await expect(settings).toBeVisible();
+});
+
 test("loads the opportunity workspace with its visible page header and without decorative numbering", async ({
   page,
 }) => {
@@ -84,7 +133,7 @@ test("opens the ATS integration editor where the action is presented", async ({ 
 test("captures primary route review evidence at desktop and mobile widths", async ({ page }) => {
   const routes = [
     ["/", "Opportunities", "opportunities"],
-    ["/profiles", "Profiles", "profiles"],
+    ["/profiles", "Search profiles", "profiles"],
     ["/sources", "Sources and company boards", "sources"],
     ["/runs", "Discovery history", "runs"],
     ["/recruiter-research", "Recruiter research", "recruiter-research"],

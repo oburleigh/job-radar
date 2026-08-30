@@ -108,7 +108,7 @@ export default function ProfilesPage() {
   return (
     <div className="page">
       <PageHeader
-        title="Profiles"
+        title="Search profiles"
         description="Control which titles qualify, where they must be based, and what gets rejected."
       />
 
