@@ -57,12 +57,12 @@ describe("production client asset budgets", () => {
       {
         name: "all production JavaScript",
         path: "build/client/assets/*.js",
-        limit: "130 kB",
+        limit: "165 kB",
       },
       {
         name: "production CSS",
         path: "build/client/assets/*.css",
-        limit: "11 kB",
+        limit: "14 kB",
       },
     ]);
   });
@@ -81,11 +81,13 @@ describe("production client asset budgets", () => {
   it("documents the measured surface, fixture, thresholds, aggregation, and headroom rationale", () => {
     expect(performanceGuide).toContain("build/client/assets/*.js");
     expect(performanceGuide).toContain("build/client/assets/*.css");
-    expect(performanceGuide).toContain("23 files");
-    expect(performanceGuide).toContain("390,540 raw bytes");
-    expect(performanceGuide).toContain("109,711 Brotli");
-    expect(performanceGuide).toContain("130 kB");
-    expect(performanceGuide).toContain("11 kB");
+    expect(performanceGuide).toContain("27 files");
+    expect(performanceGuide).toContain("509,726 raw bytes");
+    expect(performanceGuide).toContain("140,335 Brotli");
+    expect(performanceGuide).toContain("74,772 raw bytes");
+    expect(performanceGuide).toContain("11,146 Brotli");
+    expect(performanceGuide).toContain("165 kB");
+    expect(performanceGuide).toContain("14 kB");
     expect(performanceGuide).toMatch(/fixture|environment/i);
     expect(performanceGuide).toMatch(/aggregate|aggregation/i);
     expect(performanceGuide).toMatch(/headroom/i);

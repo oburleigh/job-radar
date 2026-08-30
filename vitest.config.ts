@@ -18,6 +18,7 @@ export default defineConfig({
       "packages/**/*.test.ts",
       "packages/**/*.test.tsx",
       "tests/architecture/**/*.test.ts",
+      "tests/support/**/*.test.ts",
     ],
     coverage: {
       include: [

@@ -17,5 +17,10 @@ export default function teardownPlaywrightDatabase() {
     throw new Error(`Refusing to remove unexpected Playwright directory: ${resolvedDirectory}`);
   }
 
-  rmSync(resolvedDirectory, { recursive: true, force: true });
+  rmSync(resolvedDirectory, {
+    recursive: true,
+    force: true,
+    maxRetries: 5,
+    retryDelay: 100,
+  });
 }
