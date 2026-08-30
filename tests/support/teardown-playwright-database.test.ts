@@ -15,6 +15,7 @@ describe("Playwright database teardown", () => {
 
   afterEach(() => {
     vi.mocked(rmSync).mockReset();
+    vi.restoreAllMocks();
     if (originalDirectory === undefined) {
       delete process.env.JOB_RADAR_E2E_DIRECTORY;
       return;
@@ -34,5 +35,15 @@ describe("Playwright database teardown", () => {
       recursive: true,
       retryDelay: 100,
     });
+  });
+
+  it("schedules cleanup after Playwright has stopped its web servers", async () => {
+    const once = vi.spyOn(process, "once").mockReturnValue(process);
+
+    const configUrl = new URL("../../playwright.config.ts", import.meta.url);
+    const { default: config } = await import(configUrl.href);
+
+    expect(config.globalTeardown).toBeUndefined();
+    expect(once).toHaveBeenCalledWith("exit", teardownPlaywrightDatabase);
   });
 });
