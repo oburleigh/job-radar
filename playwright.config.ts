@@ -4,6 +4,8 @@ import process from "node:process";
 
 import { defineConfig, devices } from "@playwright/test";
 
+import teardownPlaywrightDatabase from "./tests/support/teardown-playwright-database";
+
 const BASE_URL = "http://127.0.0.1:3100";
 const FIXTURE_URL = "http://127.0.0.1:3200";
 const isCi = process.env.CI !== undefined;
@@ -11,10 +13,10 @@ const useSystemChrome = process.env.PLAYWRIGHT_USE_SYSTEM_CHROME === "1";
 const databaseDirectory = path.join(tmpdir(), `job-radar-playwright-${process.pid}`);
 const databasePath = path.join(databaseDirectory, "job-radar.sqlite");
 process.env.JOB_RADAR_E2E_DIRECTORY = databaseDirectory;
+process.once("exit", teardownPlaywrightDatabase);
 
 export default defineConfig({
   testDir: "e2e",
-  globalTeardown: "./tests/support/teardown-playwright-database.ts",
   fullyParallel: false,
   workers: 1,
   forbidOnly: isCi,
