@@ -2,6 +2,10 @@ import { Button, buttonAttributes, PageHeader } from "@job-radar/design-ui";
 import { ArrowLeft, CheckCircle2, CircleAlert, CircleX, LoaderCircle } from "lucide-react";
 import { Form, Link, type LoaderFunctionArgs, useLoaderData } from "react-router";
 import { discoveryWeb } from "@/contexts/discovery/composition/discovery-web.server";
+import {
+  ActiveDiscoveryRun,
+  ActiveDiscoveryRunPolling,
+} from "@/contexts/discovery/presentation/web/components/active-discovery-run";
 import { DiscoveryFunnel } from "@/contexts/discovery/presentation/web/components/discovery-funnel";
 import { KnownRoleDiagnostic } from "@/contexts/discovery/presentation/web/components/known-role-diagnostic";
 import { parseKnownRoleDiagnosticRequest } from "@/contexts/discovery/presentation/web/requests/known-role-diagnostic-request";
@@ -19,6 +23,7 @@ export function loader({ params, request }: LoaderFunctionArgs) {
     parsed.status === "valid" ? discoveryWeb.diagnoseKnownRole(parsed.command) : null;
   return {
     ...data,
+    pollIntervalMs: discoveryWeb.getUiSettings().discoveryPollIntervalMs,
     requestedJobUrl: requestedJobUrl ?? "",
     diagnostic: diagnostic?.status === "diagnosed" ? diagnostic : null,
     diagnosticError: parsed.status === "invalid" ? parsed.message : null,
@@ -27,7 +32,7 @@ export function loader({ params, request }: LoaderFunctionArgs) {
 
 export default function RunDetailPage() {
   const data = useLoaderData<typeof loader>();
-  const { run, queries, requestSummary } = data;
+  const { run, queries, requestSummary, pollIntervalMs } = data;
   const outcome = presentDiscoveryRunOutcome(run.outcome);
   const boardEvidence =
     run.knownBoardCount === null || run.knownBoardSuccessCount === null
@@ -40,6 +45,10 @@ export default function RunDetailPage() {
 
   return (
     <div className="page">
+      <ActiveDiscoveryRunPolling
+        enabled={run.status === "running"}
+        pollIntervalMs={pollIntervalMs}
+      />
       <PageHeader
         title={`Run #${run.id}`}
         description={`${run.profileName} · ${run.provider || "No web provider"} · ${run.queryCount} web requests`}
@@ -67,6 +76,15 @@ export default function RunDetailPage() {
           {run.error ? ` · ${run.error}` : ""}
         </p>
       </section>
+
+      {run.status === "running" ? (
+        <section
+          className="panel run-panel active-discovery-run-detail"
+          aria-label={`Discovery Run #${run.id} progress`}
+        >
+          <ActiveDiscoveryRun run={run} />
+        </section>
+      ) : null}
 
       {run.outcome === "completed" || run.outcome === "partial" ? (
         <DiscoveryFunnel counts={data.funnel} profileId={run.profileId} />

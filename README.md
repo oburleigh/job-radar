@@ -276,8 +276,9 @@ that postings without salary data are not lost during discovery.
 5. Open **Run history**, then open the run to inspect every title and ATS query.
 6. Return to **Jobs** to review the matched roles.
 
-Discovery runs in the background. The Jobs page polls for progress, and you can
-continue using the app while it runs.
+Discovery runs in the background. Open **Run history** or the run page to see live progress and
+cancel it. You can keep using the app, and Job Radar displays a dismissible notice when the run
+finishes.
 
 Each run:
 

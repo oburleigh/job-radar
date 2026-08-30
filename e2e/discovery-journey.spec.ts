@@ -130,17 +130,17 @@ test("completes discovery and triage while profile editing remains responsive", 
   const response = await startedResponse;
   expect(response.status()).toBe(202);
   const started = (await response.json()) as { runId: number };
-  const runningStatus = page.getByRole("status").filter({
-    has: page.getByRole("button", { name: `Cancel discovery #${started.runId}` }),
-  });
 
-  await expect(runningStatus).toContainText("No enabled company boards; expanding web coverage");
+  await expect(
+    page.getByRole("button", { name: `Cancel discovery #${started.runId}` }),
+  ).toHaveCount(0);
   await page.getByRole("link", { name: /Search profiles/i }).click();
   await page.getByLabel("Required job keywords, one per line").fill("platform");
-  await expect(runningStatus).toContainText("No enabled company boards; expanding web coverage");
   await page.getByRole("button", { name: "Save profile" }).click();
   await expect(page.getByText("Profile saved.")).toBeVisible();
-  await expect(runningStatus).toContainText("No enabled company boards; expanding web coverage");
+  await expect(
+    page.getByRole("button", { name: `Cancel discovery #${started.runId}` }),
+  ).toHaveCount(0);
   expect((await request.post(`${fixtureUrl}/control/release-success`)).ok()).toBe(true);
 
   const completedNotice = page.getByRole("status").filter({ hasText: "Discovery completed" });
@@ -178,6 +178,7 @@ test("completes discovery and triage while profile editing remains responsive", 
   await expect(requestEvidence.getByRole("columnheader", { name: "Page" })).toBeVisible();
   await expect(requestEvidence.getByRole("columnheader", { name: "Requests" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "Head of Engineering" }).first()).toBeVisible();
+  await captureRunStateMatrix(page, "completed");
 
   await page.getByRole("link", { name: "Opportunities", exact: true }).click();
   await page
@@ -202,12 +203,8 @@ test("completes discovery and triage while profile editing remains responsive", 
     .filter({ hasText: "No web search provider was configured." });
   await expect(boardOnlyNotice).toContainText("Discovery completed", { timeout: 30_000 });
   await expect(boardOnlyNotice).toContainText("No web search provider was configured.");
-  await boardOnlyNotice.getByRole("link", { name: "Run history" }).click();
+  await boardOnlyNotice.getByRole("link", { name: `View run #${boardOnlyStarted.runId}` }).click();
   await page.getByRole("button", { name: "Dismiss discovery notification" }).click();
-  await expect(
-    page.getByRole("link", { name: new RegExp(`Run #${boardOnlyStarted.runId} Completed`) }),
-  ).toBeVisible();
-  await page.getByRole("link", { name: new RegExp(`#${boardOnlyStarted.runId}`) }).click();
   await expect(page.getByRole("heading", { level: 2, name: "Discovery completed" })).toBeVisible();
   await expect(page.getByText("Completed", { exact: true }).first()).toBeVisible();
   await expect(page.getByText(/Web coverage skipped/)).toBeVisible();
@@ -236,11 +233,8 @@ test("completes discovery and triage while profile editing remains responsive", 
     "Serper.dev was unavailable after 3 attempts. Try again later or choose another provider.",
     { timeout: 30_000 },
   );
-  await partialNotice.getByRole("link", { name: "Run history" }).click();
-  await expect(
-    page.getByRole("link", { name: new RegExp(`Run #${failedStart.runId} Partial`) }),
-  ).toBeVisible();
-  await page.getByRole("link", { name: new RegExp(`#${failedStart.runId}`) }).click();
+  await partialNotice.getByRole("link", { name: `View run #${failedStart.runId}` }).click();
+  await page.getByRole("button", { name: "Dismiss discovery notification" }).click();
   await expect(
     page.getByRole("heading", { level: 1, name: `Run #${failedStart.runId}` }),
   ).toBeVisible();
@@ -252,6 +246,28 @@ test("completes discovery and triage while profile editing remains responsive", 
     page.getByText(/serper transient server-error after 3 attempts; skipped \d+ queries/),
   ).toBeVisible();
   await expect(page.getByText("failed", { exact: true }).first()).toBeVisible();
+  await captureRunStateMatrix(page, "partial");
+
+  await disableAllKnownBoards(page);
+  await addKnownBoard(page, {
+    companyName: "Failure Evidence",
+    url: `https://boards.greenhouse.io/failure-${crypto.randomUUID().slice(0, 8)}/jobs/99999`,
+  });
+  await page.goto(`/?profile=${profileId}&provider=serpapi`);
+  const allFailedResponse = page.waitForResponse(
+    (candidate) =>
+      candidate.request().method() === "POST" &&
+      new URL(candidate.url()).pathname === "/api/discovery-runs",
+  );
+  await page.getByRole("button", { name: "Run discovery" }).click();
+  const allFailedStart = (await (await allFailedResponse).json()) as { runId: number };
+  const failedNotice = page.getByRole("alert").filter({ hasText: "Discovery failed" });
+  await expect(failedNotice).toContainText("ATS request returned HTTP 404", { timeout: 30_000 });
+  await failedNotice.getByRole("link", { name: `View run #${allFailedStart.runId}` }).click();
+  await expect(page.getByRole("heading", { level: 2, name: "Discovery failed" })).toBeVisible();
+  await expect(page.getByText("Failed", { exact: true }).first()).toBeVisible();
+  await captureRunStateMatrix(page, "failed");
+  await disableAllKnownBoards(page);
 });
 
 test("shows a Web3 source and search-lead state after opted-in discovery", async ({ page }) => {
@@ -306,11 +322,10 @@ test("shows persisted board progress and matches while later boards continue", a
       companyName: "Beta Systems",
       url: `https://boards.greenhouse.io/progress-delayed-${token}/jobs/67890`,
     });
-    const { id: profileId, name: profileName } = await createProfile(page);
+    const { id: profileId } = await createProfile(page);
 
     await page.goto(`/?profile=${profileId}&provider=serpapi`);
     const discoveryLayer = page.getByRole("complementary", { name: "Discovery status" });
-    await expect(discoveryLayer.getByRole("status")).toBeAttached();
     const startedResponse = page.waitForResponse(
       (response) =>
         response.request().method() === "POST" &&
@@ -318,32 +333,39 @@ test("shows persisted board progress and matches while later boards continue", a
     );
     await page.getByRole("button", { name: "Run discovery" }).click();
     const started = (await (await startedResponse).json()) as { runId: number };
-    const runningStatus = discoveryLayer.getByRole("status").filter({
-      has: page.getByRole("button", { name: `Cancel discovery #${started.runId}` }),
-    });
+    await expect(
+      discoveryLayer.getByRole("button", { name: `Cancel discovery #${started.runId}` }),
+    ).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Run discovery" })).toBeVisible();
 
-    await expect(runningStatus).toContainText("Refreshing known boards · 1 of 2 boards", {
+    await page.getByRole("link", { name: /Discovery runs/i }).click();
+    const activeRuns = page.getByRole("region", { name: "Active Discovery Runs" });
+    const activeRun = activeRuns.getByRole("article", {
+      name: `Discovery Run #${started.runId}`,
+    });
+    await expect(activeRun).toContainText("Refreshing known boards · 1 of 2 boards", {
       timeout: 30_000,
     });
-    await expect(runningStatus).toContainText("Active board: Beta Systems");
-    await expect(runningStatus).toContainText(/1 job changed · [1-9]\d* match(?:es)? found/);
-    const runningText = await runningStatus.textContent();
+    await expect(activeRun).toContainText("Active board: Beta Systems");
+    await expect(activeRun).toContainText(/1 job changed · [1-9]\d* match(?:es)? found/);
+    await captureRunStateMatrix(page, "running");
+    const runningText = await activeRun.textContent();
     const matchCount = Number(
       runningText?.match(/1 job changed · (\d+) match(?:es)? found/)?.[1] ?? 0,
     );
     expect(matchCount).toBeGreaterThan(0);
     const runningTotals = `1 job changed · ${matchCount} ${matchCount === 1 ? "match" : "matches"} found`;
-    const viewResults = runningStatus.getByRole("link", {
-      name: `View results for ${profileName}`,
+    const viewRun = activeRun.getByRole("link", {
+      name: `View run #${started.runId}`,
     });
-    const cancelDiscovery = runningStatus.getByRole("button", {
+    const cancelDiscovery = activeRun.getByRole("button", {
       name: `Cancel discovery #${started.runId}`,
     });
     for (const width of [1280, 390]) {
       await page.setViewportSize({ width, height: 800 });
-      await expect(viewResults).toBeVisible();
+      await expect(viewRun).toBeVisible();
       await expect(cancelDiscovery).toBeVisible();
-      const layout = await runningStatus.evaluate((element) => ({
+      const layout = await activeRun.evaluate((element) => ({
         left: element.getBoundingClientRect().left,
         right: element.getBoundingClientRect().right,
         viewportWidth: window.innerWidth,
@@ -360,32 +382,33 @@ test("shows persisted board progress and matches while later boards continue", a
       await expect(
         page.getByRole("button", { name: new RegExp(`^Theme: ${theme}\\.`) }),
       ).toBeVisible();
-      await expect(runningStatus).toContainText(runningTotals);
+      await expect(activeRun).toContainText(runningTotals);
     }
-    await viewResults.focus();
-    await expect(viewResults).toBeFocused();
-    await viewResults.press("Enter");
+    await viewRun.focus();
+    await expect(viewRun).toBeFocused();
+    await viewRun.press("Enter");
+    const runProgress = page.getByRole("region", {
+      name: `Discovery Run #${started.runId} progress`,
+    });
+    await expect(runProgress).toContainText("Refreshing known boards · 1 of 2 boards");
+    await expect(runProgress).toContainText("Active board: Beta Systems");
     await expect(
-      page
-        .getByRole("article")
-        .filter({ hasText: "Progress Fixture" })
-        .getByRole("heading", { level: 2, name: "Head of Engineering" }),
+      runProgress.getByRole("button", { name: `Cancel discovery #${started.runId}` }),
     ).toBeVisible();
-    await expect(runningStatus).toContainText("1 of 2 boards");
 
     await page.reload();
-    const restoredStatus = discoveryLayer.getByRole("status").filter({
-      has: page.getByRole("button", { name: `Cancel discovery #${started.runId}` }),
+    const restoredProgress = page.getByRole("region", {
+      name: `Discovery Run #${started.runId} progress`,
     });
-    await expect(restoredStatus).toContainText("Active board: Beta Systems", {
+    await expect(restoredProgress).toContainText("Active board: Beta Systems", {
       timeout: 30_000,
     });
-    await expect(restoredStatus).toContainText(runningTotals);
+    await expect(restoredProgress).toContainText(runningTotals);
 
     expect((await request.post(`${fixtureUrl}/control/release-board-progress`)).ok()).toBe(true);
-    const completedNotice = discoveryLayer
-      .getByRole("status")
-      .filter({ hasText: "Discovery completed" });
+    const completedNotice = discoveryLayer.getByRole("status").filter({
+      has: page.getByRole("link", { name: `View run #${started.runId}` }),
+    });
     const finalMatches = `${matchCount} current profile match${matchCount === 1 ? "" : "es"}`;
     await expect(completedNotice).toContainText(
       `2 boards completed, 1 job changed, web coverage skipped, and ${finalMatches}`,
@@ -406,20 +429,60 @@ test("cancels a running discovery without resurrecting a delayed poll", async ({
   const { id: profileId } = await createProfile(page);
 
   let delayedStatus = false;
+  let releaseDelayedStatus: (() => void) | undefined;
+  let resolveDelayedStatus: (() => void) | undefined;
+  const delayedStatusGate = new Promise<void>((resolve) => {
+    releaseDelayedStatus = resolve;
+  });
+  const delayedStatusFinished = new Promise<void>((resolve) => {
+    resolveDelayedStatus = resolve;
+  });
+  let cancellationAttempts = 0;
+  let releaseCancellation: (() => void) | undefined;
+  const cancellationGate = new Promise<void>((resolve) => {
+    releaseCancellation = resolve;
+  });
   await page.route("**/api/discovery-runs**", async (route) => {
     const url = new URL(route.request().url());
+    if (route.request().method() === "DELETE") {
+      cancellationAttempts += 1;
+      if (cancellationAttempts === 1) {
+        await route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          body: JSON.stringify({
+            ok: false,
+            status: "error",
+            message: "Cancellation is temporarily unavailable.",
+          }),
+        });
+        return;
+      }
+      await cancellationGate;
+      await route.continue();
+      return;
+    }
     if (route.request().method() !== "GET" || !url.searchParams.has("ids") || delayedStatus) {
       await route.continue();
       return;
     }
     delayedStatus = true;
     const response = await route.fetch();
-    await new Promise((resolve) => setTimeout(resolve, 1_500));
+    await delayedStatusGate;
     await route.fulfill({ response });
+    resolveDelayedStatus?.();
   });
 
   await page.goto(`/?profile=${profileId}`);
   await page.getByLabel("Web search provider").selectOption("serper");
+  const delayedPollRequest = page.waitForRequest((request) => {
+    const url = new URL(request.url());
+    return (
+      request.method() === "GET" &&
+      url.pathname === "/api/discovery-runs" &&
+      url.searchParams.has("ids")
+    );
+  });
   const startedResponse = page.waitForResponse(
     (response) =>
       response.request().method() === "POST" &&
@@ -427,31 +490,64 @@ test("cancels a running discovery without resurrecting a delayed poll", async ({
   );
   await page.getByRole("button", { name: "Run discovery" }).click();
   const started = (await (await startedResponse).json()) as { runId: number };
-  const runningStatus = page.getByRole("status").filter({
-    has: page.getByRole("button", { name: `Cancel discovery #${started.runId}` }),
+  await delayedPollRequest;
+
+  await page.getByRole("link", { name: /Discovery runs/i }).click();
+  const activeRun = page.getByRole("article", {
+    name: `Discovery Run #${started.runId}`,
   });
-  await expect(runningStatus).toContainText(/Refreshing known boards|Expanding web coverage/, {
+  await expect(activeRun).toContainText(/Refreshing known boards|expanding web coverage/i, {
     timeout: 30_000,
   });
+  await activeRun.getByRole("link", { name: `View run #${started.runId}` }).click();
+  const cancelDiscovery = page.getByRole("button", {
+    name: `Cancel discovery #${started.runId}`,
+  });
 
-  const cancelResponse = page.waitForResponse(
+  const failedCancellation = page.waitForResponse(
     (response) =>
       response.request().method() === "DELETE" &&
       new URL(response.url()).pathname === "/api/discovery-runs",
   );
-  await page.getByRole("button", { name: `Cancel discovery #${started.runId}` }).click();
-  expect((await cancelResponse).status()).toBe(200);
-  await expect(page.getByRole("status").filter({ hasText: "Discovery cancelled" })).toBeVisible();
-  await expect(runningStatus).toBeHidden();
+  await cancelDiscovery.click();
+  expect((await failedCancellation).status()).toBe(503);
+  await expect(page.getByRole("alert")).toContainText("Cancellation is temporarily unavailable.");
+  await expect(cancelDiscovery).toBeEnabled();
 
-  await new Promise((resolve) => setTimeout(resolve, 1_800));
-  await expect(runningStatus).toBeHidden();
+  const cancelResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "DELETE" &&
+      new URL(response.url()).pathname === "/api/discovery-runs" &&
+      response.status() === 200,
+  );
+  await cancelDiscovery.click();
+  const cancellingDiscovery = page.getByRole("button", {
+    name: `Cancelling… discovery #${started.runId}`,
+  });
+  await expect(cancellingDiscovery).toContainText("Cancelling…");
+  await expect(cancellingDiscovery).toBeDisabled();
+  await captureRunStateMatrix(page, "cancelling");
+  releaseCancellation?.();
+  expect((await cancelResponse).status()).toBe(200);
+  await expect(page.getByRole("heading", { level: 2, name: "Discovery cancelled" })).toBeVisible();
+  await expect(cancelDiscovery).toHaveCount(0);
+
+  releaseDelayedStatus?.();
+  await delayedStatusFinished;
+  await expect(page.getByRole("heading", { level: 2, name: "Discovery cancelled" })).toBeVisible();
+  await expect(page.getByText(/Cancelled by user/)).toBeVisible();
+  await expect(cancelDiscovery).toHaveCount(0);
+  await expect(page.getByRole("status").filter({ hasText: "Discovery cancelled" })).toBeVisible();
   expect((await request.post(`${fixtureUrl}/control/release-success`)).ok()).toBe(true);
 
-  await page.goto(`/runs/${started.runId}`);
-  await expect(page.getByRole("heading", { level: 2, name: "Discovery cancelled" })).toBeVisible();
-  await expect(page.getByText("Cancelled", { exact: true }).first()).toBeVisible();
-  await expect(page.getByText(/Cancelled by user/)).toBeVisible();
+  await page.getByRole("button", { name: "Dismiss discovery notification" }).click();
+  await page.getByRole("link", { name: /Discovery runs/i }).click();
+  await expect(
+    page.getByRole("link", { name: new RegExp(`Run #${started.runId} Cancelled`) }),
+  ).toBeVisible();
+  await expect(page.getByRole("article", { name: `Discovery Run #${started.runId}` })).toHaveCount(
+    0,
+  );
 });
 
 test("explains that a returned role was excluded by location", async ({ page }) => {
@@ -637,6 +733,37 @@ async function configureDiscoveryFixtures(
     .fill(JSON.stringify({ jobs: `${fixtureUrl}/greenhouse/{slug}/jobs` }, null, 2));
   await page.getByRole("button", { name: "Save Greenhouse" }).click();
   await expect(page.getByText("Greenhouse settings saved to SQLite.")).toBeVisible();
+}
+
+async function captureRunStateMatrix(page: Page, state: string): Promise<void> {
+  for (const viewport of [
+    { name: "desktop", width: 1280, height: 800 },
+    { name: "mobile", width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    for (const theme of ["light", "dark"] as const) {
+      await selectTheme(page, theme);
+      await page.screenshot({
+        animations: "disabled",
+        caret: "hide",
+        fullPage: true,
+        path: `test-results/adm-200/${state}-${viewport.name}-${theme}.png`,
+      });
+    }
+  }
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await selectTheme(page, "system");
+}
+
+async function selectTheme(page: Page, theme: "light" | "dark" | "system"): Promise<void> {
+  const themeToggle = page.getByRole("button", { name: /^Theme:/ });
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if ((await themeToggle.getAttribute("aria-label"))?.startsWith(`Theme: ${theme}.`)) {
+      return;
+    }
+    await themeToggle.click();
+  }
+  await expect(themeToggle).toHaveAccessibleName(new RegExp(`^Theme: ${theme}\\.`));
 }
 
 async function disableAllKnownBoards(page: Page): Promise<void> {
