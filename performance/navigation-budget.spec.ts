@@ -4,9 +4,15 @@ import path from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
-const destinations = [
+interface Destination {
+  readonly heading: string;
+  readonly link: string;
+  readonly menu?: "profiles";
+}
+
+const destinations: readonly Destination[] = [
   { heading: "Opportunities", link: "Opportunities" },
-  { heading: "Profiles", link: "Search profiles" },
+  { heading: "Search profiles", link: "Search profiles", menu: "profiles" },
   { heading: "Sources and company boards", link: "Source coverage" },
   { heading: "Discovery history", link: "Discovery runs" },
   { heading: "Recruiter research", link: "Recruiter research" },
@@ -31,12 +37,12 @@ test("keeps representative workspace route transitions below the multi-second ra
 }) => {
   test.setTimeout(120_000);
   await page.goto("/profiles?profile=1&provider=serper");
-  await expect(page.getByRole("heading", { level: 1, name: "Profiles" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Search profiles" })).toBeVisible();
 
   const observations: NavigationObservation[] = [];
   for (let cycle = 0; cycle < 5; cycle += 1) {
     for (const destination of destinations) {
-      const link = page.getByRole("link", { name: destination.link, exact: true });
+      const link = await destinationLink(page, destination);
       await page.evaluate(() => performance.clearResourceTimings());
       await armNavigationProbe(link, destination.heading);
 
@@ -128,7 +134,7 @@ test("gives immediate accessible feedback while a route is deliberately slow", a
     await route.continue();
   });
   await page.goto("/profiles?profile=1&provider=serper");
-  const currentHeading = page.getByRole("heading", { level: 1, name: "Profiles" });
+  const currentHeading = page.getByRole("heading", { level: 1, name: "Search profiles" });
   const settingsLink = page.getByRole("link", { name: "System settings", exact: true });
   await expect(currentHeading).toBeVisible();
 
@@ -266,10 +272,8 @@ test("keeps the virtualized source registry usable across supported layouts and 
         await route.continue();
       };
       await page.route(/\/settings\.data(?:\?|$)/, delaySettings);
-      const currentHeading = page.getByRole("heading", { level: 1, name: "Profiles" });
-      const settingsLink = page
-        .getByRole("navigation", { name: "Primary navigation" })
-        .getByRole("link", { name: /^(System settings|Settings)$/ });
+      const currentHeading = page.getByRole("heading", { level: 1, name: "Search profiles" });
+      const settingsLink = page.getByRole("link", { name: "System settings", exact: true });
       await settingsLink.click();
       await expect(settingsLink).toHaveAttribute("aria-busy", "true");
       await expect(currentHeading).toBeVisible();
@@ -296,6 +300,17 @@ test("keeps the virtualized source registry usable across supported layouts and 
     }
   }
 });
+
+async function destinationLink(
+  page: import("@playwright/test").Page,
+  destination: Destination,
+): Promise<import("@playwright/test").Locator> {
+  if (destination.menu === "profiles") {
+    await page.getByRole("button", { name: "Search profiles", exact: true }).click();
+    return page.getByRole("menuitem", { name: "Search profiles", exact: true });
+  }
+  return page.getByRole("link", { name: destination.link, exact: true });
+}
 
 async function selectTheme(
   page: import("@playwright/test").Page,
