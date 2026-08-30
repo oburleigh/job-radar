@@ -67,3 +67,9 @@ export const recruiterDirectoryState = sqliteTable("recruiter_directory_state", 
   payload: text("payload", { mode: "json" }).$type<unknown>().notNull(),
   updatedAt: timestamp("updated_at").notNull(),
 });
+
+export const recruiterShortlists = sqliteTable("recruiter_shortlists", {
+  id: text("id").primaryKey(),
+  payload: text("payload", { mode: "json" }).$type<unknown>().notNull(),
+  updatedAt: timestamp("updated_at").notNull(),
+});

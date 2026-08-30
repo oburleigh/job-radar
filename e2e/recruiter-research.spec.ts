@@ -171,6 +171,172 @@ test("cancels an active recruiter run and retries with the frozen brief and plan
   ).toHaveCount(1);
 });
 
+test("creates a named Shortlist and makes Prospect contact exclusions explicit", async ({
+  page,
+}) => {
+  const shortlistName = `UAE recruiter Shortlist ${crypto.randomUUID()}`;
+  await page.setViewportSize({ width: 1440, height: 1200 });
+  await page.goto("/recruiter-research");
+  await page.getByLabel("Search brief").fill("UAE software engineering recruitment");
+  await selectRecruiterLocation(page, "Dubai");
+  await page.getByLabel("Specialisms").fill("Software engineering");
+  await page.getByLabel("Target industries").fill("Financial services");
+  await page.getByLabel("Recruiters to find").fill("10");
+  await page.getByRole("button", { name: "Start research" }).click();
+  await expect(page.getByText("Technology Recruiter 1", { exact: true })).toBeVisible({
+    timeout: 10_000,
+  });
+
+  await page.getByLabel("Shortlist name").fill(shortlistName);
+  await page.getByRole("button", { name: "Create Shortlist" }).click();
+  const shortlist = page.getByRole("article").filter({
+    has: page.getByRole("heading", { level: 4, name: shortlistName }),
+  });
+  await expect(shortlist).toBeVisible();
+
+  const recruiterResult = page
+    .getByRole("listitem")
+    .filter({ hasText: "Technology Recruiter 1" })
+    .first();
+  await expect(recruiterResult.locator(".recruiter-add-to-shortlist label > span")).toHaveCSS(
+    "text-transform",
+    "uppercase",
+  );
+  await recruiterResult.locator(".recruiter-add-to-shortlist").screenshot({
+    path: "test-results/recruiter-add-to-shortlist-desktop-crop.png",
+  });
+  await recruiterResult.getByLabel("Add to Shortlist").selectOption({ label: shortlistName });
+  await recruiterResult.getByRole("button", { name: "Add Prospect" }).click();
+
+  await expect(shortlist.getByText("Technology Recruiter 1", { exact: true })).toBeVisible();
+  await expect(
+    shortlist.getByText("Prior engagement: None recorded", { exact: true }),
+  ).toBeVisible();
+  await expect(shortlist.getByText("1 retained public source", { exact: true })).toBeVisible();
+  await expect(
+    shortlist.getByText("Ineligible for Campaign preparation", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    shortlist.getByText("No current publicly evidenced work Contact route is available.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+
+  await shortlist.getByRole("button", { name: "Do Not Contact" }).click();
+  await expect(
+    shortlist.getByText("Contact exclusion: Do Not Contact", { exact: true }),
+  ).toBeVisible();
+  await expect(shortlist.getByText(/Do Not Contact excludes this Prospect/)).toBeVisible();
+  await expect(shortlist.getByText("DNC", { exact: true })).toHaveCount(0);
+  await shortlist.locator(".recruiter-evidence-history summary").click();
+  await expect(
+    shortlist.getByRole("link", {
+      name: "https://www.linkedin.com/in/technology-recruiter-1",
+    }),
+  ).toBeVisible();
+  await expect(shortlist.getByText("Deterministic public LinkedIn-profile fixture.")).toBeVisible();
+  await expect(shortlist.getByText(/Observed \d{4}-\d{2}-\d{2} · high confidence/)).toBeVisible();
+
+  const [desktopSection, desktopCreateForm, desktopCreateButton, desktopCard] = await Promise.all([
+    page.getByRole("region", { name: "Shortlists" }).boundingBox(),
+    page.locator(".recruiter-shortlist-create").boundingBox(),
+    page.getByRole("button", { name: "Create Shortlist" }).boundingBox(),
+    shortlist.boundingBox(),
+  ]);
+  assertContained(desktopSection, desktopCreateForm, "desktop Shortlist create form");
+  assertContained(desktopSection, desktopCreateButton, "desktop Shortlist create button");
+  assertContained(desktopSection, desktopCard, "desktop Shortlist");
+  expect(
+    (await new AxeBuilder({ page }).include(".recruiter-shortlists").analyze()).violations,
+  ).toEqual([]);
+  await page.screenshot({ path: "test-results/recruiter-shortlist-desktop.png", fullPage: true });
+  await page.getByRole("region", { name: "Shortlists" }).screenshot({
+    path: "test-results/recruiter-shortlist-desktop-crop.png",
+  });
+
+  await page.evaluate(() => {
+    window.localStorage.setItem("job-radar-theme", "dark");
+    document.documentElement.dataset.theme = "dark";
+  });
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  expect(
+    (await new AxeBuilder({ page }).include(".recruiter-shortlists").analyze()).violations,
+  ).toEqual([]);
+  await page.screenshot({
+    path: "test-results/recruiter-shortlist-desktop-dark.png",
+    fullPage: true,
+  });
+  await page.getByRole("region", { name: "Shortlists" }).screenshot({
+    path: "test-results/recruiter-shortlist-desktop-dark-crop.png",
+  });
+
+  await page.evaluate(() => {
+    window.localStorage.setItem("job-radar-theme", "light");
+    document.documentElement.dataset.theme = "light";
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await shortlist.scrollIntoViewIfNeeded();
+  const [
+    mobileSection,
+    mobileHeadingCopy,
+    mobileCreateForm,
+    mobileCreateButton,
+    mobileCard,
+    mobileHeadingGap,
+  ] = await Promise.all([
+    page.getByRole("region", { name: "Shortlists" }).boundingBox(),
+    page.locator(".recruiter-shortlists-heading > div").boundingBox(),
+    page.locator(".recruiter-shortlist-create").boundingBox(),
+    page.getByRole("button", { name: "Create Shortlist" }).boundingBox(),
+    shortlist.boundingBox(),
+    page
+      .locator(".recruiter-shortlists-heading")
+      .evaluate((element) => Number.parseFloat(window.getComputedStyle(element).gap)),
+  ]);
+  assertContained(mobileSection, mobileCreateForm, "mobile Shortlist create form");
+  assertContained(mobileSection, mobileCreateButton, "mobile Shortlist create button");
+  assertContained(mobileSection, mobileCard, "mobile Shortlist");
+  if (!mobileHeadingCopy || !mobileCreateForm) {
+    throw new Error("Mobile Shortlist heading and create form must be measurable.");
+  }
+  expect(mobileCreateForm.y - (mobileHeadingCopy.y + mobileHeadingCopy.height)).toBeLessThanOrEqual(
+    mobileHeadingGap + 1,
+  );
+  expect((mobileCard?.width ?? 391) + (mobileCard?.x ?? 0)).toBeLessThanOrEqual(390);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: "test-results/recruiter-shortlist-mobile.png", fullPage: true });
+  const mobileShortlistHeading = page.locator(".recruiter-shortlists-heading");
+  await mobileShortlistHeading.evaluate((element) => element.scrollIntoView({ block: "center" }));
+  await mobileShortlistHeading.screenshot({
+    path: "test-results/recruiter-shortlist-mobile-create-crop.png",
+  });
+  const mobileProspect = shortlist.locator(".recruiter-shortlist-prospects > li");
+  await mobileProspect.evaluate((element) => element.scrollIntoView({ block: "center" }));
+  const [mobileProspectBox, mobileMastheadBox, mobileNavigationBox] = await Promise.all([
+    mobileProspect.boundingBox(),
+    page.locator(".masthead").boundingBox(),
+    page.getByRole("navigation", { name: "Primary navigation" }).boundingBox(),
+  ]);
+  if (!mobileProspectBox || !mobileMastheadBox || !mobileNavigationBox) {
+    throw new Error("Mobile Prospect and navigation geometry must be measurable.");
+  }
+  expect(mobileProspectBox.y).toBeGreaterThanOrEqual(
+    mobileMastheadBox.y + mobileMastheadBox.height,
+  );
+  expect(mobileProspectBox.y + mobileProspectBox.height).toBeLessThanOrEqual(mobileNavigationBox.y);
+  await mobileProspect.screenshot({
+    path: "test-results/recruiter-shortlist-mobile-crop.png",
+  });
+
+  await shortlist.getByRole("button", { name: "Remove Prospect" }).click();
+  await expect(
+    shortlist.getByText("No Prospect has been added yet.", { exact: true }),
+  ).toBeVisible();
+  await shortlist.getByRole("button", { name: "Delete Shortlist" }).click();
+  await expect(page.getByRole("heading", { level: 4, name: shortlistName })).toHaveCount(0);
+});
+
 test("uses the shared country catalogue in the location autocomplete and keeps compact desktop rows", async ({
   page,
 }) => {
@@ -317,6 +483,18 @@ function requiredBoxes<T>(boxes: readonly (T | null)[]): readonly T[] {
     throw new Error("Recruiter controls must be rendered before layout is measured.");
   }
   return resolved;
+}
+
+function assertContained(
+  container: { readonly width: number; readonly x: number } | null,
+  child: { readonly width: number; readonly x: number } | null,
+  label: string,
+) {
+  if (!container || !child) {
+    throw new Error(`${label} geometry must be measurable.`);
+  }
+  expect(child.x).toBeGreaterThanOrEqual(container.x);
+  expect(child.x + child.width).toBeLessThanOrEqual(container.x + container.width);
 }
 
 async function selectRecruiterLocation(page: import("@playwright/test").Page, label: string) {

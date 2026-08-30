@@ -14,6 +14,11 @@ import {
   createSearchBrief,
   type SourcePlanSnapshot,
 } from "@/contexts/recruiter-engagement/domain/research-run";
+import {
+  addRecruiterToShortlist,
+  assessShortlist,
+  createShortlist,
+} from "@/contexts/recruiter-engagement/domain/shortlist";
 import { RecruiterResearchPage } from "./recruiter-research-page";
 
 describe("recruiter research page", () => {
@@ -32,7 +37,13 @@ describe("recruiter research page", () => {
     });
     const observations = [
       firmObservation(),
-      recruiterObservation(),
+      {
+        ...recruiterObservation(),
+        workEmail: {
+          address: "amina@acme.example",
+          evidence: testEvidence("https://acme.example/team/amina"),
+        },
+      },
       {
         ...recruiterObservation(),
         companyName: "Unresolved Search",
@@ -68,6 +79,23 @@ describe("recruiter research page", () => {
         specialism: 60,
       },
     });
+    const shortlists = [
+      assessShortlist(
+        addRecruiterToShortlist(
+          createShortlist({
+            createdAt: new Date("2026-08-29T10:00:00.000Z"),
+            id: "shortlist-1",
+            name: "UAE software recruiters",
+          }),
+          refreshed,
+          {
+            addedAt: new Date("2026-08-29T10:01:00.000Z"),
+            recruiterId: "recruiter:linkedin.com/in/amina-khan",
+          },
+        ),
+        refreshed,
+      ),
+    ];
     const router = createMemoryRouter([
       {
         path: "/",
@@ -81,6 +109,7 @@ describe("recruiter research page", () => {
               failures: [],
               observations,
               run,
+              shortlists,
             }}
           />
         ),
@@ -89,13 +118,22 @@ describe("recruiter research page", () => {
 
     const html = renderToStaticMarkup(<RouterProvider router={router} />);
 
-    expect(html.match(/Acme Search/g)).toHaveLength(1);
+    expect(html.match(/<h3>Acme Search<\/h3>/g)).toHaveLength(1);
     expect(html).toContain("Amina Khan");
     expect(html).toContain("Unassociated recruiters");
     expect(html).toContain("Zara Ali");
     expect(html).toContain("Zara Ali and Zara Ali");
     expect(html).toContain("Specialism matches Software engineering.");
     expect(html).toContain("2 runs");
+    expect(html).toContain("Shortlists");
+    expect(html).toContain("UAE software recruiters");
+    expect(html).toContain("Eligible for Campaign preparation");
+    expect(html).toContain("Work email: amina@acme.example");
+    expect(html).toContain("Prior engagement: None recorded");
+    expect(html).toContain("Add to Shortlist");
+    expect(html).toContain("Do Not Contact");
+    expect(html).not.toContain(">Candidate<");
+    expect(html).not.toContain(">DNC<");
   });
 });
 

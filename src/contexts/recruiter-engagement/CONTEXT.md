@@ -1,6 +1,6 @@
 # Recruiter Engagement
 
-Recruiter Engagement records public research about recruitment firms and named recruiters for a user-supplied search brief. It does not hold candidate records, private contact details, outreach activity, or a shared people directory.
+Recruiter Engagement records public research about recruitment firms and named recruiters for a user-supplied search brief. It does not hold candidate records, private contact details, outbound actions, or a shared people directory.
 
 ## Language
 
@@ -45,6 +45,30 @@ _Avoid_: Technology specialism
 **Canonical correction**
 : A user-selected value for a recruitment firm or recruiter. The correction is recorded without deleting the observations that led to it.
 
+**Shortlist**
+: A named working set of canonical Recruiters selected from the Directory. One Shortlist contains at most one Prospect for each canonical Recruiter, even when several research runs found that Recruiter.
+
+**Prospect**
+: A canonical Recruiter selected into a Shortlist. A Prospect retains the Recruiter's Evidence and has an explicit contact exclusion state.
+_Avoid_: Candidate
+
+**Contact route**
+: A public work channel retained with its own Evidence. A Contact route is eligible for Campaign preparation only when its current value matches that Evidence.
+_Avoid_: Personal contact detail
+
+**Prior engagement**
+: A recorded past interaction with a Prospect. No recorded Prior engagement means the Directory has no retained interaction, not that no interaction happened.
+
+**Suppression**
+: A reversible exclusion that makes a Prospect ineligible for Campaign preparation without recording a Do Not Contact decision.
+
+**Do Not Contact**
+: An explicit user decision that makes a Prospect ineligible for Campaign preparation until the user clears it.
+_Avoid_: DNC
+
+**Campaign preparation**
+: The eligibility decision that determines whether a Prospect has an evidenced Contact route and no contact exclusion. It does not create a Campaign or perform an outbound action.
+
 **Directory ranking**
 : A deterministic score with visible match reasons and unavailable factors. Its weights are stored in recruiter research settings.
 
@@ -62,8 +86,8 @@ _Avoid_: Technology specialism
 
 ## Current boundary
 
-The domain owns the vocabulary, terminal-state rules, canonical identity rules, evidence reconciliation, identity decisions, corrections, and deterministic directory ranking. The application owns starting, resuming, cancelling, retrying, target-location validation, recording a run, and maintaining the directory. It depends on a run store, a directory store, a staged research source, a scheduler, and values supplied by composition.
+The domain owns the vocabulary, terminal-state rules, canonical identity rules, evidence reconciliation, identity decisions, corrections, Shortlists, contact exclusions, Campaign preparation eligibility, and deterministic directory ranking. The application owns starting, resuming, cancelling, retrying, target-location validation, recording a run, maintaining the Directory, and managing Shortlists. It depends on run, Directory, and Shortlist stores, a staged research source, a scheduler, and values supplied by composition.
 
-Infrastructure maps configured ISO market entries to selectable target locations, stores runs, the directory, and recruiter research settings in SQLite, and provides two sources. The seeded settings own the default brief, target counts, directory match weights, model, reasoning effort, stage request limit, and timeout; each run freezes the applicable source values. Legacy persisted single-location criteria are read as one target location. The deterministic staged source supports local tests. The local Codex source starts a separate read-only, ephemeral Codex process for the firm stage and recruiter stage. It uses the existing ChatGPT Business login and removes `OPENAI_API_KEY` from its child environment. Only each stage's schema-validated final output becomes an observation. Failed local stages retain a safe recovery message. Bounded raw process diagnostics go only to server stderr.
+Infrastructure maps configured ISO market entries to selectable target locations, stores runs, the Directory, Shortlists, and recruiter research settings in SQLite, and provides two sources. The seeded settings own the default brief, target counts, directory match weights, model, reasoning effort, stage request limit, and timeout; each run freezes the applicable source values. Legacy persisted single-location criteria are read as one target location. The deterministic staged source supports local tests. The local Codex source starts a separate read-only, ephemeral Codex process for the firm stage and recruiter stage. It uses the existing ChatGPT Business login and removes `OPENAI_API_KEY` from its child environment. Only each stage's schema-validated final output becomes an observation. Failed local stages retain a safe recovery message. Bounded raw process diagnostics go only to server stderr.
 
-Presentation owns route request parsing, the controlled target-location selection, polling, status copy, ranked directory results, visible unassociated recruiters, identity decisions, and canonical corrections. It does not import SQLite, Discovery presentation, or the Codex adapter. The composition root selects the deterministic source only for explicit test configuration; normal local use selects the direct Codex source.
+Presentation owns route request parsing, the controlled target-location selection, polling, status copy, ranked Directory results, visible unassociated Recruiters, identity decisions, canonical corrections, and Shortlist controls. It does not import SQLite, Discovery presentation, or the Codex adapter. The composition root selects the deterministic source only for explicit test configuration; normal local use selects the direct Codex source.
