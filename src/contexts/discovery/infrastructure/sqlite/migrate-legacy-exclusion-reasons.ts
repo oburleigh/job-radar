@@ -5,6 +5,7 @@ import type { ExclusionReason } from "@/contexts/discovery/domain/job-match";
 
 import type { db } from "./database";
 import { jobMatches } from "./schema";
+import { screeningCountColumns } from "./screening-count-columns";
 
 type Database = typeof db;
 
@@ -21,15 +22,48 @@ export function migrateLegacyExclusionReasons(database: Database): number {
 
   database.transaction((transaction) => {
     for (const row of rows) {
+      const exclusionReasons = normalizePersistedExclusionReasons(row.exclusionReasons);
       transaction
         .update(jobMatches)
-        .set({ exclusionReasons: normalizePersistedExclusionReasons(row.exclusionReasons) })
+        .set({ exclusionReasons, ...screeningCountColumns(exclusionReasons) })
         .where(eq(jobMatches.id, row.id))
         .run();
     }
   });
 
   return rows.length;
+}
+
+export function backfillScreeningCountColumns(database: Database): number {
+  return database.run(sql`
+    UPDATE ${jobMatches} AS match
+    SET (
+      excluded_title_reason_count,
+      excluded_location_reason_count,
+      stale_reason_count,
+      unverified_reason_count,
+      context_reason_count,
+      salary_reason_count
+    ) = (
+      SELECT
+        coalesce(sum(code IN ('title-mismatch', 'excluded-title')), 0),
+        coalesce(sum(code IN ('location-mismatch', 'excluded-location')), 0),
+        coalesce(sum(code = 'stale-listing'), 0),
+        coalesce(sum(code = 'unverified-lead'), 0),
+        coalesce(sum(code = 'missing-required-job-term'), 0),
+        coalesce(sum(code IN ('salary-above', 'salary-below')), 0)
+      FROM (
+        SELECT json_extract(reason.value, '$.code') AS code
+        FROM json_each(
+          CASE
+            WHEN json_valid(match.exclusion_reasons) THEN match.exclusion_reasons
+            ELSE '[]'
+          END
+        ) AS reason
+      )
+    )
+    WHERE match.excluded_title_reason_count IS NULL
+  `).changes;
 }
 
 export function normalizePersistedExclusionReasons(value: unknown): readonly ExclusionReason[] {

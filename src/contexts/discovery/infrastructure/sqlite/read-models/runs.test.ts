@@ -6,6 +6,7 @@ import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  backfillScreeningCountColumns,
   migrateLegacyExclusionReasons,
   normalizePersistedExclusionReasons,
 } from "@/contexts/discovery/infrastructure/sqlite/migrate-legacy-exclusion-reasons";
@@ -311,6 +312,49 @@ describe("legacy exclusion-reason migration", () => {
         { code: "title-mismatch" },
       ]),
     ).toEqual([{ code: "title-mismatch" }]);
+  });
+
+  it("backfills compact screening counts once for existing typed reasons", () => {
+    const profileId = seedProfileSql(sqlite);
+    const jobId = seedJobSql(sqlite);
+    sqlite
+      .prepare(
+        `INSERT INTO job_matches
+          (profile_id, job_id, status, score, reasons, exclusion_reasons, updated_at)
+         VALUES (?, ?, 'excluded', 0, '[]', ?, ?)`,
+      )
+      .run(
+        profileId,
+        jobId,
+        JSON.stringify([
+          { code: "title-mismatch" },
+          { code: "excluded-title", term: "Intern" },
+          { code: "location-mismatch" },
+          { code: "stale-listing", maximumAgeDays: 30 },
+          { code: "unverified-lead" },
+          { code: "missing-required-job-term" },
+          { code: "salary-above", salary: { currency: "USD", min: 120_000, max: null } },
+          { code: "salary-below", salary: { currency: "USD", min: null, max: 80_000 } },
+        ]),
+        recordedAt.getTime(),
+      );
+
+    expect(backfillScreeningCountColumns(database)).toBe(1);
+    expect(backfillScreeningCountColumns(database)).toBe(0);
+    expect(
+      sqlite
+        .prepare(
+          `SELECT
+            excluded_title_reason_count AS title,
+            excluded_location_reason_count AS location,
+            stale_reason_count AS stale,
+            unverified_reason_count AS unverified,
+            context_reason_count AS context,
+            salary_reason_count AS salary
+           FROM job_matches`,
+        )
+        .get(),
+    ).toEqual({ title: 2, location: 1, stale: 1, unverified: 1, context: 1, salary: 2 });
   });
 });
 

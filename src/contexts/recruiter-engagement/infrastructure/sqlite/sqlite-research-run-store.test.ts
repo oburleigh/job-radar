@@ -1,3 +1,5 @@
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
@@ -143,25 +145,44 @@ describe("SQLite research run store", () => {
     sqlite.pragma("foreign_keys = ON");
     const database = drizzle(sqlite);
     const migrationsFolder = path.resolve(process.cwd(), "drizzle");
-    migrate(database, { migrationsFolder });
+    const legacyMigrationsFolder = migrationPrefix(migrationsFolder, 7);
 
-    sqlite.exec(
-      "DROP TABLE recruiter_directory_state; DROP TABLE recruiter_research_observations; DROP TABLE recruiter_research_source_failures; DROP TABLE recruiter_research_runs; DROP TABLE recruiter_research_settings;",
-    );
-    sqlite
-      .prepare(
-        "DELETE FROM __drizzle_migrations WHERE created_at IN (SELECT created_at FROM __drizzle_migrations ORDER BY created_at DESC LIMIT 3)",
-      )
-      .run();
+    try {
+      migrate(database, { migrationsFolder: legacyMigrationsFolder });
+      migrate(database, { migrationsFolder });
 
-    migrate(database, { migrationsFolder });
-
-    expect(sqlite.prepare("PRAGMA table_info(recruiter_research_runs)").all()).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ name: "criteria" }),
-        expect.objectContaining({ name: "budget" }),
-        expect.objectContaining({ name: "retry_of_run_id" }),
-      ]),
-    );
+      expect(sqlite.prepare("PRAGMA table_info(recruiter_research_runs)").all()).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ name: "criteria" }),
+          expect.objectContaining({ name: "budget" }),
+          expect.objectContaining({ name: "retry_of_run_id" }),
+        ]),
+      );
+    } finally {
+      rmSync(legacyMigrationsFolder, { recursive: true, force: true });
+    }
   });
 });
+
+function migrationPrefix(migrationsFolder: string, lastIndex: number): string {
+  const directory = mkdtempSync(path.join(tmpdir(), "job-radar-migrations-"));
+  const metaDirectory = path.join(directory, "meta");
+  mkdirSync(metaDirectory);
+  const journal = JSON.parse(
+    readFileSync(path.join(migrationsFolder, "meta", "_journal.json"), "utf8"),
+  ) as {
+    entries: Array<{ idx: number; tag: string }>;
+  };
+  const entries = journal.entries.filter((entry) => entry.idx <= lastIndex);
+  writeFileSync(
+    path.join(metaDirectory, "_journal.json"),
+    JSON.stringify({ ...journal, entries }, null, 2),
+  );
+  for (const entry of entries) {
+    cpSync(
+      path.join(migrationsFolder, `${entry.tag}.sql`),
+      path.join(directory, `${entry.tag}.sql`),
+    );
+  }
+  return directory;
+}

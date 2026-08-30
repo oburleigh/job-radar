@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 
 const fixtureUrl = "http://127.0.0.1:3200";
 
@@ -782,11 +782,37 @@ async function selectTheme(page: Page, theme: "light" | "dark" | "system"): Prom
 
 async function disableAllKnownBoards(page: Page): Promise<void> {
   await page.goto("/sources");
-  const enabledBoards = page.getByRole("switch", { name: /^Disable / });
-  while ((await enabledBoards.count()) > 0) {
-    const previousCount = await enabledBoards.count();
-    await enabledBoards.first().click();
-    await expect(enabledBoards).toHaveCount(previousCount - 1);
+  await disableSwitches(page, page.getByRole("list").getByRole("switch", { name: /^Disable / }));
+
+  const table = page.getByRole("table");
+  if ((await table.count()) === 0) {
+    return;
+  }
+
+  const enabledHeader = table.getByRole("button", { name: /^Sort by Enabled/ });
+  await enabledHeader.click();
+  await enabledHeader.click();
+  await expect(page.getByRole("columnheader", { name: /^Sort by Enabled/ })).toHaveAttribute(
+    "aria-sort",
+    "descending",
+  );
+
+  await disableSwitches(page, table.getByRole("switch", { name: /^Disable / }));
+}
+
+async function disableSwitches(page: Page, enabledSwitches: Locator): Promise<void> {
+  while ((await enabledSwitches.count()) > 0) {
+    const previousCount = await enabledSwitches.count();
+    const enabledSwitch = enabledSwitches.first();
+    const label = await enabledSwitch.getAttribute("aria-label");
+    if (!label) {
+      throw new Error("Expected the enabled source switch to have an accessible name.");
+    }
+    await enabledSwitch.click();
+    await expect(
+      page.getByRole("switch", { name: label.replace(/^Disable /, "Enable ") }),
+    ).toBeEnabled();
+    await expect(enabledSwitches).toHaveCount(previousCount - 1);
   }
 }
 

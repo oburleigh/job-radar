@@ -184,6 +184,12 @@
   background: var(--jr-color-accent-strong);
 }
 
+.nav-link-pending {
+  color: var(--jr-color-nav-text);
+  background: var(--jr-color-nav-raised);
+  box-shadow: inset 0 calc(-1 * var(--jr-space-1)) var(--jr-color-accent-bright);
+}
+
 .nav-label {
   overflow: hidden;
   font-family: var(--jr-font-family-display);
@@ -1454,6 +1460,10 @@ table td a:hover {
   grid-column: 1 / -1;
 }
 
+.add-board-form .board-form-help {
+  color: var(--jr-color-text);
+}
+
 .table-wrap {
   width: 100%;
   overflow-x: auto;
@@ -1492,7 +1502,8 @@ thead th {
 
 .sortable-header-button {
   display: inline-flex;
-  min-height: 0;
+  min-width: var(--jr-control-height-md);
+  min-height: var(--jr-control-height-md);
   align-items: center;
   gap: 7px;
   padding: 2px;

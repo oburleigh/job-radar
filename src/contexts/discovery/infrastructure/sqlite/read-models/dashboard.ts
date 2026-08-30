@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { createAnnualSalaryRange } from "@/contexts/discovery/domain/annual-salary";
 import {
@@ -6,7 +6,6 @@ import {
   shouldPreferListingCandidate,
 } from "@/contexts/discovery/domain/job-listing-provenance";
 import type { JobListingState } from "@/contexts/discovery/domain/job-listing-state";
-import type { ExclusionReason } from "@/contexts/discovery/domain/job-match";
 import type { AtsType } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
 import type * as schema from "@/contexts/discovery/infrastructure/sqlite/schema";
 import {
@@ -107,28 +106,7 @@ export function getDashboardData(filters: JobFilters, database: Database) {
       ? dedupeCrossSourceMatches(matchedRows.filter((row) => row.state === "hidden"))
       : activeRows;
 
-  const excludedRows = database
-    .select({ reasons: jobMatches.exclusionReasons })
-    .from(jobMatches)
-    .innerJoin(jobs, eq(jobs.id, jobMatches.jobId))
-    .where(
-      and(
-        eq(jobMatches.profileId, profile.id),
-        eq(jobMatches.status, "excluded"),
-        eq(jobs.isActive, true),
-      ),
-    )
-    .all();
-  const excludedReasons = excludedRows.flatMap((row) => row.reasons);
-  const screened = {
-    total: excludedRows.length,
-    title: countReasons(excludedReasons, ["title-mismatch", "excluded-title"]),
-    location: countReasons(excludedReasons, ["location-mismatch", "excluded-location"]),
-    stale: countReasons(excludedReasons, ["stale-listing"]),
-    unverified: countReasons(excludedReasons, ["unverified-lead"]),
-    context: countReasons(excludedReasons, ["missing-required-job-term"]),
-    salary: countReasons(excludedReasons, ["salary-above", "salary-below"]),
-  };
+  const screened = readScreeningSummary(profile.id, database);
 
   const counts = {
     matched: activeRows.length,
@@ -186,11 +164,33 @@ export function getDashboardData(filters: JobFilters, database: Database) {
   };
 }
 
-function countReasons(
-  reasons: readonly ExclusionReason[],
-  codes: ReadonlyArray<ExclusionReason["code"]>,
-): number {
-  return reasons.filter((reason) => codes.includes(reason.code)).length;
+function readScreeningSummary(profileId: number, database: Database) {
+  return database.get<{
+    total: number;
+    title: number;
+    location: number;
+    stale: number;
+    unverified: number;
+    context: number;
+    salary: number;
+  }>(sql`
+    SELECT
+      count(*) AS total,
+      coalesce(sum(${jobMatches.excludedTitleReasonCount}), 0) AS title,
+      coalesce(sum(${jobMatches.excludedLocationReasonCount}), 0) AS location,
+      coalesce(sum(${jobMatches.staleReasonCount}), 0) AS stale,
+      coalesce(sum(${jobMatches.unverifiedReasonCount}), 0) AS unverified,
+      coalesce(sum(${jobMatches.contextReasonCount}), 0) AS context,
+      coalesce(sum(${jobMatches.salaryReasonCount}), 0) AS salary
+    FROM ${jobMatches} INDEXED BY job_matches_screening_summary_idx
+    WHERE ${jobMatches.profileId} = ${profileId}
+      AND ${jobMatches.status} = 'excluded'
+      AND ${jobMatches.jobId} IN (
+        SELECT ${jobs.id}
+        FROM ${jobs} INDEXED BY jobs_active_id_idx
+        WHERE ${jobs.isActive} = 1
+      )
+  `);
 }
 
 function dedupeCrossSourceMatches<
