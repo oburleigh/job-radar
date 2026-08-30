@@ -79,6 +79,9 @@ export function AppNavigation() {
   const pendingDestination = primaryNavigation.find((item) =>
     pendingPathname ? matchesNavigationPath(item.href, pendingPathname) : false,
   );
+  const settingsPending = pendingPathname
+    ? matchesNavigationPath("/settings", pendingPathname)
+    : false;
 
   function withSelection(href: string) {
     const selection = new URLSearchParams();
@@ -212,9 +215,10 @@ export function AppNavigation() {
           ) : null}
         </div>
         <Link
+          aria-busy={settingsPending || undefined}
           aria-current={matchesNavigationPath("/settings", pathname) ? "page" : undefined}
           aria-label="System settings"
-          className={`utility-link${matchesNavigationPath("/settings", pathname) ? " utility-control-active" : ""}`}
+          className={`utility-link${matchesNavigationPath("/settings", pathname) ? " utility-control-active" : ""}${settingsPending ? " utility-control-pending" : ""}`}
           to={withSelection("/settings")}
         >
           <Cog size={19} aria-hidden="true" />
