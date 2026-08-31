@@ -99,6 +99,13 @@
       "when": 1788162744790,
       "tag": "0013_broken_magdalene",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1788169168244,
+      "tag": "0014_zippy_prowler",
+      "breakpoints": true
     }
   ]
 }

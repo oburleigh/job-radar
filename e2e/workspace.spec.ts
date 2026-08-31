@@ -174,7 +174,7 @@ test("keeps settings in stable sections without carrying opportunity selection",
   await expect(page).toHaveURL("/settings/adapters/source-coverage");
   await expect(settingsNavigation.getByRole("link", { name: "Adapters" })).toHaveAttribute(
     "aria-current",
-    "location",
+    "page",
   );
   await expect(page.getByRole("link", { name: "Source Coverage" })).toHaveAttribute(
     "aria-current",

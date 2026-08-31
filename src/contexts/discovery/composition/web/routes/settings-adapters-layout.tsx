@@ -1,45 +1,17 @@
-import { NavLink, Outlet, useNavigation } from "react-router";
+import { Outlet } from "react-router";
+
+import { SettingsSectionNavigation } from "@/contexts/discovery/presentation/web/settings-section-navigation";
+
+const sections = [
+  { label: "Source Coverage", to: "/settings/adapters/source-coverage" },
+  { label: "ATS Registry", to: "/settings/adapters/ats-registry" },
+  { label: "LinkedIn", to: "/settings/adapters/linkedin" },
+] as const;
 
 export default function AdapterSettingsLayout() {
-  const navigation = useNavigation();
-  const pendingPathname = navigation.location?.pathname;
   return (
     <>
-      <nav className="settings-subnavigation" aria-label="Adapter settings">
-        <NavLink
-          aria-busy={pendingPathname === "/settings/adapters/source-coverage" || undefined}
-          className={() =>
-            pendingPathname === "/settings/adapters/source-coverage"
-              ? "settings-navigation-link-pending"
-              : undefined
-          }
-          to="/settings/adapters/source-coverage"
-        >
-          Source Coverage
-        </NavLink>
-        <NavLink
-          aria-busy={pendingPathname === "/settings/adapters/ats-registry" || undefined}
-          className={() =>
-            pendingPathname === "/settings/adapters/ats-registry"
-              ? "settings-navigation-link-pending"
-              : undefined
-          }
-          to="/settings/adapters/ats-registry"
-        >
-          ATS Registry
-        </NavLink>
-        <NavLink
-          aria-busy={pendingPathname === "/settings/adapters/linkedin" || undefined}
-          className={() =>
-            pendingPathname === "/settings/adapters/linkedin"
-              ? "settings-navigation-link-pending"
-              : undefined
-          }
-          to="/settings/adapters/linkedin"
-        >
-          LinkedIn
-        </NavLink>
-      </nav>
+      <SettingsSectionNavigation label="Adapter settings" level="secondary" sections={sections} />
       <Outlet />
     </>
   );

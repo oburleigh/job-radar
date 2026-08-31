@@ -16,6 +16,7 @@ describe("recruiter research route action", () => {
       retryResearchRun: vi.fn(),
       resolveDirectoryIdentity: vi.fn(),
       saveResearchExecutionSettings,
+      shortlists: shortlistActions(),
       startResearchRun,
     });
 
@@ -39,6 +40,7 @@ describe("recruiter research route action", () => {
       }),
       resolveDirectoryIdentity: vi.fn(),
       saveResearchExecutionSettings: vi.fn(),
+      shortlists: shortlistActions(),
       startResearchRun: vi.fn(),
     });
 
@@ -57,6 +59,7 @@ describe("recruiter research route action", () => {
       retryResearchRun: vi.fn(),
       resolveDirectoryIdentity,
       saveResearchExecutionSettings: vi.fn(),
+      shortlists: shortlistActions(),
       startResearchRun: vi.fn(),
     });
 
@@ -69,7 +72,41 @@ describe("recruiter research route action", () => {
     expect(response).toBeInstanceOf(Response);
     expect((response as Response).headers.get("location")).toBe("/recruiter-search?run=run-1");
   });
+
+  it("records Do Not Contact for a Prospect from the current run", async () => {
+    const shortlists = shortlistActions();
+    const action = createRecruiterResearchAction({
+      assertLocalHost: vi.fn(),
+      cancelResearchRun: vi.fn(),
+      correctDirectoryFact: vi.fn(),
+      resolveTargetLocations: vi.fn(() => []),
+      retryResearchRun: vi.fn(),
+      resolveDirectoryIdentity: vi.fn(),
+      saveResearchExecutionSettings: vi.fn(),
+      shortlists,
+      startResearchRun: vi.fn(),
+    });
+
+    const response = await action(shortlistContactExclusionRequest());
+
+    expect(shortlists.setContactExclusion).toHaveBeenCalledWith({
+      contactExclusion: "do-not-contact",
+      recruiterId: "recruiter-1",
+      shortlistId: "shortlist-1",
+    });
+    expect((response as Response).headers.get("location")).toBe("/recruiter-search?run=run-1");
+  });
 });
+
+function shortlistActions() {
+  return {
+    addProspect: vi.fn(),
+    create: vi.fn(),
+    delete: vi.fn(),
+    removeProspect: vi.fn(),
+    setContactExclusion: vi.fn(),
+  };
+}
 
 function directoryRequest(): Request {
   const form = new FormData();
@@ -88,6 +125,20 @@ function retryRequest(runId: string): Request {
   const form = new FormData();
   form.set("intent", "retry");
   form.set("runId", runId);
+  return new Request("http://localhost/recruiter-research", {
+    method: "POST",
+    headers: { host: "localhost" },
+    body: form,
+  });
+}
+
+function shortlistContactExclusionRequest(): Request {
+  const form = new FormData();
+  form.set("intent", "set-contact-exclusion");
+  form.set("runId", "run-1");
+  form.set("shortlistId", "shortlist-1");
+  form.set("recruiterId", "recruiter-1");
+  form.set("contactExclusion", "do-not-contact");
   return new Request("http://localhost/recruiter-research", {
     method: "POST",
     headers: { host: "localhost" },

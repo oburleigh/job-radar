@@ -1368,52 +1368,6 @@ table td a:hover {
   margin-top: 30px;
 }
 
-.settings-navigation,
-.settings-subnavigation {
-  display: flex;
-  align-items: center;
-  gap: var(--jr-space-2);
-  overflow-x: auto;
-  border-bottom: 1px solid var(--jr-color-border-strong);
-}
-
-.settings-navigation {
-  margin-top: var(--jr-space-7);
-}
-
-.settings-subnavigation {
-  margin-top: var(--jr-space-5);
-}
-
-.settings-navigation a,
-.settings-subnavigation a {
-  min-height: 44px;
-  padding: var(--jr-space-3) var(--jr-space-4);
-  color: var(--jr-color-text-muted);
-  font-weight: 700;
-  white-space: nowrap;
-  border-bottom: 3px solid transparent;
-}
-
-.settings-navigation a:hover,
-.settings-subnavigation a:hover {
-  color: var(--jr-color-text);
-  background: var(--jr-color-surface-subtle);
-}
-
-.settings-navigation .settings-navigation-link-active,
-.settings-subnavigation a[aria-current="page"] {
-  color: var(--jr-color-accent);
-  border-bottom-color: var(--jr-color-accent);
-}
-
-.settings-navigation a.settings-navigation-link-pending,
-.settings-subnavigation a.settings-navigation-link-pending {
-  color: var(--jr-color-text);
-  background: var(--jr-color-surface-subtle);
-  border-bottom-color: var(--jr-color-accent-bright);
-}
-
 .source-grid {
   display: grid;
   margin: 0;

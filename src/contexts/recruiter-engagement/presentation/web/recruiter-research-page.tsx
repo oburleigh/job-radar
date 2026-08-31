@@ -2,6 +2,7 @@ import { Button, PageHeader, TextField } from "@job-radar/design-ui";
 import { CheckCircle2, CircleAlert, CircleX, LoaderCircle, RotateCcw, Square } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Form, useNavigation, useRevalidator } from "react-router";
+import type { ShortlistResult } from "@/contexts/recruiter-engagement/application/shortlists/manage-shortlists";
 import type { ResearchObservation } from "@/contexts/recruiter-engagement/domain/observation";
 import type {
   DirectoryConflict,
@@ -16,7 +17,9 @@ import type {
 } from "@/contexts/recruiter-engagement/domain/research-run";
 import type { RecruiterResearchStartField } from "@/contexts/recruiter-engagement/presentation/web/requests/recruiter-research-request";
 import type { LocationOption } from "@/platform/http/location-option";
+import { RecruiterEvidenceHistory } from "./recruiter-evidence-history";
 import { RecruiterLocationCombobox } from "./recruiter-location-combobox";
+import { AddToShortlist, ShortlistWorkspace } from "./shortlist-workspace";
 
 import "./styles.css";
 
@@ -26,6 +29,7 @@ export type RecruiterResearchRunView = {
   readonly failures: readonly ResearchSourceFailure[];
   readonly observations: readonly ResearchObservation[];
   readonly run: ResearchRun;
+  readonly shortlists: readonly ShortlistResult[];
 };
 
 type RecruiterResearchPageProps = {
@@ -311,7 +315,7 @@ function ResearchRunResult({
   readonly isSubmitting: boolean;
   readonly research: RecruiterResearchRunView;
 }) {
-  const { coverage, directory, failures, observations, run } = research;
+  const { coverage, directory, failures, observations, run, shortlists } = research;
   const isActive = activeStatuses.has(run.status);
   const canRetry = ["cancelled", "failed", "partial"].includes(run.status);
 
@@ -416,6 +420,8 @@ function ResearchRunResult({
 
         <IdentityReviews directory={directory} runId={run.id} />
 
+        <ShortlistWorkspace isSubmitting={isSubmitting} runId={run.id} shortlists={shortlists} />
+
         <div className="recruiter-directory-heading">
           <div>
             <h3>Recruiter directory</h3>
@@ -453,7 +459,7 @@ function ResearchRunResult({
                   record={firm}
                   runId={run.id}
                 />
-                <EvidenceHistory evidence={firm.evidence} />
+                <RecruiterEvidenceHistory evidence={firm.evidence} />
                 <div className="recruiter-nested-list">
                   <h4>
                     {firm.recruiters.length} named recruiter
@@ -462,7 +468,13 @@ function ResearchRunResult({
                   {firm.recruiters.length > 0 ? (
                     <ul>
                       {firm.recruiters.map((recruiter) => (
-                        <RecruiterResult key={recruiter.id} recruiter={recruiter} runId={run.id} />
+                        <RecruiterResult
+                          isSubmitting={isSubmitting}
+                          key={recruiter.id}
+                          recruiter={recruiter}
+                          runId={run.id}
+                          shortlists={shortlists}
+                        />
                       ))}
                     </ul>
                   ) : (
@@ -495,7 +507,13 @@ function ResearchRunResult({
             </div>
             <ul className="recruiter-unassociated-list">
               {directory.unassociatedRecruiters.map((recruiter) => (
-                <RecruiterResult key={recruiter.id} recruiter={recruiter} runId={run.id} />
+                <RecruiterResult
+                  isSubmitting={isSubmitting}
+                  key={recruiter.id}
+                  recruiter={recruiter}
+                  runId={run.id}
+                  shortlists={shortlists}
+                />
               ))}
             </ul>
           </section>
@@ -506,11 +524,15 @@ function ResearchRunResult({
 }
 
 function RecruiterResult({
+  isSubmitting,
   recruiter,
   runId,
+  shortlists,
 }: {
+  readonly isSubmitting: boolean;
   readonly recruiter: RankedRecruiter;
   readonly runId: string;
+  readonly shortlists: readonly ShortlistResult[];
 }) {
   return (
     <li>
@@ -524,6 +546,12 @@ function RecruiterResult({
       <a href={recruiter.profileUrl} rel="noreferrer" target="_blank">
         Public profile
       </a>
+      <AddToShortlist
+        isSubmitting={isSubmitting}
+        recruiter={recruiter}
+        runId={runId}
+        shortlists={shortlists}
+      />
       <MatchExplanation
         reasons={recruiter.matchReasons}
         unavailable={recruiter.unavailableFactors}
@@ -534,7 +562,7 @@ function RecruiterResult({
         record={recruiter}
         runId={runId}
       />
-      <EvidenceHistory evidence={recruiter.evidence} />
+      <RecruiterEvidenceHistory evidence={recruiter.evidence} />
     </li>
   );
 }
@@ -641,50 +669,6 @@ function ConflictReview({
         );
       })}
     </div>
-  );
-}
-
-function EvidenceHistory({ evidence }: Pick<RankedFirm, "evidence">) {
-  return (
-    <details className="recruiter-evidence-history">
-      <summary>
-        {evidence.length} retained public source{evidence.length === 1 ? "" : "s"}
-      </summary>
-      <ul>
-        {evidence.map((item) => (
-          <li key={item.id}>
-            <a href={item.observation.evidence.sourceUrl} rel="noreferrer" target="_blank">
-              {item.observation.evidence.sourceUrl}
-            </a>
-            <span>{item.observation.evidence.excerpt}</span>
-            <small>
-              Observed {item.observation.evidence.observedAt} ·{" "}
-              {item.observation.evidence.confidence} confidence ·{" "}
-              {item.observation.evidence.adapterId} v{item.observation.evidence.policyVersion} ·{" "}
-              {item.runIds.length} run{item.runIds.length === 1 ? "" : "s"}
-            </small>
-            {item.observation.kind === "recruiter" && item.observation.workEmail ? (
-              <div className="recruiter-work-email-evidence">
-                <strong>Work email: {item.observation.workEmail.address}</strong>
-                <a
-                  href={item.observation.workEmail.evidence.sourceUrl}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  Public email evidence
-                </a>
-                <small>
-                  Observed {item.observation.workEmail.evidence.observedAt} ·{" "}
-                  {item.observation.workEmail.evidence.confidence} confidence ·{" "}
-                  {item.observation.workEmail.evidence.adapterId} v
-                  {item.observation.workEmail.evidence.policyVersion}
-                </small>
-              </div>
-            ) : null}
-          </li>
-        ))}
-      </ul>
-    </details>
   );
 }
 

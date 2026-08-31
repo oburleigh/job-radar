@@ -1,5 +1,5 @@
 import { redirect } from "react-router";
-
+import type { ForManagingShortlists } from "@/contexts/recruiter-engagement/application/shortlists/manage-shortlists";
 import { recruiterEngagementWeb } from "@/contexts/recruiter-engagement/composition/recruiter-engagement-web.server";
 import { parseRecruiterDirectoryRequest } from "@/contexts/recruiter-engagement/presentation/web/requests/recruiter-directory-request";
 import {
@@ -17,8 +17,22 @@ type RecruiterResearchActionDependencies = {
   readonly retryResearchRun: typeof recruiterEngagementWeb.retryResearchRun;
   readonly resolveDirectoryIdentity: typeof recruiterEngagementWeb.resolveDirectoryIdentity;
   readonly saveResearchExecutionSettings: typeof recruiterEngagementWeb.saveResearchExecutionSettings;
+  readonly shortlists: Pick<
+    ForManagingShortlists,
+    "addProspect" | "create" | "delete" | "removeProspect" | "setContactExclusion"
+  >;
   readonly startResearchRun: typeof recruiterEngagementWeb.startResearchRun;
 };
+
+const directoryIntents = new Set([
+  "resolve-identity",
+  "correct-directory-fact",
+  "create-shortlist",
+  "add-prospect",
+  "set-contact-exclusion",
+  "remove-prospect",
+  "delete-shortlist",
+]);
 
 export const recruiterResearchAction = createRecruiterResearchAction({
   assertLocalHost,
@@ -28,6 +42,7 @@ export const recruiterResearchAction = createRecruiterResearchAction({
   retryResearchRun: recruiterEngagementWeb.retryResearchRun,
   resolveDirectoryIdentity: recruiterEngagementWeb.resolveDirectoryIdentity,
   saveResearchExecutionSettings: recruiterEngagementWeb.saveResearchExecutionSettings,
+  shortlists: recruiterEngagementWeb.shortlists,
   startResearchRun: recruiterEngagementWeb.startResearchRun,
 });
 
@@ -39,6 +54,7 @@ export function createRecruiterResearchAction({
   retryResearchRun,
   resolveDirectoryIdentity,
   saveResearchExecutionSettings,
+  shortlists,
   startResearchRun,
 }: RecruiterResearchActionDependencies) {
   return async (request: Request) => {
@@ -66,24 +82,51 @@ export function createRecruiterResearchAction({
     if (typeof runId !== "string" || runId.length === 0) {
       return { error: "Select a research run first." };
     }
-    if (intent === "resolve-identity" || intent === "correct-directory-fact") {
+    if (typeof intent === "string" && directoryIntents.has(intent)) {
       const parsed = parseRecruiterDirectoryRequest(intent, formData);
       if (!parsed.ok) {
         return { error: parsed.message };
       }
       try {
-        if (parsed.command.intent === "resolve-identity") {
-          await resolveDirectoryIdentity({
-            decision: parsed.command.decision,
-            reviewId: parsed.command.reviewId,
-          });
-        } else {
-          await correctDirectoryFact({
-            field: parsed.command.field,
-            kind: parsed.command.kind,
-            recordId: parsed.command.recordId,
-            value: parsed.command.value,
-          });
+        switch (parsed.command.intent) {
+          case "resolve-identity":
+            await resolveDirectoryIdentity({
+              decision: parsed.command.decision,
+              reviewId: parsed.command.reviewId,
+            });
+            break;
+          case "correct-directory-fact":
+            await correctDirectoryFact({
+              field: parsed.command.field,
+              kind: parsed.command.kind,
+              recordId: parsed.command.recordId,
+              value: parsed.command.value,
+            });
+            break;
+          case "create-shortlist":
+            await shortlists.create({ name: parsed.command.name });
+            break;
+          case "add-prospect":
+            await shortlists.addProspect({
+              recruiterId: parsed.command.recruiterId,
+              shortlistId: parsed.command.shortlistId,
+            });
+            break;
+          case "set-contact-exclusion":
+            await shortlists.setContactExclusion({
+              contactExclusion: parsed.command.contactExclusion,
+              recruiterId: parsed.command.recruiterId,
+              shortlistId: parsed.command.shortlistId,
+            });
+            break;
+          case "remove-prospect":
+            await shortlists.removeProspect({
+              recruiterId: parsed.command.recruiterId,
+              shortlistId: parsed.command.shortlistId,
+            });
+            break;
+          case "delete-shortlist":
+            await shortlists.delete({ shortlistId: parsed.command.shortlistId });
         }
         return redirect(`/recruiter-search?run=${encodeURIComponent(runId)}`);
       } catch (error) {

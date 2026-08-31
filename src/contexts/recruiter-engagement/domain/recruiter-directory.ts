@@ -456,6 +456,13 @@ function evidenceForRecord(
   );
 }
 
+export function evidenceForRecruiter(
+  directory: RecruiterDirectory,
+  recruiterId: string,
+): readonly DirectoryEvidence[] {
+  return evidenceForRecord(directory, recruiterId, "recruiter");
+}
+
 function rankRecruiter(
   directory: RecruiterDirectory,
   recruiter: Recruiter,
@@ -682,7 +689,7 @@ function normaliseName(value: string): string {
   return value.trim().toLocaleLowerCase("en").replace(/\s+/g, " ");
 }
 
-function normaliseWorkEmail(value: string): string {
+export function normaliseWorkEmail(value: string): string {
   return value.trim().toLocaleLowerCase("en");
 }
 
@@ -709,12 +716,12 @@ function resolveRecordId(directory: RecruiterDirectory, recordId: string): strin
     : resolveRecruiterId(directory, recordId);
 }
 
-function resolveFirmId(directory: RecruiterDirectory, firmId: string): string {
+export function resolveFirmId(directory: RecruiterDirectory, firmId: string): string {
   const firm = directory.firms.find((item) => item.id === firmId);
   return firm?.mergedInto ? resolveFirmId(directory, firm.mergedInto) : firmId;
 }
 
-function resolveRecruiterId(directory: RecruiterDirectory, recruiterId: string): string {
+export function resolveRecruiterId(directory: RecruiterDirectory, recruiterId: string): string {
   const recruiter = directory.recruiters.find((item) => item.id === recruiterId);
   return recruiter?.mergedInto ? resolveRecruiterId(directory, recruiter.mergedInto) : recruiterId;
 }

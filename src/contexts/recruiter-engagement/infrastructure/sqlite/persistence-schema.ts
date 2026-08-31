@@ -6,6 +6,7 @@ import type {
   ResearchRun,
   ResearchSourceFailure,
 } from "@/contexts/recruiter-engagement/domain/research-run";
+import type { Shortlist } from "@/contexts/recruiter-engagement/domain/shortlist";
 
 const date = z.date();
 const observedAt = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -252,6 +253,22 @@ const recruiterDirectory = z
     recruiters: z.array(directoryRecruiter),
   })
   .strict();
+const shortlist = z
+  .object({
+    createdAt: z.coerce.date(),
+    id: z.string().min(1),
+    name: z.string().min(1),
+    prospects: z.array(
+      z
+        .object({
+          addedAt: z.coerce.date(),
+          contactExclusion: z.enum(["none", "suppressed", "do-not-contact"]),
+          recruiterId: z.string().min(1),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
 
 export function parsePersistedResearchRun(value: unknown): ResearchRun {
   return parsePersisted(researchRun, value, "research run");
@@ -267,6 +284,10 @@ export function parsePersistedSourceFailure(value: unknown): ResearchSourceFailu
 
 export function parsePersistedRecruiterDirectory(value: unknown): RecruiterDirectory {
   return parsePersisted(recruiterDirectory, value, "directory");
+}
+
+export function parsePersistedShortlist(value: unknown): Shortlist {
+  return parsePersisted(shortlist, value, "Shortlist");
 }
 
 function parsePersisted<T>(schema: z.ZodType<T>, value: unknown, label: string): T {

@@ -11,6 +11,7 @@ import { createResearchRunRetrier } from "@/contexts/recruiter-engagement/applic
 import { createResearchRunStarter } from "@/contexts/recruiter-engagement/application/research-runs/start-research-run";
 import { createSaveDirectoryMatchWeights } from "@/contexts/recruiter-engagement/application/research-settings/save-directory-match-weights";
 import { createSaveResearchExecutionSettings } from "@/contexts/recruiter-engagement/application/research-settings/save-execution-settings";
+import { createShortlistManagement } from "@/contexts/recruiter-engagement/application/shortlists/manage-shortlists";
 import { rankRecruiterDirectory } from "@/contexts/recruiter-engagement/domain/recruiter-directory";
 import { createAfterResponseResearchRunScheduler } from "@/contexts/recruiter-engagement/infrastructure/background/after-response-research-run-scheduler";
 import { createDeterministicStagedResearchSource } from "@/contexts/recruiter-engagement/infrastructure/deterministic/deterministic-staged-research-source";
@@ -41,10 +42,18 @@ import {
 } from "@/contexts/recruiter-engagement/infrastructure/sqlite/recruiter-research-settings";
 import { createSqliteRecruiterDirectoryStore } from "@/contexts/recruiter-engagement/infrastructure/sqlite/sqlite-recruiter-directory-store";
 import { createSqliteResearchRunStore } from "@/contexts/recruiter-engagement/infrastructure/sqlite/sqlite-research-run-store";
+import { createSqliteShortlistStore } from "@/contexts/recruiter-engagement/infrastructure/sqlite/sqlite-shortlist-store";
 
 const runs = createSqliteResearchRunStore(recruiterResearchDatabase);
+const directoryStore = createSqliteRecruiterDirectoryStore(recruiterResearchDatabase);
 const directory = createRecruiterDirectoryMaintenance({
-  store: createSqliteRecruiterDirectoryStore(recruiterResearchDatabase),
+  store: directoryStore,
+});
+const shortlists = createShortlistManagement({
+  createId: randomUUID,
+  directory: directoryStore,
+  now: () => new Date(),
+  shortlists: createSqliteShortlistStore(recruiterResearchDatabase),
 });
 bootstrapRecruiterResearch(recruiterResearchDatabase);
 bootstrapLinkedInMcpSettings(recruiterResearchDatabase);
@@ -132,6 +141,7 @@ export const recruiterEngagementWeb = {
         brief: research.run.brief,
         weights: currentSettings().directoryMatchWeights,
       }),
+      shortlists: await shortlists.list(),
     };
   },
   listResearchRuns: activity.listResearchRuns,
@@ -180,6 +190,7 @@ export const recruiterEngagementWeb = {
     );
     return { status: "saved" as const };
   },
+  shortlists,
   startResearchRun(
     command: Parameters<ReturnType<typeof createResearchRunStarter>["startResearchRun"]>[0],
   ) {

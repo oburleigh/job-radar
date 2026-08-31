@@ -10,6 +10,7 @@ import {
   SectionHeader,
   Skeleton,
   Switch,
+  TabNavigation,
   TextField,
 } from "./index";
 
@@ -129,5 +130,17 @@ describe("generic UI public contract", () => {
     expect(html).toContain('class="jr-section-header-trailing"');
     expect(html).toContain("15 active");
     expect(html).toContain("Refresh");
+  });
+
+  it("owns the shared tab-navigation structure and spacing level", () => {
+    const html = renderToStaticMarkup(
+      <TabNavigation label="Settings" level="secondary">
+        <a href="/settings/adapters">Adapters</a>
+      </TabNavigation>,
+    );
+
+    expect(html).toContain('<nav aria-label="Settings" class="jr-tab-navigation"');
+    expect(html).toContain('data-level="secondary"');
+    expect(html).toContain("Adapters");
   });
 });
