@@ -89,6 +89,11 @@
   border-radius: 2px;
 }
 
+.recruiter-textarea-label textarea[aria-invalid="true"] {
+  background: var(--jr-color-danger-subtle);
+  border-color: var(--jr-color-danger);
+}
+
 .recruiter-textarea-label:first-of-type {
   grid-column: 1 / -1;
 }
@@ -131,8 +136,20 @@
 
 .recruiter-execution-fields {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
   gap: var(--jr-space-3);
+}
+
+.recruiter-provider-configuration {
+  margin: 0;
+  color: var(--jr-color-danger);
+  font-size: var(--jr-font-size-sm);
+}
+
+.recruiter-provider-configuration a {
+  font-weight: var(--jr-font-weight-bold);
+  text-decoration: underline;
 }
 
 .recruiter-textarea-label small,

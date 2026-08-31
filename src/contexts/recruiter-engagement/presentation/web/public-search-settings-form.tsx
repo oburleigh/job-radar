@@ -1,4 +1,4 @@
-import { Button } from "@job-radar/design-ui";
+import { Button, SelectField } from "@job-radar/design-ui";
 import { Save } from "lucide-react";
 import { useFetcher } from "react-router";
 
@@ -27,6 +27,10 @@ export function PublicSearchSettingsForm({
 }) {
   const fetcher = useFetcher<SettingsActionState>();
   const pending = fetcher.state !== "idle";
+  const providerError =
+    fetcher.data?.ok === false && fetcher.data.field === "providerName"
+      ? fetcher.data.message
+      : undefined;
   return (
     <fetcher.Form action={action} className="profile-form" method="post">
       <input name="intent" type="hidden" value="save-public-search-settings" />
@@ -41,17 +45,21 @@ export function PublicSearchSettingsForm({
           </div>
         </div>
         <div className="form-grid form-grid-three">
-          <label>
-            <span>Search provider</span>
-            <select defaultValue={settings.providerName} name="providerName" required>
-              {providers.map((provider) => (
-                <option disabled={!provider.configured} key={provider.name} value={provider.name}>
-                  {provider.label}
-                  {provider.configured ? "" : " (not configured)"}
-                </option>
-              ))}
-            </select>
-          </label>
+          <SelectField
+            defaultValue={settings.providerName}
+            {...(providerError ? { error: providerError } : {})}
+            id="recruiter-settings-search-provider"
+            label="Search provider"
+            name="providerName"
+            required
+          >
+            {providers.map((provider) => (
+              <option disabled={!provider.configured} key={provider.name} value={provider.name}>
+                {provider.label}
+                {provider.configured ? "" : " (not configured)"}
+              </option>
+            ))}
+          </SelectField>
           <NumberField
             label="Results per request"
             name="resultsPerQuery"

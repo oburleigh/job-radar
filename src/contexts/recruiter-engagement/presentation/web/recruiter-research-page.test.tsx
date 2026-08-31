@@ -43,6 +43,28 @@ describe("recruiter research page", () => {
     expect(html).toContain("No account-linked source is connected");
   });
 
+  it("directs the user to configuration instead of submitting an unavailable provider", () => {
+    const router = createMemoryRouter([
+      {
+        path: "/",
+        element: (
+          <RecruiterResearchPage
+            defaultTargets={{ firmTarget: 10, recruiterTarget: 20 }}
+            providers={[{ configured: false, label: "Brave Search", name: "brave" }]}
+            selectedProvider="brave"
+          />
+        ),
+      },
+    ]);
+
+    const html = renderToStaticMarkup(<RouterProvider router={router} />);
+
+    expect(html).toContain("Configure a search provider first");
+    expect(html).toContain('href="/settings/opportunities"');
+    expect(html).toContain('disabled=""');
+    expect(html).toContain("Start research");
+  });
+
   it("shows the canonical directory with retained evidence and match reasons", () => {
     const brief = testSearchBrief({
       description: "Software engineering",

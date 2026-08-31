@@ -73,6 +73,7 @@
 
   .jr-button:focus-visible,
   .jr-icon-button:focus-visible,
+  .jr-select-field:focus-visible,
   .jr-switch:focus-visible,
   .jr-text-field:focus-visible {
     outline: var(--jr-border-width-strong) solid var(--jr-color-focus-ring);
@@ -145,6 +146,35 @@
   }
 
   .jr-text-field[aria-invalid="true"] {
+    border-color: var(--jr-color-danger);
+  }
+
+  .jr-select-field-group .jr-field-label {
+    font-family: var(--jr-font-family-mono);
+    font-size: var(--jr-font-size-label);
+  }
+
+  .jr-select-field {
+    width: 100%;
+    height: var(--jr-control-height-md);
+    padding-block: var(--jr-space-0);
+    padding-inline: var(--jr-space-3) var(--jr-space-6);
+    color: var(--jr-color-text);
+    background: var(--jr-color-surface-subtle);
+    border: var(--jr-border-width) solid var(--jr-color-border);
+    border-radius: var(--jr-radius-sm);
+    font-family: var(--jr-font-family-ui);
+    font-size: var(--jr-font-size-sm);
+  }
+
+  .jr-select-field:disabled {
+    color: var(--jr-color-disabled-text);
+    background: var(--jr-color-disabled-surface);
+    cursor: not-allowed;
+  }
+
+  .jr-select-field[aria-invalid="true"] {
+    background: var(--jr-color-danger-subtle);
     border-color: var(--jr-color-danger);
   }
 

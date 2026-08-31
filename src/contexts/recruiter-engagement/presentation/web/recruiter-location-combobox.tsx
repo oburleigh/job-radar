@@ -26,6 +26,7 @@ export function RecruiterLocationCombobox({
       id="recruiter-target-locations"
       {...(initialOptions ? { initialOptions } : {})}
       name={name}
+      label="Target locations (required)"
       onChange={onChange}
       required
       values={values}

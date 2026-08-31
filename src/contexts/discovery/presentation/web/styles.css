@@ -336,28 +336,6 @@
   margin-bottom: 0;
 }
 
-.run-control-field > span {
-  display: block;
-  margin: 0 0 5px;
-  color: var(--jr-color-text-muted);
-  font-family: var(--jr-font-family-mono);
-  font-size: var(--jr-font-size-label);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.run-control-field select {
-  width: 100%;
-  height: 44px;
-  padding: 0 30px 0 10px;
-  color: var(--jr-color-text);
-  font-size: var(--jr-font-size-sm);
-  background: var(--jr-color-surface-subtle);
-  border: 1px solid var(--jr-color-border);
-  border-radius: 2px;
-}
-
 .run-scope-summary {
   display: flex;
   grid-column: 1 / -1;

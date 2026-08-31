@@ -1,4 +1,4 @@
-import { Button } from "@job-radar/design-ui";
+import { Button, SelectField } from "@job-radar/design-ui";
 import { Play } from "lucide-react";
 import { useState, useTransition } from "react";
 import { Link, useLocation, useNavigate, useNavigation, useSearchParams } from "react-router";
@@ -79,36 +79,34 @@ export function RunControls({
 
   return (
     <section className="run-controls" aria-label="Discovery controls">
-      <label className="run-control-field">
-        <span>Search profile</span>
-        <select
-          value={String(profileId)}
-          onChange={(event) => selectContext("profile", event.target.value)}
+      <SelectField
+        disabled={isPending || isSelectionPending}
+        id="opportunity-search-profile"
+        label="Search profile"
+        onChange={(event) => selectContext("profile", event.target.value)}
+        value={String(profileId)}
+      >
+        {profiles.map((profile) => (
+          <option key={profile.id} value={profile.id}>
+            {profile.name}
+          </option>
+        ))}
+      </SelectField>
+      {providers.length > 0 ? (
+        <SelectField
           disabled={isPending || isSelectionPending}
+          id="opportunity-search-provider"
+          label="Web search provider"
+          onChange={(event) => selectContext("provider", event.target.value)}
+          value={provider}
         >
-          {profiles.map((profile) => (
-            <option key={profile.id} value={profile.id}>
-              {profile.name}
+          {providers.map((item) => (
+            <option key={item.name} value={item.name}>
+              {item.label}
+              {item.configured ? "" : " (unavailable)"}
             </option>
           ))}
-        </select>
-      </label>
-      {providers.length > 0 ? (
-        <label className="run-control-field">
-          <span>Web search provider</span>
-          <select
-            value={provider}
-            onChange={(event) => selectContext("provider", event.target.value)}
-            disabled={isPending || isSelectionPending}
-          >
-            {providers.map((item) => (
-              <option key={item.name} value={item.name}>
-                {item.label}
-                {item.configured ? "" : " (unavailable)"}
-              </option>
-            ))}
-          </select>
-        </label>
+        </SelectField>
       ) : null}
       <Button
         busy={isPending || isSelectionPending}

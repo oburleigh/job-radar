@@ -28,6 +28,51 @@ test("shows guidance without applying research criteria to a new run", async ({ 
   await expect(page.getByLabel("Technology specialisms")).toHaveCount(0);
 });
 
+test("identifies and focuses the exact field that prevents research from starting", async ({
+  page,
+}) => {
+  await page.goto("/recruiter-search");
+
+  await page.getByRole("button", { name: "Start research" }).click();
+
+  const invalidField = page.getByLabel("Target industries");
+  await expect(invalidField).toBeFocused();
+  await expect(invalidField).toHaveAttribute("aria-invalid", "true");
+  await expect(page.getByRole("alert")).toHaveText(
+    "Could not start research. Target industries are required.",
+  );
+  await expect(page.getByText("Target industries are required.", { exact: true })).toHaveCount(1);
+  await expect
+    .poll(() =>
+      invalidField.evaluate((element) => ({
+        borderColor: getComputedStyle(element).borderColor,
+        color: getComputedStyle(element).color,
+      })),
+    )
+    .not.toEqual(
+      await page.getByLabel("Specialisms").evaluate((element) => ({
+        borderColor: getComputedStyle(element).borderColor,
+        color: getComputedStyle(element).color,
+      })),
+    );
+  await page.screenshot({
+    fullPage: true,
+    path: "test-results/recruiter-validation-error-desktop.png",
+  });
+});
+
+test("presents the recruiter provider with the same control contract as Opportunities", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const opportunitiesProvider = await controlPresentation(page.getByLabel("Web search provider"));
+
+  await page.goto("/recruiter-search");
+  const recruiterProvider = await controlPresentation(page.getByLabel("Search provider"));
+
+  expect(recruiterProvider).toEqual(opportunitiesProvider);
+});
+
 test("starts recruiter research from the browser and renders firms before recruiters complete", async ({
   page,
 }) => {
@@ -41,7 +86,10 @@ test("starts recruiter research from the browser and renders firms before recrui
   await page.getByLabel("Target industries").fill("Financial services, Health technology");
   await page.getByLabel("Recruiters to find").fill("0");
   await page.getByRole("button", { name: "Start research" }).click();
-  await expect(page.getByRole("alert")).toContainText("highlighted field");
+  await expect(page.getByRole("alert")).toHaveText(
+    "Could not start research. Recruiters to find must be a positive integer.",
+  );
+  await expect(page.getByLabel("Recruiters to find")).toBeFocused();
   await expect(page.getByLabel("Recruiters to find")).toHaveAttribute("aria-invalid", "true");
   await expect(page).toHaveURL(/\/recruiter-search$/);
 
@@ -89,13 +137,31 @@ test("starts recruiter research from the browser and renders firms before recrui
   await expect(page.getByRole("cell", { name: "Research Run", exact: true })).toBeVisible();
 });
 
+async function controlPresentation(locator: import("@playwright/test").Locator) {
+  return locator.evaluate((element) => {
+    const styles = getComputedStyle(element);
+    const bounds = element.getBoundingClientRect();
+    return {
+      backgroundColor: styles.backgroundColor,
+      borderRadius: styles.borderRadius,
+      color: styles.color,
+      fontFamily: styles.fontFamily,
+      fontSize: styles.fontSize,
+      height: bounds.height,
+    };
+  });
+}
+
 test("shows each invalid structured criterion on its own control", async ({ page }) => {
   await page.goto("/recruiter-search");
   await page.getByLabel("Specialisms").fill("Executive search");
   await page.getByLabel("Target industries").fill("Financial services");
   await page.getByRole("button", { name: "Start research" }).click();
 
-  await expect(page.getByRole("alert")).toContainText("highlighted field");
+  await expect(page.getByRole("alert")).toHaveText(
+    "Could not start research. Choose at least one target location from the catalogue.",
+  );
+  await expect(page.getByLabel("Target locations")).toBeFocused();
   await expect(page.getByLabel("Target locations")).toHaveAttribute("aria-invalid", "true");
   await expect(page.getByLabel("Recruiters to find")).not.toHaveAttribute("aria-invalid", "true");
   await expect(
@@ -116,7 +182,10 @@ test("keeps edited recruiter research fields after a recoverable validation reva
   await page.getByLabel("Recruiters to find").fill("0");
   await page.getByRole("button", { name: "Start research" }).click();
 
-  await expect(page.getByRole("alert")).toContainText("highlighted field");
+  await expect(page.getByRole("alert")).toHaveText(
+    "Could not start research. Recruiters to find must be a positive integer.",
+  );
+  await expect(page.getByLabel("Recruiters to find")).toBeFocused();
   await expect(page.getByLabel("Recruiters to find")).toHaveAttribute("aria-invalid", "true");
   await expect(brief).toHaveValue("Edited applied AI leadership brief");
   await expect(
@@ -350,7 +419,7 @@ test("uses the shared country catalogue in the location autocomplete and keeps c
   const [pageTitle, briefHeading, briefLabel] = await Promise.all([
     page.getByRole("heading", { level: 1, name: "Recruiter Search" }).boundingBox(),
     page.getByRole("heading", { level: 2, name: "Set the market focus" }).boundingBox(),
-    page.getByText("Search brief", { exact: true }).boundingBox(),
+    page.getByText("Search brief (optional)", { exact: true }).boundingBox(),
   ]);
   if (!pageTitle || !briefHeading || !briefLabel) {
     throw new Error("Recruiter research content edges must be measurable.");

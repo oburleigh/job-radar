@@ -8,6 +8,7 @@ import {
   Modal,
   PageHeader,
   SectionHeader,
+  SelectField,
   Skeleton,
   Switch,
   TabNavigation,
@@ -59,6 +60,26 @@ describe("generic UI public contract", () => {
     expect(html).toContain('id="profile-name"');
     expect(html).toContain('aria-invalid="true"');
     expect(html).toContain('aria-describedby="profile-name-hint profile-name-error"');
+  });
+
+  it("connects a native select to the shared field, hint, and error contract", () => {
+    const html = renderToStaticMarkup(
+      <SelectField
+        error="Choose an available provider"
+        hint="Used for the next search"
+        id="search-provider"
+        label="Search provider"
+        required
+      >
+        <option value="brave">Brave Search</option>
+      </SelectField>,
+    );
+
+    expect(html).toContain('class="jr-field jr-select-field-group"');
+    expect(html).toContain('class="jr-select-field"');
+    expect(html).toContain('aria-invalid="true"');
+    expect(html).toContain('aria-describedby="search-provider-hint search-provider-error"');
+    expect(html).toContain("Search provider (required)");
   });
 
   it("exposes switch state through accessible control semantics", () => {

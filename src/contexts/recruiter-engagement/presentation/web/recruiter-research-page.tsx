@@ -1,7 +1,7 @@
-import { Button, PageHeader, TextField } from "@job-radar/design-ui";
+import { Button, PageHeader, SelectField, TextField } from "@job-radar/design-ui";
 import { CheckCircle2, CircleAlert, CircleX, LoaderCircle, RotateCcw, Square } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Form, useNavigation, useRevalidator } from "react-router";
+import { Form, Link, useNavigation, useRevalidator } from "react-router";
 import type { ShortlistResult } from "@/contexts/recruiter-engagement/application/shortlists/manage-shortlists";
 import type { ResearchObservation } from "@/contexts/recruiter-engagement/domain/observation";
 import type {
@@ -49,6 +49,15 @@ type RecruiterResearchPageProps = {
 };
 
 const activeStatuses = new Set<ResearchRun["status"]>(["pending", "running", "interrupted"]);
+const researchFieldControlIds: Record<RecruiterResearchStartField, string> = {
+  brief: "recruiter-brief",
+  firmTarget: "firm-target",
+  industries: "recruiter-industries",
+  providerName: "recruiter-search-provider",
+  recruiterTarget: "recruiter-target",
+  specialisms: "recruiter-specialisms",
+  targetLocations: "recruiter-target-locations",
+};
 
 export function RecruiterResearchPage({
   actionError,
@@ -75,9 +84,14 @@ export function RecruiterResearchPage({
   const loadedBriefKey = run?.id ?? "new-research";
   const previousLoadedBriefKey = useRef(loadedBriefKey);
   const [briefDescription, setBriefDescription] = useState(loadedBriefDescription);
+  const [providerName, setProviderName] = useState(() =>
+    availableProviderName(providers, selectedProvider, Boolean(research)),
+  );
   const [targetLocations, setTargetLocations] = useState<readonly string[]>(
     loadedTargetLocations === "" ? [] : loadedTargetLocations.split("\n"),
   );
+  const providerIsConfigured =
+    providers.find((provider) => provider.name === providerName)?.configured === true;
 
   useEffect(() => {
     if (!isActive) {
@@ -93,8 +107,23 @@ export function RecruiterResearchPage({
     }
     previousLoadedBriefKey.current = loadedBriefKey;
     setBriefDescription(loadedBriefDescription);
+    setProviderName(availableProviderName(providers, selectedProvider, Boolean(research)));
     setTargetLocations(loadedTargetLocations === "" ? [] : loadedTargetLocations.split("\n"));
-  }, [loadedBriefDescription, loadedBriefKey, loadedTargetLocations]);
+  }, [
+    loadedBriefDescription,
+    loadedBriefKey,
+    loadedTargetLocations,
+    providers,
+    research,
+    selectedProvider,
+  ]);
+
+  useEffect(() => {
+    if (!actionError?.field) {
+      return;
+    }
+    document.getElementById(researchFieldControlIds[actionError.field])?.focus();
+  }, [actionError]);
 
   return (
     <div className="page recruiter-research-page">
@@ -120,7 +149,7 @@ export function RecruiterResearchPage({
         >
           <input name="intent" type="hidden" value="start" />
           <label className="recruiter-textarea-label" htmlFor="recruiter-brief">
-            <span>Search brief</span>
+            <span>Search brief (optional)</span>
             <textarea
               value={briefDescription}
               disabled={isSubmitting || isActive}
@@ -157,7 +186,7 @@ export function RecruiterResearchPage({
               hint="Cannot exceed the recruiter target."
               id="firm-target"
               inputMode="numeric"
-              label="Firms to find"
+              label="Firms to find (required)"
               min="1"
               name="firmTarget"
               required
@@ -170,7 +199,7 @@ export function RecruiterResearchPage({
               hint="Positive whole numbers with no fixed maximum."
               id="recruiter-target"
               inputMode="numeric"
-              label="Recruiters to find"
+              label="Recruiters to find (required)"
               min="1"
               name="recruiterTarget"
               required
@@ -178,7 +207,7 @@ export function RecruiterResearchPage({
             />
           </div>
           <label className="recruiter-textarea-label" htmlFor="recruiter-specialisms">
-            <span>Specialisms</span>
+            <span>Specialisms (required)</span>
             <textarea
               defaultValue={run?.brief.criteria.specialisms.join(", ") ?? ""}
               disabled={isSubmitting || isActive}
@@ -198,7 +227,7 @@ export function RecruiterResearchPage({
             ) : null}
           </label>
           <label className="recruiter-textarea-label" htmlFor="recruiter-industries">
-            <span>Target industries</span>
+            <span>Target industries (required)</span>
             <textarea
               defaultValue={run?.brief.criteria.industries.join(", ") ?? ""}
               disabled={isSubmitting || isActive}
@@ -226,37 +255,41 @@ export function RecruiterResearchPage({
               </p>
             </div>
             <div className="recruiter-execution-fields">
-              <label htmlFor="recruiter-search-provider">
-                <span>Search provider</span>
-                <select
-                  aria-invalid={providerNameError ? true : undefined}
-                  defaultValue={selectedProvider}
-                  disabled={isSubmitting || isActive}
-                  id="recruiter-search-provider"
-                  name="providerName"
-                  required
-                >
-                  {providers.map((provider) => (
-                    <option
-                      disabled={!provider.configured}
-                      key={provider.name}
-                      value={provider.name}
-                    >
-                      {provider.label}
-                      {provider.configured ? "" : " (not configured)"}
-                    </option>
-                  ))}
-                </select>
-                {providerNameError ? (
-                  <small className="jr-field-error">{providerNameError}</small>
+              <SelectField
+                disabled={isSubmitting || isActive}
+                {...(providerNameError ? { error: providerNameError } : {})}
+                hint="This provider supplies public firm and recruiter profile results for the run."
+                id="recruiter-search-provider"
+                label="Search provider"
+                name="providerName"
+                onChange={(event) => setProviderName(event.target.value)}
+                required
+                value={providerName}
+              >
+                {!providerIsConfigured ? (
+                  <option disabled value="">
+                    Configure a search provider first
+                  </option>
                 ) : null}
-              </label>
+                {providers.map((provider) => (
+                  <option disabled={!provider.configured} key={provider.name} value={provider.name}>
+                    {provider.label}
+                    {provider.configured ? "" : " (not configured)"}
+                  </option>
+                ))}
+              </SelectField>
+              {!providerIsConfigured && !isActive ? (
+                <p className="recruiter-provider-configuration">
+                  <Link to="/settings/opportunities">Configure a search provider</Link> before
+                  starting Recruiter Search.
+                </p>
+              ) : null}
             </div>
           </section>
           <div className="recruiter-brief-actions">
             <Button
               busy={isSubmitting}
-              disabled={isSubmitting || isActive}
+              disabled={isSubmitting || isActive || !providerIsConfigured}
               type="submit"
               variant="primary"
             >
@@ -277,9 +310,7 @@ export function RecruiterResearchPage({
 
       {actionError ? (
         <p className="recruiter-action-error" role="alert">
-          {actionError.field
-            ? "Please correct the highlighted field before starting research."
-            : actionError.message}
+          Could not start research. {actionError.message}
         </p>
       ) : null}
 
@@ -297,6 +328,21 @@ function fieldError(
   field: RecruiterResearchStartField,
 ): string | undefined {
   return actionError?.field === field ? actionError.message : undefined;
+}
+
+function availableProviderName(
+  providers: RecruiterResearchPageProps["providers"],
+  selectedProvider: string,
+  retainSelectedProvider: boolean,
+): string {
+  const selected = providers.find((provider) => provider.name === selectedProvider);
+  if (retainSelectedProvider && selected) {
+    return selected.name;
+  }
+  if (selected?.configured) {
+    return selected.name;
+  }
+  return providers.find((provider) => provider.configured)?.name ?? "";
 }
 
 function textareaAccessibility(id: string, error: string | undefined, hasHint: boolean) {
