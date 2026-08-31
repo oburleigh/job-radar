@@ -42,6 +42,40 @@ describe("SQLite research run store", () => {
     await expect(store.listAll()).resolves.toEqual([newer, older]);
   });
 
+  it("records independent Source failures for the same run stage", async () => {
+    const sqlite = new Database(":memory:");
+    sqlite.pragma("foreign_keys = ON");
+    const database = drizzle(sqlite);
+    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    const store = createSqliteResearchRunStore(database);
+    const run = createResearchRun({
+      id: "run-source-failures",
+      brief: testSearchBrief({ recruiterTarget: 1 }),
+      policy: testAdapterPolicy,
+      sourcePlan: testSourcePlan,
+      startedAt: new Date("2026-08-31T10:00:00.000Z"),
+    });
+    await store.create(run);
+
+    await store.recordSourceFailure(run.id, {
+      adapterId: "source-one",
+      message: "First source failed.",
+      recordedAt: new Date("2026-08-31T10:01:00.000Z"),
+      stage: "firms",
+    });
+    await store.recordSourceFailure(run.id, {
+      adapterId: "source-two",
+      message: "Second source failed.",
+      recordedAt: new Date("2026-08-31T10:02:00.000Z"),
+      stage: "firms",
+    });
+
+    await expect(store.failuresFor(run.id)).resolves.toEqual([
+      expect.objectContaining({ adapterId: "source-one", message: "First source failed." }),
+      expect.objectContaining({ adapterId: "source-two", message: "Second source failed." }),
+    ]);
+  });
+
   it("resumes at the durable checkpoint without duplicating an earlier firm observation", async () => {
     const sqlite = new Database(":memory:");
     sqlite.pragma("foreign_keys = ON");
@@ -88,7 +122,7 @@ describe("SQLite research run store", () => {
           name: "Amina Khan",
           title: "Technology Recruiter",
           companyName: "Firm One",
-          linkedInUrl: "https://www.linkedin.com/in/amina-khan",
+          profileUrl: "https://www.linkedin.com/in/amina-khan",
           evidence: testEvidence("https://www.linkedin.com/in/amina-khan"),
         },
       ],

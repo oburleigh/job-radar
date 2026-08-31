@@ -85,6 +85,20 @@
       "when": 1788103252852,
       "tag": "0011_loving_ravenous",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1788161842506,
+      "tag": "0012_soft_valkyrie",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1788162744790,
+      "tag": "0013_broken_magdalene",
+      "breakpoints": true
     }
   ]
 }

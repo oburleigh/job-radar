@@ -67,7 +67,7 @@ describe("local Codex research source", () => {
                   name: "Amina Khan",
                   title: "Technology Recruiter",
                   companyName: "Firm One",
-                  linkedInUrl: "https://www.linkedin.com/in/amina-khan",
+                  profileUrl: "https://www.linkedin.com/in/amina-khan",
                   evidence: {
                     adapterId: "local-codex-cli-web-search-v1",
                     confidence: "high",
@@ -551,19 +551,19 @@ function sampleFirm(companyName: string) {
   };
 }
 
-function sampleRecruiter(name: string, companyName: string, linkedInUrl: string) {
+function sampleRecruiter(name: string, companyName: string, profileUrl: string) {
   return {
     name,
     title: "Technology Recruiter",
     companyName,
-    linkedInUrl,
+    profileUrl,
     evidence: {
       adapterId: "local-codex-cli-web-search-v1",
       confidence: "high",
       excerpt: `${name} is a technology recruiter.`,
       observedAt: "2026-08-27",
       policyVersion: "1",
-      sourceUrl: linkedInUrl,
+      sourceUrl: profileUrl,
     },
   };
 }

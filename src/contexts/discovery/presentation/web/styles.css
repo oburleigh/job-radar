@@ -469,7 +469,6 @@ table td a:hover {
   border-color: var(--jr-color-danger);
 }
 
-.catalogue-heading,
 .section-heading,
 .results-heading {
   display: flex;
@@ -481,7 +480,6 @@ table td a:hover {
   border-bottom: 2px solid var(--jr-color-text);
 }
 
-.catalogue-heading h2,
 .section-heading h2,
 .results-heading h2 {
   margin: 0;
@@ -1062,6 +1060,12 @@ table td a:hover {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.settings-capabilities {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
 .settings-number-grid {
   grid-template-columns: repeat(5, minmax(115px, 1fr));
 }
@@ -1428,23 +1432,6 @@ table td a:hover {
   align-items: center;
   padding-inline: var(--jr-space-6);
   border-top: 1px solid var(--jr-color-border);
-}
-
-.source-section > .section-heading {
-  padding-right: var(--jr-space-6);
-  padding-left: var(--jr-space-6);
-}
-
-.source-heading-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--jr-space-3);
-}
-
-.source-heading-actions .jr-icon-button {
-  color: var(--jr-color-text-muted);
-  background: var(--jr-color-surface);
-  border-color: var(--jr-color-border-strong);
 }
 
 .source-card:first-child {
@@ -2296,7 +2283,6 @@ td a {
     justify-content: flex-start;
   }
 
-  .catalogue-heading,
   .section-heading,
   .results-heading {
     align-items: flex-start;
@@ -2422,7 +2408,6 @@ td a {
     grid-column: 3;
   }
 
-  .catalogue-heading,
   .section-heading,
   .results-heading {
     flex-direction: column;

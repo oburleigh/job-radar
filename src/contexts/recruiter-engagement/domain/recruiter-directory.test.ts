@@ -22,7 +22,7 @@ describe("recruiter directory", () => {
     const first = reconcileRecruiterDirectory(createEmptyRecruiterDirectory(), {
       observations: [
         firm({ websiteUrl: "https://www.acme-search.ae/team" }),
-        recruiter({ linkedInUrl: "https://www.linkedin.com/in/amina-khan/" }),
+        recruiter({ profileUrl: "https://www.linkedin.com/in/amina-khan/" }),
       ],
       recordedAt: new Date("2026-08-28T10:00:00.000Z"),
       runId: "run-1",
@@ -30,7 +30,7 @@ describe("recruiter directory", () => {
     const refreshed = reconcileRecruiterDirectory(first, {
       observations: [
         firm({ websiteUrl: "https://acme-search.ae/consultants" }),
-        recruiter({ linkedInUrl: "https://www.linkedin.com/in/amina-khan?trk=public" }),
+        recruiter({ profileUrl: "https://www.linkedin.com/in/amina-khan?trk=public" }),
       ],
       recordedAt: new Date("2026-08-28T11:00:00.000Z"),
       runId: "run-2",
@@ -172,7 +172,7 @@ describe("recruiter directory", () => {
         recruiter(),
         recruiter({
           evidence: evidence("linkedin.com/in/amina-khan-alt"),
-          linkedInUrl: "https://www.linkedin.com/in/amina-khan-alt",
+          profileUrl: "https://www.linkedin.com/in/amina-khan-alt",
         }),
       ],
       recordedAt: new Date("2026-08-28T10:00:00.000Z"),
@@ -182,7 +182,7 @@ describe("recruiter directory", () => {
 
     expect(review).toMatchObject({
       kind: "recruiter",
-      reason: "The recruiter name and firm match but the public LinkedIn profiles differ.",
+      reason: "The recruiter name and firm match but the Public profiles differ.",
       status: "pending",
     });
     const merged = resolveIdentityReview(directory, {
@@ -358,7 +358,7 @@ describe("recruiter directory", () => {
         recruiter(),
         recruiter({
           evidence: evidence("linkedin.com/in/zara-ali"),
-          linkedInUrl: "https://linkedin.com/in/zara-ali",
+          profileUrl: "https://linkedin.com/in/zara-ali",
           name: "Zara Ali",
         }),
       ],
@@ -462,7 +462,7 @@ describe("recruiter directory", () => {
         }),
         recruiter({
           evidence: evidence("WWW.LINKEDIN.COM/in/Amina-Khan/"),
-          linkedInUrl: "https://WWW.LINKEDIN.COM/in/Amina-Khan/",
+          profileUrl: "https://WWW.LINKEDIN.COM/in/Amina-Khan/",
         }),
       ],
       recordedAt: new Date("2026-08-28T10:00:00.000Z"),
@@ -478,7 +478,7 @@ describe("recruiter directory", () => {
         }),
         recruiter({
           evidence: evidence("linkedin.com/in/amina-khan"),
-          linkedInUrl: "https://linkedin.com/in/amina-khan?trk=public",
+          profileUrl: "https://linkedin.com/in/amina-khan?trk=public",
         }),
         firm({ companyName: "Other", websiteUrl: "https://mywww.example" }),
       ],
@@ -505,7 +505,7 @@ describe("recruiter directory", () => {
         recruiter({
           companyName: "Different Search",
           evidence: evidence("linkedin.com/in/amina-khan-different"),
-          linkedInUrl: "https://linkedin.com/in/amina-khan-different",
+          profileUrl: "https://linkedin.com/in/amina-khan-different",
         }),
       ],
       recordedAt: new Date("2026-08-28T10:00:00.000Z"),
@@ -545,24 +545,24 @@ describe("recruiter directory", () => {
         firm({ companyName: "Beta Search", websiteUrl: "https://beta.example" }),
         recruiter({
           evidence: evidence("linkedin.com/in/search-10"),
-          linkedInUrl: "https://linkedin.com/in/search-10",
+          profileUrl: "https://linkedin.com/in/search-10",
           name: "Search 10",
         }),
         recruiter({
           evidence: evidence("linkedin.com/in/search-2"),
-          linkedInUrl: "https://linkedin.com/in/search-2",
+          profileUrl: "https://linkedin.com/in/search-2",
           name: "Search 2",
         }),
         recruiter({
           companyName: "Beta Search",
           evidence: evidence("linkedin.com/in/beta"),
-          linkedInUrl: "https://linkedin.com/in/beta",
+          profileUrl: "https://linkedin.com/in/beta",
           name: "Beta Recruiter",
         }),
         recruiter({
           companyName: "Unobserved Search",
           evidence: evidence("linkedin.com/in/unlinked"),
-          linkedInUrl: "https://linkedin.com/in/unlinked",
+          profileUrl: "https://linkedin.com/in/unlinked",
           name: "Unlinked Recruiter",
         }),
       ],
@@ -657,7 +657,7 @@ describe("recruiter directory", () => {
         }),
         recruiter({
           evidence: evidence("linkedin.com/in/a-khan"),
-          linkedInUrl: "https://linkedin.com/in/a-khan",
+          profileUrl: "https://linkedin.com/in/a-khan",
           name: "A. Khan",
           workEmail: {
             address: "AMINA@ACME-SEARCH.AE",
@@ -673,7 +673,7 @@ describe("recruiter directory", () => {
     expect(directory.identityReviews).toEqual([
       expect.objectContaining({
         kind: "recruiter",
-        reason: "The public work email matches but the public LinkedIn profiles differ.",
+        reason: "The public work email matches but the Public profiles differ.",
         status: "pending",
       }),
     ]);
@@ -791,7 +791,7 @@ describe("recruiter directory", () => {
         recruiter({
           companyName: " acme  search ",
           evidence: evidence("linkedin.com/in/amina-alt"),
-          linkedInUrl: "https://linkedin.com/in/amina-alt",
+          profileUrl: "https://linkedin.com/in/amina-alt",
           name: " AMINA   KHAN ",
         }),
       ],
@@ -854,7 +854,7 @@ function recruiter(overrides: Partial<RecruiterObservation> = {}): RecruiterObse
     companyName: "Acme Search",
     evidence: evidence("linkedin.com/in/amina-khan"),
     kind: "recruiter",
-    linkedInUrl: "https://www.linkedin.com/in/amina-khan",
+    profileUrl: "https://www.linkedin.com/in/amina-khan",
     name: "Amina Khan",
     title: "Technology Recruiter",
     ...overrides,

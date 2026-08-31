@@ -375,11 +375,14 @@ test.describe
       await page.goto("/settings/adapters/source-coverage");
 
       const refreshRegistry = page.getByRole("button", { name: "Refresh board registry" });
-      const sourceHeadingActions = page.locator(".source-heading-actions");
+      const sourceHeadingActions = page
+        .locator(".source-section")
+        .first()
+        .locator(".jr-section-header-trailing");
       const activeSourceCount = page
         .locator(".source-section")
         .first()
-        .locator(".source-heading-actions > span");
+        .locator(".jr-section-header-trailing > span");
       await expect(page.getByText("Source registry actions", { exact: true })).toHaveCount(0);
       await expect(page.getByRole("link", { name: "Add ATS integration" })).toHaveCount(0);
       await expect(refreshRegistry).toHaveAttribute("title", "Refresh board registry");
@@ -397,16 +400,26 @@ test.describe
         sourceHeadingActionsBox,
         activeSourceCountBox,
         sourceGrid,
-        firstSourceIcon,
+        knownSitesHeadingRule,
+        knownSitesHeading,
+        knownSitesCount,
+        knownSitesPanel,
       ] = await Promise.all([
         page.locator(".jr-page-header").boundingBox(),
         page.getByRole("heading", { level: 2, name: "Source Coverage" }).boundingBox(),
-        page.locator(".source-section").first().locator(".section-heading").boundingBox(),
+        page.locator(".source-section").first().locator(".jr-section-header").boundingBox(),
         page.getByRole("heading", { level: 2, name: "Where discovery looks" }).boundingBox(),
         sourceHeadingActions.boundingBox(),
         activeSourceCount.boundingBox(),
         page.locator(".source-grid").boundingBox(),
-        page.locator(".source-grid .source-card-icon").first().boundingBox(),
+        page.locator(".source-section").nth(1).locator(".jr-section-header").boundingBox(),
+        page.getByRole("heading", { level: 2, name: "Known company career sites" }).boundingBox(),
+        page
+          .locator(".source-section")
+          .nth(1)
+          .locator(".jr-section-header-trailing > span")
+          .boundingBox(),
+        page.locator(".source-section").nth(1).locator(".panel").boundingBox(),
       ]);
       if (
         !pageHeader ||
@@ -416,7 +429,10 @@ test.describe
         !sourceHeadingActionsBox ||
         !activeSourceCountBox ||
         !sourceGrid ||
-        !firstSourceIcon
+        !knownSitesHeadingRule ||
+        !knownSitesHeading ||
+        !knownSitesCount ||
+        !knownSitesPanel
       ) {
         throw new Error("Source header and content edges must be measurable.");
       }
@@ -427,19 +443,32 @@ test.describe
       expect(Math.abs(pageHeader.x - sourceGrid.x)).toBeLessThanOrEqual(1);
       expect(Math.abs(pageHeader.width - sourceGrid.width)).toBeLessThanOrEqual(1);
       expect(Math.abs(pageHeader.x - pageTitle.x)).toBeLessThanOrEqual(1);
-      expect(Math.abs(sourceHeading.x - firstSourceIcon.x)).toBeLessThanOrEqual(1);
+      expect(Math.abs(sourceHeading.x - sourceGrid.x)).toBeLessThanOrEqual(1);
       expect(
         Math.abs(
           sourceHeadingActionsBox.x +
             sourceHeadingActionsBox.width -
-            (sourceGrid.x + sourceGrid.width - (sourceHeading.x - sourceHeadingRule.x)),
+            (sourceGrid.x + sourceGrid.width),
+        ),
+      ).toBeLessThanOrEqual(2);
+      expect(Math.abs(knownSitesHeadingRule.x - knownSitesPanel.x)).toBeLessThanOrEqual(1);
+      expect(Math.abs(knownSitesHeading.x - knownSitesPanel.x)).toBeLessThanOrEqual(1);
+      expect(
+        Math.abs(
+          knownSitesCount.x + knownSitesCount.width - (knownSitesPanel.x + knownSitesPanel.width),
         ),
       ).toBeLessThanOrEqual(2);
       expect(refreshBox.x).toBeGreaterThan(activeSourceCountBox.x);
       expect(refreshBox.x + refreshBox.width).toBeLessThanOrEqual(
         sourceHeadingActionsBox.x + sourceHeadingActionsBox.width,
       );
-      expect(Math.abs(refreshBox.y - activeSourceCountBox.y)).toBeLessThanOrEqual(12);
+      expect(
+        Math.abs(
+          refreshBox.y +
+            refreshBox.height / 2 -
+            (activeSourceCountBox.y + activeSourceCountBox.height / 2),
+        ),
+      ).toBeLessThanOrEqual(1);
       const appearance = await refreshRegistry.evaluate((element) => {
         const styles = getComputedStyle(element);
         return { background: styles.backgroundColor, borderColor: styles.borderTopColor };

@@ -54,7 +54,7 @@ const recruiters = Array.from({ length: 20 }, (_, index) => ({
   name: `Recruiter ${index + 1}`,
   title: "Technology Recruiter",
   companyName: `Firm ${Math.floor(index / 2) + 1}`,
-  linkedInUrl: `https://www.linkedin.com/in/recruiter-${index + 1}`,
+  profileUrl: `https://www.linkedin.com/in/recruiter-${index + 1}`,
   evidence: {
     adapterId: "local-codex-cli-web-search-v1",
     confidence: "high",

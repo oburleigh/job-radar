@@ -16,6 +16,7 @@ export interface ResearchRunStore {
   readonly listResumable: () => Promise<readonly ResearchRun[]>;
   readonly observationsFor: (runId: string) => Promise<readonly ResearchObservation[]>;
   readonly failuresFor: (runId: string) => Promise<readonly ResearchSourceFailure[]>;
+  readonly recordSourceFailure: (runId: string, failure: ResearchSourceFailure) => Promise<void>;
   readonly begin: (runId: string, startedAt: Date) => Promise<ResearchRun | undefined>;
   readonly reserveStageRequest: (
     runId: string,
@@ -43,6 +44,7 @@ export interface ResearchRunScheduler {
 }
 
 export interface ResearchSource {
+  readonly adapterId: string;
   readonly assess: (run: ResearchRun) =>
     | { readonly available: true }
     | {

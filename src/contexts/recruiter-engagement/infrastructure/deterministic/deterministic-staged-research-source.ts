@@ -13,6 +13,7 @@ export function createDeterministicStagedResearchSource(
   options: DeterministicStagedResearchSourceOptions = {},
 ): ResearchSource {
   return {
+    adapterId: "deterministic-research-source",
     assess: () => ({ available: true }),
     async findFirms({ run }) {
       if (options.failStage === "firms") {
@@ -57,7 +58,7 @@ export function createDeterministicStagedResearchSource(
           name: `Technology Recruiter ${number}`,
           title: "Technology Recruiter",
           companyName: firm.companyName,
-          linkedInUrl: `https://www.linkedin.com/in/technology-recruiter-${number}`,
+          profileUrl: `https://www.linkedin.com/in/technology-recruiter-${number}`,
           evidence: {
             adapterId: run.policy.id,
             confidence: "high",

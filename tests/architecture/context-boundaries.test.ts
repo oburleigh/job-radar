@@ -71,6 +71,20 @@ describe("context boundaries", () => {
     }
   });
 
+  it("keeps recruiter source providers out of the domain and application language", () => {
+    const contextRoot = path.join(contextsRoot, "recruiter-engagement");
+    for (const role of ["domain", "application"]) {
+      for (const file of sourceFiles(path.join(contextRoot, role)).filter(
+        (candidate) => !isTestFile(candidate),
+      )) {
+        const source = readFileSync(file, "utf8");
+        expect(source, `${relativePath(file)} contains a concrete recruiter source`).not.toMatch(
+          /linkedin|\bmcp\b/i,
+        );
+      }
+    }
+  });
+
   it("keeps infrastructure independent from presentation and composition", () => {
     for (const infrastructureRoot of roleDirectories("infrastructure")) {
       const contextRoot = path.dirname(infrastructureRoot);

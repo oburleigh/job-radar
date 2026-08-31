@@ -56,6 +56,7 @@
   "dependencies": {
     "@fontsource/barlow-condensed": "^5.3.0",
     "@job-radar/design-ui": "workspace:^",
+    "@modelcontextprotocol/sdk": "1.30.0",
     "@react-router/node": "8.3.0",
     "@react-router/serve": "8.3.0",
     "@tansuasici/country-state-city": "3.0.0",

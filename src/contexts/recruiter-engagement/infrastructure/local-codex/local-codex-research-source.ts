@@ -43,7 +43,7 @@ const recruiterObservation = z
     name: z.string().min(1),
     title: z.string().min(1),
     companyName: z.string().min(1),
-    linkedInUrl: httpsUrl.refine(
+    profileUrl: httpsUrl.refine(
       (value) => /^https:\/\/(?:[a-z]{2,3}\.)?linkedin\.com\/in\/[^\s]+$/i.test(value),
       "Expected a public LinkedIn profile URL.",
     ),
@@ -81,6 +81,7 @@ export function createLocalCodexResearchSource(
   options: LocalCodexResearchSourceOptions,
 ): ResearchSource {
   return {
+    adapterId: "local-codex-cli-web-search-v1",
     assess(run) {
       return assessLocalCodexRun(run);
     },
@@ -345,12 +346,12 @@ function recruiterOutputSchema(recruiterTarget: number) {
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["name", "title", "companyName", "linkedInUrl", "evidence"],
+          required: ["name", "title", "companyName", "profileUrl", "evidence"],
           properties: {
             name: { type: "string", minLength: 1 },
             title: { type: "string", minLength: 1 },
             companyName: { type: "string", minLength: 1 },
-            linkedInUrl: { type: "string", pattern: "^https://.*linkedin\\.com/in/" },
+            profileUrl: { type: "string", pattern: "^https://.*linkedin\\.com/in/" },
             evidence: evidenceOutputSchema({ source: "linkedin" }),
           },
         },
@@ -448,7 +449,7 @@ function canonicaliseRecruiterCompanyNames(
   const firmsWithRecruiter = new Set<string>();
   const profileUrls = new Set<string>();
   const canonicalRecruiters = recruiters.map((recruiter) => {
-    const profileUrl = normaliseProfileUrl(recruiter.linkedInUrl);
+    const profileUrl = normaliseProfileUrl(recruiter.profileUrl);
     if (profileUrl !== normaliseProfileUrl(recruiter.evidence.sourceUrl)) {
       throw new Error(
         "Codex recruiter-stage evidence must identify the displayed public LinkedIn profile.",

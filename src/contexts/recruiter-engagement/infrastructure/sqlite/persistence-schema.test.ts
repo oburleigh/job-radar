@@ -7,7 +7,11 @@ import {
   testSourcePlan,
 } from "@/contexts/recruiter-engagement/test-support/research-policy-fixtures";
 
-import { parsePersistedResearchRun } from "./persistence-schema";
+import {
+  parsePersistedObservation,
+  parsePersistedRecruiterDirectory,
+  parsePersistedResearchRun,
+} from "./persistence-schema";
 
 describe("persisted recruiter research run", () => {
   it("migrates legacy geography criteria to target locations while reading existing runs", () => {
@@ -36,5 +40,59 @@ describe("persisted recruiter research run", () => {
       industries: run.brief.criteria.industries,
       specialisms: run.brief.criteria.specialisms,
     });
+  });
+});
+
+describe("source-neutral recruiter profiles", () => {
+  it("translates a legacy LinkedIn observation field at the SQLite boundary", () => {
+    const observation = parsePersistedObservation({
+      companyName: "Apex Search",
+      evidence: {
+        adapterId: "legacy-adapter",
+        confidence: "high",
+        excerpt: "Public recruiter profile.",
+        observedAt: "2026-08-30",
+        policyVersion: "1",
+        sourceUrl: "https://www.linkedin.com/in/amina-khan",
+      },
+      kind: "recruiter",
+      linkedInUrl: "https://www.linkedin.com/in/amina-khan",
+      name: "Amina Khan",
+      title: "Recruiter",
+    });
+
+    expect(observation).toMatchObject({
+      kind: "recruiter",
+      profileUrl: "https://www.linkedin.com/in/amina-khan",
+    });
+    expect(observation).not.toHaveProperty("linkedInUrl");
+  });
+
+  it("translates legacy Directory profiles without leaking the old field", () => {
+    const directory = parsePersistedRecruiterDirectory({
+      corrections: [],
+      evidence: [],
+      firms: [],
+      identityReviews: [],
+      recruiters: [
+        {
+          companyName: "Apex Search",
+          firmId: null,
+          firstObservedAt: "2026-08-30T10:00:00.000Z",
+          id: "recruiter:linkedin.com/in/amina-khan",
+          lastObservedAt: "2026-08-30T10:00:00.000Z",
+          linkedInUrl: "https://www.linkedin.com/in/amina-khan",
+          mergedInto: null,
+          name: "Amina Khan",
+          title: "Recruiter",
+          workEmail: null,
+        },
+      ],
+    });
+
+    expect(directory.recruiters[0]).toMatchObject({
+      profileUrl: "https://www.linkedin.com/in/amina-khan",
+    });
+    expect(directory.recruiters[0]).not.toHaveProperty("linkedInUrl");
   });
 });

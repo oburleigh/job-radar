@@ -37,14 +37,14 @@ describe("recruiter research page", () => {
         ...recruiterObservation(),
         companyName: "Unresolved Search",
         evidence: testEvidence("https://www.linkedin.com/in/zara-ali"),
-        linkedInUrl: "https://www.linkedin.com/in/zara-ali",
+        profileUrl: "https://www.linkedin.com/in/zara-ali",
         name: "Zara Ali",
       },
       {
         ...recruiterObservation(),
         companyName: "Unresolved Search",
         evidence: testEvidence("https://www.linkedin.com/in/zara-ali-alt"),
-        linkedInUrl: "https://www.linkedin.com/in/zara-ali-alt",
+        profileUrl: "https://www.linkedin.com/in/zara-ali-alt",
         name: "Zara Ali",
       },
     ];
@@ -96,6 +96,8 @@ describe("recruiter research page", () => {
     expect(html).toContain("Zara Ali and Zara Ali");
     expect(html).toContain("Specialism matches Software engineering.");
     expect(html).toContain("2 runs");
+    expect(html).toContain("Public profile");
+    expect(html).not.toContain("Public LinkedIn profile");
   });
 });
 
@@ -116,7 +118,7 @@ function recruiterObservation() {
     companyName: "Acme Search",
     evidence: testEvidence("https://www.linkedin.com/in/amina-khan"),
     kind: "recruiter" as const,
-    linkedInUrl: "https://www.linkedin.com/in/amina-khan",
+    profileUrl: "https://www.linkedin.com/in/amina-khan",
     name: "Amina Khan",
     title: "Software Engineering Recruiter",
   };

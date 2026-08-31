@@ -123,18 +123,21 @@ const firmObservation = z
     websiteUrl: z.url().refine((value) => value.startsWith("https://")),
   })
   .strict();
-const recruiterObservation = z
-  .object({
-    companyName: z.string().min(1),
-    evidence,
-    kind: z.literal("recruiter"),
-    linkedInUrl: z.url().refine((value) => value.startsWith("https://")),
-    name: z.string().min(1),
-    title: z.string().min(1),
-    workEmail: z.object({ address: z.email(), evidence }).strict().optional(),
-  })
-  .strict();
-const researchObservation = z.discriminatedUnion("kind", [firmObservation, recruiterObservation]);
+const recruiterObservation = z.preprocess(
+  migrateLegacyProfileUrl,
+  z
+    .object({
+      companyName: z.string().min(1),
+      evidence,
+      kind: z.literal("recruiter"),
+      profileUrl: z.url().refine((value) => value.startsWith("https://")),
+      name: z.string().min(1),
+      title: z.string().min(1),
+      workEmail: z.object({ address: z.email(), evidence }).strict().optional(),
+    })
+    .strict(),
+);
+const researchObservation = z.union([firmObservation, recruiterObservation]);
 const researchRun = z
   .object({
     brief: z
@@ -177,6 +180,7 @@ const researchRun = z
   }));
 const sourceFailure = z
   .object({
+    adapterId: z.string().min(1).nullable().default(null),
     message: z.string(),
     recordedAt: date,
     stage: z.enum(["firms", "recruiters"]),
@@ -192,20 +196,23 @@ const directoryFirm = z
     websiteUrl: z.url(),
   })
   .strict();
-const directoryRecruiter = z
-  .object({
-    companyName: z.string().min(1),
-    firmId: z.string().min(1).nullable(),
-    firstObservedAt: z.coerce.date(),
-    id: z.string().min(1),
-    lastObservedAt: z.coerce.date(),
-    linkedInUrl: z.url(),
-    mergedInto: z.string().min(1).nullable(),
-    name: z.string().min(1),
-    title: z.string().min(1),
-    workEmail: z.email().nullable().default(null),
-  })
-  .strict();
+const directoryRecruiter = z.preprocess(
+  migrateLegacyProfileUrl,
+  z
+    .object({
+      companyName: z.string().min(1),
+      firmId: z.string().min(1).nullable(),
+      firstObservedAt: z.coerce.date(),
+      id: z.string().min(1),
+      lastObservedAt: z.coerce.date(),
+      profileUrl: z.url(),
+      mergedInto: z.string().min(1).nullable(),
+      name: z.string().min(1),
+      title: z.string().min(1),
+      workEmail: z.email().nullable().default(null),
+    })
+    .strict(),
+);
 const directoryEvidence = z
   .object({
     id: z.string().min(1),
@@ -271,4 +278,15 @@ function parsePersisted<T>(schema: z.ZodType<T>, value: unknown, label: string):
     );
   }
   return parsed.data;
+}
+
+function migrateLegacyProfileUrl(value: unknown): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const record = value as Record<string, unknown>;
+  if (!("linkedInUrl" in record)) return value;
+  const { linkedInUrl, ...current } = record;
+  return {
+    ...current,
+    profileUrl: current.profileUrl ?? linkedInUrl,
+  };
 }

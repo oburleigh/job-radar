@@ -46,7 +46,7 @@ describe("research run execution", () => {
           name: "Amina Khan",
           title: "Technology Recruiter",
           companyName: "Firm One",
-          linkedInUrl: "https://www.linkedin.com/in/amina-khan",
+          profileUrl: "https://www.linkedin.com/in/amina-khan",
           evidence: testEvidence("https://www.linkedin.com/in/amina-khan"),
         },
       ],
@@ -78,6 +78,7 @@ describe("research run execution", () => {
     const directory = emptyDirectory();
     const findFirms = vi.fn(async () => []);
     const source: ResearchSource = {
+      adapterId: "unavailable-source",
       assess: () => ({ available: false, message: "The source plan is disabled." }),
       findFirms,
       findRecruiters: vi.fn(async () => []),
@@ -113,6 +114,7 @@ describe("research run execution", () => {
     const directory = emptyDirectory();
     const findFirms = vi.fn(async () => []);
     const source: ResearchSource = {
+      adapterId: "available-source",
       assess: () => ({ available: true }),
       findFirms,
       findRecruiters: vi.fn(async () => []),
@@ -147,6 +149,7 @@ describe("research run execution", () => {
       specialisms: ["Software engineering"],
     };
     const source: ResearchSource = {
+      adapterId: "partial-source",
       assess: () => ({ available: true }),
       findFirms: async () => [firm],
       findRecruiters: async () => {

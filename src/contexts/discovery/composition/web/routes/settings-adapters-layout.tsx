@@ -28,6 +28,17 @@ export default function AdapterSettingsLayout() {
         >
           ATS Registry
         </NavLink>
+        <NavLink
+          aria-busy={pendingPathname === "/settings/adapters/linkedin" || undefined}
+          className={() =>
+            pendingPathname === "/settings/adapters/linkedin"
+              ? "settings-navigation-link-pending"
+              : undefined
+          }
+          to="/settings/adapters/linkedin"
+        >
+          LinkedIn
+        </NavLink>
       </nav>
       <Outlet />
     </>

@@ -1,3 +1,4 @@
+import { SectionHeader } from "@job-radar/design-ui";
 import { DatabaseZap, Search } from "lucide-react";
 import { type ActionFunctionArgs, useLoaderData } from "react-router";
 import type { AddJobSourceResult } from "@/contexts/discovery/application/source-coverage/add/result";
@@ -76,21 +77,18 @@ export default function SourcesPage() {
 
   return (
     <section className="settings-section" aria-labelledby="source-coverage-title">
-      <div className="section-heading">
-        <div>
-          <h2 id="source-coverage-title">Source Coverage</h2>
-          <p>Choose where Opportunities searches and maintain known company boards.</p>
-        </div>
-      </div>
+      <SectionHeader
+        description="Choose where Opportunities searches and maintain known company boards."
+        id="source-coverage-title"
+        title="Source Coverage"
+      />
 
       <section className="source-section">
-        <div className="section-heading">
-          <h2>Where discovery looks</h2>
-          <div className="source-heading-actions">
-            <span>{data.sources.filter((source) => source.enabled).length} active</span>
-            <SyncButton />
-          </div>
-        </div>
+        <SectionHeader
+          actions={<SyncButton />}
+          meta={`${data.sources.filter((source) => source.enabled).length} active`}
+          title="Where discovery looks"
+        />
         <ol className="source-grid">
           {data.sources.map((source) => (
             <li className="source-card" key={source.id}>
@@ -116,10 +114,10 @@ export default function SourcesPage() {
       </section>
 
       <section className="source-section">
-        <div className="section-heading">
-          <h2>Known company career sites</h2>
-          <span>{data.boards.length} registered</span>
-        </div>
+        <SectionHeader
+          meta={`${data.boards.length} registered`}
+          title="Known company career sites"
+        />
 
         <div className="panel">
           <AddBoardForm />

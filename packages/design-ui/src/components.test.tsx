@@ -7,6 +7,7 @@ import {
   IconButton,
   Modal,
   PageHeader,
+  SectionHeader,
   Skeleton,
   Switch,
   TextField,
@@ -36,7 +37,7 @@ describe("generic UI public contract", () => {
 
   it("renders an icon-only action with an accessible name and pressed state", () => {
     const html = renderToStaticMarkup(
-      <IconButton label="Archive job" pressed>
+      <IconButton label="Archive job" pressed variant="outlined">
         ×
       </IconButton>,
     );
@@ -45,6 +46,7 @@ describe("generic UI public contract", () => {
     expect(html).toContain('class="jr-icon-button"');
     expect(html).toContain('aria-label="Archive job"');
     expect(html).toContain('aria-pressed="true"');
+    expect(html).toContain('data-variant="outlined"');
   });
 
   it("connects a text field to its label, hint, and error", () => {
@@ -110,5 +112,22 @@ describe("generic UI public contract", () => {
     );
 
     expect(html).not.toContain("data-has-actions");
+  });
+
+  it("keeps section titles, metadata, and actions on one shared edge-aligned contract", () => {
+    const html = renderToStaticMarkup(
+      <SectionHeader
+        actions={<button type="button">Refresh</button>}
+        id="matches-title"
+        meta="15 active"
+        title="Matches"
+      />,
+    );
+
+    expect(html).toContain('class="jr-section-header"');
+    expect(html).toContain('<h2 id="matches-title">Matches</h2>');
+    expect(html).toContain('class="jr-section-header-trailing"');
+    expect(html).toContain("15 active");
+    expect(html).toContain("Refresh");
   });
 });

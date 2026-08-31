@@ -77,7 +77,7 @@ test("starts recruiter research from the browser and renders firms before recrui
   await expect(
     page.locator(".recruiter-evidence-history").first().getByRole("link").first(),
   ).toHaveAttribute("href", /^https:\/\//);
-  await expect(page.getByRole("link", { name: "Public LinkedIn profile" }).first()).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "Public profile" }).first()).toHaveAttribute(
     "href",
     /^https:\/\/www\.linkedin\.com\/in\//,
   );

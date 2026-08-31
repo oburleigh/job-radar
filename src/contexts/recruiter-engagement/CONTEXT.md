@@ -38,7 +38,10 @@ _Avoid_: Technology specialism
 : A canonical recruitment organisation identified from its public website domain. Observed names and other sourced facts remain evidence rather than silently replacing the canonical record.
 
 **Recruiter**
-: A canonical named professional identified from a public LinkedIn profile and associated with a recruitment firm when the retained evidence supports that relationship. A matching publicly evidenced work email may propose an identity review but never merges profiles automatically.
+: A canonical named professional identified from a Public profile and associated with a recruitment firm when the retained evidence supports that relationship. A matching publicly evidenced work email may propose an identity review but never merges profiles automatically.
+
+**Public profile**
+: A publicly accessible professional profile used to identify a Recruiter and retained with its Evidence. A Source adapter supplies the profile; the provider is not part of the core Recruiter model.
 
 **Work-email evidence**
 : A publicly published work mailbox and its own Evidence. The mailbox is trimmed and case-normalised for comparison. It may support a possible identity match, but the current `local-codex-cli-web-search-v1` Adapter Policy prohibits collecting contact data and therefore never emits it.
@@ -63,6 +66,9 @@ _Avoid_: Technology specialism
 
 **Coverage**
 : The recorded firm and recruiter counts, completed stages, source failures, and completion reason. It describes the run, not the target market as a whole.
+
+**Source failure**
+: The recorded failure of one planned Source during a Research run stage. It identifies the failed adapter without discarding observations returned by other permitted Sources.
 
 ## Current boundary
 

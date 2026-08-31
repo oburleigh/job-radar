@@ -47,18 +47,29 @@ export const recruiterResearchSourceFailures = sqliteTable(
     runId: text("run_id")
       .notNull()
       .references(() => recruiterResearchRuns.id, { onDelete: "cascade" }),
+    adapterId: text("adapter_id"),
     stage: text("stage", { enum: ["firms", "recruiters"] }).notNull(),
     message: text("message").notNull(),
     recordedAt: timestamp("recorded_at").notNull(),
   },
   (table) => [
-    uniqueIndex("recruiter_research_source_failures_run_stage_idx").on(table.runId, table.stage),
+    uniqueIndex("recruiter_research_source_failures_run_stage_adapter_idx").on(
+      table.runId,
+      table.stage,
+      table.adapterId,
+    ),
   ],
 );
 
 export const recruiterResearchSettings = sqliteTable("recruiter_research_settings", {
   key: text("key").primaryKey(),
   value: text("value", { mode: "json" }).$type<unknown>().notNull(),
+  updatedAt: timestamp("updated_at").notNull(),
+});
+
+export const recruiterAdapterSettings = sqliteTable("recruiter_adapter_settings", {
+  adapterId: text("adapter_id").primaryKey(),
+  configuration: text("configuration", { mode: "json" }).$type<unknown>().notNull(),
   updatedAt: timestamp("updated_at").notNull(),
 });
 

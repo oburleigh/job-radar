@@ -57,6 +57,12 @@ values, not domain entities. The current public set is:
 Application code must use these controls instead of restyling native buttons. A new shared component
 must represent repeated generic interaction, not a single Discovery feature.
 
+Before adding page markup or CSS for an established visual pattern, use the component that owns it
+in `@job-radar/design-ui`. Product styles may arrange a component within a page, but must not copy
+its internal styles or override them through a page-level selector. A visual exception requires a
+named public variant in the owning component and acceptance evidence for that variant. Code review
+must reject changes that bypass this contract.
+
 ## Application patterns
 
 Workspace navigation keeps the current page readable while the next route loads. The destination

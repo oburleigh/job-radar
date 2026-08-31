@@ -182,19 +182,37 @@ test("keeps settings in stable sections without carrying opportunity selection",
   );
   await expect(page.getByRole("heading", { level: 2, name: "Source Coverage" })).toBeVisible();
   await expect(page.getByRole("link", { name: "ATS Registry" })).toBeVisible();
+  const adapterNavigation = page.getByRole("navigation", { name: "Adapter settings" });
+  await expect(adapterNavigation.getByRole("link")).toHaveCount(3);
+
+  await adapterNavigation.getByRole("link", { name: "LinkedIn" }).click();
+  await expect(page).toHaveURL("/settings/adapters/linkedin");
+  await expect(
+    page.getByRole("heading", { level: 2, name: "LinkedIn", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "LinkedIn MCP" })).toBeVisible();
+  await expect(page.getByLabel("Local MCP endpoint")).toBeVisible();
+  await expect(page.getByText("Not configured", { exact: true })).toBeVisible();
+  for (const capability of ["Search", "Connect", "Message"]) {
+    await expect(
+      page.getByRole("group", { name: "LinkedIn capabilities" }).getByText(capability),
+    ).toBeVisible();
+  }
+  await expect(page.getByText("Unavailable", { exact: true })).toHaveCount(3);
+  await expect(page.getByRole("button", { name: "Save LinkedIn settings" })).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
-  const [mobileSettingsNavigation, mobileSourceCoverage] = await Promise.all([
+  const [mobileSettingsNavigation, mobileLinkedInSettings] = await Promise.all([
     settingsNavigation.boundingBox(),
-    page.getByRole("heading", { level: 2, name: "Source Coverage" }).boundingBox(),
+    page.getByRole("heading", { level: 2, name: "LinkedIn", exact: true }).boundingBox(),
   ]);
-  if (!mobileSettingsNavigation || !mobileSourceCoverage) {
+  if (!mobileSettingsNavigation || !mobileLinkedInSettings) {
     throw new Error("Mobile settings navigation and section heading must be measurable.");
   }
   expect(mobileSettingsNavigation.x).toBeGreaterThanOrEqual(0);
   expect(mobileSettingsNavigation.x + mobileSettingsNavigation.width).toBeLessThanOrEqual(390);
-  expect(mobileSourceCoverage.y).toBeGreaterThanOrEqual(
+  expect(mobileLinkedInSettings.y).toBeGreaterThanOrEqual(
     mobileSettingsNavigation.y + mobileSettingsNavigation.height,
   );
 });
@@ -209,6 +227,7 @@ test("captures primary route review evidence at desktop and mobile widths", asyn
     ["/settings/recruiter-search", "Settings", "recruiter-settings"],
     ["/settings/adapters/source-coverage", "Settings", "source-coverage"],
     ["/settings/adapters/ats-registry", "Settings", "ats-registry"],
+    ["/settings/adapters/linkedin", "Settings", "linkedin-adapter"],
   ] as const;
 
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -334,9 +353,12 @@ for (const theme of ["light", "dark"] as const) {
     }, theme);
     await page.goto("/");
 
-    const results = await new AxeBuilder({ page }).analyze();
+    const workspaceResults = await new AxeBuilder({ page }).analyze();
+    expect(workspaceResults.violations).toEqual([]);
 
-    expect(results.violations).toEqual([]);
+    await page.goto("/settings/adapters/linkedin");
+    const linkedInSettingsResults = await new AxeBuilder({ page }).analyze();
+    expect(linkedInSettingsResults.violations).toEqual([]);
   });
 }
 

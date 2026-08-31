@@ -121,9 +121,15 @@ export function createFakeResearchRunStore(
         completionReason: message,
       };
       const stage = run.checkpoint === "firms" ? "firms" : "recruiters";
-      failures.set(runId, [{ stage, message, recordedAt: finishedAt }]);
+      failures.set(runId, [
+        ...(failures.get(runId) ?? []),
+        { adapterId: null, stage, message, recordedAt: finishedAt },
+      ]);
       runs.set(runId, updated);
       return updated;
+    },
+    async recordSourceFailure(runId, failure) {
+      failures.set(runId, [...(failures.get(runId) ?? []), failure]);
     },
     async cancel(runId, cancelledAt) {
       const run = runs.get(runId);
@@ -142,6 +148,7 @@ export function createFakeResearchSource(input: {
   readonly recruiters: readonly RecruiterObservation[];
 }): ResearchSource {
   return {
+    adapterId: "fake-research-source",
     assess: () => ({ available: true }),
     findFirms: async () => input.firms,
     findRecruiters: async () => input.recruiters,

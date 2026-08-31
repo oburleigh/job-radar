@@ -21,6 +21,7 @@ export function SyncButton() {
           )
         }
         title="Refresh board registry"
+        variant="outlined"
       >
         <RefreshCw size={17} className={pending ? "spin" : ""} />
       </IconButton>

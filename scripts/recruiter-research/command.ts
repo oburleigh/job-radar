@@ -27,7 +27,7 @@ export type RecruiterResearchRecruiter = {
   readonly name: string;
   readonly title: string;
   readonly company: string;
-  readonly linkedInUrl: string;
+  readonly profileUrl: string;
   readonly evidenceExcerpt: string;
   readonly observationDate: string;
   readonly workEmail?: string;

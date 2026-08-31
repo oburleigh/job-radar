@@ -521,8 +521,8 @@ function RecruiterResult({
         </span>
         <span>Work email: {recruiter.workEmail ?? "Not retained"}</span>
       </div>
-      <a href={recruiter.linkedInUrl} rel="noreferrer" target="_blank">
-        Public LinkedIn profile
+      <a href={recruiter.profileUrl} rel="noreferrer" target="_blank">
+        Public profile
       </a>
       <MatchExplanation
         reasons={recruiter.matchReasons}

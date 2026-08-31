@@ -16,7 +16,7 @@ export type Recruiter = {
   readonly firstObservedAt: Date;
   readonly id: string;
   readonly lastObservedAt: Date;
-  readonly linkedInUrl: string;
+  readonly profileUrl: string;
   readonly mergedInto: string | null;
   readonly name: string;
   readonly title: string;
@@ -332,7 +332,7 @@ function reconcileRecruiter(
   observation: Extract<ResearchObservation, { readonly kind: "recruiter" }>,
   command: { readonly recordedAt: Date; readonly runId: string },
 ): RecruiterDirectory {
-  const id = recruiterIdentity(observation.linkedInUrl);
+  const id = recruiterIdentity(observation.profileUrl);
   const existing = directory.recruiters.find((recruiter) => recruiter.id === id);
   const matchingFirm = directory.firms.find(
     (firm) =>
@@ -360,7 +360,7 @@ function reconcileRecruiter(
           firstObservedAt: command.recordedAt,
           id,
           lastObservedAt: command.recordedAt,
-          linkedInUrl: observation.linkedInUrl,
+          profileUrl: observation.profileUrl,
           mergedInto: null,
           name: observation.name,
           title: observation.title,
@@ -389,8 +389,8 @@ function reconcileRecruiter(
         primaryRecordId: possibleMatch.id,
         reason:
           observedWorkEmail !== null && possibleMatch.workEmail === observedWorkEmail
-            ? "The public work email matches but the public LinkedIn profiles differ."
-            : "The recruiter name and firm match but the public LinkedIn profiles differ.",
+            ? "The public work email matches but the Public profiles differ."
+            : "The recruiter name and firm match but the Public profiles differ.",
       });
     }
   }
@@ -628,8 +628,8 @@ function firmIdentity(websiteUrl: string): string {
   return `firm:${hostname}`;
 }
 
-function recruiterIdentity(linkedInUrl: string): string {
-  const url = new URL(linkedInUrl);
+function recruiterIdentity(profileUrl: string): string {
+  const url = new URL(profileUrl);
   const pathname = url.pathname.toLowerCase().replace(/\/$/, "");
   return `recruiter:${url.hostname.toLowerCase().replace(/^www\./, "")}${pathname}`;
 }

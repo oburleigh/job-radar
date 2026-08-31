@@ -110,6 +110,11 @@
     border-color: var(--jr-color-accent-border);
   }
 
+  .jr-icon-button[data-variant="outlined"] {
+    background: var(--jr-color-surface);
+    border-color: var(--jr-color-border-strong);
+  }
+
   .jr-icon-button:disabled {
     color: var(--jr-color-disabled-text);
     cursor: not-allowed;
@@ -473,6 +478,64 @@
     border-left: var(--jr-border-width) solid var(--jr-color-border-strong);
   }
 
+  .jr-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--jr-space-5);
+    margin: var(--jr-space-6) 0 0;
+    padding: 0 0 var(--jr-space-3);
+    border-bottom: var(--jr-border-width-strong) solid var(--jr-color-text);
+  }
+
+  .jr-section-header-copy {
+    min-width: 0;
+  }
+
+  .jr-section-header h2 {
+    margin: 0;
+    font-family: var(--jr-font-family-display);
+    font-size: var(--jr-font-size-heading-xl);
+    font-stretch: condensed;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+  }
+
+  .jr-section-header-copy > p {
+    margin: var(--jr-space-3) 0 0;
+    color: var(--jr-color-text-muted);
+    line-height: var(--jr-line-height-body);
+  }
+
+  .jr-section-header-copy > .jr-section-header-eyebrow {
+    margin: 0 0 var(--jr-space-2);
+    font-family: var(--jr-font-family-mono);
+    font-size: var(--jr-font-size-label);
+    font-weight: var(--jr-font-weight-bold);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .jr-section-header-trailing {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--jr-space-3);
+  }
+
+  .jr-section-header-trailing > span {
+    color: var(--jr-color-text-muted);
+    font-family: var(--jr-font-family-mono);
+    font-size: var(--jr-font-size-caption);
+  }
+
+  .jr-section-header[data-variant="contained"] {
+    margin: 0;
+    padding: var(--jr-space-4) var(--jr-space-5) var(--jr-space-3);
+  }
+
   @media (max-width: 56rem) {
     .jr-page-header {
       grid-template-columns: 1fr;
@@ -482,6 +545,16 @@
       justify-content: flex-start;
       border-top: var(--jr-border-width) solid var(--jr-color-border-strong);
       border-left: 0;
+    }
+
+    .jr-section-header {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .jr-section-header-trailing {
+      width: 100%;
+      justify-content: space-between;
     }
   }
 }

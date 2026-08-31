@@ -92,6 +92,7 @@ export type ResearchRun = {
 };
 
 export type ResearchSourceFailure = {
+  readonly adapterId: string | null;
   readonly stage: Exclude<ResearchStage, "completed">;
   readonly message: string;
   readonly recordedAt: Date;

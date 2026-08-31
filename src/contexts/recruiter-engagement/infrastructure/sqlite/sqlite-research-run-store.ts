@@ -85,6 +85,7 @@ export function createSqliteResearchRunStore<TSchema extends Record<string, unkn
     async failuresFor(runId) {
       return database
         .select({
+          adapterId: recruiterResearchSourceFailures.adapterId,
           stage: recruiterResearchSourceFailures.stage,
           message: recruiterResearchSourceFailures.message,
           recordedAt: recruiterResearchSourceFailures.recordedAt,
@@ -243,9 +244,13 @@ export function createSqliteResearchRunStore<TSchema extends Record<string, unkn
         const stage = run.checkpoint === "firms" ? "firms" : "recruiters";
         transaction
           .insert(recruiterResearchSourceFailures)
-          .values({ runId, stage, message, recordedAt: finishedAt })
+          .values({ adapterId: null, runId, stage, message, recordedAt: finishedAt })
           .onConflictDoUpdate({
-            target: [recruiterResearchSourceFailures.runId, recruiterResearchSourceFailures.stage],
+            target: [
+              recruiterResearchSourceFailures.runId,
+              recruiterResearchSourceFailures.stage,
+              recruiterResearchSourceFailures.adapterId,
+            ],
             set: { message, recordedAt: finishedAt },
           })
           .run();
@@ -270,6 +275,20 @@ export function createSqliteResearchRunStore<TSchema extends Record<string, unkn
           .get();
         return persisted ? toResearchRun(persisted) : undefined;
       });
+    },
+    async recordSourceFailure(runId, failure) {
+      database
+        .insert(recruiterResearchSourceFailures)
+        .values({ runId, ...failure })
+        .onConflictDoUpdate({
+          target: [
+            recruiterResearchSourceFailures.runId,
+            recruiterResearchSourceFailures.stage,
+            recruiterResearchSourceFailures.adapterId,
+          ],
+          set: { message: failure.message, recordedAt: failure.recordedAt },
+        })
+        .run();
     },
     async cancel(runId, cancelledAt) {
       const current = await this.get(runId);

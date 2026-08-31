@@ -66,7 +66,7 @@ function observations() {
       companyName: "Firm One",
       evidence: testEvidence("https://www.linkedin.com/in/amina-khan"),
       kind: "recruiter" as const,
-      linkedInUrl: "https://www.linkedin.com/in/amina-khan",
+      profileUrl: "https://www.linkedin.com/in/amina-khan",
       name: "Amina Khan",
       title: "Software Engineering Recruiter",
     },

@@ -12,3 +12,9 @@ export const recruiterActivityContract = {
   listResearchRuns: (): Promise<readonly ResearchRunActivity[]> =>
     recruiterEngagementWeb.listResearchRuns(),
 };
+
+export const recruiterAdapterSettingsContract = {
+  getLinkedInReadiness: recruiterEngagementWeb.getLinkedInMcpReadiness,
+  getLinkedInSettings: recruiterEngagementWeb.getLinkedInMcpSettings,
+  saveLinkedInSettings: recruiterEngagementWeb.saveLinkedInMcpSettings,
+};

@@ -22,7 +22,7 @@ export type RecruiterObservation = {
   readonly name: string;
   readonly title: string;
   readonly companyName: string;
-  readonly linkedInUrl: string;
+  readonly profileUrl: string;
   readonly evidence: Evidence;
   readonly workEmail?:
     | {
@@ -38,7 +38,7 @@ export function observationIdentity(observation: ResearchObservation): string {
   if (observation.kind === "firm") {
     return `firm:${normaliseUrl(observation.websiteUrl)}`;
   }
-  return `recruiter:${normaliseUrl(observation.linkedInUrl)}`;
+  return `recruiter:${normaliseUrl(observation.profileUrl)}`;
 }
 
 function normaliseUrl(value: string): string {

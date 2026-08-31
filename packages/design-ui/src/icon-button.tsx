@@ -6,6 +6,7 @@ export interface IconButtonProps
   readonly children: ReactNode;
   readonly label: string;
   readonly pressed?: boolean;
+  readonly variant?: "ghost" | "outlined";
 }
 
 export function IconButton({
@@ -16,6 +17,7 @@ export function IconButton({
   label,
   pressed,
   type = "button",
+  variant = "ghost",
   ...buttonProps
 }: IconButtonProps) {
   return (
@@ -25,6 +27,7 @@ export function IconButton({
       aria-label={label}
       aria-pressed={pressed}
       className={["jr-icon-button", className].filter(Boolean).join(" ")}
+      data-variant={variant}
       disabled={disabled || busy}
       type={type}
     >
