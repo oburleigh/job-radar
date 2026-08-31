@@ -2,6 +2,8 @@ export { DirectoryMatchSettingsForm } from "./presentation/web/directory-match-s
 export { PublicSearchSettingsForm } from "./presentation/web/public-search-settings-form";
 export { parseDirectoryMatchSettingsRequest } from "./presentation/web/requests/directory-match-settings-request";
 export { parsePublicSearchSettingsRequest } from "./presentation/web/requests/public-search-settings-request";
+export { parseResearchCriteriaOptionsRequest } from "./presentation/web/requests/research-criteria-options-request";
+export { ResearchCriteriaOptionsForm } from "./presentation/web/research-criteria-options-form";
 
 import type { ResearchRun } from "./domain/research-run";
 

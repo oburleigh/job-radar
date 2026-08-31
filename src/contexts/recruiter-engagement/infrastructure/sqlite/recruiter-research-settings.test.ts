@@ -13,6 +13,7 @@ import {
   getRecruiterResearchSettings,
   replaceDirectoryMatchWeights,
   replacePublicSearchSettings,
+  replaceResearchCriteriaOptions,
 } from "./recruiter-research-settings";
 import { recruiterResearchSettings } from "./schema";
 
@@ -134,6 +135,21 @@ describe("recruiter research settings", () => {
     replacePublicSearchSettings(database, publicSearch, new Date("2026-08-31T00:00:00.000Z"));
 
     expect(getRecruiterResearchSettings(database).publicSearch).toEqual(publicSearch);
+  });
+
+  it("persists configured Research criteria catalogues", () => {
+    const sqlite = new Database(":memory:");
+    const database = drizzle(sqlite);
+    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    bootstrapRecruiterResearch(database);
+    const options = {
+      industries: ["Technology", "Financial services"],
+      specialisms: ["Software engineering", "Data and AI"],
+    };
+
+    replaceResearchCriteriaOptions(database, options, new Date("2026-08-31T00:00:00.000Z"));
+
+    expect(getRecruiterResearchSettings(database).criteriaOptions).toEqual(options);
   });
 
   it("replaces the former technology-specific public query defaults", () => {

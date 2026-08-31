@@ -14,6 +14,7 @@ import { createResearchRunRetrier } from "@/contexts/recruiter-engagement/applic
 import { createResearchRunStarter } from "@/contexts/recruiter-engagement/application/research-runs/start-research-run";
 import { createSaveDirectoryMatchWeights } from "@/contexts/recruiter-engagement/application/research-settings/save-directory-match-weights";
 import { createSavePublicSearchSettings } from "@/contexts/recruiter-engagement/application/research-settings/save-public-search-settings";
+import { createSaveResearchCriteriaOptions } from "@/contexts/recruiter-engagement/application/research-settings/save-research-criteria-options";
 import { createShortlistManagement } from "@/contexts/recruiter-engagement/application/shortlists/manage-shortlists";
 import { rankRecruiterDirectory } from "@/contexts/recruiter-engagement/domain/recruiter-directory";
 import type { ResearchRun } from "@/contexts/recruiter-engagement/domain/research-run";
@@ -32,6 +33,7 @@ import {
   getRecruiterResearchSettings,
   replaceDirectoryMatchWeights,
   replacePublicSearchSettings,
+  replaceResearchCriteriaOptions,
 } from "@/contexts/recruiter-engagement/infrastructure/sqlite/recruiter-research-settings";
 import { createSqliteRecruiterDirectoryStore } from "@/contexts/recruiter-engagement/infrastructure/sqlite/sqlite-recruiter-directory-store";
 import { createSqliteResearchRunStore } from "@/contexts/recruiter-engagement/infrastructure/sqlite/sqlite-research-run-store";
@@ -93,6 +95,13 @@ const savePublicSearchSettings = createSavePublicSearchSettings({
       replacePublicSearchSettings(recruiterResearchDatabase, publicSearch, changedAt),
   },
 });
+const saveResearchCriteriaOptions = createSaveResearchCriteriaOptions({
+  now: () => new Date(),
+  settings: {
+    replaceResearchCriteriaOptions: (options, changedAt) =>
+      replaceResearchCriteriaOptions(recruiterResearchDatabase, options, changedAt),
+  },
+});
 const saveDirectoryMatchWeights = createSaveDirectoryMatchWeights({
   now: () => new Date(),
   settings: {
@@ -134,6 +143,7 @@ export const recruiterEngagementWeb = {
     };
   },
   listResearchRuns: activity.listResearchRuns,
+  getResearchCriteriaOptions: () => currentSettings().criteriaOptions,
   getDefaultSearchTargets: () => ({
     firmTarget: currentSettings().defaultBrief.firmTarget,
     recruiterTarget: currentSettings().defaultBrief.recruiterTarget,
@@ -156,6 +166,7 @@ export const recruiterEngagementWeb = {
   },
   retryResearchRun: retrier.retryResearchRun,
   savePublicSearchSettings,
+  saveResearchCriteriaOptions,
   saveDirectoryMatchWeights,
   shortlists,
   startResearchRun(

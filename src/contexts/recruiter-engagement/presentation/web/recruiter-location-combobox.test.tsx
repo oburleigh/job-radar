@@ -15,7 +15,8 @@ describe("recruiter location combobox", () => {
     );
 
     expect(html).toContain("Greater London");
-    expect(html).toContain("countries, administrative areas, or cities");
+    expect(html).toContain("Start typing, then choose a location from the suggestions.");
+    expect(html).not.toContain("countries, administrative areas, or cities");
     expect(html).toContain('role="combobox"');
     expect(html).toContain('name="targetLocations"');
   });

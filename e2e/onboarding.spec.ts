@@ -265,6 +265,10 @@ test.describe
         .getByRole("navigation", { name: "Settings" })
         .getByRole("link", { name: "Recruiter Search" })
         .click();
+      await page
+        .getByRole("navigation", { name: "Recruiter Search settings" })
+        .getByRole("link", { name: "Public search" })
+        .click();
       await expect(page.getByRole("heading", { level: 2, name: "Public search" })).toBeVisible();
       await page.getByLabel("Requests per stage").fill("24");
       await page.getByRole("button", { name: "Save public search settings" }).click();
@@ -272,6 +276,10 @@ test.describe
       await page.reload();
       await expect(page.getByLabel("Requests per stage")).toHaveValue("24");
 
+      await page
+        .getByRole("navigation", { name: "Recruiter Search settings" })
+        .getByRole("link", { name: "Directory ranking" })
+        .click();
       await page.getByLabel("Specialism", { exact: true }).fill("25");
       await page.getByLabel("Current mandates or activity", { exact: true }).fill("10");
       await page.getByRole("button", { name: "Save directory ranking" }).click();
@@ -368,6 +376,30 @@ test.describe
         Math.abs(mobileStructuredBox.width - mobileClosedListingBox.width),
       ).toBeLessThanOrEqual(1);
       await page.screenshot({ path: "test-results/settings-mobile.png", fullPage: true });
+    });
+
+    test("saves the Recruiter Search criteria catalogues", async ({ page }) => {
+      await page.goto("/settings/recruiter-search/research-criteria");
+      await page.getByText("Edit industries and Specialisms", { exact: true }).click();
+      const industries = page.getByRole("textbox", { name: "Target industries", exact: true });
+      await industries.fill(`${await industries.inputValue()}\nAerospace`);
+      await page.getByRole("button", { name: "Save Research criteria" }).click();
+
+      await expect(page.getByText("Research criteria saved to SQLite.")).toBeVisible();
+      await page.reload();
+      await page.getByText("Edit industries and Specialisms", { exact: true }).click();
+      await expect(
+        page.getByRole("textbox", { name: "Target industries", exact: true }),
+      ).toHaveValue(/Aerospace/);
+      await page.screenshot({
+        fullPage: true,
+        path: "test-results/recruiter-settings-desktop.png",
+      });
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.screenshot({
+        fullPage: true,
+        path: "test-results/recruiter-settings-mobile.png",
+      });
     });
 
     test("uses a compact contextual source registry control", async ({ page }) => {

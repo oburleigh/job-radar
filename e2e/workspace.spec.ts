@@ -164,11 +164,16 @@ test("keeps settings in stable sections without carrying opportunity selection",
   );
 
   await settingsNavigation.getByRole("link", { name: "Recruiter Search" }).click();
-  await expect(page).toHaveURL("/settings/recruiter-search");
+  await expect(page).toHaveURL("/settings/recruiter-search/research-criteria");
   await expect(
     page.getByRole("heading", { level: 2, name: "Recruiter Search settings" }),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: "Save public search settings" })).toBeVisible();
+  const recruiterSettingsNavigation = page.getByRole("navigation", {
+    name: "Recruiter Search settings",
+  });
+  await expect(recruiterSettingsNavigation.getByRole("link")).toHaveCount(3);
+  await expect(page.getByRole("button", { name: "Save Research criteria" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save public search settings" })).toHaveCount(0);
 
   await settingsNavigation.getByRole("link", { name: "Adapters" }).click();
   await expect(page).toHaveURL("/settings/adapters/source-coverage");

@@ -5,6 +5,7 @@ import type {
 } from "@/contexts/recruiter-engagement/domain/research-run";
 
 export type RecruiterResearchSettings = {
+  readonly criteriaOptions: Omit<ResearchCriteria, "targetLocations">;
   readonly directoryMatchWeights: DirectoryMatchWeights;
   readonly defaultBrief: {
     readonly criteria: Omit<ResearchCriteria, "targetLocations">;

@@ -15,7 +15,12 @@ export default [
   route("settings", "./routes/settings-layout.tsx", [
     index("./routes/settings-index.ts"),
     route("opportunities", "./routes/settings-opportunities.tsx"),
-    route("recruiter-search", "./routes/settings-recruiter-search.tsx"),
+    route("recruiter-search", "./routes/settings-recruiter-search.tsx", [
+      index("./routes/settings-recruiter-search-index.ts"),
+      route("research-criteria", "./routes/settings-recruiter-research-criteria.tsx"),
+      route("public-search", "./routes/settings-recruiter-public-search.tsx"),
+      route("directory-ranking", "./routes/settings-recruiter-directory-ranking.tsx"),
+    ]),
     route("adapters", "./routes/settings-adapters-layout.tsx", [
       index("./routes/settings-adapters-index.ts"),
       route("source-coverage", "./routes/sources.tsx"),

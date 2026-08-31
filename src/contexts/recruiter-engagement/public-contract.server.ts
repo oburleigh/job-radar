@@ -4,8 +4,10 @@ import type { ResearchRunActivity } from "./public-contract";
 export const recruiterResearchSettingsContract = {
   getDirectoryMatchWeights: recruiterEngagementWeb.getDirectoryMatchWeights,
   getPublicSearchSettings: recruiterEngagementWeb.getPublicSearchSettings,
+  getResearchCriteriaOptions: recruiterEngagementWeb.getResearchCriteriaOptions,
   getPublicSearchProviderOptions: recruiterEngagementWeb.getPublicSearchProviderOptions,
   savePublicSearchSettings: recruiterEngagementWeb.savePublicSearchSettings,
+  saveResearchCriteriaOptions: recruiterEngagementWeb.saveResearchCriteriaOptions,
   saveDirectoryMatchWeights: recruiterEngagementWeb.saveDirectoryMatchWeights,
 };
 

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 
 test("finds and qualifies UAE technology recruitment firms with the real configured provider", async ({
   browser,
@@ -12,6 +12,7 @@ test("finds and qualifies UAE technology recruitment firms with the real configu
   ).toBeVisible();
   await page.getByLabel("Search provider").selectOption("brave");
   await expect(page.getByLabel("Search provider")).toHaveValue("brave");
+  await page.getByText("Add optional search context", { exact: true }).click();
   await page
     .getByLabel("Search brief")
     .fill(
@@ -22,8 +23,8 @@ test("finds and qualifies UAE technology recruitment firms with the real configu
   await expect(page.getByRole("option").first()).toBeVisible();
   await locations.press("ArrowDown");
   await locations.press("Enter");
-  await page.getByLabel("Specialisms").fill("Technology");
-  await page.getByLabel("Target industries").fill("Technology");
+  await selectCriterion(page, "Specialisms", "Software engineering");
+  await selectCriterion(page, "Target industries", "Technology");
   await page.getByLabel("Firms to find").fill("15");
   await page.getByLabel("Recruiters to find").fill("15");
 
@@ -76,3 +77,8 @@ test("finds and qualifies UAE technology recruitment firms with the real configu
   await page.goto("/activity");
   await expect(page.getByRole("cell", { name: "Research Run", exact: true })).toBeVisible();
 });
+
+async function selectCriterion(page: Page, field: string, option: string) {
+  await page.getByRole("combobox", { name: new RegExp(field, "i") }).focus();
+  await page.getByRole("option", { name: option, exact: true }).click();
+}

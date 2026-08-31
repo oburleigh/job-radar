@@ -1,4 +1,11 @@
-import { Button, PageHeader, SelectField, TextField } from "@job-radar/design-ui";
+import {
+  Button,
+  PageHeader,
+  SelectField,
+  TextField,
+  TokenAutocomplete,
+  type TokenAutocompleteOption,
+} from "@job-radar/design-ui";
 import { CheckCircle2, CircleAlert, CircleX, LoaderCircle, RotateCcw, Square } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Form, Link, useNavigation, useRevalidator } from "react-router";
@@ -37,6 +44,10 @@ type RecruiterResearchPageProps = {
     readonly field?: RecruiterResearchStartField;
     readonly message: string;
   };
+  readonly criteriaOptions: {
+    readonly industries: readonly string[];
+    readonly specialisms: readonly string[];
+  };
   readonly defaultTargets: Pick<ResearchRun["brief"], "firmTarget" | "recruiterTarget">;
   readonly initialLocationOptions?: readonly LocationOption[];
   readonly providers: readonly {
@@ -61,6 +72,7 @@ const researchFieldControlIds: Record<RecruiterResearchStartField, string> = {
 
 export function RecruiterResearchPage({
   actionError,
+  criteriaOptions,
   defaultTargets,
   initialLocationOptions,
   providers,
@@ -70,6 +82,7 @@ export function RecruiterResearchPage({
   const navigation = useNavigation();
   const revalidator = useRevalidator();
   const isSubmitting = navigation.state === "submitting";
+  const isStarting = navigation.state !== "idle" && navigation.formData?.get("intent") === "start";
   const run = research?.run;
   const isActive = run ? activeStatuses.has(run.status) : false;
   const briefError = fieldError(actionError, "brief");
@@ -80,15 +93,24 @@ export function RecruiterResearchPage({
   const firmTargetError = fieldError(actionError, "firmTarget");
   const recruiterTargetError = fieldError(actionError, "recruiterTarget");
   const loadedBriefDescription = run?.brief.description ?? "";
+  const loadedIndustries = run?.brief.criteria.industries.join("\n") ?? "";
+  const loadedSpecialisms = run?.brief.criteria.specialisms.join("\n") ?? "";
   const loadedTargetLocations = run?.brief.criteria.targetLocations.join("\n") ?? "";
   const loadedBriefKey = run?.id ?? "new-research";
   const previousLoadedBriefKey = useRef(loadedBriefKey);
   const [briefDescription, setBriefDescription] = useState(loadedBriefDescription);
+  const [industries, setIndustries] = useState<readonly string[]>(criteriaValues(loadedIndustries));
+  const [optionalContextOpen, setOptionalContextOpen] = useState(
+    loadedBriefDescription !== "" || Boolean(briefError),
+  );
   const [providerName, setProviderName] = useState(() =>
     availableProviderName(providers, selectedProvider, Boolean(research)),
   );
   const [targetLocations, setTargetLocations] = useState<readonly string[]>(
-    loadedTargetLocations === "" ? [] : loadedTargetLocations.split("\n"),
+    criteriaValues(loadedTargetLocations),
+  );
+  const [specialisms, setSpecialisms] = useState<readonly string[]>(
+    criteriaValues(loadedSpecialisms),
   );
   const providerIsConfigured =
     providers.find((provider) => provider.name === providerName)?.configured === true;
@@ -107,11 +129,16 @@ export function RecruiterResearchPage({
     }
     previousLoadedBriefKey.current = loadedBriefKey;
     setBriefDescription(loadedBriefDescription);
+    setIndustries(criteriaValues(loadedIndustries));
+    setOptionalContextOpen(loadedBriefDescription !== "");
     setProviderName(availableProviderName(providers, selectedProvider, Boolean(research)));
-    setTargetLocations(loadedTargetLocations === "" ? [] : loadedTargetLocations.split("\n"));
+    setSpecialisms(criteriaValues(loadedSpecialisms));
+    setTargetLocations(criteriaValues(loadedTargetLocations));
   }, [
     loadedBriefDescription,
     loadedBriefKey,
+    loadedIndustries,
+    loadedSpecialisms,
     loadedTargetLocations,
     providers,
     research,
@@ -120,6 +147,13 @@ export function RecruiterResearchPage({
 
   useEffect(() => {
     if (!actionError?.field) {
+      return;
+    }
+    if (actionError.field === "brief") {
+      setOptionalContextOpen(true);
+      window.requestAnimationFrame(() => {
+        document.getElementById(researchFieldControlIds.brief)?.focus();
+      });
       return;
     }
     document.getElementById(researchFieldControlIds[actionError.field])?.focus();
@@ -148,28 +182,6 @@ export function RecruiterResearchPage({
           noValidate
         >
           <input name="intent" type="hidden" value="start" />
-          <label className="recruiter-textarea-label" htmlFor="recruiter-brief">
-            <span>Search brief (optional)</span>
-            <textarea
-              value={briefDescription}
-              disabled={isSubmitting || isActive}
-              {...textareaAccessibility("recruiter-brief", briefError, true)}
-              id="recruiter-brief"
-              maxLength={1000}
-              name="brief"
-              onChange={(event) => setBriefDescription(event.target.value)}
-              placeholder="Describe the roles, sectors, seniority, or market focus for this run"
-              rows={5}
-            />
-            <small id="recruiter-brief-hint">
-              Add any plain-language context that is not captured by the structured criteria.
-            </small>
-            {briefError ? (
-              <small className="jr-field-error" id="recruiter-brief-error">
-                {briefError}
-              </small>
-            ) : null}
-          </label>
           <RecruiterLocationCombobox
             disabled={isSubmitting || isActive}
             {...(targetLocationsError ? { error: targetLocationsError } : {})}
@@ -206,46 +218,72 @@ export function RecruiterResearchPage({
               type="number"
             />
           </div>
-          <label className="recruiter-textarea-label" htmlFor="recruiter-specialisms">
-            <span>Specialisms (required)</span>
-            <textarea
-              defaultValue={run?.brief.criteria.specialisms.join(", ") ?? ""}
-              disabled={isSubmitting || isActive}
-              {...textareaAccessibility("recruiter-specialisms", specialismsError, true)}
-              id="recruiter-specialisms"
-              name="specialisms"
-              placeholder="e.g. Executive search, Clinical research"
-              rows={2}
-            />
-            <small id="recruiter-specialisms-hint">
-              Separate disciplines with commas or new lines.
-            </small>
-            {specialismsError ? (
-              <small className="jr-field-error" id="recruiter-specialisms-error">
-                {specialismsError}
+          <TokenAutocomplete
+            disabled={isSubmitting || isActive}
+            {...(specialismsError ? { error: specialismsError } : {})}
+            hint={criterionHint(
+              "Choose the professional disciplines recruiters should cover.",
+              criteriaOptions.specialisms,
+            )}
+            id="recruiter-specialisms"
+            invalidSelectionMessage="Choose a Specialism from the suggestions."
+            label="Specialisms (required)"
+            name="specialisms"
+            onChange={setSpecialisms}
+            options={criterionOptions([...criteriaOptions.specialisms, ...specialisms])}
+            placeholder="Choose a Specialism"
+            required
+            secondaryPlaceholder="Add another Specialism"
+            values={specialisms}
+          />
+          <TokenAutocomplete
+            disabled={isSubmitting || isActive}
+            {...(industriesError ? { error: industriesError } : {})}
+            hint={criterionHint(
+              "Choose the industries where recruiters should have hiring experience.",
+              criteriaOptions.industries,
+            )}
+            id="recruiter-industries"
+            invalidSelectionMessage="Choose a Target industry from the suggestions."
+            label="Target industries (required)"
+            name="industries"
+            onChange={setIndustries}
+            options={criterionOptions([...criteriaOptions.industries, ...industries])}
+            placeholder="Choose a Target industry"
+            required
+            secondaryPlaceholder="Add another Target industry"
+            values={industries}
+          />
+          <details
+            className="recruiter-optional-context"
+            onToggle={(event) => setOptionalContextOpen(event.currentTarget.open)}
+            open={optionalContextOpen}
+          >
+            <summary>Add optional search context</summary>
+            <label className="recruiter-textarea-label" htmlFor="recruiter-brief">
+              <span>Search brief (optional)</span>
+              <textarea
+                value={briefDescription}
+                disabled={isSubmitting || isActive}
+                {...textareaAccessibility("recruiter-brief", briefError, true)}
+                id="recruiter-brief"
+                maxLength={1000}
+                name="brief"
+                onChange={(event) => setBriefDescription(event.target.value)}
+                placeholder="e.g. Director-level roles at product-led companies"
+                rows={3}
+              />
+              <small id="recruiter-brief-hint">
+                Use this only for details the selections above cannot express, such as seniority or
+                employer type.
               </small>
-            ) : null}
-          </label>
-          <label className="recruiter-textarea-label" htmlFor="recruiter-industries">
-            <span>Target industries (required)</span>
-            <textarea
-              defaultValue={run?.brief.criteria.industries.join(", ") ?? ""}
-              disabled={isSubmitting || isActive}
-              {...textareaAccessibility("recruiter-industries", industriesError, true)}
-              id="recruiter-industries"
-              name="industries"
-              placeholder="e.g. Life sciences, Consumer goods"
-              rows={2}
-            />
-            <small id="recruiter-industries-hint">
-              These structured criteria are sent to both research stages.
-            </small>
-            {industriesError ? (
-              <small className="jr-field-error" id="recruiter-industries-error">
-                {industriesError}
-              </small>
-            ) : null}
-          </label>
+              {briefError ? (
+                <small className="jr-field-error" id="recruiter-brief-error">
+                  {briefError}
+                </small>
+              ) : null}
+            </label>
+          </details>
           <section className="recruiter-execution" aria-labelledby="research-adapter-title">
             <div className="recruiter-execution-copy">
               <h3 id="research-adapter-title">Active sources</h3>
@@ -280,30 +318,46 @@ export function RecruiterResearchPage({
               </SelectField>
               {!providerIsConfigured && !isActive ? (
                 <p className="recruiter-provider-configuration">
-                  <Link to="/settings/opportunities">Configure a search provider</Link> before
-                  starting Recruiter Search.
+                  <Link to="/settings/recruiter-search/public-search">
+                    Configure a search provider
+                  </Link>{" "}
+                  before starting Recruiter Search.
                 </p>
               ) : null}
             </div>
           </section>
           <div className="recruiter-brief-actions">
             <Button
-              busy={isSubmitting}
-              disabled={isSubmitting || isActive || !providerIsConfigured}
+              busy={isStarting}
+              disabled={isStarting || isActive || !providerIsConfigured}
               type="submit"
               variant="primary"
             >
-              <LoaderCircle aria-hidden="true" size={16} />
-              {isSubmitting
-                ? "Starting research"
+              {isStarting ? <LoaderCircle aria-hidden="true" size={16} /> : null}
+              {isStarting
+                ? "Starting Recruiter Search"
                 : isActive
                   ? "Research in progress"
                   : "Start research"}
             </Button>
-            <p>
-              Uses the selected configured search provider. It does not use a logged-in account
-              session or collect private contact data.
-            </p>
+            {isStarting || isActive ? (
+              <div className="recruiter-start-status" role="status" aria-live="polite">
+                <strong>
+                  {isStarting ? "Starting Recruiter Search" : researchStageLabel(run?.checkpoint)}
+                </strong>
+                <span>
+                  {isStarting
+                    ? "Saving your criteria and starting firm research."
+                    : "The run continues in the background."}{" "}
+                  You can leave this page and follow it in <Link to="/activity">Activity</Link>.
+                </span>
+              </div>
+            ) : (
+              <p>
+                Uses the selected configured search provider. It does not use a logged-in account
+                session or collect private contact data.
+              </p>
+            )}
           </div>
         </Form>
       </section>
@@ -345,6 +399,22 @@ function availableProviderName(
   return providers.find((provider) => provider.configured)?.name ?? "";
 }
 
+function criteriaValues(value: string): readonly string[] {
+  return value === "" ? [] : value.split("\n");
+}
+
+function criterionOptions(values: readonly string[]): readonly TokenAutocompleteOption[] {
+  return [...new Set(values)].map((value) => ({ label: value, value }));
+}
+
+function criterionHint(instruction: string, options: readonly string[]): string {
+  return `${instruction} Examples include ${options.slice(0, 4).join(", ")}.`;
+}
+
+function researchStageLabel(stage: ResearchRun["checkpoint"] | undefined): string {
+  return stage === "recruiters" ? "Finding recruiters" : "Researching firms";
+}
+
 function textareaAccessibility(id: string, error: string | undefined, hasHint: boolean) {
   const describedBy = [hasHint ? `${id}-hint` : undefined, error ? `${id}-error` : undefined]
     .filter(Boolean)
@@ -363,8 +433,8 @@ function EmptyResearchState() {
       </span>
       <h2>Ready for a local scan</h2>
       <p>
-        Start with a search brief and recruiter target. Firm observations appear before the
-        recruiter stage completes.
+        Choose a market focus and targets. Firm observations appear before the recruiter stage
+        completes.
       </p>
     </section>
   );

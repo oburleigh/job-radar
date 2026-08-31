@@ -14,6 +14,7 @@ type LocationAutocompleteProps = {
   readonly name: string;
   readonly onChange: (values: readonly string[]) => void;
   readonly onLocationSelected?: (location: LocationOption) => void;
+  readonly placeholder?: string;
   readonly required?: boolean;
   readonly values: readonly string[];
 };
@@ -33,6 +34,7 @@ export function LocationAutocomplete({
   name,
   onChange,
   onLocationSelected,
+  placeholder = "Search countries, administrative areas, or cities",
   required,
   values,
 }: LocationAutocompleteProps) {
@@ -104,7 +106,7 @@ export function LocationAutocomplete({
         );
       }}
       options={options}
-      placeholder="Search countries, administrative areas, or cities"
+      placeholder={placeholder}
       {...(required ? { required } : {})}
       selectedOptions={selectedOptions}
       secondaryPlaceholder="Add another location"

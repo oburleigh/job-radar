@@ -6,6 +6,45 @@ import { recruiterResearchSettings } from "./schema";
 type Database<TSchema extends Record<string, unknown>> = BetterSQLite3Database<TSchema>;
 
 export const defaultRecruiterResearchSettings = {
+  criteriaOptions: {
+    industries: [
+      "Technology",
+      "Financial services",
+      "Healthcare",
+      "Life sciences",
+      "Energy",
+      "Government",
+      "Retail and e-commerce",
+      "Professional services",
+      "Telecommunications",
+      "Manufacturing",
+      "Logistics and supply chain",
+      "Media and entertainment",
+      "Education",
+      "Real estate and construction",
+      "Travel and hospitality",
+      "Consumer goods",
+    ],
+    specialisms: [
+      "Software engineering",
+      "Data and AI",
+      "Cloud and DevOps",
+      "Cybersecurity",
+      "Product",
+      "Design",
+      "Architecture",
+      "Technology leadership",
+      "Project and programme management",
+      "Quality engineering",
+      "Business analysis",
+      "Executive search",
+      "Sales and business development",
+      "Marketing",
+      "Finance",
+      "Human resources",
+      "Operations",
+    ],
+  },
   directoryMatchWeights: {
     currentMandatesOrActivity: 15,
     evidenceFreshnessAndQuality: 10,
@@ -193,6 +232,10 @@ export function bootstrapRecruiterResearch<TSchema extends Record<string, unknow
   }
   const migrated = { ...existing } as Record<string, unknown>;
   let changed = false;
+  if (!("criteriaOptions" in migrated)) {
+    migrated.criteriaOptions = defaultRecruiterResearchSettings.criteriaOptions;
+    changed = true;
+  }
   if ("directoryMatchWeights" in migrated) {
     const weights = migrated.directoryMatchWeights;
     if (

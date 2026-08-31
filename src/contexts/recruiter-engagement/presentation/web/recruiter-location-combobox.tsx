@@ -22,12 +22,13 @@ export function RecruiterLocationCombobox({
     <LocationAutocomplete
       {...(disabled ? { disabled } : {})}
       {...(error ? { error } : {})}
-      hint="Choose countries, administrative areas, or cities for both research stages."
+      hint="Start typing, then choose a location from the suggestions."
       id="recruiter-target-locations"
       {...(initialOptions ? { initialOptions } : {})}
       name={name}
       label="Target locations (required)"
       onChange={onChange}
+      placeholder="Type a country, city, or region"
       required
       values={values}
     />

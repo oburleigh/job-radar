@@ -1,5 +1,60 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
+
+test("guides the market focus and immediately explains that research is starting", async ({
+  page,
+}) => {
+  await page.goto("/recruiter-search");
+
+  await expect(page.getByLabel("Search brief")).not.toBeVisible();
+  await expect(page.getByText("Add optional search context", { exact: true })).toBeVisible();
+
+  const locations = page.getByRole("combobox", { name: /Target locations/ });
+  await expect(locations).toHaveAttribute("placeholder", "Type a country, city, or region");
+  await expect(
+    page.getByText("Start typing, then choose a location from the suggestions.", { exact: true }),
+  ).toBeVisible();
+
+  await selectRecruiterCriterion(page, "Specialisms", "Software engineering");
+  await selectRecruiterCriterion(page, "Target industries", "Technology");
+  await selectRecruiterLocation(page, "Dubai");
+
+  let releaseRequest = () => {};
+  let markRequestIntercepted = () => {};
+  const requestIntercepted = new Promise<void>((resolve) => {
+    markRequestIntercepted = resolve;
+  });
+  await page.route("**/recruiter-search.data", async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.continue();
+      return;
+    }
+    markRequestIntercepted();
+    await new Promise<void>((resolve) => {
+      releaseRequest = resolve;
+    });
+    await route.continue();
+  });
+
+  const submission = page.getByRole("button", { name: "Start research" }).click();
+  await requestIntercepted;
+
+  const startingStatus = page.getByRole("status").filter({ hasText: "Starting Recruiter Search" });
+  await expect(startingStatus).toBeVisible();
+  await expect(startingStatus).toContainText("Saving your criteria and starting firm research.");
+  await expect(page.getByRole("button", { name: "Starting Recruiter Search" })).toBeDisabled();
+  await page.screenshot({
+    fullPage: true,
+    path: "test-results/recruiter-starting-desktop.png",
+  });
+
+  releaseRequest();
+  await submission;
+  await expect(page).toHaveURL(/\/recruiter-search\?run=/);
+  await expect(
+    page.getByRole("status").filter({ hasText: /Researching firms|Finding recruiters/ }),
+  ).toBeVisible();
+});
 
 test("shows guidance without applying research criteria to a new run", async ({ page }) => {
   await page.goto("/recruiter-search");
@@ -7,19 +62,18 @@ test("shows guidance without applying research criteria to a new run", async ({ 
   await expect(
     page.getByText(/public-source scan of recruitment firms and their named recruiters/i),
   ).toBeVisible();
-  await expect(page.getByLabel("Search brief")).toHaveValue("");
-  await expect(page.getByLabel("Search brief")).toHaveAttribute(
-    "placeholder",
-    /roles, sectors, seniority, or market focus/i,
-  );
+  await expect(page.getByLabel("Search brief")).not.toBeVisible();
   await expect(page.getByLabel("Target locations")).toHaveValue("");
   await expect(page.getByRole("button", { name: /^Remove / })).toHaveCount(0);
   await expect(page.getByLabel("Specialisms")).toHaveValue("");
-  await expect(page.getByLabel("Specialisms")).toHaveAttribute("placeholder", /clinical research/i);
+  await expect(page.getByLabel("Specialisms")).toHaveAttribute(
+    "placeholder",
+    "Choose a Specialism",
+  );
   await expect(page.getByLabel("Target industries")).toHaveValue("");
   await expect(page.getByLabel("Target industries")).toHaveAttribute(
     "placeholder",
-    /life sciences/i,
+    "Choose a Target industry",
   );
   await expect(page.getByLabel("Firms to find")).toHaveValue("10");
   await expect(page.getByLabel("Recruiters to find")).toHaveValue("20");
@@ -42,17 +96,19 @@ test("identifies and focuses the exact field that prevents research from startin
     "Could not start research. Target industries are required.",
   );
   await expect(page.getByText("Target industries are required.", { exact: true })).toHaveCount(1);
+  const invalidControl = invalidField.locator("..");
+  const validControl = page.getByLabel("Specialisms").locator("..");
   await expect
     .poll(() =>
-      invalidField.evaluate((element) => ({
+      invalidControl.evaluate((element) => ({
         borderColor: getComputedStyle(element).borderColor,
-        color: getComputedStyle(element).color,
+        backgroundColor: getComputedStyle(element).backgroundColor,
       })),
     )
     .not.toEqual(
-      await page.getByLabel("Specialisms").evaluate((element) => ({
+      await validControl.evaluate((element) => ({
         borderColor: getComputedStyle(element).borderColor,
-        color: getComputedStyle(element).color,
+        backgroundColor: getComputedStyle(element).backgroundColor,
       })),
     );
   await page.screenshot({
@@ -73,17 +129,19 @@ test("presents the recruiter provider with the same control contract as Opportun
   expect(recruiterProvider).toEqual(opportunitiesProvider);
 });
 
-test("starts recruiter research from the browser and renders firms before recruiters complete", async ({
+test("starts recruiter research from the browser and renders firms and recruiters", async ({
   page,
 }) => {
   await page.goto("/recruiter-search");
 
   await expect(page.getByRole("heading", { level: 1, name: "Recruiter Search" })).toBeVisible();
   await expect(page.getByRole("heading", { level: 1, name: "Recruiter research" })).toHaveCount(0);
-  await page.getByLabel("Search brief").fill("UAE fintech cybersecurity leadership");
+  await fillRecruiterSearchBrief(page, "UAE fintech cybersecurity leadership");
   await selectRecruiterLocation(page, "Dubai");
-  await page.getByLabel("Specialisms").fill("Cybersecurity, Technology leadership");
-  await page.getByLabel("Target industries").fill("Financial services, Health technology");
+  await selectRecruiterCriterion(page, "Specialisms", "Cybersecurity");
+  await selectRecruiterCriterion(page, "Specialisms", "Technology leadership");
+  await selectRecruiterCriterion(page, "Target industries", "Financial services");
+  await selectRecruiterCriterion(page, "Target industries", "Healthcare");
   await page.getByLabel("Recruiters to find").fill("0");
   await page.getByRole("button", { name: "Start research" }).click();
   await expect(page.getByRole("alert")).toHaveText(
@@ -103,14 +161,13 @@ test("starts recruiter research from the browser and renders firms before recrui
   await expect(page.getByText("Researching", { exact: true })).toBeVisible();
   await expect(
     page.getByText(
-      "Criteria: Dubai, United Arab Emirates; Cybersecurity, Technology leadership; Financial services, Health technology",
+      "Criteria: Dubai, United Arab Emirates; Cybersecurity, Technology leadership; Financial services, Healthcare",
       { exact: true },
     ),
   ).toBeVisible();
   await expect(
     page.getByText(/Public search with a frozen \d+-request stage budget\./),
   ).toBeVisible();
-  await expect(page.getByText("Technology Recruiter 1", { exact: true })).not.toBeVisible();
 
   await expect(page.getByText("Technology Recruiter 1", { exact: true })).toBeVisible({
     timeout: 10_000,
@@ -134,7 +191,7 @@ test("starts recruiter research from the browser and renders firms before recrui
   await page.getByRole("link", { name: "Activity" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Activity" })).toBeVisible();
   await expect(page.getByRole("heading", { level: 1, name: "Discovery history" })).toHaveCount(0);
-  await expect(page.getByRole("cell", { name: "Research Run", exact: true })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Research Run", exact: true }).first()).toBeVisible();
 });
 
 async function controlPresentation(locator: import("@playwright/test").Locator) {
@@ -154,8 +211,8 @@ async function controlPresentation(locator: import("@playwright/test").Locator) 
 
 test("shows each invalid structured criterion on its own control", async ({ page }) => {
   await page.goto("/recruiter-search");
-  await page.getByLabel("Specialisms").fill("Executive search");
-  await page.getByLabel("Target industries").fill("Financial services");
+  await selectRecruiterCriterion(page, "Specialisms", "Executive search");
+  await selectRecruiterCriterion(page, "Target industries", "Financial services");
   await page.getByRole("button", { name: "Start research" }).click();
 
   await expect(page.getByRole("alert")).toHaveText(
@@ -174,11 +231,11 @@ test("keeps edited recruiter research fields after a recoverable validation reva
 }) => {
   await page.goto("/recruiter-search");
 
+  await fillRecruiterSearchBrief(page, "Edited applied AI leadership brief");
   const brief = page.getByLabel("Search brief");
-  await brief.fill("Edited applied AI leadership brief");
   await selectRecruiterLocation(page, "Dubai");
-  await page.getByLabel("Specialisms").fill("Data and AI");
-  await page.getByLabel("Target industries").fill("Technology");
+  await selectRecruiterCriterion(page, "Specialisms", "Data and AI");
+  await selectRecruiterCriterion(page, "Target industries", "Technology");
   await page.getByLabel("Recruiters to find").fill("0");
   await page.getByRole("button", { name: "Start research" }).click();
 
@@ -197,10 +254,12 @@ test("cancels an active recruiter run and retries with the frozen brief and plan
   page,
 }) => {
   await page.goto("/recruiter-search");
-  await page.getByLabel("Search brief").fill("UAE data and AI hiring");
+  await fillRecruiterSearchBrief(page, "UAE data and AI hiring");
   await selectRecruiterLocation(page, "Abu Dhabi");
-  await page.getByLabel("Specialisms").fill("Data and AI, Architecture");
-  await page.getByLabel("Target industries").fill("Government, Energy");
+  await selectRecruiterCriterion(page, "Specialisms", "Data and AI");
+  await selectRecruiterCriterion(page, "Specialisms", "Architecture");
+  await selectRecruiterCriterion(page, "Target industries", "Government");
+  await selectRecruiterCriterion(page, "Target industries", "Energy");
   await page.getByLabel("Recruiters to find").fill("10");
   await page.getByRole("button", { name: "Start research" }).click();
 
@@ -246,10 +305,10 @@ test("creates a named Shortlist and makes Prospect contact exclusions explicit",
   const shortlistName = `UAE recruiter Shortlist ${crypto.randomUUID()}`;
   await page.setViewportSize({ width: 1440, height: 1200 });
   await page.goto("/recruiter-research");
-  await page.getByLabel("Search brief").fill("UAE software engineering recruitment");
+  await fillRecruiterSearchBrief(page, "UAE software engineering recruitment");
   await selectRecruiterLocation(page, "Dubai");
-  await page.getByLabel("Specialisms").fill("Software engineering");
-  await page.getByLabel("Target industries").fill("Financial services");
+  await selectRecruiterCriterion(page, "Specialisms", "Software engineering");
+  await selectRecruiterCriterion(page, "Target industries", "Financial services");
   await page.getByLabel("Recruiters to find").fill("10");
   await page.getByRole("button", { name: "Start research" }).click();
   await expect(page.getByText("Technology Recruiter 1", { exact: true })).toBeVisible({
@@ -416,16 +475,16 @@ test("uses the shared country catalogue in the location autocomplete and keeps c
   await expect(page.getByRole("link", { name: "Research settings" })).toHaveCount(0);
   await expect(page.getByLabel("Search provider")).toHaveValue("serper");
   await expect(page.getByLabel("Codex model")).toHaveCount(0);
-  const [pageTitle, briefHeading, briefLabel] = await Promise.all([
+  const [pageTitle, briefHeading, optionalContext] = await Promise.all([
     page.getByRole("heading", { level: 1, name: "Recruiter Search" }).boundingBox(),
     page.getByRole("heading", { level: 2, name: "Set the market focus" }).boundingBox(),
-    page.getByText("Search brief (optional)", { exact: true }).boundingBox(),
+    page.getByText("Add optional search context", { exact: true }).boundingBox(),
   ]);
-  if (!pageTitle || !briefHeading || !briefLabel) {
+  if (!pageTitle || !briefHeading || !optionalContext) {
     throw new Error("Recruiter research content edges must be measurable.");
   }
   expect(Math.abs(pageTitle.x - briefHeading.x)).toBeLessThanOrEqual(1);
-  expect(Math.abs(pageTitle.x - briefLabel.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(pageTitle.x - optionalContext.x)).toBeLessThanOrEqual(1);
 
   const targetLocations = page.getByLabel("Target locations");
   await expect(targetLocations).toHaveAttribute("role", "combobox");
@@ -464,7 +523,6 @@ test("uses the shared country catalogue in the location autocomplete and keeps c
 
   const controls = await Promise.all(
     [
-      "Search brief",
       "Target locations",
       "Specialisms",
       "Target industries",
@@ -472,12 +530,10 @@ test("uses the shared country catalogue in the location autocomplete and keeps c
       "Recruiters to find",
     ].map(async (label) => page.getByLabel(label).boundingBox()),
   );
-  const [brief, locations, specialisms, industries, firmTarget, recruiterTarget] =
-    requiredBoxes(controls);
-  if (!brief || !locations || !specialisms || !industries || !firmTarget || !recruiterTarget) {
+  const [locations, specialisms, industries, firmTarget, recruiterTarget] = requiredBoxes(controls);
+  if (!locations || !specialisms || !industries || !firmTarget || !recruiterTarget) {
     throw new Error("Recruiter controls must be rendered before layout is measured.");
   }
-  expect(brief.width).toBeGreaterThan(specialisms.width);
   expect(Math.abs(specialisms.y - industries.y)).toBeLessThan(4);
   expect(specialisms.x).toBeLessThan(industries.x);
   expect(Math.abs(locations.y - recruiterTarget.y)).toBeLessThan(4);
@@ -497,7 +553,6 @@ test("contains recruiter controls equally on mobile and clears the fixed navigat
 
   const controls = await Promise.all(
     [
-      "Search brief",
       "Target locations",
       "Specialisms",
       "Target industries",
@@ -509,9 +564,9 @@ test("contains recruiter controls equally on mobile and clears the fixed navigat
   if (!first) {
     throw new Error("Recruiter controls must be rendered before layout is measured.");
   }
-  for (const control of remaining) {
-    expect(control.x).toBeGreaterThanOrEqual(first.x);
-    expect(control.x + control.width).toBeLessThanOrEqual(390);
+  const formBox = await page.locator(".recruiter-brief-form").boundingBox();
+  for (const [index, control] of [first, ...remaining].entries()) {
+    assertContained(formBox, control, `Recruiter control ${index + 1}`);
   }
   await page.screenshot({ path: "test-results/recruiter-mobile.png" });
 
@@ -566,7 +621,23 @@ function assertContained(
   expect(child.x + child.width).toBeLessThanOrEqual(container.x + container.width);
 }
 
-async function selectRecruiterLocation(page: import("@playwright/test").Page, label: string) {
+async function selectRecruiterCriterion(page: Page, field: string, option: string) {
+  const criterion = page.getByRole("combobox", { name: new RegExp(field, "i") });
+  await criterion.fill(option);
+  await expect(page.getByRole("option", { name: option, exact: true })).toBeVisible();
+  await page.getByRole("option", { name: option, exact: true }).click();
+  await expect(page.getByRole("button", { name: `Remove ${option}` })).toBeVisible();
+}
+
+async function fillRecruiterSearchBrief(page: Page, value: string) {
+  const brief = page.getByLabel("Search brief");
+  if (!(await brief.isVisible())) {
+    await page.getByText("Add optional search context", { exact: true }).click();
+  }
+  await brief.fill(value);
+}
+
+async function selectRecruiterLocation(page: Page, label: string) {
   await clearRecruiterLocations(page);
   const locations = page.getByLabel("Target locations");
   await locations.fill(label);
@@ -575,8 +646,11 @@ async function selectRecruiterLocation(page: import("@playwright/test").Page, la
   await locations.press("Enter");
 }
 
-async function clearRecruiterLocations(page: import("@playwright/test").Page) {
-  const removers = page.getByRole("button", { name: /^Remove / });
+async function clearRecruiterLocations(page: Page) {
+  const removers = page
+    .getByRole("combobox", { name: /Target locations/ })
+    .locator("..")
+    .getByRole("button", { name: /^Remove / });
   while (await removers.count()) {
     await removers.first().click();
   }

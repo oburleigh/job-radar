@@ -28,6 +28,7 @@ describe("recruiter research page", () => {
         path: "/",
         element: (
           <RecruiterResearchPage
+            criteriaOptions={testCriteriaOptions}
             defaultTargets={{ firmTarget: 10, recruiterTarget: 20 }}
             providers={[{ configured: true, label: "Serper.dev", name: "serper" }]}
             selectedProvider="serper"
@@ -49,6 +50,7 @@ describe("recruiter research page", () => {
         path: "/",
         element: (
           <RecruiterResearchPage
+            criteriaOptions={testCriteriaOptions}
             defaultTargets={{ firmTarget: 10, recruiterTarget: 20 }}
             providers={[{ configured: false, label: "Brave Search", name: "brave" }]}
             selectedProvider="brave"
@@ -60,7 +62,7 @@ describe("recruiter research page", () => {
     const html = renderToStaticMarkup(<RouterProvider router={router} />);
 
     expect(html).toContain("Configure a search provider first");
-    expect(html).toContain('href="/settings/opportunities"');
+    expect(html).toContain('href="/settings/recruiter-search/public-search"');
     expect(html).toContain('disabled=""');
     expect(html).toContain("Start research");
   });
@@ -147,6 +149,7 @@ describe("recruiter research page", () => {
         path: "/",
         element: (
           <RecruiterResearchPage
+            criteriaOptions={testCriteriaOptions}
             defaultTargets={{ firmTarget: 10, recruiterTarget: 20 }}
             providers={[{ configured: true, label: "Serper.dev", name: "serper" }]}
             research={{
@@ -222,6 +225,7 @@ describe("recruiter research page", () => {
         path: "/",
         element: (
           <RecruiterResearchPage
+            criteriaOptions={testCriteriaOptions}
             defaultTargets={{ firmTarget: 10, recruiterTarget: 20 }}
             providers={[{ configured: true, label: "Serper.dev", name: "serper" }]}
             research={{
@@ -285,6 +289,11 @@ function recruiterObservation() {
     title: "Software Engineering Recruiter",
   };
 }
+
+const testCriteriaOptions = {
+  industries: ["Technology", "Financial services"],
+  specialisms: ["Software engineering", "Data and AI"],
+} as const;
 
 const testAdapterPolicy: AdapterPolicySnapshot = {
   allowedPublicSourceScope: ["Public firm pages", "Public LinkedIn profiles"],

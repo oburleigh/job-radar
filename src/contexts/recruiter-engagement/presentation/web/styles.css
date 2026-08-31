@@ -94,8 +94,26 @@
   border-color: var(--jr-color-danger);
 }
 
-.recruiter-textarea-label:first-of-type {
+.recruiter-optional-context {
   grid-column: 1 / -1;
+}
+
+.recruiter-optional-context summary {
+  width: fit-content;
+  min-height: var(--jr-control-height-md);
+  padding: var(--jr-space-3) 0;
+  color: var(--jr-color-text);
+  font-weight: var(--jr-font-weight-bold);
+  cursor: pointer;
+}
+
+.recruiter-optional-context summary:focus-visible {
+  outline: var(--jr-border-width-strong) solid var(--jr-color-focus-ring);
+  outline-offset: var(--jr-space-1);
+}
+
+.recruiter-optional-context[open] .recruiter-textarea-label {
+  margin-top: var(--jr-space-2);
 }
 
 .recruiter-execution {
@@ -180,6 +198,31 @@
 .recruiter-brief-actions p {
   max-width: 630px;
   margin: 0;
+}
+
+.recruiter-start-status {
+  display: grid;
+  max-width: 630px;
+  gap: var(--jr-space-1);
+  color: var(--jr-color-text);
+}
+
+.recruiter-start-status strong {
+  font-family: var(--jr-font-family-display);
+  font-size: var(--jr-font-size-heading-md);
+  font-stretch: condensed;
+  text-transform: uppercase;
+}
+
+.recruiter-start-status span {
+  color: var(--jr-color-text-muted);
+  font-size: var(--jr-font-size-caption);
+  line-height: 1.45;
+}
+
+.recruiter-start-status a {
+  font-weight: var(--jr-font-weight-bold);
+  text-decoration: underline;
 }
 
 .recruiter-action-error {

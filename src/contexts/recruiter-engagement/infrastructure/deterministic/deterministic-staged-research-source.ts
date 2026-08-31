@@ -28,7 +28,13 @@ export function createDeterministicStagedResearchSource(
           kind: "firm",
           companyName: `Recruitment Search ${number}`,
           websiteUrl: `https://recruitment-search-${number}.example`,
-          reason: run.brief.description,
+          reason:
+            run.brief.description ||
+            "Matches " +
+              run.brief.criteria.specialisms.join(", ") +
+              " in " +
+              run.brief.criteria.industries.join(", ") +
+              ".",
           industries: run.brief.criteria.industries,
           rankingSignals: {
             currentMandatesOrActivity: true,
