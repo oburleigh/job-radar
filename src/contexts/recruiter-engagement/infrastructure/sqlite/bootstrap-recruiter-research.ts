@@ -7,10 +7,13 @@ type Database<TSchema extends Record<string, unknown>> = BetterSQLite3Database<T
 
 export const defaultRecruiterResearchSettings = {
   directoryMatchWeights: {
-    currentActivity: 15,
+    currentMandatesOrActivity: 15,
     evidenceFreshnessAndQuality: 10,
+    namedRecruiterOrTeamEvidence: 10,
     recruiterRoleAndSeniority: 15,
-    specialism: 60,
+    scaleOrTrackRecord: 10,
+    specialism: 20,
+    targetMarketOperatingDepth: 20,
   },
   defaultBrief: {
     criteria: {
@@ -21,13 +24,72 @@ export const defaultRecruiterResearchSettings = {
     firmTarget: 10,
     recruiterTarget: 20,
   },
-  execution: {
-    model: null,
-    reasoningEffort: null,
-    stageRequestLimit: 1,
-    stageTimeoutMs: 600_000,
+  publicSearch: {
+    currentActivityTerms: ["hiring", "vacancies", "jobs", "recruiting", "recruitment", "mandates"],
+    excludedHosts: [
+      "agencyspotter.com",
+      "bayzat.com",
+      "capstone-solutions.com",
+      "clutch.co",
+      "constructionplacements.com",
+      "edarabia.com",
+      "ensun.io",
+      "experthr.ae",
+      "goodfirms.co",
+      "headhuntersindubai.com",
+      "herohunt.ai",
+      "icreativez.com",
+      "linkedin.com",
+      "naukrigulf.com",
+      "nextinhr.com",
+      "reddit.com",
+      "sortlist.com",
+      "teamplusindia.in",
+      "techbehemoths.com",
+    ],
+    firmDiscoveryPhrases: [
+      "recruitment agency",
+      "recruitment firm",
+      "executive search firm",
+      "staffing agency",
+      "recruiters",
+    ],
+    maxPagesPerQuery: 2,
+    namedRecruiterOrTeamTerms: ["our team", "consultants", "recruiters", "leadership"],
+    profileSourceHosts: ["linkedin.com/in"],
+    providerName: "serper",
+    recruiterRoleTerms: ["recruiter", "talent acquisition", "executive search"],
+    resultsPerQuery: 10,
+    scaleOrTrackRecordTerms: ["years", "global", "offices", "clients", "placements", "founded"],
+    stageRequestLimit: 40,
   },
 } as const satisfies RecruiterResearchSettings;
+
+const legacyTechnologyPublicSearchSettings = {
+  ...defaultRecruiterResearchSettings.publicSearch,
+  currentActivityTerms: ["hiring", "vacancies", "jobs", "recruiting", "mandates"],
+  excludedHosts: ["clutch.co", "sortlist.com", "agencyspotter.com", "linkedin.com"],
+  firmDiscoveryPhrases: [
+    "technology recruitment agency",
+    "technology recruitment firm",
+    "IT recruitment agency",
+    "technology executive search",
+  ],
+} as const;
+
+const legacyCurrentDirectoryMatchWeights = {
+  currentActivity: 15,
+  evidenceFreshnessAndQuality: 10,
+  recruiterRoleAndSeniority: 15,
+  specialism: 60,
+} as const;
+
+const legacyExecutionSettings = {
+  model: null,
+  reasoningEffort: null,
+  stageRequestLimit: 1,
+  stageTimeoutMs: 600_000,
+} as const;
 
 const legacyDirectoryMatchWeights = {
   contactability: 5,
@@ -60,7 +122,7 @@ const legacyTechnologyDefaultBrief = {
 const legacyDefaultRecruiterResearchSettings = {
   defaultBrief: legacyTechnologyDefaultBrief,
   execution: {
-    ...defaultRecruiterResearchSettings.execution,
+    ...legacyExecutionSettings,
     model: "gpt-5.6-terra",
     reasoningEffort: "medium",
   },
@@ -68,7 +130,7 @@ const legacyDefaultRecruiterResearchSettings = {
 
 const legacyAccountDefaultRecruiterResearchSettings = {
   defaultBrief: legacyTechnologyDefaultBrief,
-  execution: defaultRecruiterResearchSettings.execution,
+  execution: legacyExecutionSettings,
 } as const;
 
 export function bootstrapRecruiterResearch<TSchema extends Record<string, unknown>>(
@@ -104,6 +166,19 @@ export function bootstrapRecruiterResearch<TSchema extends Record<string, unknow
       directoryMatchWeights: defaultRecruiterResearchSettings.directoryMatchWeights,
       ...legacyAccountDefaultRecruiterResearchSettings,
     },
+    {
+      directoryMatchWeights: legacyCurrentDirectoryMatchWeights,
+      defaultBrief: defaultRecruiterResearchSettings.defaultBrief,
+      execution: legacyExecutionSettings,
+    },
+    {
+      directoryMatchWeights: legacyCurrentDirectoryMatchWeights,
+      ...legacyDefaultRecruiterResearchSettings,
+    },
+    {
+      directoryMatchWeights: legacyCurrentDirectoryMatchWeights,
+      ...legacyAccountDefaultRecruiterResearchSettings,
+    },
   ].some((legacy) => JSON.stringify(existing) === JSON.stringify(legacy));
   if (isLegacyDefault) {
     database
@@ -116,8 +191,10 @@ export function bootstrapRecruiterResearch<TSchema extends Record<string, unknow
   if (!existing || typeof existing !== "object") {
     return;
   }
-  if ("directoryMatchWeights" in existing) {
-    const weights = existing.directoryMatchWeights;
+  const migrated = { ...existing } as Record<string, unknown>;
+  let changed = false;
+  if ("directoryMatchWeights" in migrated) {
+    const weights = migrated.directoryMatchWeights;
     if (
       weights &&
       typeof weights === "object" &&
@@ -126,40 +203,57 @@ export function bootstrapRecruiterResearch<TSchema extends Record<string, unknow
       ("geographicRelevance" in weights || "contactability" in weights)
     ) {
       const legacyWeights = weights as Record<string, unknown>;
-      const {
-        contactability,
-        geographicRelevance: _geographicRelevance,
-        ...availableWeights
-      } = legacyWeights;
-      const reclaimedWeight =
-        (typeof contactability === "number" ? contactability : 0) +
-        (typeof _geographicRelevance === "number" ? _geographicRelevance : 0);
-      database
-        .update(recruiterResearchSettings)
-        .set({
-          value: {
-            ...existing,
-            directoryMatchWeights: {
-              ...availableWeights,
-              specialism: weights.specialism + reclaimedWeight,
-            },
-          },
-          updatedAt: now,
-        })
-        .where(eq(recruiterResearchSettings.key, "default"))
-        .run();
+      migrated.directoryMatchWeights = {
+        currentMandatesOrActivity: legacyWeights.currentActivity,
+        evidenceFreshnessAndQuality: legacyWeights.evidenceFreshnessAndQuality,
+        namedRecruiterOrTeamEvidence: legacyWeights.contactability ?? 0,
+        recruiterRoleAndSeniority: legacyWeights.recruiterRoleAndSeniority,
+        scaleOrTrackRecord: 0,
+        specialism: legacyWeights.specialism,
+        targetMarketOperatingDepth: legacyWeights.geographicRelevance ?? 0,
+      };
+      changed = true;
+    } else if (
+      weights &&
+      typeof weights === "object" &&
+      "currentActivity" in weights &&
+      typeof weights.currentActivity === "number" &&
+      !("currentMandatesOrActivity" in weights)
+    ) {
+      const legacyWeights = weights as Record<string, unknown>;
+      migrated.directoryMatchWeights = {
+        currentMandatesOrActivity: legacyWeights.currentActivity,
+        evidenceFreshnessAndQuality: legacyWeights.evidenceFreshnessAndQuality,
+        namedRecruiterOrTeamEvidence: 0,
+        recruiterRoleAndSeniority: legacyWeights.recruiterRoleAndSeniority,
+        scaleOrTrackRecord: 0,
+        specialism: legacyWeights.specialism,
+        targetMarketOperatingDepth: 0,
+      };
+      changed = true;
     }
-    return;
+  } else {
+    migrated.directoryMatchWeights = defaultRecruiterResearchSettings.directoryMatchWeights;
+    changed = true;
   }
-  database
-    .update(recruiterResearchSettings)
-    .set({
-      value: {
-        ...existing,
-        directoryMatchWeights: defaultRecruiterResearchSettings.directoryMatchWeights,
-      },
-      updatedAt: now,
-    })
-    .where(eq(recruiterResearchSettings.key, "default"))
-    .run();
+  if (!("publicSearch" in migrated)) {
+    migrated.publicSearch = defaultRecruiterResearchSettings.publicSearch;
+    changed = true;
+  } else if (
+    JSON.stringify(migrated.publicSearch) === JSON.stringify(legacyTechnologyPublicSearchSettings)
+  ) {
+    migrated.publicSearch = defaultRecruiterResearchSettings.publicSearch;
+    changed = true;
+  }
+  if ("execution" in migrated) {
+    delete migrated.execution;
+    changed = true;
+  }
+  if (changed) {
+    database
+      .update(recruiterResearchSettings)
+      .set({ value: migrated, updatedAt: now })
+      .where(eq(recruiterResearchSettings.key, "default"))
+      .run();
+  }
 }

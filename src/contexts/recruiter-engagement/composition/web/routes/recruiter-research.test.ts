@@ -3,8 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createRecruiterResearchAction } from "./recruiter-research-action.server";
 
 describe("recruiter research route action", () => {
-  it("persists the user-selected Codex execution before starting the run", async () => {
-    const saveResearchExecutionSettings = vi.fn();
+  it("starts the run with the user-selected search provider", async () => {
     const startResearchRun = vi.fn(async () => ({ status: "started" as const, runId: "run-1" }));
     const action = createRecruiterResearchAction({
       assertLocalHost: vi.fn(),
@@ -15,18 +14,15 @@ describe("recruiter research route action", () => {
       ]),
       retryResearchRun: vi.fn(),
       resolveDirectoryIdentity: vi.fn(),
-      saveResearchExecutionSettings,
       shortlists: shortlistActions(),
       startResearchRun,
     });
 
     await action(startRequest());
 
-    expect(saveResearchExecutionSettings).toHaveBeenCalledWith({
-      model: "gpt-5.6",
-      reasoningEffort: "high",
-    });
-    expect(startResearchRun).toHaveBeenCalledTimes(1);
+    expect(startResearchRun).toHaveBeenCalledWith(
+      expect.objectContaining({ providerName: "serper" }),
+    );
   });
 
   it("returns its normal error data when a retry races a terminal-state change", async () => {
@@ -39,7 +35,6 @@ describe("recruiter research route action", () => {
         throw new Error("Only a finished recruiter research run can be retried.");
       }),
       resolveDirectoryIdentity: vi.fn(),
-      saveResearchExecutionSettings: vi.fn(),
       shortlists: shortlistActions(),
       startResearchRun: vi.fn(),
     });
@@ -58,7 +53,6 @@ describe("recruiter research route action", () => {
       resolveTargetLocations: vi.fn(() => []),
       retryResearchRun: vi.fn(),
       resolveDirectoryIdentity,
-      saveResearchExecutionSettings: vi.fn(),
       shortlists: shortlistActions(),
       startResearchRun: vi.fn(),
     });
@@ -82,7 +76,6 @@ describe("recruiter research route action", () => {
       resolveTargetLocations: vi.fn(() => []),
       retryResearchRun: vi.fn(),
       resolveDirectoryIdentity: vi.fn(),
-      saveResearchExecutionSettings: vi.fn(),
       shortlists,
       startResearchRun: vi.fn(),
     });
@@ -155,8 +148,7 @@ function startRequest(): Request {
   form.set("industries", "Financial services");
   form.set("firmTarget", "1");
   form.set("recruiterTarget", "1");
-  form.set("model", "gpt-5.6");
-  form.set("reasoningEffort", "high");
+  form.set("providerName", "serper");
   return new Request("http://localhost/recruiter-research", {
     method: "POST",
     headers: { host: "localhost" },

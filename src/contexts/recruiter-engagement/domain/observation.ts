@@ -14,6 +14,12 @@ export type FirmObservation = {
   readonly reason: string;
   readonly industries: readonly string[];
   readonly specialisms: readonly string[];
+  readonly rankingSignals: {
+    readonly currentMandatesOrActivity: boolean;
+    readonly namedRecruiterOrTeamEvidence: boolean;
+    readonly scaleOrTrackRecord: boolean;
+    readonly targetMarkets: readonly string[];
+  };
   readonly evidence: Evidence;
 };
 

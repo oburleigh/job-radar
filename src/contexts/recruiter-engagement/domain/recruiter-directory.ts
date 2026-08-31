@@ -59,10 +59,27 @@ export type RecruiterDirectory = {
 };
 
 export type DirectoryMatchWeights = {
-  readonly currentActivity: number;
+  readonly currentMandatesOrActivity: number;
   readonly evidenceFreshnessAndQuality: number;
+  readonly namedRecruiterOrTeamEvidence: number;
   readonly recruiterRoleAndSeniority: number;
+  readonly scaleOrTrackRecord: number;
   readonly specialism: number;
+  readonly targetMarketOperatingDepth: number;
+};
+
+export type DirectoryRankingFactor = keyof DirectoryMatchWeights;
+
+export type RankingContribution = {
+  readonly factor: DirectoryRankingFactor;
+  readonly points: number;
+  readonly reason: string;
+};
+
+export type FirmQualification = {
+  readonly qualified: boolean;
+  readonly reasons: readonly string[];
+  readonly unavailableFactors: readonly string[];
 };
 
 export type DirectoryConflict = {
@@ -74,6 +91,7 @@ export type RankedRecruiter = Recruiter & {
   readonly conflicts: readonly DirectoryConflict[];
   readonly evidence: readonly DirectoryEvidence[];
   readonly matchReasons: readonly string[];
+  readonly rankingContributions: readonly RankingContribution[];
   readonly score: number;
   readonly unavailableFactors: readonly string[];
 };
@@ -82,6 +100,8 @@ export type RankedFirm = RecruitmentFirm & {
   readonly conflicts: readonly DirectoryConflict[];
   readonly evidence: readonly DirectoryEvidence[];
   readonly matchReasons: readonly string[];
+  readonly qualification: FirmQualification;
+  readonly rankingContributions: readonly RankingContribution[];
   readonly recruiters: readonly RankedRecruiter[];
   readonly score: number;
   readonly unavailableFactors: readonly string[];
@@ -230,20 +250,24 @@ export function rankRecruiterDirectory(
       const evidence = evidenceForRecord(directory, firm.id, "firm");
       const specialism = matchingSpecialism(evidence, command.brief);
       const evidenceScore = scoreEvidence(evidence, command.asOf, command.weights);
-      const matchReasons: string[] = [];
-      const hasCurrentActivity = hasRecentEvidence(evidence, command.asOf);
-      let score = hasCurrentActivity ? command.weights.currentActivity : 0;
-      if (specialism) {
-        score += command.weights.specialism;
-        matchReasons.push(`Specialism matches ${specialism}.`);
-      }
-      if (hasCurrentActivity) {
-        matchReasons.push("Current recruitment activity is supported by public evidence.");
-      }
-      score += evidenceScore;
-      if (evidenceScore > 0) {
-        matchReasons.push(evidenceReason(evidence, evidenceScore, command.asOf));
-      }
+      const targetMarket = matchingTargetMarket(evidence, command.brief, command.asOf);
+      const hasCurrentActivity = hasCurrentFirmActivity(evidence, command.asOf);
+      const hasNamedRecruiterOrTeam = hasFirmSignal(evidence, "namedRecruiterOrTeamEvidence");
+      const hasScaleOrTrackRecord = hasFirmSignal(evidence, "scaleOrTrackRecord");
+      const rankingContributions = firmRankingContributions({
+        asOf: command.asOf,
+        evidence,
+        evidenceScore,
+        hasCurrentActivity,
+        hasNamedRecruiterOrTeam,
+        hasScaleOrTrackRecord,
+        specialism,
+        targetMarket,
+        weights: command.weights,
+      });
+      const matchReasons = awardedReasons(rankingContributions);
+      const score = totalContributions(rankingContributions);
+      const qualification = assessFirmEvidenceQualification(evidence, command.brief, command.asOf);
 
       const recruiters = directory.recruiters
         .filter(
@@ -260,10 +284,14 @@ export function rankRecruiterDirectory(
         conflicts: conflictsForFirm(evidence),
         evidence,
         matchReasons,
+        qualification,
+        rankingContributions,
         recruiters,
         score,
         unavailableFactors: [
-          "Geographic relevance is unavailable from the retained evidence.",
+          ...rankingContributions
+            .filter((contribution) => contribution.points === 0)
+            .map((contribution) => contribution.reason),
           "Recruiter role and seniority do not apply to a firm result.",
           "No public contact route is retained for this firm.",
         ],
@@ -283,6 +311,18 @@ export function rankRecruiterDirectory(
     .sort(compareRankedRecords);
 
   return { firms, identityReviews: directory.identityReviews, unassociatedRecruiters };
+}
+
+export function assessFirmQualification(
+  observation: Extract<ResearchObservation, { readonly kind: "firm" }>,
+  brief: SearchBrief,
+  asOf: Date,
+): FirmQualification {
+  return assessFirmEvidenceQualification(
+    [{ id: "qualification", observation, recordId: "qualification", runIds: [] }],
+    brief,
+    asOf,
+  );
 }
 
 function reconcileFirm(
@@ -478,24 +518,37 @@ function rankRecruiter(
     normaliseName(recruiter.title).includes(normaliseName(specialism)),
   );
   const evidenceScore = scoreEvidence(evidence, command.asOf, command.weights);
-  let score = 0;
-  const matchReasons: string[] = [];
-  if (inheritedSpecialism) {
-    score += command.weights.specialism;
-    matchReasons.push(`Firm specialism matches ${inheritedSpecialism}.`);
-  }
-  if (hasRecentEvidence(evidence, command.asOf)) {
-    score += command.weights.currentActivity;
-    matchReasons.push("Current recruitment activity is supported by public evidence.");
-  }
-  if (titleSpecialism) {
-    score += command.weights.recruiterRoleAndSeniority;
-    matchReasons.push(`Recruiter role matches ${titleSpecialism}.`);
-  }
-  score += evidenceScore;
-  if (evidenceScore > 0) {
-    matchReasons.push(evidenceReason(evidence, evidenceScore, command.asOf));
-  }
+  const rankingContributions: RankingContribution[] = [
+    contribution(
+      "specialism",
+      inheritedSpecialism ? command.weights.specialism : 0,
+      inheritedSpecialism
+        ? `Firm specialism matches ${inheritedSpecialism}.`
+        : "Matching firm Specialism Evidence is unavailable.",
+    ),
+    contribution(
+      "currentMandatesOrActivity",
+      hasRecentEvidence(evidence, command.asOf) ? command.weights.currentMandatesOrActivity : 0,
+      hasRecentEvidence(evidence, command.asOf)
+        ? "Current recruitment activity is supported by public evidence."
+        : "Current recruitment activity Evidence is unavailable.",
+    ),
+    contribution(
+      "recruiterRoleAndSeniority",
+      titleSpecialism ? command.weights.recruiterRoleAndSeniority : 0,
+      titleSpecialism
+        ? `Recruiter role matches ${titleSpecialism}.`
+        : "Matching Recruiter role and seniority Evidence is unavailable.",
+    ),
+    contribution(
+      "evidenceFreshnessAndQuality",
+      evidenceScore,
+      evidenceScore > 0
+        ? evidenceReason(evidence, evidenceScore, command.asOf)
+        : "Fresh public Evidence is unavailable.",
+    ),
+  ];
+  const matchReasons = awardedReasons(rankingContributions);
   if (recruiter.workEmail) {
     matchReasons.push("A publicly evidenced work email is available.");
   }
@@ -504,12 +557,153 @@ function rankRecruiter(
     conflicts: conflictsForRecruiter(evidence),
     evidence,
     matchReasons,
-    score,
+    rankingContributions,
+    score: totalContributions(rankingContributions),
     unavailableFactors: [
       "Geographic relevance is unavailable from the retained evidence.",
+      ...rankingContributions.filter((item) => item.points === 0).map((item) => item.reason),
       ...(recruiter.workEmail ? [] : ["No publicly evidenced work email is retained."]),
     ],
   };
+}
+
+function firmRankingContributions(input: {
+  readonly asOf: Date;
+  readonly evidence: readonly DirectoryEvidence[];
+  readonly evidenceScore: number;
+  readonly hasCurrentActivity: boolean;
+  readonly hasNamedRecruiterOrTeam: boolean;
+  readonly hasScaleOrTrackRecord: boolean;
+  readonly specialism: string | null;
+  readonly targetMarket: string | null;
+  readonly weights: DirectoryMatchWeights;
+}): RankingContribution[] {
+  return [
+    contribution(
+      "specialism",
+      input.specialism ? input.weights.specialism : 0,
+      input.specialism
+        ? `Specialism matches ${input.specialism}.`
+        : "Matching Specialism Evidence is unavailable.",
+    ),
+    contribution(
+      "targetMarketOperatingDepth",
+      input.targetMarket ? input.weights.targetMarketOperatingDepth : 0,
+      input.targetMarket
+        ? `Target-market operation is supported for ${input.targetMarket}.`
+        : "Target-market operation Evidence is unavailable.",
+    ),
+    contribution(
+      "currentMandatesOrActivity",
+      input.hasCurrentActivity ? input.weights.currentMandatesOrActivity : 0,
+      input.hasCurrentActivity
+        ? "Current mandates or operating activity are supported by public evidence."
+        : "Current mandates or operating activity Evidence is unavailable.",
+    ),
+    contribution(
+      "namedRecruiterOrTeamEvidence",
+      input.hasNamedRecruiterOrTeam ? input.weights.namedRecruiterOrTeamEvidence : 0,
+      input.hasNamedRecruiterOrTeam
+        ? "A named recruiter or team is supported by public evidence."
+        : "Named Recruiter or team Evidence is unavailable.",
+    ),
+    contribution(
+      "scaleOrTrackRecord",
+      input.hasScaleOrTrackRecord ? input.weights.scaleOrTrackRecord : 0,
+      input.hasScaleOrTrackRecord
+        ? "Scale or track record is supported by public evidence."
+        : "Scale or track record Evidence is unavailable.",
+    ),
+    contribution(
+      "evidenceFreshnessAndQuality",
+      input.evidenceScore,
+      input.evidenceScore > 0
+        ? evidenceReason(input.evidence, input.evidenceScore, input.asOf)
+        : "Fresh public Evidence is unavailable.",
+    ),
+  ];
+}
+
+function assessFirmEvidenceQualification(
+  evidence: readonly DirectoryEvidence[],
+  brief: SearchBrief,
+  asOf: Date,
+): FirmQualification {
+  const specialism = matchingSpecialism(evidence, brief);
+  const targetMarket = matchingTargetMarket(evidence, brief, asOf);
+  const hasCurrentActivity = hasCurrentFirmActivity(evidence, asOf);
+  const reasons = [
+    ...(specialism ? [`Specialism matches ${specialism}.`] : []),
+    ...(targetMarket ? [`Target-market operation is supported for ${targetMarket}.`] : []),
+    ...(hasCurrentActivity
+      ? ["Current mandates or operating activity are supported by public evidence."]
+      : []),
+  ];
+  const unavailableFactors = [
+    ...(!specialism ? ["Matching Specialism Evidence is unavailable."] : []),
+    ...(!targetMarket ? ["Current target-market operation Evidence is unavailable."] : []),
+    ...(!hasCurrentActivity
+      ? ["Current mandates or operating activity Evidence is unavailable."]
+      : []),
+  ];
+  return { qualified: unavailableFactors.length === 0, reasons, unavailableFactors };
+}
+
+function matchingTargetMarket(
+  evidence: readonly DirectoryEvidence[],
+  brief: SearchBrief,
+  asOf: Date,
+): string | null {
+  for (const targetLocation of brief.criteria.targetLocations) {
+    if (
+      evidence.some(
+        (item) =>
+          item.observation.kind === "firm" &&
+          evidenceAgeDays(item, asOf) <= 365 &&
+          item.observation.rankingSignals?.targetMarkets.some(
+            (observed) => normaliseName(observed) === normaliseName(targetLocation),
+          ),
+      )
+    ) {
+      return targetLocation;
+    }
+  }
+  return null;
+}
+
+function hasCurrentFirmActivity(evidence: readonly DirectoryEvidence[], asOf: Date): boolean {
+  return evidence.some(
+    (item) =>
+      item.observation.kind === "firm" &&
+      item.observation.rankingSignals?.currentMandatesOrActivity === true &&
+      evidenceAgeDays(item, asOf) <= 365,
+  );
+}
+
+function hasFirmSignal(
+  evidence: readonly DirectoryEvidence[],
+  signal: "namedRecruiterOrTeamEvidence" | "scaleOrTrackRecord",
+): boolean {
+  return evidence.some(
+    (item) =>
+      item.observation.kind === "firm" && item.observation.rankingSignals?.[signal] === true,
+  );
+}
+
+function contribution(
+  factor: DirectoryRankingFactor,
+  points: number,
+  reason: string,
+): RankingContribution {
+  return { factor, points, reason };
+}
+
+function awardedReasons(contributions: readonly RankingContribution[]): string[] {
+  return contributions.filter((item) => item.points > 0).map((item) => item.reason);
+}
+
+function totalContributions(contributions: readonly RankingContribution[]): number {
+  return contributions.reduce((total, item) => total + item.points, 0);
 }
 
 function scoreEvidence(

@@ -823,6 +823,7 @@ pnpm test:coverage
 pnpm evaluate:discovery
 pnpm test:mutation
 pnpm storybook:build
+pnpm test:browser
 pnpm test:e2e
 pnpm build
 pnpm audit
@@ -848,6 +849,13 @@ failure probes, and reports.
 Vitest and Playwright migrate their own SQLite databases under the operating
 system temporary directory and remove them after the run. The test suites do
 not read or modify the database named by your normal `DB_PATH`.
+
+`pnpm test:browser` runs the deterministic browser integration suite. CI can run
+this suite without provider credentials. `pnpm test:e2e` also runs Recruiter
+Search against a production build and the configured public search provider.
+The real test requires that provider's environment credential. It must return
+promptly from browser submission, keep the app responsive, and produce sourced
+firm and recruiter evidence before it passes.
 
 Playwright downloads its own Chromium build on first use. If that download
 fails, for example because the machine cannot reach `cdn.playwright.dev`, run

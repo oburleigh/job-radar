@@ -330,6 +330,10 @@
   color: var(--jr-color-accent);
 }
 
+.recruiter-source-plan-status-partial {
+  color: var(--jr-color-warning-text);
+}
+
 .recruiter-source-plan-status-queued,
 .recruiter-source-plan-status-skipped {
   color: var(--jr-color-text-muted);
@@ -408,6 +412,32 @@
 .recruiter-match-explanation p,
 .recruiter-match-explanation small {
   margin: 0;
+}
+
+.recruiter-ranking-breakdown summary {
+  color: var(--jr-color-accent-strong);
+  cursor: pointer;
+}
+
+.recruiter-ranking-breakdown ul {
+  display: grid;
+  gap: var(--jr-space-2);
+  margin: var(--jr-space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recruiter-ranking-breakdown li {
+  display: grid;
+  gap: var(--jr-space-1);
+  padding-left: var(--jr-space-3);
+  border-left: 1px solid var(--jr-color-border);
+}
+
+.recruiter-ranking-breakdown span {
+  color: var(--jr-color-text-muted);
+  font-size: var(--jr-font-size-caption);
+  line-height: 1.45;
 }
 
 .recruiter-conflicts {

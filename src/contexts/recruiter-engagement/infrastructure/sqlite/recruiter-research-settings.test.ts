@@ -12,6 +12,7 @@ import {
 import {
   getRecruiterResearchSettings,
   replaceDirectoryMatchWeights,
+  replacePublicSearchSettings,
 } from "./recruiter-research-settings";
 import { recruiterResearchSettings } from "./schema";
 
@@ -43,7 +44,7 @@ describe("recruiter research settings", () => {
 
     expect(getRecruiterResearchSettings(database)).toMatchObject({
       defaultBrief: { firmTarget: 14, recruiterTarget: 32 },
-      execution: { model: null, reasoningEffort: null },
+      publicSearch: { providerName: "serper", stageRequestLimit: 40 },
     });
   });
 
@@ -56,13 +57,9 @@ describe("recruiter research settings", () => {
       .update(recruiterResearchSettings)
       .set({
         value: {
-          ...defaultRecruiterResearchSettings,
+          directoryMatchWeights: legacyCurrentDirectoryMatchWeights(),
           defaultBrief: formerTechnologyDefaultBrief(),
-          execution: {
-            ...defaultRecruiterResearchSettings.execution,
-            model: "gpt-5.6-terra",
-            reasoningEffort: "medium",
-          },
+          execution: { ...legacyExecution(), model: "gpt-5.6-terra", reasoningEffort: "medium" },
         },
       })
       .run();
@@ -81,8 +78,9 @@ describe("recruiter research settings", () => {
       .update(recruiterResearchSettings)
       .set({
         value: {
-          ...defaultRecruiterResearchSettings,
+          directoryMatchWeights: legacyCurrentDirectoryMatchWeights(),
           defaultBrief: formerTechnologyDefaultBrief(),
+          execution: legacyExecution(),
         },
       })
       .run();
@@ -108,10 +106,13 @@ describe("recruiter research settings", () => {
     migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
     bootstrapRecruiterResearch(database);
     const weights = {
-      currentActivity: 10,
+      currentMandatesOrActivity: 10,
       evidenceFreshnessAndQuality: 10,
-      recruiterRoleAndSeniority: 20,
-      specialism: 60,
+      namedRecruiterOrTeamEvidence: 10,
+      recruiterRoleAndSeniority: 15,
+      scaleOrTrackRecord: 10,
+      specialism: 20,
+      targetMarketOperatingDepth: 25,
     };
 
     replaceDirectoryMatchWeights(database, weights, new Date("2026-08-29T00:00:00.000Z"));
@@ -119,7 +120,56 @@ describe("recruiter research settings", () => {
     expect(getRecruiterResearchSettings(database).directoryMatchWeights).toEqual(weights);
   });
 
-  it("moves legacy unavailable ranking weight to specialism", () => {
+  it("persists the provider and public query policy together", () => {
+    const sqlite = new Database(":memory:");
+    const database = drizzle(sqlite);
+    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    bootstrapRecruiterResearch(database);
+    const publicSearch = {
+      ...defaultRecruiterResearchSettings.publicSearch,
+      providerName: "brave",
+      stageRequestLimit: 24,
+    };
+
+    replacePublicSearchSettings(database, publicSearch, new Date("2026-08-31T00:00:00.000Z"));
+
+    expect(getRecruiterResearchSettings(database).publicSearch).toEqual(publicSearch);
+  });
+
+  it("replaces the former technology-specific public query defaults", () => {
+    const sqlite = new Database(":memory:");
+    const database = drizzle(sqlite);
+    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    bootstrapRecruiterResearch(database);
+    const settings = getRecruiterResearchSettings(database);
+    database
+      .update(recruiterResearchSettings)
+      .set({
+        value: {
+          ...settings,
+          publicSearch: {
+            ...settings.publicSearch,
+            currentActivityTerms: ["hiring", "vacancies", "jobs", "recruiting", "mandates"],
+            excludedHosts: ["clutch.co", "sortlist.com", "agencyspotter.com", "linkedin.com"],
+            firmDiscoveryPhrases: [
+              "technology recruitment agency",
+              "technology recruitment firm",
+              "IT recruitment agency",
+              "technology executive search",
+            ],
+          },
+        },
+      })
+      .run();
+
+    bootstrapRecruiterResearch(database, new Date("2026-08-31T12:00:00.000Z"));
+
+    expect(getRecruiterResearchSettings(database).publicSearch).toEqual(
+      defaultRecruiterResearchSettings.publicSearch,
+    );
+  });
+
+  it("maps legacy ranking factors to the new evidence-backed factors", () => {
     const sqlite = new Database(":memory:");
     const database = drizzle(sqlite);
     migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
@@ -145,10 +195,13 @@ describe("recruiter research settings", () => {
     bootstrapRecruiterResearch(database, new Date("2026-08-29T00:00:00.000Z"));
 
     expect(getRecruiterResearchSettings(database).directoryMatchWeights).toEqual({
-      currentActivity: 10,
+      currentMandatesOrActivity: 10,
       evidenceFreshnessAndQuality: 10,
+      namedRecruiterOrTeamEvidence: 10,
       recruiterRoleAndSeniority: 10,
-      specialism: 70,
+      scaleOrTrackRecord: 0,
+      specialism: 20,
+      targetMarketOperatingDepth: 40,
     });
   });
 
@@ -177,10 +230,13 @@ describe("recruiter research settings", () => {
     bootstrapRecruiterResearch(database, new Date("2026-08-29T00:00:00.000Z"));
 
     expect(getRecruiterResearchSettings(database).directoryMatchWeights).toEqual({
-      currentActivity: 15,
+      currentMandatesOrActivity: 15,
       evidenceFreshnessAndQuality: 10,
+      namedRecruiterOrTeamEvidence: 5,
       recruiterRoleAndSeniority: 15,
-      specialism: 60,
+      scaleOrTrackRecord: 0,
+      specialism: 55,
+      targetMarketOperatingDepth: 0,
     });
   });
 
@@ -192,11 +248,16 @@ describe("recruiter research settings", () => {
     const settings = getRecruiterResearchSettings(database);
     database
       .update(recruiterResearchSettings)
-      .set({ value: { ...settings, execution: { ...settings.execution, stageTimeoutMs: 0 } } })
+      .set({
+        value: {
+          ...settings,
+          publicSearch: { ...settings.publicSearch, resultsPerQuery: 0 },
+        },
+      })
       .run();
 
     expect(() => getRecruiterResearchSettings(database)).toThrow(
-      "Invalid recruiter research settings: execution.stageTimeoutMs",
+      "Invalid recruiter research settings: publicSearch.resultsPerQuery",
     );
   });
 
@@ -221,6 +282,24 @@ describe("recruiter research settings", () => {
     );
   });
 });
+
+function legacyCurrentDirectoryMatchWeights() {
+  return {
+    currentActivity: 15,
+    evidenceFreshnessAndQuality: 10,
+    recruiterRoleAndSeniority: 15,
+    specialism: 60,
+  };
+}
+
+function legacyExecution() {
+  return {
+    model: null,
+    reasoningEffort: null,
+    stageRequestLimit: 1,
+    stageTimeoutMs: 600_000,
+  };
+}
 
 function formerTechnologyDefaultBrief() {
   return {

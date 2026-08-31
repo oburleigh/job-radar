@@ -6,7 +6,6 @@ import {
   parseRecruiterResearchStartRequest,
   recruiterTargetLocationValues,
 } from "@/contexts/recruiter-engagement/presentation/web/requests/recruiter-research-request";
-import { parseResearchExecutionSettingsRequest } from "@/contexts/recruiter-engagement/presentation/web/requests/research-execution-settings-request";
 import { assertLocalHost } from "@/platform/http/require-local-request";
 
 type RecruiterResearchActionDependencies = {
@@ -16,7 +15,6 @@ type RecruiterResearchActionDependencies = {
   readonly resolveTargetLocations: typeof recruiterEngagementWeb.resolveTargetLocations;
   readonly retryResearchRun: typeof recruiterEngagementWeb.retryResearchRun;
   readonly resolveDirectoryIdentity: typeof recruiterEngagementWeb.resolveDirectoryIdentity;
-  readonly saveResearchExecutionSettings: typeof recruiterEngagementWeb.saveResearchExecutionSettings;
   readonly shortlists: Pick<
     ForManagingShortlists,
     "addProspect" | "create" | "delete" | "removeProspect" | "setContactExclusion"
@@ -41,7 +39,6 @@ export const recruiterResearchAction = createRecruiterResearchAction({
   resolveTargetLocations: recruiterEngagementWeb.resolveTargetLocations,
   retryResearchRun: recruiterEngagementWeb.retryResearchRun,
   resolveDirectoryIdentity: recruiterEngagementWeb.resolveDirectoryIdentity,
-  saveResearchExecutionSettings: recruiterEngagementWeb.saveResearchExecutionSettings,
   shortlists: recruiterEngagementWeb.shortlists,
   startResearchRun: recruiterEngagementWeb.startResearchRun,
 });
@@ -53,7 +50,6 @@ export function createRecruiterResearchAction({
   resolveTargetLocations,
   retryResearchRun,
   resolveDirectoryIdentity,
-  saveResearchExecutionSettings,
   shortlists,
   startResearchRun,
 }: RecruiterResearchActionDependencies) {
@@ -70,13 +66,15 @@ export function createRecruiterResearchAction({
       if (parsed.status === "invalid") {
         return { error: parsed.message, field: parsed.field };
       }
-      const execution = parseResearchExecutionSettingsRequest(formData);
-      if (!execution.ok) {
-        return { error: execution.message };
+      try {
+        const started = await startResearchRun(parsed.command);
+        return redirect(`/recruiter-search?run=${encodeURIComponent(started.runId)}`);
+      } catch (error) {
+        return {
+          error: error instanceof Error ? error.message : String(error),
+          field: "providerName" as const,
+        };
       }
-      saveResearchExecutionSettings(execution.command);
-      const started = await startResearchRun(parsed.command);
-      return redirect(`/recruiter-search?run=${encodeURIComponent(started.runId)}`);
     }
     const runId = formData.get("runId");
     if (typeof runId !== "string" || runId.length === 0) {

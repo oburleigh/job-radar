@@ -1,6 +1,10 @@
 import type { ForMaintainingRecruiterDirectory } from "@/contexts/recruiter-engagement/application/directory/maintain-recruiter-directory";
 import type { FirmObservation } from "@/contexts/recruiter-engagement/domain/observation";
-import { isRunAcceptingObservations } from "@/contexts/recruiter-engagement/domain/research-run";
+import { assessFirmQualification } from "@/contexts/recruiter-engagement/domain/recruiter-directory";
+import {
+  isRunAcceptingObservations,
+  type ResearchRun,
+} from "@/contexts/recruiter-engagement/domain/research-run";
 import type { ResearchRunStore, ResearchSource } from "./port";
 
 export interface ForExecutingResearchRuns {
@@ -38,13 +42,16 @@ export function createResearchRunExecution({
 
       try {
         if (run.checkpoint === "firms") {
-          const reserved = await runs.reserveStageRequest(run.id, "firms", now());
-          if (!reserved || !isRunAcceptingObservations(reserved)) {
+          if (remainingStageRequests(run, "firms") === 0) {
+            await reserveRequest("firms")();
             return;
           }
-          run = reserved;
-          const firms = await source.findFirms({ run, ...(signal ? { signal } : {}) });
-          if (signal?.aborted) {
+          const firms = await source.findFirms({
+            reserveRequest: reserveRequest("firms"),
+            run,
+            ...(signal ? { signal } : {}),
+          });
+          if (signal?.aborted || !canAcceptStageResult(run, "firms")) {
             return;
           }
           const recordedAt = now();
@@ -54,23 +61,29 @@ export function createResearchRunExecution({
             return;
           }
           run = updated;
+          if (!isRunAcceptingObservations(run)) return;
         }
 
         if (run.checkpoint === "recruiters") {
-          const firms = (await runs.observationsFor(run.id)).filter(
-            (observation): observation is FirmObservation => observation.kind === "firm",
-          );
-          const reserved = await runs.reserveStageRequest(run.id, "recruiters", now());
-          if (!reserved || !isRunAcceptingObservations(reserved)) {
+          if (remainingStageRequests(run, "recruiters") === 0) {
+            await reserveRequest("recruiters")();
             return;
           }
-          run = reserved;
+          const observedFirms = (await runs.observationsFor(run.id)).filter(
+            (observation): observation is FirmObservation => observation.kind === "firm",
+          );
+          const qualificationAt = now();
+          const brief = run.brief;
+          const firms = observedFirms.filter(
+            (firm) => assessFirmQualification(firm, brief, qualificationAt).qualified,
+          );
           const recruiters = await source.findRecruiters({
             run,
             firms,
+            reserveRequest: reserveRequest("recruiters"),
             ...(signal ? { signal } : {}),
           });
-          if (signal?.aborted) {
+          if (signal?.aborted || !canAcceptStageResult(run, "recruiters")) {
             return;
           }
           const recordedAt = now();
@@ -80,6 +93,7 @@ export function createResearchRunExecution({
             return;
           }
           run = updated;
+          if (!isRunAcceptingObservations(run)) return;
         }
 
         if (run.checkpoint === "completed") {
@@ -93,6 +107,23 @@ export function createResearchRunExecution({
         const message = error instanceof Error ? error.message : String(error);
         await runs.fail(runId, message, now());
       }
+
+      function reserveRequest(stage: "firms" | "recruiters") {
+        return async () => {
+          const reserved = await runs.reserveStageRequest(runId, stage, now());
+          if (!reserved) return false;
+          run = reserved;
+          return isRunAcceptingObservations(reserved);
+        };
+      }
     },
   };
+}
+
+function remainingStageRequests(run: ResearchRun, stage: "firms" | "recruiters"): number {
+  return Math.max(0, run.budget.stageRequestAllowance[stage] - run.budgetUsage[stage]);
+}
+
+function canAcceptStageResult(run: ResearchRun, stage: "firms" | "recruiters"): boolean {
+  return isRunAcceptingObservations(run) || run.budgetExhaustion?.stage === stage;
 }

@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { z } from "zod";
-import type { ResearchExecutionSettingsCommand } from "@/contexts/recruiter-engagement/application/research-settings/save-execution-settings";
+import type { PublicSearchSettingsCommand } from "@/contexts/recruiter-engagement/application/research-settings/save-public-search-settings";
 import type { RecruiterResearchSettings } from "@/contexts/recruiter-engagement/application/research-settings/settings";
 import type { DirectoryMatchWeights } from "@/contexts/recruiter-engagement/domain/recruiter-directory";
 import { recruiterResearchSettings } from "./schema";
@@ -14,10 +14,13 @@ const settingsSchema = z
   .object({
     directoryMatchWeights: z
       .object({
-        currentActivity: z.number().nonnegative(),
+        currentMandatesOrActivity: z.number().nonnegative(),
         evidenceFreshnessAndQuality: z.number().nonnegative(),
+        namedRecruiterOrTeamEvidence: z.number().nonnegative(),
         recruiterRoleAndSeniority: z.number().nonnegative(),
+        scaleOrTrackRecord: z.number().nonnegative(),
         specialism: z.number().nonnegative(),
+        targetMarketOperatingDepth: z.number().nonnegative(),
       })
       .strict(),
     defaultBrief: z
@@ -28,12 +31,19 @@ const settingsSchema = z
         recruiterTarget: positiveInteger,
       })
       .strict(),
-    execution: z
+    publicSearch: z
       .object({
-        model: z.string().trim().min(1).nullable(),
-        reasoningEffort: z.string().trim().min(1).nullable(),
+        currentActivityTerms: briefItems.min(1),
+        excludedHosts: briefItems,
+        firmDiscoveryPhrases: briefItems.min(1),
+        maxPagesPerQuery: positiveInteger,
+        namedRecruiterOrTeamTerms: briefItems.min(1),
+        profileSourceHosts: briefItems.min(1),
+        providerName: z.string().trim().min(1),
+        recruiterRoleTerms: briefItems.min(1),
+        resultsPerQuery: positiveInteger,
+        scaleOrTrackRecordTerms: briefItems.min(1),
         stageRequestLimit: positiveInteger,
-        stageTimeoutMs: positiveInteger,
       })
       .strict(),
   })
@@ -64,16 +74,16 @@ export function getRecruiterResearchSettings<TSchema extends Record<string, unkn
   return parsed.data;
 }
 
-export function replaceResearchExecutionSettings<TSchema extends Record<string, unknown>>(
+export function replacePublicSearchSettings<TSchema extends Record<string, unknown>>(
   database: Database<TSchema>,
-  execution: ResearchExecutionSettingsCommand,
+  publicSearch: PublicSearchSettingsCommand,
   changedAt: Date,
 ): void {
   const settings = getRecruiterResearchSettings(database);
   database
     .update(recruiterResearchSettings)
     .set({
-      value: { ...settings, execution: { ...settings.execution, ...execution } },
+      value: { ...settings, publicSearch },
       updatedAt: changedAt,
     })
     .where(eq(recruiterResearchSettings.key, "default"))

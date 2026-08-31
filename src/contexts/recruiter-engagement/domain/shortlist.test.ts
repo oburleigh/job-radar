@@ -351,9 +351,19 @@ function firmObservation(companyName: string, websiteUrl: string) {
     evidence: testEvidence(`${websiteUrl}/evidence`),
     industries: ["Financial services"],
     kind: "firm" as const,
+    rankingSignals: firmRankingSignals(),
     reason: "Software recruitment",
     specialisms: ["Software engineering"],
     websiteUrl,
+  };
+}
+
+function firmRankingSignals() {
+  return {
+    currentMandatesOrActivity: true,
+    namedRecruiterOrTeamEvidence: true,
+    scaleOrTrackRecord: false,
+    targetMarkets: ["United Arab Emirates"],
   };
 }
 

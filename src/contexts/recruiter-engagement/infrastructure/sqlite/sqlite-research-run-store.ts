@@ -167,7 +167,11 @@ export function createSqliteResearchRunStore<TSchema extends Record<string, unkn
           return undefined;
         }
         const run = toResearchRun(current);
-        if (!isRunAcceptingObservations(run) || run.checkpoint !== completedStage) {
+        const canRetainExhaustedResults = run.budgetExhaustion?.stage === completedStage;
+        if (
+          (!isRunAcceptingObservations(run) && !canRetainExhaustedResults) ||
+          run.checkpoint !== completedStage
+        ) {
           return undefined;
         }
 
@@ -184,6 +188,8 @@ export function createSqliteResearchRunStore<TSchema extends Record<string, unkn
             .onConflictDoNothing()
             .run();
         }
+
+        if (canRetainExhaustedResults) return run;
 
         const checkpoint: ResearchStage = completedStage === "firms" ? "recruiters" : "completed";
         const updated = transaction

@@ -37,6 +37,12 @@ describe("research run execution", () => {
           evidence: testEvidence("https://firm-one.example/evidence"),
           reason: "Technology recruitment",
           industries: ["Financial services"],
+          rankingSignals: {
+            currentMandatesOrActivity: true,
+            namedRecruiterOrTeamEvidence: true,
+            scaleOrTrackRecord: true,
+            targetMarkets: ["United Arab Emirates"],
+          },
           specialisms: ["Software engineering"],
         },
       ],
@@ -76,7 +82,10 @@ describe("research run execution", () => {
     const run = sampleRun("run-unavailable");
     const runs = createFakeResearchRunStore([run]);
     const directory = emptyDirectory();
-    const findFirms = vi.fn(async () => []);
+    const findFirms = vi.fn(async ({ reserveRequest }) => {
+      await reserveRequest();
+      return [];
+    });
     const source: ResearchSource = {
       adapterId: "unavailable-source",
       assess: () => ({ available: false, message: "The source plan is disabled." }),
@@ -146,13 +155,20 @@ describe("research run execution", () => {
       evidence: testEvidence("https://firm-one.example/evidence"),
       reason: "Technology recruitment",
       industries: ["Financial services"],
+      rankingSignals: {
+        currentMandatesOrActivity: true,
+        namedRecruiterOrTeamEvidence: false,
+        scaleOrTrackRecord: false,
+        targetMarkets: ["United Arab Emirates"],
+      },
       specialisms: ["Software engineering"],
     };
     const source: ResearchSource = {
       adapterId: "partial-source",
       assess: () => ({ available: true }),
-      findFirms: async () => [firm],
-      findRecruiters: async () => {
+      findFirms: async ({ reserveRequest }) => ((await reserveRequest()) ? [firm] : []),
+      findRecruiters: async ({ reserveRequest }) => {
+        await reserveRequest();
         throw new Error("The recruiter source stage was unavailable.");
       },
     };
@@ -175,6 +191,99 @@ describe("research run execution", () => {
       expect.objectContaining({ stage: "recruiters" }),
     ]);
   });
+
+  it("retains recruiter observations returned before the request allowance is exhausted", async () => {
+    const run = sampleRun("run-recruiter-budget-partial");
+    const runs = createFakeResearchRunStore([run]);
+    const directory = emptyDirectory();
+    const firm = firmObservation("Firm One", "https://firm-one.example", {
+      currentMandatesOrActivity: true,
+      namedRecruiterOrTeamEvidence: true,
+      scaleOrTrackRecord: true,
+      targetMarkets: ["United Arab Emirates"],
+    });
+    const recruiter = {
+      companyName: firm.companyName,
+      evidence: testEvidence("https://www.linkedin.com/in/amina-khan"),
+      kind: "recruiter" as const,
+      name: "Amina Khan",
+      profileUrl: "https://www.linkedin.com/in/amina-khan",
+      title: "Technology Recruiter",
+    };
+    const source: ResearchSource = {
+      adapterId: "budget-source",
+      assess: () => ({ available: true }),
+      findFirms: async ({ reserveRequest }) => ((await reserveRequest()) ? [firm] : []),
+      findRecruiters: async ({ reserveRequest }) => {
+        expect(await reserveRequest()).toBe(true);
+        expect(await reserveRequest()).toBe(false);
+        return [recruiter];
+      },
+    };
+    const execution = createResearchRunExecution({
+      directory,
+      now: () => new Date("2026-08-27T10:01:00.000Z"),
+      runs,
+      source,
+    });
+
+    await execution.executeResearchRun(run.id);
+
+    expect(await runs.get(run.id)).toMatchObject({
+      budgetExhaustion: { stage: "recruiters" },
+      status: "partial",
+    });
+    await expect(runs.observationsFor(run.id)).resolves.toEqual([firm, recruiter]);
+    await expect(directory.getDirectory()).resolves.toMatchObject({
+      recruiters: [expect.objectContaining({ name: "Amina Khan" })],
+    });
+  });
+
+  it("runs recruiter research for every qualified firm and excludes firms without qualification evidence", async () => {
+    const run = sampleRun("run-qualified-firms");
+    const runs = createFakeResearchRunStore([run]);
+    const directory = emptyDirectory();
+    const qualifiedFirm = firmObservation("Qualified Search", "https://qualified.example", {
+      currentMandatesOrActivity: true,
+      namedRecruiterOrTeamEvidence: false,
+      scaleOrTrackRecord: false,
+      targetMarkets: ["United Arab Emirates"],
+    });
+    const unqualifiedFirm = firmObservation("Unqualified Search", "https://unqualified.example", {
+      currentMandatesOrActivity: false,
+      namedRecruiterOrTeamEvidence: true,
+      scaleOrTrackRecord: true,
+      targetMarkets: [],
+    });
+    const findRecruiters = vi.fn(
+      async (_request: Parameters<ResearchSource["findRecruiters"]>[0]) => [],
+    );
+    const source: ResearchSource = {
+      adapterId: "qualification-source",
+      assess: () => ({ available: true }),
+      findFirms: async ({ reserveRequest }) =>
+        (await reserveRequest()) ? [qualifiedFirm, unqualifiedFirm] : [],
+      findRecruiters: async (request) => {
+        await request.reserveRequest();
+        return findRecruiters(request);
+      },
+    };
+    const execution = createResearchRunExecution({
+      directory,
+      now: () => new Date("2026-08-27T10:01:00.000Z"),
+      runs,
+      source,
+    });
+
+    await execution.executeResearchRun(run.id);
+
+    expect(findRecruiters).toHaveBeenCalledWith({
+      firms: [qualifiedFirm],
+      reserveRequest: expect.any(Function),
+      run: expect.any(Object),
+    });
+    await expect(runs.observationsFor(run.id)).resolves.toEqual([qualifiedFirm, unqualifiedFirm]);
+  });
 });
 
 function emptyDirectory() {
@@ -189,4 +298,26 @@ function sampleRun(id: string) {
     sourcePlan: testSourcePlan,
     startedAt: new Date("2026-08-27T10:00:00.000Z"),
   });
+}
+
+function firmObservation(
+  companyName: string,
+  websiteUrl: string,
+  rankingSignals: {
+    readonly currentMandatesOrActivity: boolean;
+    readonly namedRecruiterOrTeamEvidence: boolean;
+    readonly scaleOrTrackRecord: boolean;
+    readonly targetMarkets: readonly string[];
+  },
+) {
+  return {
+    kind: "firm" as const,
+    companyName,
+    websiteUrl,
+    evidence: testEvidence(`${websiteUrl}/evidence`),
+    reason: "Technology recruitment",
+    industries: ["Financial services"],
+    rankingSignals,
+    specialisms: ["Software engineering"],
+  };
 }

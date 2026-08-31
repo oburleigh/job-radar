@@ -30,6 +30,7 @@ export default defineConfig({
     {
       name: "clean-start",
       testMatch: "**/onboarding.spec.ts",
+      testIgnore: "**/*.real.spec.ts",
       retries: 0,
       use: {
         ...devices["Desktop Chrome"],
@@ -38,7 +39,7 @@ export default defineConfig({
     },
     {
       name: "chromium",
-      testIgnore: "**/onboarding.spec.ts",
+      testIgnore: ["**/onboarding.spec.ts", "**/*.real.spec.ts"],
       dependencies: ["clean-start"],
       use: {
         ...devices["Desktop Chrome"],

@@ -14,7 +14,7 @@ describe("recruiter target location control", () => {
 
     expect(source).toContain('name="targetLocations"');
     expect(source).toContain("RecruiterLocationCombobox");
-    expect(source).not.toMatch(/<select\b/);
+    expect(source).not.toMatch(/<select\b[^>]*name="targetLocations"/);
     expect(source).not.toMatch(/\bgeography\b/i);
     expect(source).not.toMatch(/@\/contexts\/discovery\/presentation/);
     expect(source).not.toMatch(/<(?:TextField|input|textarea)\b[^>]*name="targetLocations"/);

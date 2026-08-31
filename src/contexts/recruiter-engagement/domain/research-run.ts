@@ -16,14 +16,6 @@ export type AdapterPolicySnapshot = {
   readonly authorization: { readonly reference: string; readonly reviewedOn: string };
   readonly disabledBehavior: string;
   readonly enabled: boolean;
-  readonly execution: {
-    readonly automaticRetry: boolean;
-    readonly ephemeral: boolean;
-    readonly model: string | null;
-    readonly reasoningEffort: string | null;
-    readonly sandboxMode: string;
-    readonly webSearchEnabled: boolean;
-  };
   readonly id: string;
   readonly permittedOperations: readonly string[];
   readonly permittedPublicData: readonly string[];
@@ -45,9 +37,22 @@ export type SourcePlanEntry = {
   readonly stage: Exclude<ResearchStage, "completed">;
 };
 
+export type PublicResearchQueryPolicy = {
+  readonly currentActivityTerms: readonly string[];
+  readonly excludedHosts: readonly string[];
+  readonly firmDiscoveryPhrases: readonly string[];
+  readonly maxPagesPerQuery: number;
+  readonly namedRecruiterOrTeamTerms: readonly string[];
+  readonly profileSourceHosts: readonly string[];
+  readonly recruiterRoleTerms: readonly string[];
+  readonly resultsPerQuery: number;
+  readonly scaleOrTrackRecordTerms: readonly string[];
+};
+
 export type SourcePlanSnapshot = {
   readonly entries: readonly SourcePlanEntry[];
   readonly id: string;
+  readonly publicSearch: PublicResearchQueryPolicy | null;
   readonly stageRequestAllowance: Readonly<Record<Exclude<ResearchStage, "completed">, number>>;
   readonly version: string;
 };

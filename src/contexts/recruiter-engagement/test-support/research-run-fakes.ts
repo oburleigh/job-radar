@@ -78,12 +78,18 @@ export function createFakeResearchRunStore(
     },
     async acceptStage(runId, completedStage, accepted, recordedAt) {
       const run = runs.get(runId);
-      if (!run || !isRunAcceptingObservations(run) || run.checkpoint !== completedStage) {
+      const canRetainExhaustedResults = run?.budgetExhaustion?.stage === completedStage;
+      if (
+        !run ||
+        (!isRunAcceptingObservations(run) && !canRetainExhaustedResults) ||
+        run.checkpoint !== completedStage
+      ) {
         return undefined;
       }
       for (const observation of accepted) {
         getObservations(runId).set(observationIdentity(observation), observation);
       }
+      if (canRetainExhaustedResults) return run;
       const updated = {
         ...run,
         checkpoint: completedStage === "firms" ? ("recruiters" as const) : ("completed" as const),
@@ -150,8 +156,9 @@ export function createFakeResearchSource(input: {
   return {
     adapterId: "fake-research-source",
     assess: () => ({ available: true }),
-    findFirms: async () => input.firms,
-    findRecruiters: async () => input.recruiters,
+    findFirms: async ({ reserveRequest }) => ((await reserveRequest()) ? input.firms : []),
+    findRecruiters: async ({ reserveRequest }) =>
+      (await reserveRequest()) ? input.recruiters : [],
   };
 }
 

@@ -36,8 +36,6 @@ test("starts recruiter research from the browser and renders firms before recrui
   await expect(page.getByRole("heading", { level: 1, name: "Recruiter Search" })).toBeVisible();
   await expect(page.getByRole("heading", { level: 1, name: "Recruiter research" })).toHaveCount(0);
   await page.getByLabel("Search brief").fill("UAE fintech cybersecurity leadership");
-  await page.getByLabel("Codex model").fill("gpt-5.6");
-  await page.getByLabel("Reasoning effort").fill("high");
   await selectRecruiterLocation(page, "Dubai");
   await page.getByLabel("Specialisms").fill("Cybersecurity, Technology leadership");
   await page.getByLabel("Target industries").fill("Financial services, Health technology");
@@ -62,10 +60,7 @@ test("starts recruiter research from the browser and renders firms before recrui
     ),
   ).toBeVisible();
   await expect(
-    page.getByText(
-      "Execution: gpt-5.6, high effort, public web search, ephemeral, read-only sandbox, no automatic retry",
-      { exact: true },
-    ),
+    page.getByText(/Public search with a frozen \d+-request stage budget\./),
   ).toBeVisible();
   await expect(page.getByText("Technology Recruiter 1", { exact: true })).not.toBeVisible();
 
@@ -153,7 +148,7 @@ test("cancels an active recruiter run and retries with the frozen brief and plan
   const sourcePlan = page.getByRole("region", { name: "Source plan" });
   await expect(sourcePlan.getByText("Public HTTPS firm pages", { exact: true })).toBeVisible();
   await expect(
-    sourcePlan.getByText("Public LinkedIn profile results", { exact: true }),
+    sourcePlan.getByText("Public professional profile pages", { exact: true }),
   ).toBeVisible();
   await expect(sourcePlan.getByText("Skipped", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Retry with the same plan" }).click();
@@ -350,8 +345,8 @@ test("uses the shared country catalogue in the location autocomplete and keeps c
 
   await expect(page.getByText("Local search brief", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Research settings" })).toHaveCount(0);
-  await expect(page.getByLabel("Codex model")).toBeVisible();
-  await expect(page.getByLabel("Reasoning effort")).toBeVisible();
+  await expect(page.getByLabel("Search provider")).toHaveValue("serper");
+  await expect(page.getByLabel("Codex model")).toHaveCount(0);
   const [pageTitle, briefHeading, briefLabel] = await Promise.all([
     page.getByRole("heading", { level: 1, name: "Recruiter Search" }).boundingBox(),
     page.getByRole("heading", { level: 2, name: "Set the market focus" }).boundingBox(),

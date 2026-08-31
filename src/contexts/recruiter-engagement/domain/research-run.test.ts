@@ -14,15 +14,7 @@ const testAdapterPolicy = {
   authorization: { reference: "test", reviewedOn: "2026-08-27" },
   disabledBehavior: "Reject before request.",
   enabled: true,
-  execution: {
-    automaticRetry: false,
-    ephemeral: true,
-    model: "gpt-5.6-terra",
-    reasoningEffort: "medium",
-    sandboxMode: "read-only",
-    webSearchEnabled: true,
-  },
-  id: "local-codex-cli-web-search-v1",
+  id: "public-web-search:test:v1",
   permittedOperations: ["Public web search", "Public LinkedIn profile-result research"],
   permittedPublicData: ["Public evidence"],
   rateLimit: { stageRequestLimit: 1, subscriptionExhaustionBehavior: "No retry." },
@@ -33,21 +25,22 @@ const testAdapterPolicy = {
 const testSourcePlan = {
   entries: [
     {
-      adapterId: "local-codex-cli-web-search-v1",
+      adapterId: "public-web-search:test:v1",
       allowedPublicSources: ["Public HTTPS firm pages"],
       id: "firms",
       policyVersion: "1",
       stage: "firms",
     },
     {
-      adapterId: "local-codex-cli-web-search-v1",
+      adapterId: "public-web-search:test:v1",
       allowedPublicSources: ["Public LinkedIn profile results"],
       id: "recruiters",
       policyVersion: "1",
       stage: "recruiters",
     },
   ],
-  id: "public-web-linkedin-v1",
+  id: "public-web-test-v1",
+  publicSearch: null,
   stageRequestAllowance: { firms: 1, recruiters: 1 },
   version: "1",
 } as const;

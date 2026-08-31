@@ -59,7 +59,7 @@ jobs:
       - name: Run clean-start browser journey
         env:
           PLAYWRIGHT_USE_SYSTEM_CHROME: ${{ (steps.playwright-install-linux.outcome == 'failure' || steps.playwright-install-non-linux.outcome == 'failure') && '1' || '' }}
-        run: pnpm test:e2e e2e/onboarding.spec.ts
+        run: pnpm test:browser e2e/onboarding.spec.ts
 
   verify:
     name: Repository gates
@@ -112,10 +112,10 @@ jobs:
           name: job-radar-browser-performance
           path: artifacts/browser-performance
           if-no-files-found: warn
-      - name: Run browser journeys
+      - name: Run deterministic browser integration
         env:
           PLAYWRIGHT_USE_SYSTEM_CHROME: ${{ steps.playwright-install-verify.outcome == 'failure' && '1' || '' }}
-        run: pnpm test:e2e
+        run: pnpm test:browser
 
   focused-mutation:
     name: Focused mutation

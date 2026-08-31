@@ -21,18 +21,30 @@ export function DirectoryMatchSettingsForm({
         <div className="form-section-copy">
           <div>
             <h2>Directory ranking</h2>
-            <p>
-              Weight the evidence used to rank firms and recruiters. The values must total 100.
-              Location is shown as unavailable until research retains structured location evidence.
-            </p>
+            <p>Weight the evidence used to rank firms and recruiters. The values must total 100.</p>
           </div>
         </div>
         <div className="form-grid form-grid-three">
           <WeightField label="Specialism" name="specialism" value={weights.specialism} />
           <WeightField
-            label="Current activity"
-            name="currentActivity"
-            value={weights.currentActivity}
+            label="Target-market operating depth"
+            name="targetMarketOperatingDepth"
+            value={weights.targetMarketOperatingDepth}
+          />
+          <WeightField
+            label="Current mandates or activity"
+            name="currentMandatesOrActivity"
+            value={weights.currentMandatesOrActivity}
+          />
+          <WeightField
+            label="Named recruiter or team evidence"
+            name="namedRecruiterOrTeamEvidence"
+            value={weights.namedRecruiterOrTeamEvidence}
+          />
+          <WeightField
+            label="Scale or track record"
+            name="scaleOrTrackRecord"
+            value={weights.scaleOrTrackRecord}
           />
           <WeightField
             label="Recruiter role and seniority"

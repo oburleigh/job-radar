@@ -52,12 +52,14 @@ export interface ResearchSource {
         readonly message: string;
       };
   readonly findFirms: (request: {
+    readonly reserveRequest: () => Promise<boolean>;
     readonly run: ResearchRun;
     readonly signal?: AbortSignal;
   }) => Promise<readonly FirmObservation[]>;
   readonly findRecruiters: (request: {
     readonly run: ResearchRun;
     readonly firms: readonly FirmObservation[];
+    readonly reserveRequest: () => Promise<boolean>;
     readonly signal?: AbortSignal;
   }) => Promise<readonly RecruiterObservation[]>;
 }

@@ -27,7 +27,7 @@ describe("GitHub Actions quality gates", () => {
       "pnpm test:coverage",
       "pnpm storybook:build",
       "pnpm build",
-      "pnpm test:e2e",
+      "pnpm test:browser",
       "pnpm format:check",
       "pnpm test:mutation:focused",
     ]) {
@@ -39,6 +39,9 @@ describe("GitHub Actions quality gates", () => {
       "pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10",
     );
     expect(packageJson.scripts?.lint).toContain("pnpm lint:workflows");
+    expect(packageJson.scripts?.["test:e2e"]).toBe(
+      "pnpm test:browser && pnpm test:e2e:recruiter-real",
+    );
     expect(packageJson.scripts?.["lint:workflows"]).toBe(
       "go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 && node scripts/check-github-actions.ts",
     );
@@ -82,7 +85,7 @@ describe("GitHub Actions quality gates", () => {
   it("uses outcome-based system Chrome fallback for every managed browser install", () => {
     const steps = workflowSteps(ciWorkflow);
     const installSteps = steps.filter((step) => /playwright install\b/.test(step));
-    const browserTestSteps = steps.filter((step) => /pnpm test:e2e/.test(step));
+    const browserTestSteps = steps.filter((step) => /pnpm test:browser/.test(step));
 
     expect(installSteps.length).toBeGreaterThan(0);
     expect(browserTestSteps.length).toBeGreaterThan(0);

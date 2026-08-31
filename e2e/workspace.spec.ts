@@ -168,7 +168,7 @@ test("keeps settings in stable sections without carrying opportunity selection",
   await expect(
     page.getByRole("heading", { level: 2, name: "Recruiter Search settings" }),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: "Save local Codex settings" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save public search settings" })).toBeVisible();
 
   await settingsNavigation.getByRole("link", { name: "Adapters" }).click();
   await expect(page).toHaveURL("/settings/adapters/source-coverage");
@@ -183,36 +183,24 @@ test("keeps settings in stable sections without carrying opportunity selection",
   await expect(page.getByRole("heading", { level: 2, name: "Source Coverage" })).toBeVisible();
   await expect(page.getByRole("link", { name: "ATS Registry" })).toBeVisible();
   const adapterNavigation = page.getByRole("navigation", { name: "Adapter settings" });
-  await expect(adapterNavigation.getByRole("link")).toHaveCount(3);
+  await expect(adapterNavigation.getByRole("link")).toHaveCount(2);
 
-  await adapterNavigation.getByRole("link", { name: "LinkedIn" }).click();
-  await expect(page).toHaveURL("/settings/adapters/linkedin");
-  await expect(
-    page.getByRole("heading", { level: 2, name: "LinkedIn", exact: true }),
-  ).toBeVisible();
-  await expect(page.getByRole("heading", { level: 2, name: "LinkedIn MCP" })).toBeVisible();
-  await expect(page.getByLabel("Local MCP endpoint")).toBeVisible();
-  await expect(page.getByText("Not configured", { exact: true })).toBeVisible();
-  for (const capability of ["Search", "Connect", "Message"]) {
-    await expect(
-      page.getByRole("group", { name: "LinkedIn capabilities" }).getByText(capability),
-    ).toBeVisible();
-  }
-  await expect(page.getByText("Unavailable", { exact: true })).toHaveCount(3);
-  await expect(page.getByRole("button", { name: "Save LinkedIn settings" })).toBeVisible();
+  await adapterNavigation.getByRole("link", { name: "ATS Registry" }).click();
+  await expect(page).toHaveURL("/settings/adapters/ats-registry");
+  await expect(page.getByRole("heading", { level: 2, name: "ATS Registry" })).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
-  const [mobileSettingsNavigation, mobileLinkedInSettings] = await Promise.all([
+  const [mobileSettingsNavigation, mobileAdapterSettings] = await Promise.all([
     settingsNavigation.boundingBox(),
-    page.getByRole("heading", { level: 2, name: "LinkedIn", exact: true }).boundingBox(),
+    page.getByRole("heading", { level: 2, name: "ATS Registry" }).boundingBox(),
   ]);
-  if (!mobileSettingsNavigation || !mobileLinkedInSettings) {
+  if (!mobileSettingsNavigation || !mobileAdapterSettings) {
     throw new Error("Mobile settings navigation and section heading must be measurable.");
   }
   expect(mobileSettingsNavigation.x).toBeGreaterThanOrEqual(0);
   expect(mobileSettingsNavigation.x + mobileSettingsNavigation.width).toBeLessThanOrEqual(390);
-  expect(mobileLinkedInSettings.y).toBeGreaterThanOrEqual(
+  expect(mobileAdapterSettings.y).toBeGreaterThanOrEqual(
     mobileSettingsNavigation.y + mobileSettingsNavigation.height,
   );
 });
@@ -227,7 +215,6 @@ test("captures primary route review evidence at desktop and mobile widths", asyn
     ["/settings/recruiter-search", "Settings", "recruiter-settings"],
     ["/settings/adapters/source-coverage", "Settings", "source-coverage"],
     ["/settings/adapters/ats-registry", "Settings", "ats-registry"],
-    ["/settings/adapters/linkedin", "Settings", "linkedin-adapter"],
   ] as const;
 
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -356,9 +343,9 @@ for (const theme of ["light", "dark"] as const) {
     const workspaceResults = await new AxeBuilder({ page }).analyze();
     expect(workspaceResults.violations).toEqual([]);
 
-    await page.goto("/settings/adapters/linkedin");
-    const linkedInSettingsResults = await new AxeBuilder({ page }).analyze();
-    expect(linkedInSettingsResults.violations).toEqual([]);
+    await page.goto("/settings/recruiter-search");
+    const recruiterSettingsResults = await new AxeBuilder({ page }).analyze();
+    expect(recruiterSettingsResults.violations).toEqual([]);
   });
 }
 

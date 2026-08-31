@@ -1,5 +1,8 @@
 import type { DirectoryMatchWeights } from "@/contexts/recruiter-engagement/domain/recruiter-directory";
-import type { ResearchCriteria } from "@/contexts/recruiter-engagement/domain/research-run";
+import type {
+  PublicResearchQueryPolicy,
+  ResearchCriteria,
+} from "@/contexts/recruiter-engagement/domain/research-run";
 
 export type RecruiterResearchSettings = {
   readonly directoryMatchWeights: DirectoryMatchWeights;
@@ -9,10 +12,8 @@ export type RecruiterResearchSettings = {
     readonly firmTarget: number;
     readonly recruiterTarget: number;
   };
-  readonly execution: {
-    readonly model: string | null;
-    readonly reasoningEffort: string | null;
+  readonly publicSearch: PublicResearchQueryPolicy & {
+    readonly providerName: string;
     readonly stageRequestLimit: number;
-    readonly stageTimeoutMs: number;
   };
 };

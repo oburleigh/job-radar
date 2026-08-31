@@ -20,7 +20,6 @@ export default [
       index("./routes/settings-adapters-index.ts"),
       route("source-coverage", "./routes/sources.tsx"),
       route("ats-registry", "./routes/settings-ats-registry.tsx"),
-      route("linkedin", "./routes/settings-linkedin.tsx"),
     ]),
   ]),
   route("api/discovery-runs", "./routes/discovery-runs.ts"),

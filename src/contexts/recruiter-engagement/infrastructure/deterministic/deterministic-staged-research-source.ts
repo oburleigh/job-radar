@@ -15,7 +15,8 @@ export function createDeterministicStagedResearchSource(
   return {
     adapterId: "deterministic-research-source",
     assess: () => ({ available: true }),
-    async findFirms({ run }) {
+    async findFirms({ reserveRequest, run }) {
+      if (!(await reserveRequest())) return [];
       if (options.failStage === "firms") {
         throw new Error("The firm source stage was unavailable.");
       }
@@ -29,6 +30,12 @@ export function createDeterministicStagedResearchSource(
           websiteUrl: `https://recruitment-search-${number}.example`,
           reason: run.brief.description,
           industries: run.brief.criteria.industries,
+          rankingSignals: {
+            currentMandatesOrActivity: true,
+            namedRecruiterOrTeamEvidence: true,
+            scaleOrTrackRecord: true,
+            targetMarkets: run.brief.criteria.targetLocations,
+          },
           specialisms: run.brief.criteria.specialisms,
           evidence: {
             adapterId: run.policy.id,
@@ -41,7 +48,8 @@ export function createDeterministicStagedResearchSource(
         };
       });
     },
-    async findRecruiters({ run, firms }) {
+    async findRecruiters({ run, firms, reserveRequest }) {
+      if (!(await reserveRequest())) return [];
       await options.pauseRecruiters?.();
       if (options.failStage === "recruiters") {
         throw new Error("The recruiter source stage was unavailable.");

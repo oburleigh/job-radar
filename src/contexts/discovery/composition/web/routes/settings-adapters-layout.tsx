@@ -5,7 +5,6 @@ import { SettingsSectionNavigation } from "@/contexts/discovery/presentation/web
 const sections = [
   { label: "Source Coverage", to: "/settings/adapters/source-coverage" },
   { label: "ATS Registry", to: "/settings/adapters/ats-registry" },
-  { label: "LinkedIn", to: "/settings/adapters/linkedin" },
 ] as const;
 
 export default function AdapterSettingsLayout() {

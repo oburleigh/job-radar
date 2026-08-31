@@ -39,14 +39,20 @@ export function createResearchSourceSet({
           "No recruiter Source is configured.",
       };
     },
-    async findFirms({ run, signal }) {
+    async findFirms({ reserveRequest, run, signal }) {
       const results: FirmObservation[] = [];
       let attempted = 0;
       let succeeded = 0;
       for (const source of permittedSources(sources, run)) {
         attempted += 1;
         try {
-          results.push(...(await source.findFirms({ run, ...(signal ? { signal } : {}) })));
+          results.push(
+            ...(await source.findFirms({
+              reserveRequest,
+              run,
+              ...(signal ? { signal } : {}),
+            })),
+          );
           succeeded += 1;
         } catch (error) {
           await failures.record({
@@ -63,7 +69,7 @@ export function createResearchSourceSet({
       }
       return results;
     },
-    async findRecruiters({ run, firms, signal }) {
+    async findRecruiters({ run, firms, reserveRequest, signal }) {
       const results: RecruiterObservation[] = [];
       let attempted = 0;
       let succeeded = 0;
@@ -73,6 +79,7 @@ export function createResearchSourceSet({
           results.push(
             ...(await source.findRecruiters({
               firms,
+              reserveRequest,
               run,
               ...(signal ? { signal } : {}),
             })),

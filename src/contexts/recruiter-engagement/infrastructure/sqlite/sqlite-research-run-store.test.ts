@@ -103,6 +103,12 @@ describe("SQLite research run store", () => {
           evidence: testEvidence("https://firm-one.example/evidence"),
           reason: "Technology recruitment",
           industries: ["Financial services"],
+          rankingSignals: {
+            currentMandatesOrActivity: true,
+            namedRecruiterOrTeamEvidence: true,
+            scaleOrTrackRecord: false,
+            targetMarkets: ["United Arab Emirates"],
+          },
           specialisms: ["Software engineering"],
         },
       ],
@@ -133,7 +139,7 @@ describe("SQLite research run store", () => {
     expect(await restartedProcess.observationsFor(run.id)).toHaveLength(2);
     expect((await restartedProcess.observationsFor(run.id))[0]).toMatchObject({
       evidence: {
-        adapterId: "local-codex-cli-web-search-v1",
+        adapterId: "public-web-search:test:v1",
         sourceUrl: "https://firm-one.example/evidence",
       },
     });
@@ -169,6 +175,12 @@ describe("SQLite research run store", () => {
           evidence: testEvidence("https://late.example/evidence"),
           reason: "Technology recruitment",
           industries: ["Financial services"],
+          rankingSignals: {
+            currentMandatesOrActivity: true,
+            namedRecruiterOrTeamEvidence: true,
+            scaleOrTrackRecord: false,
+            targetMarkets: ["United Arab Emirates"],
+          },
           specialisms: ["Software engineering"],
         },
       ],
@@ -178,6 +190,60 @@ describe("SQLite research run store", () => {
     expect(lateWrite).toBeUndefined();
     expect((await store.get(run.id))?.status).toBe("cancelled");
     expect(await store.observationsFor(run.id)).toEqual([]);
+  });
+
+  it("retains observations returned when a stage exhausts its request allowance", async () => {
+    const sqlite = new Database(":memory:");
+    sqlite.pragma("foreign_keys = ON");
+    const database = drizzle(sqlite);
+    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    const store = createSqliteResearchRunStore(database);
+    const run = createResearchRun({
+      id: "run-budget-partial",
+      brief: testSearchBrief({ recruiterTarget: 1 }),
+      policy: testAdapterPolicy,
+      sourcePlan: testSourcePlan,
+      startedAt: new Date("2026-08-27T10:00:00.000Z"),
+    });
+    const firm = {
+      companyName: "Firm One",
+      evidence: testEvidence("https://firm-one.example/evidence"),
+      industries: ["Financial services"],
+      kind: "firm" as const,
+      rankingSignals: {
+        currentMandatesOrActivity: true,
+        namedRecruiterOrTeamEvidence: true,
+        scaleOrTrackRecord: true,
+        targetMarkets: ["United Arab Emirates"],
+      },
+      reason: "Technology recruitment",
+      specialisms: ["Software engineering"],
+      websiteUrl: "https://firm-one.example",
+    };
+    const recruiter = {
+      companyName: firm.companyName,
+      evidence: testEvidence("https://www.linkedin.com/in/amina-khan"),
+      kind: "recruiter" as const,
+      name: "Amina Khan",
+      profileUrl: "https://www.linkedin.com/in/amina-khan",
+      title: "Technology Recruiter",
+    };
+    await store.create(run);
+    await store.begin(run.id, new Date("2026-08-27T10:01:00.000Z"));
+    await store.reserveStageRequest(run.id, "firms", new Date("2026-08-27T10:02:00.000Z"));
+    await store.acceptStage(run.id, "firms", [firm], new Date("2026-08-27T10:03:00.000Z"));
+    await store.reserveStageRequest(run.id, "recruiters", new Date("2026-08-27T10:04:00.000Z"));
+    await store.reserveStageRequest(run.id, "recruiters", new Date("2026-08-27T10:05:00.000Z"));
+
+    const retained = await store.acceptStage(
+      run.id,
+      "recruiters",
+      [recruiter],
+      new Date("2026-08-27T10:06:00.000Z"),
+    );
+
+    expect(retained).toMatchObject({ status: "partial", checkpoint: "recruiters" });
+    await expect(store.observationsFor(run.id)).resolves.toEqual([firm, recruiter]);
   });
 
   it("rejects malformed persisted JSON at the SQLite boundary", async () => {

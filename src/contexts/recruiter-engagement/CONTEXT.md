@@ -37,6 +37,9 @@ _Avoid_: Technology specialism
 **Recruitment firm**
 : A canonical recruitment organisation identified from its public website domain. Observed names and other sourced facts remain evidence rather than silently replacing the canonical record.
 
+**Qualified recruitment firm**
+: A Recruitment firm with current Evidence for target-market operation, a matching Specialism, and operating activity. Qualification controls entry to the firm set used by the recruiter stage. Ranking does not remove a qualified firm.
+
 **Recruiter**
 : A canonical named professional identified from a Public profile and associated with a recruitment firm when the retained evidence supports that relationship. A matching publicly evidenced work email may propose an identity review but never merges profiles automatically.
 
@@ -44,7 +47,7 @@ _Avoid_: Technology specialism
 : A publicly accessible professional profile used to identify a Recruiter and retained with its Evidence. A Source adapter supplies the profile; the provider is not part of the core Recruiter model.
 
 **Work-email evidence**
-: A publicly published work mailbox and its own Evidence. The mailbox is trimmed and case-normalised for comparison. It may support a possible identity match, but the current `local-codex-cli-web-search-v1` Adapter Policy prohibits collecting contact data and therefore never emits it.
+: A publicly published work mailbox and its own Evidence. The mailbox is trimmed and case-normalised for comparison. It may support a possible identity match. The current public search policy does not collect contact data.
 
 **Identity review**
 : A possible duplicate that remains separate until the user chooses to merge it or keep it separate.
@@ -77,10 +80,13 @@ _Avoid_: DNC
 : The eligibility decision that determines whether a Prospect has an evidenced Contact route and no contact exclusion. It does not create a Campaign or perform an outbound action.
 
 **Directory ranking**
-: A deterministic score with visible match reasons and unavailable factors. Its weights are stored in recruiter research settings.
+: A deterministic score with visible factor contributions, match reasons, and unavailable factors. Firm factors are Specialism match, target-market operating depth, current mandates or activity, Recruiter-team Evidence, scale or track record, and Evidence freshness and quality. Recruiter role and seniority applies only to Recruiters. The weights are stored in recruiter research settings.
+
+**Ranking contribution**
+: The points awarded by one configured Directory ranking factor, together with the Evidence-backed reason for those points. A zero contribution remains visible when the retained Evidence cannot support the factor.
 
 **Adapter policy**
-: The immutable rules for one run's research adapter, model, reasoning effort, web search, ephemeral mode, sandbox, retry behaviour, source limits, permitted data, and local failure behaviour.
+: The immutable rules for one run's public research adapter, request limits, permitted data, retention, and failure behaviour.
 
 **Source plan**
 : The immutable source boundaries, permitted adapter and policy version, and stage budgets used for one research run.
@@ -98,6 +104,6 @@ _Avoid_: DNC
 
 The domain owns the vocabulary, terminal-state rules, canonical identity rules, evidence reconciliation, identity decisions, corrections, Shortlists, contact exclusions, Campaign preparation eligibility, and deterministic directory ranking. The application owns starting, resuming, cancelling, retrying, target-location validation, recording a run, maintaining the Directory, and managing Shortlists. It depends on run, Directory, and Shortlist stores, a staged research source, a scheduler, and values supplied by composition.
 
-Infrastructure maps configured ISO market entries to selectable target locations, stores runs, the Directory, Shortlists, and recruiter research settings in SQLite, and provides two sources. The seeded settings own the default brief, target counts, directory match weights, model, reasoning effort, stage request limit, and timeout; each run freezes the applicable source values. Legacy persisted single-location criteria are read as one target location. The deterministic staged source supports local tests. The local Codex source starts a separate read-only, ephemeral Codex process for the firm stage and recruiter stage. It uses the existing ChatGPT Business login and removes `OPENAI_API_KEY` from its child environment. Only each stage's schema-validated final output becomes an observation. Failed local stages retain a safe recovery message. Bounded raw process diagnostics go only to server stderr.
+Infrastructure maps configured ISO market entries to selectable target locations, stores runs, the Directory, Shortlists, and recruiter research settings in SQLite, and provides deterministic and public-web Sources. Seed data owns the initial brief, target counts, Directory ranking weights, provider selection, query phrases, evidence terms, page limits, and stage request limit. Each Research run freezes the applicable public search policy. Legacy single-location criteria and earlier adapter policy records remain readable. The public-web Source uses the shared server-side web-search transport, accepts partial results, records per-query failures, and maps public firm pages and indexed Public profiles into Observations. The deterministic Source supports local tests.
 
-Presentation owns route request parsing, the controlled target-location selection, polling, status copy, ranked Directory results, visible unassociated Recruiters, identity decisions, canonical corrections, and Shortlist controls. It does not import SQLite, Discovery presentation, or the Codex adapter. The composition root selects the deterministic source only for explicit test configuration; normal local use selects the direct Codex source.
+Presentation owns route request parsing, provider selection, controlled target-location selection, polling, status copy, ranked Directory results, visible unassociated Recruiters, identity decisions, canonical corrections, and Shortlist controls. It does not import SQLite or infrastructure. The composition root selects the deterministic Source only for explicit test configuration. Normal local use selects the configured public-web Source through the application port.

@@ -260,6 +260,7 @@ function isInside(target: string, root: string): boolean {
 function isPublicContextContract(target: string): boolean {
   return [
     path.join(contextsRoot, "discovery", "composition", "configured-market-vocabulary.server"),
+    path.join(contextsRoot, "discovery", "public-web-search.server"),
     path.join(contextsRoot, "recruiter-engagement", "public-contract"),
     path.join(contextsRoot, "recruiter-engagement", "public-contract.server"),
   ].includes(target);

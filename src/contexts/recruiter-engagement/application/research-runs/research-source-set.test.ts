@@ -27,7 +27,9 @@ describe("Research Source set", () => {
       ],
     });
 
-    await expect(source.findFirms({ run })).resolves.toEqual([firmObservation()]);
+    await expect(source.findFirms({ reserveRequest: async () => true, run })).resolves.toEqual([
+      firmObservation(),
+    ]);
     expect(failures).toEqual([
       {
         adapterId: "source-one",
@@ -57,9 +59,9 @@ describe("Research Source set", () => {
       ],
     });
 
-    await expect(source.findFirms({ run: sampleRun() })).rejects.toThrow(
-      "Every permitted Source failed during the firms stage.",
-    );
+    await expect(
+      source.findFirms({ reserveRequest: async () => true, run: sampleRun() }),
+    ).rejects.toThrow("Every permitted Source failed during the firms stage.");
   });
 
   it("is available when at least one configured Source accepts the frozen run", () => {
@@ -112,6 +114,12 @@ function firmObservation() {
     industries: ["Technology"],
     kind: "firm" as const,
     reason: "Engineering recruitment.",
+    rankingSignals: {
+      currentMandatesOrActivity: true,
+      namedRecruiterOrTeamEvidence: false,
+      scaleOrTrackRecord: false,
+      targetMarkets: ["United Arab Emirates"],
+    },
     specialisms: ["Software engineering"],
     websiteUrl: "https://apex-search.example",
   };

@@ -38,9 +38,14 @@ type RecruiterResearchPageProps = {
     readonly message: string;
   };
   readonly defaultTargets: Pick<ResearchRun["brief"], "firmTarget" | "recruiterTarget">;
-  readonly execution: Pick<ResearchRun["policy"]["execution"], "model" | "reasoningEffort">;
   readonly initialLocationOptions?: readonly LocationOption[];
+  readonly providers: readonly {
+    readonly configured: boolean;
+    readonly label: string;
+    readonly name: string;
+  }[];
   readonly research?: RecruiterResearchRunView;
+  readonly selectedProvider: string;
 };
 
 const activeStatuses = new Set<ResearchRun["status"]>(["pending", "running", "interrupted"]);
@@ -48,9 +53,10 @@ const activeStatuses = new Set<ResearchRun["status"]>(["pending", "running", "in
 export function RecruiterResearchPage({
   actionError,
   defaultTargets,
-  execution,
   initialLocationOptions,
+  providers,
   research,
+  selectedProvider,
 }: RecruiterResearchPageProps) {
   const navigation = useNavigation();
   const revalidator = useRevalidator();
@@ -61,6 +67,7 @@ export function RecruiterResearchPage({
   const targetLocationsError = fieldError(actionError, "targetLocations");
   const specialismsError = fieldError(actionError, "specialisms");
   const industriesError = fieldError(actionError, "industries");
+  const providerNameError = fieldError(actionError, "providerName");
   const firmTargetError = fieldError(actionError, "firmTarget");
   const recruiterTargetError = fieldError(actionError, "recruiterTarget");
   const loadedBriefDescription = run?.brief.description ?? "";
@@ -212,29 +219,38 @@ export function RecruiterResearchPage({
           </label>
           <section className="recruiter-execution" aria-labelledby="research-adapter-title">
             <div className="recruiter-execution-copy">
-              <h3 id="research-adapter-title">Research adapter</h3>
+              <h3 id="research-adapter-title">Active sources</h3>
               <p>
-                <strong>Local Codex CLI.</strong> Choose a model or leave it empty to use your Codex
-                account default. These values are saved locally and frozen with this run.
+                Public firm websites and public recruiter profile pages through the configured
+                public web search adapter. No account-linked source is connected.
               </p>
             </div>
             <div className="recruiter-execution-fields">
-              <TextField
-                defaultValue={execution.model ?? ""}
-                disabled={isSubmitting || isActive}
-                id="recruiter-codex-model"
-                label="Codex model"
-                name="model"
-                placeholder="Use Codex account default"
-              />
-              <TextField
-                defaultValue={execution.reasoningEffort ?? ""}
-                disabled={isSubmitting || isActive}
-                id="recruiter-reasoning-effort"
-                label="Reasoning effort"
-                name="reasoningEffort"
-                placeholder="Use Codex account default"
-              />
+              <label htmlFor="recruiter-search-provider">
+                <span>Search provider</span>
+                <select
+                  aria-invalid={providerNameError ? true : undefined}
+                  defaultValue={selectedProvider}
+                  disabled={isSubmitting || isActive}
+                  id="recruiter-search-provider"
+                  name="providerName"
+                  required
+                >
+                  {providers.map((provider) => (
+                    <option
+                      disabled={!provider.configured}
+                      key={provider.name}
+                      value={provider.name}
+                    >
+                      {provider.label}
+                      {provider.configured ? "" : " (not configured)"}
+                    </option>
+                  ))}
+                </select>
+                {providerNameError ? (
+                  <small className="jr-field-error">{providerNameError}</small>
+                ) : null}
+              </label>
             </div>
           </section>
           <div className="recruiter-brief-actions">
@@ -252,8 +268,8 @@ export function RecruiterResearchPage({
                   : "Start research"}
             </Button>
             <p>
-              Uses the existing local ChatGPT Business login. It does not use an API key, a
-              logged-in LinkedIn session, or private contact data.
+              Uses the selected configured search provider. It does not use a logged-in account
+              session or collect private contact data.
             </p>
           </div>
         </Form>
@@ -363,14 +379,8 @@ function ResearchRunResult({
             Source plan {run.sourcePlan.id} v{run.sourcePlan.version}
           </span>
           <span>
-            Execution: {run.policy.execution.model ?? "Codex account default"},{" "}
-            {run.policy.execution.reasoningEffort
-              ? `${run.policy.execution.reasoningEffort} effort`
-              : "default effort"}
-            , {run.policy.execution.webSearchEnabled ? "public web search" : "web search disabled"},{" "}
-            {run.policy.execution.ephemeral ? "ephemeral" : "persistent"},{" "}
-            {run.policy.execution.sandboxMode} sandbox,{" "}
-            {run.policy.execution.automaticRetry ? "automatic retry" : "no automatic retry"}
+            Public search with a frozen {run.policy.rateLimit.stageRequestLimit}-request stage
+            budget.
           </span>
           <span>
             Criteria: {run.brief.criteria.targetLocations.join(", ")};{" "}
@@ -440,8 +450,14 @@ function ResearchRunResult({
               <article className="recruiter-firm-observation" key={firm.id}>
                 <header>
                   <div>
-                    <span className="recruiter-record-label">
-                      Recruitment firm · {firm.score} points
+                    <span
+                      className="recruiter-record-label"
+                      data-qualified={firm.qualification.qualified}
+                    >
+                      {firm.qualification.qualified
+                        ? "Qualified recruitment firm"
+                        : "Unqualified firm observation"}{" "}
+                      · {firm.score} points
                     </span>
                     <h3>{firm.name}</h3>
                   </div>
@@ -453,6 +469,7 @@ function ResearchRunResult({
                   reasons={firm.matchReasons}
                   unavailable={firm.unavailableFactors}
                 />
+                <RankingBreakdown contributions={firm.rankingContributions} />
                 <ConflictReview
                   conflicts={firm.conflicts}
                   kind="firm"
@@ -556,6 +573,7 @@ function RecruiterResult({
         reasons={recruiter.matchReasons}
         unavailable={recruiter.unavailableFactors}
       />
+      <RankingBreakdown contributions={recruiter.rankingContributions} />
       <ConflictReview
         conflicts={recruiter.conflicts}
         kind="recruiter"
@@ -627,6 +645,42 @@ function MatchExplanation({
       {unavailable.length > 0 ? <small>{unavailable.join(" ")}</small> : null}
     </div>
   );
+}
+
+function RankingBreakdown({
+  contributions,
+}: {
+  readonly contributions: RankedFirm["rankingContributions"];
+}) {
+  return (
+    <details className="recruiter-ranking-breakdown">
+      <summary>Ranking breakdown</summary>
+      <ul>
+        {contributions.map((contribution) => (
+          <li key={contribution.factor}>
+            <strong>
+              {rankingFactorLabel(contribution.factor)} · {contribution.points}{" "}
+              {contribution.points === 1 ? "point" : "points"}
+            </strong>
+            <span>{contribution.reason}</span>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
+function rankingFactorLabel(factor: RankedFirm["rankingContributions"][number]["factor"]): string {
+  const labels = {
+    currentMandatesOrActivity: "Current mandates or activity",
+    evidenceFreshnessAndQuality: "Evidence freshness and quality",
+    namedRecruiterOrTeamEvidence: "Named Recruiter or team Evidence",
+    recruiterRoleAndSeniority: "Recruiter role and seniority",
+    scaleOrTrackRecord: "Scale or track record",
+    specialism: "Specialism",
+    targetMarketOperatingDepth: "Target-market operating depth",
+  } as const;
+  return labels[factor];
 }
 
 function ConflictReview({
@@ -743,8 +797,8 @@ function sourcePlanStatus({
   readonly run: ResearchRun;
 }): {
   readonly detail: string;
-  readonly kind: "completed" | "failed" | "in-progress" | "queued" | "skipped";
-  readonly label: "Completed" | "Failed" | "In progress" | "Queued" | "Skipped";
+  readonly kind: "completed" | "failed" | "in-progress" | "partial" | "queued" | "skipped";
+  readonly label: "Completed" | "Failed" | "In progress" | "Partial" | "Queued" | "Skipped";
 } {
   const failure = failures.find((candidate) => candidate.stage === entry.stage);
   if (failure) {
@@ -754,9 +808,26 @@ function sourcePlanStatus({
   const observationCount = observations.filter(
     (observation) => observation.kind === observationKind,
   ).length;
+  if (run.budgetExhaustion?.stage === entry.stage) {
+    return {
+      detail: `${observationCount} observation${observationCount === 1 ? "" : "s"} saved before the request budget was exhausted.`,
+      kind: "partial",
+      label: "Partial",
+    };
+  }
   if (observationCount > 0) {
     return {
       detail: `${observationCount} observation${observationCount === 1 ? "" : "s"} saved.`,
+      kind: "completed",
+      label: "Completed",
+    };
+  }
+  const stageCompletedWithoutObservations =
+    run.status === "completed" &&
+    (entry.stage === "firms" ? run.checkpoint !== "firms" : run.checkpoint === "completed");
+  if (stageCompletedWithoutObservations) {
+    return {
+      detail: "0 observations saved.",
       kind: "completed",
       label: "Completed",
     };

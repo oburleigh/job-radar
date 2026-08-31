@@ -4,8 +4,10 @@ import { parseDirectoryMatchSettingsRequest } from "./directory-match-settings-r
 describe("directory match settings request", () => {
   it("accepts integer weights that total 100", () => {
     expect(
-      parseDirectoryMatchSettingsRequest(form({ specialism: "70", currentActivity: "5" })),
-    ).toMatchObject({ ok: true, command: { specialism: 70 } });
+      parseDirectoryMatchSettingsRequest(
+        form({ specialism: "25", currentMandatesOrActivity: "10" }),
+      ),
+    ).toMatchObject({ ok: true, command: { specialism: 25 } });
   });
 
   it("rejects weights that do not total 100", () => {
@@ -19,10 +21,13 @@ describe("directory match settings request", () => {
 function form(overrides: Partial<Record<string, string>> = {}): FormData {
   const formData = new FormData();
   const values = {
-    currentActivity: "15",
+    currentMandatesOrActivity: "15",
     evidenceFreshnessAndQuality: "10",
+    namedRecruiterOrTeamEvidence: "10",
     recruiterRoleAndSeniority: "15",
-    specialism: "60",
+    scaleOrTrackRecord: "10",
+    specialism: "20",
+    targetMarketOperatingDepth: "20",
     ...overrides,
   };
   for (const [name, value] of Object.entries(values)) {

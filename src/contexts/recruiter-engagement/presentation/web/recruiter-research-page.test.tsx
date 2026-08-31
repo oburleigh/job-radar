@@ -22,6 +22,27 @@ import {
 import { RecruiterResearchPage } from "./recruiter-research-page";
 
 describe("recruiter research page", () => {
+  it("explains the active public sources before research starts", () => {
+    const router = createMemoryRouter([
+      {
+        path: "/",
+        element: (
+          <RecruiterResearchPage
+            defaultTargets={{ firmTarget: 10, recruiterTarget: 20 }}
+            providers={[{ configured: true, label: "Serper.dev", name: "serper" }]}
+            selectedProvider="serper"
+          />
+        ),
+      },
+    ]);
+
+    const html = renderToStaticMarkup(<RouterProvider router={router} />);
+
+    expect(html).toContain("Public firm websites");
+    expect(html).toContain("public recruiter profile pages");
+    expect(html).toContain("No account-linked source is connected");
+  });
+
   it("shows the canonical directory with retained evidence and match reasons", () => {
     const brief = testSearchBrief({
       description: "Software engineering",
@@ -73,10 +94,13 @@ describe("recruiter research page", () => {
       asOf: new Date("2026-08-29T12:00:00.000Z"),
       brief,
       weights: {
-        currentActivity: 15,
+        currentMandatesOrActivity: 15,
         evidenceFreshnessAndQuality: 10,
+        namedRecruiterOrTeamEvidence: 10,
         recruiterRoleAndSeniority: 15,
-        specialism: 60,
+        scaleOrTrackRecord: 10,
+        specialism: 20,
+        targetMarketOperatingDepth: 20,
       },
     });
     const shortlists = [
@@ -102,7 +126,7 @@ describe("recruiter research page", () => {
         element: (
           <RecruiterResearchPage
             defaultTargets={{ firmTarget: 10, recruiterTarget: 20 }}
-            execution={{ model: null, reasoningEffort: null }}
+            providers={[{ configured: true, label: "Serper.dev", name: "serper" }]}
             research={{
               coverage: createResearchCoverage({ run, observations }),
               directory,
@@ -111,6 +135,7 @@ describe("recruiter research page", () => {
               run,
               shortlists,
             }}
+            selectedProvider="serper"
           />
         ),
       },
@@ -124,6 +149,10 @@ describe("recruiter research page", () => {
     expect(html).toContain("Zara Ali");
     expect(html).toContain("Zara Ali and Zara Ali");
     expect(html).toContain("Specialism matches Software engineering.");
+    expect(html).toContain("Qualified recruitment firm");
+    expect(html).toContain("Specialism · 20 points");
+    expect(html).toContain("Scale or track record · 0 points");
+    expect(html).toContain("Recruiter role and seniority · 15 points");
     expect(html).toContain("2 runs");
     expect(html).toContain("Public profile");
     expect(html).not.toContain("Public LinkedIn profile");
@@ -137,6 +166,73 @@ describe("recruiter research page", () => {
     expect(html).not.toContain(">Candidate<");
     expect(html).not.toContain(">DNC<");
   });
+
+  it("records a completed recruiter stage when it found zero observations", () => {
+    const brief = testSearchBrief({
+      description: "Software engineering",
+      firmTarget: 1,
+      recruiterTarget: 1,
+    });
+    const started = createResearchRun({
+      brief,
+      id: "run-zero-recruiters",
+      policy: testAdapterPolicy,
+      sourcePlan: testSourcePlan,
+      startedAt: new Date("2026-08-28T10:00:00.000Z"),
+    });
+    const run = { ...started, checkpoint: "completed" as const, status: "completed" as const };
+    const sourcePlan = {
+      ...testSourcePlan,
+      entries: [
+        ...testSourcePlan.entries,
+        {
+          adapterId: testAdapterPolicy.id,
+          allowedPublicSources: ["Public professional profile pages"],
+          id: "recruiters",
+          policyVersion: "1",
+          stage: "recruiters" as const,
+        },
+      ],
+    };
+    const completedRun = { ...run, sourcePlan };
+    const router = createMemoryRouter([
+      {
+        path: "/",
+        element: (
+          <RecruiterResearchPage
+            defaultTargets={{ firmTarget: 10, recruiterTarget: 20 }}
+            providers={[{ configured: true, label: "Serper.dev", name: "serper" }]}
+            research={{
+              coverage: createResearchCoverage({ run: completedRun, observations: [] }),
+              directory: rankRecruiterDirectory(createEmptyRecruiterDirectory(), {
+                asOf: new Date("2026-08-28T12:00:00.000Z"),
+                brief,
+                weights: {
+                  currentMandatesOrActivity: 15,
+                  evidenceFreshnessAndQuality: 10,
+                  namedRecruiterOrTeamEvidence: 10,
+                  recruiterRoleAndSeniority: 15,
+                  scaleOrTrackRecord: 10,
+                  specialism: 20,
+                  targetMarketOperatingDepth: 20,
+                },
+              }),
+              failures: [],
+              observations: [],
+              run: completedRun,
+              shortlists: [],
+            }}
+            selectedProvider="serper"
+          />
+        ),
+      },
+    ]);
+
+    const html = renderToStaticMarkup(<RouterProvider router={router} />);
+
+    expect(html).toContain("0 observations saved.");
+    expect(html).not.toContain("This stage did not start because the run completed.");
+  });
 });
 
 function firmObservation() {
@@ -145,6 +241,12 @@ function firmObservation() {
     evidence: testEvidence("https://acme.example/evidence"),
     industries: ["Financial services"],
     kind: "firm" as const,
+    rankingSignals: {
+      currentMandatesOrActivity: true,
+      namedRecruiterOrTeamEvidence: true,
+      scaleOrTrackRecord: false,
+      targetMarkets: ["United Arab Emirates"],
+    },
     reason: "Software engineering recruitment",
     specialisms: ["Software engineering"],
     websiteUrl: "https://acme.example",
@@ -167,15 +269,7 @@ const testAdapterPolicy: AdapterPolicySnapshot = {
   authorization: { reference: "test", reviewedOn: "2026-08-27" },
   disabledBehavior: "Reject before request.",
   enabled: true,
-  execution: {
-    automaticRetry: false,
-    ephemeral: true,
-    model: null,
-    reasoningEffort: null,
-    sandboxMode: "read-only",
-    webSearchEnabled: true,
-  },
-  id: "local-codex-cli-web-search-v1",
+  id: "public-web-search:serper:v1",
   permittedOperations: ["Public web search"],
   permittedPublicData: ["Public evidence"],
   rateLimit: { stageRequestLimit: 1, subscriptionExhaustionBehavior: "Stop." },
@@ -194,6 +288,7 @@ const testSourcePlan: SourcePlanSnapshot = {
     },
   ],
   id: "public-web-v1",
+  publicSearch: null,
   stageRequestAllowance: { firms: 1, recruiters: 1 },
   version: "1",
 };

@@ -141,6 +141,12 @@ function recruiterDirectory(): RecruiterDirectory {
         evidence: testEvidence("https://atlas.example/evidence"),
         industries: ["Financial services"],
         kind: "firm",
+        rankingSignals: {
+          currentMandatesOrActivity: true,
+          namedRecruiterOrTeamEvidence: true,
+          scaleOrTrackRecord: false,
+          targetMarkets: ["United Arab Emirates"],
+        },
         reason: "Software recruitment",
         specialisms: ["Software engineering"],
         websiteUrl: "https://atlas.example",

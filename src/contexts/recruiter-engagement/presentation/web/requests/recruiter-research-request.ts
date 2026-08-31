@@ -13,6 +13,7 @@ const requestSchema = z.object({
     .transform(Number)
     .pipe(z.number().int().safe()),
   industries: z.string().trim().min(1).transform(criteriaItems),
+  providerName: z.string().trim().min(1),
   recruiterTarget: z
     .string()
     .regex(/^[1-9]\d*$/)
@@ -33,6 +34,7 @@ export type RecruiterResearchStartRequest =
           readonly targetLocations: readonly string[];
         };
         readonly firmTarget: number;
+        readonly providerName: string;
         readonly recruiterTarget: number;
       };
     }
@@ -46,6 +48,7 @@ export type RecruiterResearchStartField =
   | "brief"
   | "firmTarget"
   | "industries"
+  | "providerName"
   | "recruiterTarget"
   | "specialisms"
   | "targetLocations";
@@ -58,6 +61,7 @@ export function parseRecruiterResearchStartRequest(
     brief: formData.get("brief"),
     firmTarget: formData.get("firmTarget"),
     industries: formData.get("industries"),
+    providerName: formData.get("providerName"),
     recruiterTarget: formData.get("recruiterTarget"),
     specialisms: formData.get("specialisms"),
     targetLocations: formData
@@ -92,6 +96,7 @@ export function parseRecruiterResearchStartRequest(
         targetLocations: canonicalTargetLocations(result.data.targetLocations, options),
       },
       firmTarget: result.data.firmTarget,
+      providerName: result.data.providerName,
       recruiterTarget: result.data.recruiterTarget,
     },
   };
@@ -120,6 +125,7 @@ function canonicalTargetLocations(
 function validationField(field: PropertyKey | undefined): RecruiterResearchStartField {
   switch (field) {
     case "industries":
+    case "providerName":
     case "firmTarget":
     case "recruiterTarget":
     case "specialisms":
@@ -134,6 +140,8 @@ function validationMessage(field: RecruiterResearchStartField): string {
   switch (field) {
     case "industries":
       return "Target industries are required.";
+    case "providerName":
+      return "Choose a configured search provider.";
     case "firmTarget":
       return "Firms to find must be a positive integer.";
     case "recruiterTarget":

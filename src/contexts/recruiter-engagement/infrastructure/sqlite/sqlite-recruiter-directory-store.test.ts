@@ -58,6 +58,12 @@ function observations() {
       evidence: testEvidence("https://firm-one.example/evidence"),
       industries: ["Financial services"],
       kind: "firm" as const,
+      rankingSignals: {
+        currentMandatesOrActivity: true,
+        namedRecruiterOrTeamEvidence: true,
+        scaleOrTrackRecord: false,
+        targetMarkets: ["United Arab Emirates"],
+      },
       reason: "Software engineering recruitment",
       specialisms: ["Software engineering"],
       websiteUrl: "https://firm-one.example",

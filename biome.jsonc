@@ -17,6 +17,7 @@
       "!**/artifacts",
       "!**/storybook-static",
       "!**/.impeccable",
+      "!**/.worktrees",
       "!**/.agents/skills",
       "!**/.claude/skills",
       "!**/.codex",

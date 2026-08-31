@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Evidence, FirmObservation, RecruiterObservation } from "./observation";
 import {
+  assessFirmQualification,
   correctDirectoryFact,
   createEmptyRecruiterDirectory,
   rankRecruiterDirectory,
@@ -11,10 +12,13 @@ import {
 import { createSearchBrief } from "./research-run";
 
 const weights = {
-  currentActivity: 15,
+  currentMandatesOrActivity: 15,
   evidenceFreshnessAndQuality: 10,
+  namedRecruiterOrTeamEvidence: 10,
   recruiterRoleAndSeniority: 15,
-  specialism: 35,
+  scaleOrTrackRecord: 10,
+  specialism: 20,
+  targetMarketOperatingDepth: 20,
 } as const;
 
 describe("recruiter directory", () => {
@@ -713,6 +717,7 @@ describe("recruiter directory", () => {
             confidence: "low",
             observedAt: "2024-01-01",
           }),
+          rankingSignals: unavailableFirmRankingSignals(),
           specialisms: ["Executive search"],
           websiteUrl: "https://general.example",
         }),
@@ -727,29 +732,113 @@ describe("recruiter directory", () => {
     });
 
     expect(ranked.firms.map((item) => [item.name, item.score])).toEqual([
-      ["Acme Search", 60],
+      ["Acme Search", 85],
       ["General Search", 1],
     ]);
     expect(ranked.firms[0]?.matchReasons).toEqual(
       expect.arrayContaining([
         "Specialism matches Software engineering.",
-        "Current recruitment activity is supported by public evidence.",
+        "Current mandates or operating activity are supported by public evidence.",
         "Recent high-confidence evidence contributes 10 points.",
       ]),
     );
+    expect(ranked.firms[0]?.rankingContributions).toEqual([
+      {
+        factor: "specialism",
+        points: 20,
+        reason: "Specialism matches Software engineering.",
+      },
+      {
+        factor: "targetMarketOperatingDepth",
+        points: 20,
+        reason: "Target-market operation is supported for United Arab Emirates.",
+      },
+      {
+        factor: "currentMandatesOrActivity",
+        points: 15,
+        reason: "Current mandates or operating activity are supported by public evidence.",
+      },
+      {
+        factor: "namedRecruiterOrTeamEvidence",
+        points: 10,
+        reason: "A named recruiter or team is supported by public evidence.",
+      },
+      {
+        factor: "scaleOrTrackRecord",
+        points: 10,
+        reason: "Scale or track record is supported by public evidence.",
+      },
+      expect.objectContaining({ factor: "evidenceFreshnessAndQuality", points: 10 }),
+    ]);
+    expect(ranked.firms[0]?.qualification).toEqual({
+      qualified: true,
+      reasons: [
+        "Specialism matches Software engineering.",
+        "Target-market operation is supported for United Arab Emirates.",
+        "Current mandates or operating activity are supported by public evidence.",
+      ],
+      unavailableFactors: [],
+    });
     expect(ranked.firms[0]?.unavailableFactors).toEqual([
-      "Geographic relevance is unavailable from the retained evidence.",
       "Recruiter role and seniority do not apply to a firm result.",
       "No public contact route is retained for this firm.",
     ]);
     expect(ranked.firms[0]?.recruiters[0]).toMatchObject({
       name: "Amina Khan",
-      score: 75,
+      score: 60,
+    });
+  });
+
+  it("requires current evidence for market operation, specialism, and operating activity", () => {
+    const brief = searchBrief();
+    const asOf = new Date("2026-08-28T12:00:00.000Z");
+
+    expect(assessFirmQualification(firm(), brief, asOf)).toMatchObject({
+      qualified: true,
+      unavailableFactors: [],
+    });
+    expect(
+      assessFirmQualification(
+        firm({
+          evidence: evidence("acme-search.ae", { observedAt: "2025-08-27" }),
+          rankingSignals: {
+            ...firm().rankingSignals,
+            currentMandatesOrActivity: false,
+            targetMarkets: [],
+          },
+          specialisms: ["Executive search"],
+        }),
+        brief,
+        asOf,
+      ),
+    ).toEqual({
+      qualified: false,
+      reasons: [],
+      unavailableFactors: [
+        "Matching Specialism Evidence is unavailable.",
+        "Current target-market operation Evidence is unavailable.",
+        "Current mandates or operating activity Evidence is unavailable.",
+      ],
+    });
+    expect(
+      assessFirmQualification(
+        firm({
+          evidence: evidence("acme-search.ae", { observedAt: "2025-08-27" }),
+        }),
+        brief,
+        asOf,
+      ),
+    ).toMatchObject({
+      qualified: false,
+      unavailableFactors: [
+        "Current target-market operation Evidence is unavailable.",
+        "Current mandates or operating activity Evidence is unavailable.",
+      ],
     });
   });
 
   it.each([
-    ["2025-08-28", "high", 25, "Recent high-confidence evidence contributes 10 points."],
+    ["2025-08-28", "high", 10, "Recent high-confidence evidence contributes 10 points."],
     ["2025-08-27", "high", 5, "Retained public evidence contributes 5 points."],
     ["2024-08-28", "medium", 3, "Retained public evidence contributes 3 points."],
     ["2024-08-27", "low", 1, "Retained public evidence contributes 1 point."],
@@ -760,6 +849,7 @@ describe("recruiter directory", () => {
         observations: [
           firm({
             evidence: evidence("boundary.example", { confidence, observedAt }),
+            rankingSignals: unavailableFirmRankingSignals(),
             specialisms: [],
             websiteUrl: "https://boundary.example",
           }),
@@ -843,9 +933,24 @@ function firm(overrides: Partial<FirmObservation> = {}): FirmObservation {
     industries: ["Financial services"],
     kind: "firm",
     reason: "Hiring software engineering leaders in the UAE.",
+    rankingSignals: {
+      currentMandatesOrActivity: true,
+      namedRecruiterOrTeamEvidence: true,
+      scaleOrTrackRecord: true,
+      targetMarkets: ["United Arab Emirates"],
+    },
     specialisms: ["Software engineering"],
     websiteUrl: "https://acme-search.ae",
     ...overrides,
+  };
+}
+
+function unavailableFirmRankingSignals(): FirmObservation["rankingSignals"] {
+  return {
+    currentMandatesOrActivity: false,
+    namedRecruiterOrTeamEvidence: false,
+    scaleOrTrackRecord: false,
+    targetMarkets: [],
   };
 }
 
@@ -863,7 +968,7 @@ function recruiter(overrides: Partial<RecruiterObservation> = {}): RecruiterObse
 
 function evidence(source: string, overrides: Partial<Evidence> = {}): Evidence {
   return {
-    adapterId: "local-codex-cli-web-search-v1",
+    adapterId: "public-web-search:test:v1",
     confidence: "high",
     excerpt: "Public evidence for the observed firm or recruiter.",
     observedAt: "2026-08-28",

@@ -265,22 +265,22 @@ test.describe
         .getByRole("navigation", { name: "Settings" })
         .getByRole("link", { name: "Recruiter Search" })
         .click();
-      await expect(page.getByText("Local Codex CLI", { exact: true })).toBeVisible();
-      await page.getByLabel("Model").fill("gpt-5.6");
-      await page.getByLabel("Reasoning effort").fill("high");
-      await page.getByRole("button", { name: "Save local Codex settings" }).click();
-      await expect(page.getByText("Local Codex settings saved to SQLite.")).toBeVisible();
+      await expect(page.getByRole("heading", { level: 2, name: "Public search" })).toBeVisible();
+      await page.getByLabel("Requests per stage").fill("24");
+      await page.getByRole("button", { name: "Save public search settings" }).click();
+      await expect(page.getByText("Public search settings saved to SQLite.")).toBeVisible();
       await page.reload();
-      await expect(page.getByLabel("Model")).toHaveValue("gpt-5.6");
-      await expect(page.getByLabel("Reasoning effort")).toHaveValue("high");
+      await expect(page.getByLabel("Requests per stage")).toHaveValue("24");
 
-      await page.getByLabel("Specialism", { exact: true }).fill("65");
-      await page.getByLabel("Current activity", { exact: true }).fill("10");
+      await page.getByLabel("Specialism", { exact: true }).fill("25");
+      await page.getByLabel("Current mandates or activity", { exact: true }).fill("10");
       await page.getByRole("button", { name: "Save directory ranking" }).click();
       await expect(page.getByText("Directory ranking saved to SQLite.")).toBeVisible();
       await page.reload();
-      await expect(page.getByLabel("Specialism", { exact: true })).toHaveValue("65");
-      await expect(page.getByLabel("Current activity", { exact: true })).toHaveValue("10");
+      await expect(page.getByLabel("Specialism", { exact: true })).toHaveValue("25");
+      await expect(page.getByLabel("Current mandates or activity", { exact: true })).toHaveValue(
+        "10",
+      );
 
       await page
         .getByRole("navigation", { name: "Settings" })

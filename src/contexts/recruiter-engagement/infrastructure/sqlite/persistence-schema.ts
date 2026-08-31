@@ -64,7 +64,8 @@ const adapterPolicy = z
         sandboxMode: z.string().min(1),
         webSearchEnabled: z.boolean(),
       })
-      .strict(),
+      .strict()
+      .optional(),
     id: z.string().min(1),
     permittedOperations: z.array(z.string().min(1)).min(1),
     permittedPublicData: z.array(z.string().min(1)).min(1),
@@ -77,7 +78,8 @@ const adapterPolicy = z
     retention: z.object({ deletionRule: z.string().min(1), rule: z.string().min(1) }).strict(),
     version: z.string().min(1),
   })
-  .strict();
+  .strict()
+  .transform(({ execution: _legacyExecution, ...policy }) => policy);
 const sourcePlan = z
   .object({
     entries: z
@@ -94,6 +96,21 @@ const sourcePlan = z
       )
       .min(1),
     id: z.string().min(1),
+    publicSearch: z
+      .object({
+        currentActivityTerms: z.array(z.string().min(1)).min(1),
+        excludedHosts: z.array(z.string().min(1)),
+        firmDiscoveryPhrases: z.array(z.string().min(1)).min(1),
+        maxPagesPerQuery: positiveInteger,
+        namedRecruiterOrTeamTerms: z.array(z.string().min(1)).min(1),
+        profileSourceHosts: z.array(z.string().min(1)).min(1),
+        recruiterRoleTerms: z.array(z.string().min(1)).min(1),
+        resultsPerQuery: positiveInteger,
+        scaleOrTrackRecordTerms: z.array(z.string().min(1)).min(1),
+      })
+      .strict()
+      .nullable()
+      .default(null),
     stageRequestAllowance: requestAllowance,
     version: z.string().min(1),
   })
@@ -113,14 +130,29 @@ const budgetExhaustion = z
   })
   .strict()
   .nullable();
+const unavailableFirmRankingSignals = () => ({
+  currentMandatesOrActivity: false,
+  namedRecruiterOrTeamEvidence: false,
+  scaleOrTrackRecord: false,
+  targetMarkets: [] as string[],
+});
 const firmObservation = z
   .object({
     companyName: z.string().min(1),
     evidence,
-    industries: z.array(z.string().min(1)).min(1),
+    industries: z.array(z.string().min(1)),
     kind: z.literal("firm"),
+    rankingSignals: z
+      .object({
+        currentMandatesOrActivity: z.boolean(),
+        namedRecruiterOrTeamEvidence: z.boolean(),
+        scaleOrTrackRecord: z.boolean(),
+        targetMarkets: z.array(z.string().min(1)),
+      })
+      .strict()
+      .default(unavailableFirmRankingSignals),
     reason: z.string().min(1),
-    specialisms: z.array(z.string().min(1)).min(1),
+    specialisms: z.array(z.string().min(1)),
     websiteUrl: z.url().refine((value) => value.startsWith("https://")),
   })
   .strict();

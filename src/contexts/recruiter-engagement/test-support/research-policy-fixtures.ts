@@ -10,15 +10,7 @@ export const testAdapterPolicy: AdapterPolicySnapshot = {
   authorization: { reference: "test authorization", reviewedOn: "2026-08-27" },
   disabledBehavior: "Reject before request.",
   enabled: true,
-  execution: {
-    automaticRetry: false,
-    ephemeral: true,
-    model: "gpt-5.6-terra",
-    reasoningEffort: "medium",
-    sandboxMode: "read-only",
-    webSearchEnabled: true,
-  },
-  id: "local-codex-cli-web-search-v1",
+  id: "public-web-search:test:v1",
   permittedOperations: ["Public web search", "Public LinkedIn profile-result research"],
   permittedPublicData: ["Public firm and recruiter evidence"],
   rateLimit: { stageRequestLimit: 1, subscriptionExhaustionBehavior: "No automatic retry." },
@@ -29,28 +21,39 @@ export const testAdapterPolicy: AdapterPolicySnapshot = {
 export const testSourcePlan: SourcePlanSnapshot = {
   entries: [
     {
-      adapterId: "local-codex-cli-web-search-v1",
+      adapterId: "public-web-search:test:v1",
       allowedPublicSources: ["Public HTTPS firm pages"],
       id: "firms",
       policyVersion: "1",
       stage: "firms",
     },
     {
-      adapterId: "local-codex-cli-web-search-v1",
+      adapterId: "public-web-search:test:v1",
       allowedPublicSources: ["Public LinkedIn profile results"],
       id: "recruiters",
       policyVersion: "1",
       stage: "recruiters",
     },
   ],
-  id: "public-web-linkedin-v1",
+  id: "public-web-test-v1",
+  publicSearch: {
+    currentActivityTerms: ["hiring", "jobs", "recruitment"],
+    excludedHosts: [],
+    firmDiscoveryPhrases: ["recruitment agency"],
+    maxPagesPerQuery: 1,
+    namedRecruiterOrTeamTerms: ["team"],
+    profileSourceHosts: ["linkedin.com/in"],
+    recruiterRoleTerms: ["recruiter"],
+    resultsPerQuery: 10,
+    scaleOrTrackRecordTerms: ["global"],
+  },
   stageRequestAllowance: { firms: 1, recruiters: 1 },
   version: "1",
 };
 
 export function testEvidence(sourceUrl: string): Evidence {
   return {
-    adapterId: "local-codex-cli-web-search-v1",
+    adapterId: "public-web-search:test:v1",
     confidence: "high",
     excerpt: "Public evidence fixture.",
     observedAt: "2026-08-27",

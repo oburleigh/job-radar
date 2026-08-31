@@ -34,6 +34,7 @@ describe("recruiter research request", () => {
           targetLocations: ["United Arab Emirates"],
         },
         firmTarget: 12,
+        providerName: "serper",
         recruiterTarget: 24,
       },
     });
@@ -62,6 +63,7 @@ describe("recruiter research request", () => {
           targetLocations: ["United Arab Emirates"],
         },
         firmTarget: 12,
+        providerName: "serper",
         recruiterTarget: 24,
       },
     });
@@ -178,6 +180,7 @@ describe("recruiter research request", () => {
 
 function formData(values: Record<string, string>): FormData {
   const data = new FormData();
+  data.set("providerName", "serper");
   for (const [key, value] of Object.entries(values)) {
     data.set(key, value);
   }

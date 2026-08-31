@@ -1,4 +1,3 @@
-import { z } from "zod";
 import type {
   SearchLane,
   SearchStrategy,
@@ -11,40 +10,7 @@ import type {
 } from "@/contexts/discovery/application/discovery-runs/ports/search-provider";
 import { SearchProviderFailure } from "@/contexts/discovery/application/discovery-runs/ports/search-provider";
 import { getJobRadarConfig } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
-
-const braveResultSchema = z.looseObject({
-  title: z.string(),
-  description: z.string().optional().default(""),
-  url: z.url(),
-});
-const googleResultSchema = z.looseObject({
-  title: z.string(),
-  snippet: z.string().optional().default(""),
-  link: z.url(),
-});
-const braveResponseSchema = z.union([
-  z.looseObject({
-    query: z.looseObject({ more_results_available: z.boolean().optional() }).optional(),
-    web: z.looseObject({ results: z.array(braveResultSchema) }),
-  }),
-  z
-    .looseObject({
-      type: z.string(),
-      query: z.looseObject({}),
-      mixed: z.looseObject({}),
-    })
-    .transform(() => ({ web: { results: [] as z.infer<typeof braveResultSchema>[] } })),
-]);
-const serpApiResponseSchema = z.looseObject({
-  organic_results: z.array(googleResultSchema),
-  serpapi_pagination: z.looseObject({ next: z.string().optional() }).optional(),
-});
-const serperResponseSchema = z.looseObject({
-  organic: z.array(googleResultSchema),
-  hasMore: z.boolean().optional(),
-  pagination: z.looseObject({ next: z.string().optional() }).optional(),
-});
-const providerErrorSchema = z.looseObject({ message: z.string().optional() });
+import { createWebSearchClient, WebSearchFailure } from "@/platform/search/web-search-client";
 
 export class BraveSearchProvider implements SearchProvider {
   readonly name = "brave";
@@ -62,66 +28,8 @@ export class BraveSearchProvider implements SearchProvider {
     const query = renderSearchLane(lane);
     return {
       renderedQuery: query,
-      execute: (signal?: AbortSignal) => this.execute(lane, query, options, signal),
-    };
-  }
-
-  private async execute(
-    lane: SearchLane,
-    query: string,
-    options: SearchRequest,
-    signal?: AbortSignal,
-  ): Promise<SearchPage> {
-    const config = getJobRadarConfig();
-    const providerConfig = requireProviderConfig(this.name);
-    const requestedLimit = Math.min(
-      options.count ?? config.discovery.resultsPerQuery,
-      providerConfig.maxResults,
-    );
-    const url = new URL(providerConfig.endpoint);
-    url.searchParams.set("q", query);
-    url.searchParams.set("count", String(requestedLimit));
-    for (const [key, value] of Object.entries(providerConfig.parameters)) {
-      url.searchParams.set(key, value);
-    }
-    if (options.maxAgeDays) {
-      url.searchParams.set("freshness", dateRange(options.maxAgeDays, new Date()));
-    }
-    addBraveMarket(url, lane);
-    url.searchParams.set("offset", String((options.page ?? 1) - 1));
-
-    const response = await this.fetcher(url, {
-      headers: {
-        Accept: "application/json",
-        "X-Subscription-Token": this.apiKey,
-      },
-      signal: requestSignal(signal, config.network.timeoutMs),
-    });
-    if (!response.ok) {
-      throw providerHttpFailure(
-        this.name,
-        "Brave Search",
-        response.status,
-        await providerErrorDetail(response),
-      );
-    }
-
-    const results = parseProviderResponse(
-      this.name,
-      "Brave Search",
-      braveResponseSchema,
-      await response.json(),
-    );
-    const mapped = results.web.results.map((result) => ({
-      title: result.title,
-      url: result.url,
-      snippet: result.description,
-    }));
-    return {
-      results: mapped,
-      hasMore:
-        ("query" in results ? results.query?.more_results_available : undefined) ??
-        mapped.length === requestedLimit,
+      execute: (signal?: AbortSignal) =>
+        executeWebSearch(this.name, this.apiKey, this.fetcher, lane, query, options, signal),
     };
   }
 }
@@ -142,62 +50,8 @@ export class SerpApiSearchProvider implements SearchProvider {
     const query = renderSearchLane(lane);
     return {
       renderedQuery: query,
-      execute: (signal?: AbortSignal) => this.execute(lane, query, options, signal),
-    };
-  }
-
-  private async execute(
-    lane: SearchLane,
-    query: string,
-    options: SearchRequest,
-    signal?: AbortSignal,
-  ): Promise<SearchPage> {
-    const config = getJobRadarConfig();
-    const providerConfig = requireProviderConfig(this.name);
-    const requestedLimit = Math.min(
-      options.count ?? config.discovery.resultsPerQuery,
-      providerConfig.maxResults,
-    );
-    const url = new URL(providerConfig.endpoint);
-    url.searchParams.set("q", query);
-    url.searchParams.set("num", String(requestedLimit));
-    url.searchParams.set("api_key", this.apiKey);
-    for (const [key, value] of Object.entries(providerConfig.parameters)) {
-      url.searchParams.set(key, value);
-    }
-    addGoogleMarket(url.searchParams, lane, providerConfig.marketLocations[lane.market.scope.key]);
-    url.searchParams.set("start", String(((options.page ?? 1) - 1) * requestedLimit));
-
-    const response = await this.fetcher(url, {
-      headers: { Accept: "application/json" },
-      signal: requestSignal(signal, config.network.timeoutMs),
-    });
-    if (!response.ok) {
-      throw providerHttpFailure(
-        this.name,
-        "SerpAPI",
-        response.status,
-        await providerErrorDetail(response),
-      );
-    }
-
-    const payload = parseProviderResponse(
-      this.name,
-      "SerpAPI",
-      serpApiResponseSchema,
-      await response.json(),
-    );
-    const results = payload.organic_results.map((result) => ({
-      title: result.title,
-      url: result.link,
-      snippet: result.snippet,
-    }));
-    return {
-      results,
-      hasMore:
-        payload.serpapi_pagination === undefined
-          ? results.length === requestedLimit
-          : Boolean(payload.serpapi_pagination.next),
+      execute: (signal?: AbortSignal) =>
+        executeWebSearch(this.name, this.apiKey, this.fetcher, lane, query, options, signal),
     };
   }
 }
@@ -218,68 +72,8 @@ export class SerperSearchProvider implements SearchProvider {
     const query = renderSearchLane(lane);
     return {
       renderedQuery: query,
-      execute: (signal?: AbortSignal) => this.execute(lane, query, options, signal),
-    };
-  }
-
-  private async execute(
-    lane: SearchLane,
-    query: string,
-    options: SearchRequest,
-    signal?: AbortSignal,
-  ): Promise<SearchPage> {
-    const config = getJobRadarConfig();
-    const providerConfig = requireProviderConfig(this.name);
-    const requestedLimit = Math.min(
-      options.count ?? config.discovery.resultsPerQuery,
-      providerConfig.maxResults,
-    );
-    const body = {
-      ...providerConfig.parameters,
-      q: query,
-      num: requestedLimit,
-      ...(lane.market.countryCode ? { gl: lane.market.countryCode.toLowerCase() } : {}),
-      ...(lane.market.searchLanguage ? { hl: lane.market.searchLanguage } : {}),
-      page: options.page ?? 1,
-      ...(options.maxAgeDays ? { tbs: googleFreshness(options.maxAgeDays) } : {}),
-    };
-    const response = await this.fetcher(providerConfig.endpoint, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        "X-API-KEY": this.apiKey,
-      },
-      body: JSON.stringify(body),
-      signal: requestSignal(signal, config.network.timeoutMs),
-    });
-    if (!response.ok) {
-      throw providerHttpFailure(
-        this.name,
-        "Serper.dev",
-        response.status,
-        await providerErrorDetail(response),
-      );
-    }
-
-    const payload = parseProviderResponse(
-      this.name,
-      "Serper.dev",
-      serperResponseSchema,
-      await response.json(),
-    );
-    const results = payload.organic.map((result) => ({
-      title: result.title,
-      url: result.link,
-      snippet: result.snippet,
-    }));
-    return {
-      results,
-      hasMore:
-        payload.hasMore ??
-        (payload.pagination === undefined
-          ? results.length === requestedLimit
-          : Boolean(payload.pagination.next)),
+      execute: (signal?: AbortSignal) =>
+        executeWebSearch(this.name, this.apiKey, this.fetcher, lane, query, options, signal),
     };
   }
 }
@@ -331,37 +125,6 @@ export function renderSearchLane(lane: SearchLane): string {
     return `${source} ${phrases} ${market}`;
   }
   return `${source} ${orClause(lane.titleTerms.map(relaxedTitle))} ${market}`;
-}
-
-function addBraveMarket(url: URL, lane: SearchLane): void {
-  if (lane.market.countryCode) {
-    url.searchParams.set("country", lane.market.countryCode);
-  }
-  if (lane.market.searchLanguage) {
-    url.searchParams.set("search_lang", lane.market.searchLanguage);
-    url.searchParams.set(
-      "ui_lang",
-      lane.market.countryCode
-        ? `${lane.market.searchLanguage}-${lane.market.countryCode}`
-        : lane.market.searchLanguage,
-    );
-  }
-}
-
-function addGoogleMarket(
-  parameters: URLSearchParams,
-  lane: SearchLane,
-  configuredLocation: string | undefined,
-): void {
-  if (configuredLocation) {
-    parameters.set("location", configuredLocation);
-  }
-  if (lane.market.countryCode) {
-    parameters.set("gl", lane.market.countryCode.toLowerCase());
-  }
-  if (lane.market.searchLanguage) {
-    parameters.set("hl", lane.market.searchLanguage);
-  }
 }
 
 function titleClause(value: string): string {
@@ -423,115 +186,49 @@ function requireProviderConfig(name: string) {
   return provider;
 }
 
-function requestSignal(signal: AbortSignal | undefined, timeoutMs: number): AbortSignal {
-  const timeout = AbortSignal.timeout(timeoutMs);
-  return signal ? AbortSignal.any([signal, timeout]) : timeout;
-}
-
-function parseProviderResponse<Output>(
-  provider: string,
-  providerLabel: string,
-  schema: z.ZodType<Output>,
-  payload: unknown,
-): Output {
-  const parsed = schema.safeParse(payload);
-  if (parsed.success) {
-    return parsed.data;
-  }
-  throw new SearchProviderFailure({
-    provider,
-    classification: "fatal",
-    code: "invalid-response",
-    attempts: 1,
-    message: `${providerLabel} returned an invalid response: ${z.prettifyError(parsed.error)}`,
-    cause: parsed.error,
-  });
-}
-
-async function providerErrorDetail(response: Response): Promise<string> {
-  const parsed = providerErrorSchema.safeParse(await response.json().catch(() => ({})));
-  return parsed.success ? (parsed.data.message ?? "") : "";
-}
-
-function providerHttpFailure(
-  provider: string,
-  providerLabel: string,
-  status: number,
-  detail: string,
-): SearchProviderFailure {
-  const message = `${providerLabel} returned HTTP ${status}${detail ? `: ${detail}` : ""}`;
-  if (/not enough credits|insufficient credits|quota exceeded/i.test(detail)) {
-    return new SearchProviderFailure({
-      provider,
-      classification: "fatal",
-      code: "credit-exhausted",
-      attempts: 1,
-      message,
+async function executeWebSearch(
+  name: string,
+  apiKey: string,
+  fetcher: typeof fetch,
+  lane: SearchLane,
+  query: string,
+  options: SearchRequest,
+  signal?: AbortSignal,
+): Promise<SearchPage> {
+  const config = getJobRadarConfig();
+  const provider = requireProviderConfig(name);
+  const client = createWebSearchClient(
+    {
+      apiKey,
+      endpoint: provider.endpoint,
+      label: provider.label,
+      maxResults: provider.maxResults,
+      name,
+      parameters: provider.parameters,
+      timeoutMs: config.network.timeoutMs,
+    },
+    fetcher,
+  );
+  try {
+    return await client.search({
+      count: options.count ?? config.discovery.resultsPerQuery,
+      countryCode: lane.market.countryCode,
+      location: provider.marketLocations[lane.market.scope.key],
+      maxAgeDays: options.maxAgeDays,
+      page: options.page ?? 1,
+      query,
+      searchLanguage: lane.market.searchLanguage,
+      signal,
+    });
+  } catch (error) {
+    if (!(error instanceof WebSearchFailure)) throw error;
+    throw new SearchProviderFailure({
+      attempts: error.attempts,
+      cause: error,
+      classification: error.classification,
+      code: error.code,
+      message: error.message,
+      provider: error.provider,
     });
   }
-  if (status === 401 || status === 403) {
-    return new SearchProviderFailure({
-      provider,
-      classification: "fatal",
-      code: "authentication-rejected",
-      attempts: 1,
-      message,
-    });
-  }
-  if (status === 402) {
-    return new SearchProviderFailure({
-      provider,
-      classification: "fatal",
-      code: "payment-required",
-      attempts: 1,
-      message,
-    });
-  }
-  if (status === 429) {
-    return new SearchProviderFailure({
-      provider,
-      classification: "transient",
-      code: "rate-limited",
-      attempts: 1,
-      message,
-    });
-  }
-  if (status === 500 || status === 502 || status === 503 || status === 504) {
-    return new SearchProviderFailure({
-      provider,
-      classification: "transient",
-      code: "server-error",
-      attempts: 1,
-      message,
-    });
-  }
-  return new SearchProviderFailure({
-    provider,
-    classification: "fatal",
-    code: "invalid-request",
-    attempts: 1,
-    message,
-  });
-}
-
-function dateRange(maxAgeDays: number, now: Date): string {
-  const start = new Date(now.getTime() - maxAgeDays * 86_400_000);
-  return `${isoDate(start)}to${isoDate(now)}`;
-}
-
-function isoDate(value: Date): string {
-  return value.toISOString().slice(0, 10);
-}
-
-function googleFreshness(maxAgeDays: number): string {
-  if (maxAgeDays <= 1) {
-    return "qdr:d";
-  }
-  if (maxAgeDays <= 7) {
-    return "qdr:w";
-  }
-  if (maxAgeDays <= 31) {
-    return "qdr:m";
-  }
-  return "qdr:y";
 }
