@@ -66,12 +66,13 @@ describe("design system boundaries", () => {
     }
   });
 
-  it("allows only tokens as a runtime dependency of shared UI", () => {
+  it("limits shared UI runtime dependencies to tokens and the approved accessible primitive", () => {
     const tokensManifest = packageManifest("tokens");
     const uiManifest = packageManifest("ui");
 
     expect(tokensManifest.dependencies ?? {}).toEqual({});
     expect(uiManifest.dependencies).toEqual({
+      "@base-ui/react": "1.7.0",
       [packages.tokens.name]: "workspace:^",
     });
   });

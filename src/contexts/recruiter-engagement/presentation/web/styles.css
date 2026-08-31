@@ -980,3 +980,18 @@
     grid-row: 2;
   }
 }
+.recruiter-progress-spinner {
+  animation: recruiter-progress-spin 0.8s linear infinite;
+}
+
+@keyframes recruiter-progress-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recruiter-progress-spinner {
+    animation: none;
+  }
+}

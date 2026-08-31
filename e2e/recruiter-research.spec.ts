@@ -1,9 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
 
-test("guides the market focus and immediately explains that research is starting", async ({
-  page,
-}) => {
+test("shows progress throughout a real recruiter research request", async ({ page }) => {
   await page.goto("/recruiter-search");
 
   await expect(page.getByLabel("Search brief")).not.toBeVisible();
@@ -19,26 +17,11 @@ test("guides the market focus and immediately explains that research is starting
   await selectRecruiterCriterion(page, "Target industries", "Technology");
   await selectRecruiterLocation(page, "Dubai");
 
-  let releaseRequest = () => {};
-  let markRequestIntercepted = () => {};
-  const requestIntercepted = new Promise<void>((resolve) => {
-    markRequestIntercepted = resolve;
+  const request = page.waitForRequest((candidate) => {
+    const url = new URL(candidate.url());
+    return candidate.method() === "POST" && url.pathname.endsWith("/recruiter-search.data");
   });
-  await page.route("**/recruiter-search.data", async (route) => {
-    if (route.request().method() !== "POST") {
-      await route.continue();
-      return;
-    }
-    markRequestIntercepted();
-    await new Promise<void>((resolve) => {
-      releaseRequest = resolve;
-    });
-    await route.continue();
-  });
-
   const submission = page.getByRole("button", { name: "Start research" }).click();
-  await requestIntercepted;
-
   const startingStatus = page.getByRole("status").filter({ hasText: "Starting Recruiter Search" });
   await expect(startingStatus).toBeVisible();
   await expect(startingStatus).toContainText("Saving your criteria and starting firm research.");
@@ -47,13 +30,17 @@ test("guides the market focus and immediately explains that research is starting
     fullPage: true,
     path: "test-results/recruiter-starting-desktop.png",
   });
-
-  releaseRequest();
   await submission;
+  await request;
   await expect(page).toHaveURL(/\/recruiter-search\?run=/);
-  await expect(
-    page.getByRole("status").filter({ hasText: /Researching firms|Finding recruiters/ }),
-  ).toBeVisible();
+  const progress = page
+    .getByRole("status")
+    .filter({ hasText: /Researching firms|Finding recruiters|Complete/ });
+  await expect(progress).toBeVisible();
+  await expect(page.getByText("Technology Recruiter 1", { exact: true })).toBeVisible({
+    timeout: 10_000,
+  });
+  await expect(page.getByText("Complete", { exact: true })).toBeVisible();
 });
 
 test("shows guidance without applying research criteria to a new run", async ({ page }) => {
@@ -96,8 +83,8 @@ test("identifies and focuses the exact field that prevents research from startin
     "Could not start research. Target industries are required.",
   );
   await expect(page.getByText("Target industries are required.", { exact: true })).toHaveCount(1);
-  const invalidControl = invalidField.locator("..");
-  const validControl = page.getByLabel("Specialisms").locator("..");
+  const invalidControl = invalidField.locator("..").locator("..");
+  const validControl = page.getByLabel("Specialisms").locator("..").locator("..");
   await expect
     .poll(() =>
       invalidControl.evaluate((element) => ({
@@ -496,6 +483,7 @@ test("uses the shared country catalogue in the location autocomplete and keeps c
   await targetLocations.click();
   await browseResponse;
   await expect(targetLocations).toBeEditable();
+  await targetLocations.press("ArrowDown");
   const locationListboxId = (await targetLocations.getAttribute("aria-controls")) ?? "";
   const locationListbox = page.locator(`#${locationListboxId}`);
   const zimbabwe = locationListbox.getByRole("option", { name: "Zimbabwe Country · ZW" });
@@ -641,9 +629,9 @@ async function selectRecruiterLocation(page: Page, label: string) {
   await clearRecruiterLocations(page);
   const locations = page.getByLabel("Target locations");
   await locations.fill(label);
-  await expect(page.getByRole("option").first()).toBeVisible();
-  await locations.press("ArrowDown");
-  await locations.press("Enter");
+  const option = page.getByRole("option").filter({ hasText: label }).first();
+  await expect(option).toBeVisible();
+  await option.click();
 }
 
 async function clearRecruiterLocations(page: Page) {

@@ -81,8 +81,12 @@ export function RecruiterResearchPage({
 }: RecruiterResearchPageProps) {
   const navigation = useNavigation();
   const revalidator = useRevalidator();
+  const [startRequested, setStartRequested] = useState(false);
+  const startNavigationObserved = useRef(false);
   const isSubmitting = navigation.state === "submitting";
-  const isStarting = navigation.state !== "idle" && navigation.formData?.get("intent") === "start";
+  const navigationIsStarting =
+    navigation.state !== "idle" && navigation.formData?.get("intent") === "start";
+  const isStarting = startRequested || navigationIsStarting;
   const run = research?.run;
   const isActive = run ? activeStatuses.has(run.status) : false;
   const briefError = fieldError(actionError, "brief");
@@ -114,6 +118,17 @@ export function RecruiterResearchPage({
   );
   const providerIsConfigured =
     providers.find((provider) => provider.name === providerName)?.configured === true;
+
+  useEffect(() => {
+    if (navigationIsStarting) {
+      startNavigationObserved.current = true;
+      return;
+    }
+    if (navigation.state === "idle" && startNavigationObserved.current) {
+      startNavigationObserved.current = false;
+      setStartRequested(false);
+    }
+  }, [navigation.state, navigationIsStarting]);
 
   useEffect(() => {
     if (!isActive) {
@@ -180,6 +195,7 @@ export function RecruiterResearchPage({
           method="post"
           className="recruiter-brief-form"
           noValidate
+          onSubmit={() => setStartRequested(true)}
         >
           <input name="intent" type="hidden" value="start" />
           <RecruiterLocationCombobox
@@ -333,7 +349,9 @@ export function RecruiterResearchPage({
               type="submit"
               variant="primary"
             >
-              {isStarting ? <LoaderCircle aria-hidden="true" size={16} /> : null}
+              {isStarting ? (
+                <LoaderCircle aria-hidden="true" className="recruiter-progress-spinner" size={16} />
+              ) : null}
               {isStarting
                 ? "Starting Recruiter Search"
                 : isActive

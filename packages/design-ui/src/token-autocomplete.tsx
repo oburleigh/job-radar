@@ -1,6 +1,5 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
-
-import { IconButton } from "./icon-button.js";
+import { Combobox } from "@base-ui/react/combobox";
+import { useId, useMemo, useState } from "react";
 
 export type TokenAutocompleteOption = {
   readonly detail?: string;
@@ -63,121 +62,31 @@ export function TokenAutocomplete({
   const listboxId = useId();
   const errorId = useId();
   const hintId = useId();
-  const inputRef = useRef<HTMLInputElement>(null);
   const [inputValue, setInputValue] = useState("");
   const [open, setOpen] = useState(false);
-  const [hasInteracted, setHasInteracted] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(-1);
-  const [announcement, setAnnouncement] = useState("");
   const [selectionError, setSelectionError] = useState("");
-  const optionsByValue = useMemo(
-    () => new Map(options.map((option) => [valueNormalizer(option.value), option])),
-    [options, valueNormalizer],
-  );
-  const selectedOptionsByValue = useMemo(
-    () =>
-      new Map(
-        [...options, ...suppliedSelectedOptions].map((option) => [
-          valueNormalizer(option.value),
-          option,
-        ]),
-      ),
+  const availableOptions = useMemo(
+    () => uniqueOptions([...options, ...suppliedSelectedOptions], valueNormalizer),
     [options, suppliedSelectedOptions, valueNormalizer],
   );
-  const selectedOptions = withUniqueTokenKeys(
-    "selected",
-    values.flatMap((value) => {
-      const option = selectedOptionsByValue.get(valueNormalizer(value));
-      return option ? [{ keyValue: option.value, option, value }] : [];
-    }),
+  const optionsByValue = useMemo(
+    () => new Map(availableOptions.map((option) => [valueNormalizer(option.value), option])),
+    [availableOptions, valueNormalizer],
   );
-  const invalidValues = withUniqueTokenKeys(
-    "invalid",
-    values
-      .filter((value) => !selectedOptionsByValue.has(valueNormalizer(value)))
-      .map((value) => ({ keyValue: value, value })),
-  );
+  const selectedOptions = values.flatMap((value) => {
+    const option = optionsByValue.get(valueNormalizer(value));
+    return option ? [option] : [];
+  });
+  const invalidValues = values.filter((value) => !optionsByValue.has(valueNormalizer(value)));
+  const selectedValueSet = new Set(selectedOptions.map((option) => valueNormalizer(option.value)));
   const formValues = includeUnavailableValuesInFormValue
     ? values
-    : selectedOptions.map(({ value }) => value);
-  const suggestions = useMemo(() => {
-    if (!hasInteracted) {
-      return [];
-    }
-    const query = valueNormalizer(inputValue);
-    const selectedValues = new Set(values.map(valueNormalizer));
-    return options.filter(
-      (option) =>
-        !selectedValues.has(valueNormalizer(option.value)) &&
-        [option.label, ...(option.searchTerms ?? [])].some(
-          (term) => query === "" || valueNormalizer(term).includes(query),
-        ),
-    );
-  }, [hasInteracted, inputValue, options, valueNormalizer, values]);
-  const isPopupVisible = open && suggestions.length > 0;
-  const activeOption = isPopupVisible && activeIndex >= 0 ? suggestions[activeIndex] : undefined;
+    : selectedOptions.map((option) => option.value);
   const visibleError =
     selectionError || error || (invalidValues.length > 0 ? invalidValueMessage : undefined);
   const describedBy = [hint ? hintId : undefined, visibleError ? errorId : undefined]
     .filter(Boolean)
     .join(" ");
-
-  useEffect(() => {
-    if (!isPopupVisible || activeIndex < 0) {
-      return;
-    }
-    document
-      .getElementById(`${listboxId}-${activeIndex}`)
-      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }, [activeIndex, isPopupVisible, listboxId]);
-
-  function addOption(option: TokenAutocompleteOption) {
-    onOptionSelected?.(option);
-    if (values.some((value) => valueNormalizer(value) === valueNormalizer(option.value))) {
-      setAnnouncement(`${option.label} is already included.`);
-    } else {
-      onChange([...values, option.value]);
-      setAnnouncement(`${option.label} added.`);
-    }
-    setInputValue("");
-    setSelectionError("");
-    setActiveIndex(-1);
-    setOpen(false);
-  }
-
-  function removeValue(value: string) {
-    const option = selectedOptionsByValue.get(valueNormalizer(value));
-    onChange(values.filter((current) => current !== value));
-    setAnnouncement(`${option?.label ?? value} removed.`);
-  }
-
-  function moveActive(direction: 1 | -1) {
-    setHasInteracted(true);
-    setOpen(true);
-    if (suggestions.length === 0) {
-      return;
-    }
-    setActiveIndex((current) => {
-      if (current < 0) {
-        return direction === 1 ? 0 : suggestions.length - 1;
-      }
-      return (current + direction + suggestions.length) % suggestions.length;
-    });
-  }
-
-  function selectInput(): boolean {
-    const option = activeOption ?? optionsByValue.get(valueNormalizer(inputValue));
-    if (option) {
-      addOption(option);
-      return true;
-    }
-    if (inputValue.trim() !== "") {
-      const message = invalidSelectionMessage;
-      setSelectionError(message);
-      setAnnouncement(message);
-    }
-    return false;
-  }
 
   return (
     <div className={["jr-token-autocomplete", className].filter(Boolean).join(" ")}>
@@ -185,114 +94,150 @@ export function TokenAutocomplete({
         {label}
       </label>
       <input name={name} type="hidden" value={formValues.join("\n")} readOnly />
-      <div className="jr-token-autocomplete-input">
-        {selectedOptions.map(({ key, option, value }) => (
-          <Token
-            key={key}
-            label={option.label}
-            onRemove={() => removeValue(value)}
-            disabled={disabled}
-          />
-        ))}
-        {invalidValues.map(({ key, value }) => (
-          <Token
-            key={key}
-            label={value}
-            onRemove={() => removeValue(value)}
-            invalid
-            disabled={disabled}
-          />
-        ))}
-        <input
-          aria-activedescendant={activeOption ? `${listboxId}-${activeIndex}` : undefined}
-          aria-autocomplete="list"
-          aria-busy={busy || undefined}
-          aria-controls={listboxId}
-          aria-describedby={describedBy || undefined}
-          aria-expanded={isPopupVisible}
-          aria-invalid={visibleError ? true : undefined}
-          autoComplete="off"
-          disabled={disabled}
-          id={inputId}
-          onBlur={() => {
-            if (inputValue.trim() !== "" && !optionsByValue.has(valueNormalizer(inputValue))) {
-              setSelectionError(invalidSelectionMessage);
-            }
-            setActiveIndex(-1);
-            setOpen(false);
-          }}
-          onChange={(event) => {
-            setHasInteracted(true);
-            setInputValue(event.target.value);
-            onQueryChange?.(event.target.value);
-            setAnnouncement("");
-            setSelectionError("");
-            setActiveIndex(-1);
-            setOpen(true);
-          }}
-          onFocus={() => {
-            setHasInteracted(true);
-            setOpen(true);
-            onQueryChange?.(inputValue);
-          }}
-          onKeyDown={(event) => {
-            if (event.key === "ArrowDown") {
-              event.preventDefault();
-              moveActive(1);
-            } else if (event.key === "ArrowUp") {
-              event.preventDefault();
-              moveActive(-1);
-            } else if (event.key === "Enter") {
-              event.preventDefault();
-              selectInput();
-            } else if (event.key === "Tab") {
-              const option = activeOption ?? optionsByValue.get(valueNormalizer(inputValue));
-              if (option) {
-                event.preventDefault();
-                addOption(option);
-                queueMicrotask(() => focusNextControl(inputRef.current));
-              } else if (inputValue.trim() !== "") {
-                selectInput();
-              }
-            } else if (event.key === "Escape") {
-              setActiveIndex(-1);
-              setOpen(false);
-            } else if (event.key === "Backspace" && inputValue === "" && values.length > 0) {
-              removeValue(values.at(-1) ?? "");
-            }
-          }}
-          placeholder={values.length === 0 ? placeholder : secondaryPlaceholder}
-          ref={inputRef}
-          required={required && values.length === 0}
-          role="combobox"
-          value={inputValue}
-        />
-      </div>
-      <div
-        className="jr-token-autocomplete-options"
-        hidden={!isPopupVisible}
-        id={listboxId}
-        role="listbox"
+      <Combobox.Root
+        autoHighlight
+        filter={(option, query) =>
+          !selectedValueSet.has(valueNormalizer(option.value)) &&
+          [option.label, ...(option.searchTerms ?? [])].some((term) =>
+            valueNormalizer(term).includes(valueNormalizer(query)),
+          )
+        }
+        isItemEqualToValue={(option, value) =>
+          valueNormalizer(option.value) === valueNormalizer(value.value)
+        }
+        inputValue={inputValue}
+        items={availableOptions}
+        itemToStringLabel={(option) => option.label}
+        multiple
+        onInputValueChange={(query) => {
+          setInputValue(query);
+          setOpen(true);
+          onQueryChange?.(query);
+          setSelectionError("");
+        }}
+        onValueChange={(nextOptions) => {
+          const previous = new Set(selectedOptions.map((option) => valueNormalizer(option.value)));
+          const added = nextOptions.find((option) => !previous.has(valueNormalizer(option.value)));
+          if (added) {
+            onOptionSelected?.(added);
+          }
+          onChange([...invalidValues, ...nextOptions.map((option) => option.value)]);
+          setInputValue("");
+          setOpen(false);
+          setSelectionError("");
+        }}
+        onOpenChange={(nextOpen, details) => {
+          const rejectsTypedValue =
+            !nextOpen &&
+            details.event instanceof KeyboardEvent &&
+            details.event.key === "Enter" &&
+            inputValue.trim() !== "" &&
+            !optionsByValue.has(valueNormalizer(inputValue));
+          if (rejectsTypedValue) {
+            details.cancel();
+            setSelectionError(invalidSelectionMessage);
+            return;
+          }
+          setOpen(nextOpen);
+        }}
+        open={open}
+        value={selectedOptions}
       >
-        {isPopupVisible
-          ? suggestions.map((option, index) => (
-              <div
-                aria-selected={index === activeIndex}
-                id={`${listboxId}-${index}`}
+        <Combobox.InputGroup className="jr-token-autocomplete-input">
+          <Combobox.Chips className="jr-token-autocomplete-chips">
+            <Combobox.Value>
+              {(currentOptions: TokenAutocompleteOption[]) => (
+                <>
+                  {currentOptions.map((option) => (
+                    <Combobox.Chip
+                      aria-label={option.label}
+                      className="jr-token-autocomplete-token"
+                      key={option.value}
+                    >
+                      <span>{option.label}</span>
+                      <Combobox.ChipRemove
+                        aria-label={`Remove ${option.label}`}
+                        className="jr-token-autocomplete-remove"
+                        disabled={disabled}
+                      >
+                        <RemoveIcon />
+                      </Combobox.ChipRemove>
+                    </Combobox.Chip>
+                  ))}
+                  {invalidValues.map((value) => (
+                    <span
+                      className="jr-token-autocomplete-token"
+                      data-invalid="true"
+                      key={`invalid-${value}`}
+                    >
+                      <span>{value}</span>
+                      <button
+                        aria-label={`Remove ${value}`}
+                        className="jr-token-autocomplete-remove"
+                        disabled={disabled}
+                        onClick={() => onChange(values.filter((current) => current !== value))}
+                        type="button"
+                      >
+                        <RemoveIcon />
+                      </button>
+                    </span>
+                  ))}
+                  <Combobox.Input
+                    aria-busy={busy || undefined}
+                    aria-controls={listboxId}
+                    aria-describedby={describedBy || undefined}
+                    aria-invalid={visibleError ? "true" : undefined}
+                    autoComplete="off"
+                    disabled={disabled}
+                    id={inputId}
+                    onBlur={() => {
+                      if (
+                        inputValue.trim() !== "" &&
+                        !optionsByValue.has(valueNormalizer(inputValue))
+                      ) {
+                        setSelectionError(invalidSelectionMessage);
+                      }
+                    }}
+                    onFocus={() => {
+                      setOpen(true);
+                      onQueryChange?.(inputValue);
+                    }}
+                    onKeyDown={(event) => {
+                      if (
+                        event.key === "Enter" &&
+                        inputValue.trim() !== "" &&
+                        !optionsByValue.has(valueNormalizer(inputValue))
+                      ) {
+                        event.preventDefault();
+                        setSelectionError(invalidSelectionMessage);
+                      }
+                    }}
+                    placeholder={values.length === 0 ? placeholder : secondaryPlaceholder}
+                    required={required && values.length === 0}
+                  />
+                </>
+              )}
+            </Combobox.Value>
+          </Combobox.Chips>
+        </Combobox.InputGroup>
+        <div
+          className="jr-token-autocomplete-options"
+          hidden={!open || availableOptions.length === 0}
+        >
+          <Combobox.List id={listboxId}>
+            {(option: TokenAutocompleteOption) => (
+              <Combobox.Item
+                className="jr-token-autocomplete-option"
                 key={option.value}
-                onMouseDown={(event) => {
-                  event.preventDefault();
-                  addOption(option);
-                }}
-                role="option"
-                tabIndex={-1}
+                value={option}
               >
                 <span>{option.label}</span>
                 {option.detail ? <small>{option.detail}</small> : null}
-              </div>
-            ))
-          : null}
-      </div>
+              </Combobox.Item>
+            )}
+          </Combobox.List>
+        </div>
+      </Combobox.Root>
       {hint ? (
         <small className="jr-field-hint" id={hintId}>
           {hint}
@@ -304,68 +249,27 @@ export function TokenAutocomplete({
         </small>
       ) : null}
       <p className="jr-token-autocomplete-announcement" role="status">
-        {announcement || statusMessage}
+        {statusMessage}
       </p>
     </div>
   );
 }
 
-function Token({
-  disabled,
-  invalid = false,
-  label,
-  onRemove,
-}: {
-  readonly disabled: boolean;
-  readonly invalid?: boolean;
-  readonly label: string;
-  readonly onRemove: () => void;
-}) {
+function RemoveIcon() {
   return (
-    <span className="jr-token-autocomplete-token" data-invalid={invalid || undefined}>
-      <span>{label}</span>
-      <IconButton
-        className="jr-token-autocomplete-remove"
-        disabled={disabled}
-        label={`Remove ${label}`}
-        onClick={onRemove}
-        onMouseDown={(event) => event.preventDefault()}
-      >
-        <svg aria-hidden="true" viewBox="0 0 16 16">
-          <path d="m4 4 8 8M12 4l-8 8" fill="none" stroke="currentColor" strokeWidth="2" />
-        </svg>
-      </IconButton>
-    </span>
+    <svg aria-hidden="true" viewBox="0 0 16 16">
+      <path d="m4 4 8 8M12 4l-8 8" fill="none" stroke="currentColor" strokeWidth="2" />
+    </svg>
   );
 }
 
-function focusNextControl(current: HTMLInputElement | null) {
-  const form = current?.form;
-  if (!current || !form) {
-    return;
-  }
-  const controls = Array.from(form.elements).filter(
-    (element): element is HTMLElement =>
-      element instanceof HTMLElement &&
-      !element.hasAttribute("disabled") &&
-      element.tabIndex >= 0 &&
-      element.getAttribute("type") !== "hidden",
-  );
-  controls[controls.indexOf(current) + 1]?.focus();
+function uniqueOptions(
+  options: readonly TokenAutocompleteOption[],
+  normalizer: (value: string) => string,
+): readonly TokenAutocompleteOption[] {
+  return [...new Map(options.map((option) => [normalizer(option.value), option])).values()];
 }
 
 function normalise(value: string): string {
   return value.trim().toLocaleLowerCase();
-}
-
-function withUniqueTokenKeys<T extends { readonly keyValue: string }>(
-  prefix: string,
-  tokens: readonly T[],
-): readonly (T & { readonly key: string })[] {
-  const occurrences = new Map<string, number>();
-  return tokens.map((token) => {
-    const occurrence = occurrences.get(token.keyValue) ?? 0;
-    occurrences.set(token.keyValue, occurrence + 1);
-    return { ...token, key: `${prefix}-${token.keyValue}-${occurrence}` };
-  });
 }

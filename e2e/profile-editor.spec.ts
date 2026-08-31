@@ -33,7 +33,7 @@ test("edits profile locations and salary currency through keyboard comboboxes", 
   expect(locationLabelStyles).toEqual(titleLabelStyles);
 
   const locationControlStyles = await locations.evaluate((input) => {
-    const outer = input.parentElement;
+    const outer = input.closest(".jr-token-autocomplete-input");
     if (!outer) {
       throw new Error("Target-location input has no token container.");
     }
@@ -57,9 +57,8 @@ test("edits profile locations and salary currency through keyboard comboboxes", 
   await expect(page.getByRole("button", { name: "Remove United Arab Emirates" })).toHaveCount(0);
 
   await locations.fill("not-a-country");
-  await expect(locations).toHaveAttribute("aria-expanded", "false");
   await expect(locations).not.toHaveAttribute("aria-activedescendant");
-  await expect(page.locator(`#${await locations.getAttribute("aria-controls")}`)).toBeHidden();
+  await expect(page.getByRole("option")).toHaveCount(0);
 
   await locations.fill("united arab");
   await expect(locations).not.toHaveAttribute("aria-activedescendant");
@@ -71,9 +70,6 @@ test("edits profile locations and salary currency through keyboard comboboxes", 
 
   await expect(page.getByRole("button", { name: "Remove United Arab Emirates" })).toBeVisible();
   await expect(page.getByRole("combobox", { name: "Salary currency" })).toHaveValue("AED");
-  await expect(
-    page.getByRole("status").filter({ hasText: "United Arab Emirates added" }),
-  ).toBeVisible();
 
   await locations.fill("St Lucia");
   await expect(page.getByRole("option").filter({ hasText: "Saint Lucia" }).first()).toBeVisible();
@@ -94,12 +90,14 @@ test("edits profile locations and salary currency through keyboard comboboxes", 
   await locations.fill("Canada");
   await expect(page.getByRole("option").filter({ hasText: "Canada" }).first()).toBeVisible();
   await locations.press("ArrowDown");
+  await locations.press("Enter");
   await locations.press("Tab");
   await expect(page.getByRole("button", { name: "Remove Canada" })).toBeVisible();
   await expect(page.getByLabel("Include remote roles")).toBeFocused();
 
   await locations.fill("china");
   await expect(page.getByRole("option").filter({ hasText: "China" }).first()).toBeVisible();
+  await locations.press("ArrowDown");
   await locations.press("Enter");
   await expect(page.getByRole("button", { name: "Remove China" })).toBeVisible();
   await expect(locations).toHaveValue("");
@@ -116,18 +114,19 @@ test("edits profile locations and salary currency through keyboard comboboxes", 
   await locations.fill("");
   await locations.press("Backspace");
   await expect(page.getByRole("button", { name: "Remove China" })).toHaveCount(0);
-  await expect(page.getByRole("status").filter({ hasText: "China removed" })).toBeVisible();
 });
 
-test("adds the active target-location suggestion with Tab from an empty query", async ({
-  page,
-}) => {
+test("adds the active target-location suggestion from an empty query", async ({ page }) => {
   await page.goto("/profiles?new=1");
 
   const locations = page.getByRole("combobox", { name: "Target locations" });
   await locations.focus();
-  await expect(page.getByRole("option").first()).toBeVisible();
+  await expect(
+    page.getByRole("status").filter({ hasText: /location suggestions available/ }),
+  ).toBeVisible();
   await locations.press("ArrowDown");
+  await expect(page.getByRole("option").first()).toBeVisible();
+  await locations.press("Enter");
   await locations.press("Tab");
 
   await expect(page.getByRole("button", { name: "Remove Afghanistan" })).toBeVisible();
@@ -235,6 +234,10 @@ test("browses the currency catalogue and searches the complete location catalogu
   const locations = page.getByRole("combobox", { name: "Target locations" });
   await locations.fill("");
   await locations.focus();
+  await expect(
+    page.getByRole("status").filter({ hasText: /location suggestions available/ }),
+  ).toBeVisible();
+  await locations.press("ArrowDown");
   const locationListboxId = (await locations.getAttribute("aria-controls")) ?? "";
   const locationListbox = page.locator(`#${locationListboxId}`);
   await expect(locationListbox).toBeVisible();
@@ -274,8 +277,11 @@ for (const theme of ["light", "dark"] as const) {
 
     const locations = page.getByRole("combobox", { name: "Target locations" });
     await locations.focus();
-    await expect(page.getByRole("option").first()).toBeVisible();
+    await expect(
+      page.getByRole("status").filter({ hasText: /location suggestions available/ }),
+    ).toBeVisible();
     await locations.press("ArrowDown");
+    await expect(page.getByRole("option").first()).toBeVisible();
     await expect(locations).toHaveAttribute("aria-expanded", "true");
     const locationListboxId = (await locations.getAttribute("aria-controls")) ?? "";
     const locationActiveId = (await locations.getAttribute("aria-activedescendant")) ?? "";

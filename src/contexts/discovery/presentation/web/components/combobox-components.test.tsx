@@ -12,7 +12,7 @@ describe("profile editor comboboxes", () => {
     );
 
     expect(markup).toContain('role="combobox"');
-    expect(markup).toContain("aria-controls=");
+    expect(markup).toContain('aria-haspopup="listbox"');
     expect(markup).toContain('aria-expanded="false"');
     expect(markup).toContain('name="locationTerms"');
     expect(markup).toContain('aria-label="Remove China"');

@@ -967,7 +967,9 @@ async function createProfile(
   await expect(
     page.getByRole("option").filter({ hasText: "United Arab Emirates" }).first(),
   ).toBeVisible();
+  await locations.press("ArrowDown");
   await locations.press("Enter");
+  await expect(page.getByRole("button", { name: "Remove United Arab Emirates" })).toBeVisible();
   if (options.includeUnverified) {
     await page.getByLabel("Include unverified web-search leads").check();
   }
