@@ -50,7 +50,6 @@ export function createSqliteDiscoverySetup(database: Database): DiscoverySetupRe
         policy: {
           resultsPerQuery: config.discovery.resultsPerQuery,
           boardJobLimit: config.discovery.boardJobLimit,
-          companyBoardRefreshEnabled: config.discovery.companyBoardRefreshEnabled,
           searchFreshnessDays: config.discovery.searchFreshnessDays,
           workYieldBatchSize: config.discovery.workYieldBatchSize,
           strategies: provider?.strategies ?? config.discovery.strategies,

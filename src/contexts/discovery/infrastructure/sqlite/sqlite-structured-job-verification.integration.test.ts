@@ -200,6 +200,7 @@ describe("structured Web3 job verification", () => {
     expect(db.select().from(jobs).all()).toEqual([
       expect.objectContaining({ atsType: "greenhouse", evidence: "search-lead" }),
     ]);
+    expect(db.select().from(companyBoards).get()?.enabled).toBe(false);
   });
 
   it("verifies an off-domain Greenhouse hit in the same run without duplicating its board job", async () => {

@@ -30,7 +30,7 @@ const boards: readonly CompanySiteBoard[] = [
     slug: "Acme 10",
     atsType: "lever",
     lastSyncedAt: null,
-    lastError: "Refresh failed",
+    lastError: "Synchronization failed",
     enabled: false,
   }),
   board({
@@ -47,7 +47,7 @@ const boards: readonly CompanySiteBoard[] = [
     slug: "beta-four",
     atsType: "custom",
     lastSyncedAt: new Date("2026-01-01T12:00:00Z"),
-    lastError: "Refresh failed",
+    lastError: "Synchronization failed",
     enabled: true,
   }),
   board({
@@ -69,8 +69,8 @@ describe("company sites sorting", () => {
     [{ key: "company", direction: "descending" }, [1, 4, 5, 2, 3]],
     [{ key: "ats", direction: "ascending" }, [4, 5, 1, 3, 2]],
     [{ key: "ats", direction: "descending" }, [2, 3, 5, 1, 4]],
-    [{ key: "last-refresh", direction: "ascending" }, [4, 1, 5, 3, 2]],
-    [{ key: "last-refresh", direction: "descending" }, [3, 5, 1, 4, 2]],
+    [{ key: "last-synchronized", direction: "ascending" }, [4, 1, 5, 3, 2]],
+    [{ key: "last-synchronized", direction: "descending" }, [3, 5, 1, 4, 2]],
     [{ key: "health", direction: "ascending" }, [2, 4, 3, 5, 1]],
     [{ key: "health", direction: "descending" }, [3, 5, 1, 2, 4]],
     [{ key: "enabled", direction: "ascending" }, [3, 2, 4, 5, 1]],
@@ -79,13 +79,13 @@ describe("company sites sorting", () => {
     expect(ids(sortCompanySites(boards, atsLabels, sort))).toEqual(expectedIds);
   });
 
-  it("keeps never-refreshed boards last in both directions", () => {
+  it("keeps never-synchronized boards last in both directions", () => {
     const ascending = sortCompanySites(boards, atsLabels, {
-      key: "last-refresh",
+      key: "last-synchronized",
       direction: "ascending",
     });
     const descending = sortCompanySites(boards, atsLabels, {
-      key: "last-refresh",
+      key: "last-synchronized",
       direction: "descending",
     });
 
@@ -126,7 +126,7 @@ describe("company sites sort selection", () => {
 });
 
 describe("company site health", () => {
-  it("classifies a partial sync warning separately from a failed refresh", () => {
+  it("classifies a partial synchronization warning separately from a failure", () => {
     const lastWarning =
       "Skipped 1 invalid vendor record. Ashby ashby:example job-7: title is invalid";
 
@@ -137,13 +137,15 @@ describe("company site health", () => {
     });
   });
 
-  it("classifies a failed refresh and gives errors precedence over warnings", () => {
+  it("classifies a failed synchronization and gives errors precedence over warnings", () => {
     expect(
-      getCompanySiteHealth(board({ lastError: "Refresh failed", lastWarning: "Skipped 1 record" })),
+      getCompanySiteHealth(
+        board({ lastError: "Synchronization failed", lastWarning: "Skipped 1 record" }),
+      ),
     ).toEqual({
       label: "Needs attention",
       className: "health health-error",
-      detail: "Refresh failed",
+      detail: "Synchronization failed",
     });
   });
 

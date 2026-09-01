@@ -1359,7 +1359,7 @@ table td a:hover {
   border-left: 1px solid var(--jr-color-border-strong);
 }
 
-.company-board-refresh-control {
+.company-boards-control {
   display: flex;
   min-height: 68px;
   align-items: center;
@@ -1370,27 +1370,27 @@ table td a:hover {
   border: 1px solid var(--jr-color-border-strong);
 }
 
-.company-board-refresh-control > div:first-child {
+.company-boards-control > div:first-child {
   display: grid;
   gap: var(--jr-space-1);
 }
 
-.company-board-refresh-control strong {
+.company-boards-control strong {
   font-size: var(--jr-font-size-body-sm);
 }
 
-.company-board-refresh-control span {
+.company-boards-control span {
   color: var(--jr-color-text-muted);
   font-size: var(--jr-font-size-label);
 }
 
-.company-board-refresh-action {
+.company-boards-action {
   display: grid;
   min-width: 5rem;
   justify-items: center;
 }
 
-.company-board-refresh-status {
+.company-boards-status {
   min-height: 1rem;
 }
 

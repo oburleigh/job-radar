@@ -4,12 +4,12 @@ import { type ActionFunctionArgs, useLoaderData } from "react-router";
 import type { AddJobSourceResult } from "@/contexts/discovery/application/source-coverage/add/result";
 import { discoveryWeb } from "@/contexts/discovery/composition/discovery-web.server";
 import { AddBoardForm } from "@/contexts/discovery/presentation/web/components/add-board-form";
-import { CompanyBoardRefreshToggle } from "@/contexts/discovery/presentation/web/components/company-board-refresh-toggle";
+import { CompanyBoardsToggle } from "@/contexts/discovery/presentation/web/components/company-boards-toggle";
 import { CompanySitesTable } from "@/contexts/discovery/presentation/web/components/company-sites-table";
 import { SyncButton } from "@/contexts/discovery/presentation/web/components/sync-button";
 import { ToggleButton } from "@/contexts/discovery/presentation/web/components/toggle-button";
 import { parseAddJobSourceRequest } from "@/contexts/discovery/presentation/web/requests/add-job-source-request";
-import { parseCompanyBoardRefreshRequest } from "@/contexts/discovery/presentation/web/requests/company-board-refresh-request";
+import { parseCompanyBoardsRequest } from "@/contexts/discovery/presentation/web/requests/company-boards-request";
 import { assertLocalHost } from "@/platform/http/require-local-request";
 
 export function loader() {
@@ -35,8 +35,8 @@ export async function action({ request }: ActionFunctionArgs) {
         ok: result.failureCount === 0,
         message:
           result.failureCount === 0
-            ? `Refreshed ${result.boardCount} boards and wrote ${result.writeCount} jobs.`
-            : `Refreshed with ${result.failureCount} board error${result.failureCount === 1 ? "" : "s"}.`,
+            ? `Synchronized ${result.boardCount} company boards and wrote ${result.writeCount} jobs.`
+            : `Synchronization finished with ${result.failureCount} company-board error${result.failureCount === 1 ? "" : "s"}.`,
       };
     } catch (error) {
       return { ok: false, message: error instanceof Error ? error.message : String(error) };
@@ -58,8 +58,8 @@ export async function action({ request }: ActionFunctionArgs) {
     });
     return { ok: true, message: "Board coverage updated." };
   }
-  if (intent === "toggle-company-board-refresh") {
-    const parsed = parseCompanyBoardRefreshRequest(formData);
+  if (intent === "toggle-company-boards") {
+    const parsed = parseCompanyBoardsRequest(formData);
     if (!parsed.ok) {
       return parsed;
     }
@@ -67,8 +67,8 @@ export async function action({ request }: ActionFunctionArgs) {
     return {
       ok: true,
       message: parsed.command.enabled
-        ? "Company boards will be refreshed during discovery."
-        : "Company boards will be skipped during discovery.",
+        ? "All company boards are enabled."
+        : "All company boards are disabled.",
     };
   }
   return { ok: false, message: "Unknown source action." };
@@ -100,7 +100,6 @@ export default function SourcesPage() {
 
       <section className="source-section">
         <SectionHeader
-          actions={<SyncButton />}
           meta={`${data.sources.filter((source) => source.enabled).length} active`}
           title="Where discovery looks"
         />
@@ -130,11 +129,12 @@ export default function SourcesPage() {
 
       <section className="source-section">
         <SectionHeader
+          actions={<SyncButton />}
           meta={`${data.boards.length} registered`}
           title="Known company career sites"
         />
 
-        <CompanyBoardRefreshToggle enabled={data.companyBoardRefreshEnabled} />
+        <CompanyBoardsToggle enabled={data.companyBoardsEnabled} boardCount={data.boards.length} />
 
         <div className="panel">
           <AddBoardForm />

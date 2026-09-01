@@ -37,7 +37,7 @@ export default function RunDetailPage() {
   const boardEvidence =
     run.knownBoardCount === null || run.knownBoardSuccessCount === null
       ? "Known-board evidence not recorded"
-      : `${run.knownBoardSuccessCount} of ${run.knownBoardCount} known boards refreshed`;
+      : `${run.knownBoardSuccessCount} of ${run.knownBoardCount} known boards synchronized`;
   const webEvidence =
     run.webCoverageStatus === null
       ? "Web coverage evidence not recorded"

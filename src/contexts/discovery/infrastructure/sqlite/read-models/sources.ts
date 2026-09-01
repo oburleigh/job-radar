@@ -1,27 +1,27 @@
-import { getJobRadarConfig } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
 import { getAtsLabels } from "@/contexts/discovery/infrastructure/job-sources/catalog";
 import { db } from "@/contexts/discovery/infrastructure/sqlite/database";
 import { companyBoards, sourceDomains } from "@/contexts/discovery/infrastructure/sqlite/schema";
 
 export function getSourcesData() {
+  const boards = db
+    .select({
+      id: companyBoards.id,
+      atsType: companyBoards.atsType,
+      companyName: companyBoards.companyName,
+      slug: companyBoards.slug,
+      baseUrl: companyBoards.baseUrl,
+      enabled: companyBoards.enabled,
+      lastSyncedAt: companyBoards.lastSyncedAt,
+      lastError: companyBoards.lastError,
+      lastWarning: companyBoards.lastWarning,
+    })
+    .from(companyBoards)
+    .orderBy(companyBoards.atsType, companyBoards.companyName)
+    .all();
   return {
-    companyBoardRefreshEnabled: getJobRadarConfig(db).discovery.companyBoardRefreshEnabled,
+    companyBoardsEnabled: boards.some((board) => board.enabled),
     sources: sortSourceRegistry(db.select().from(sourceDomains).all(), getAtsLabels()),
-    boards: db
-      .select({
-        id: companyBoards.id,
-        atsType: companyBoards.atsType,
-        companyName: companyBoards.companyName,
-        slug: companyBoards.slug,
-        baseUrl: companyBoards.baseUrl,
-        enabled: companyBoards.enabled,
-        lastSyncedAt: companyBoards.lastSyncedAt,
-        lastError: companyBoards.lastError,
-        lastWarning: companyBoards.lastWarning,
-      })
-      .from(companyBoards)
-      .orderBy(companyBoards.atsType, companyBoards.companyName)
-      .all(),
+    boards,
   };
 }
 

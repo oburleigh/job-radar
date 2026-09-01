@@ -154,11 +154,11 @@ export function createJobDiscovery({
         );
 
       try {
-        const refreshKnownBoards =
-          command.syncBoards !== false && policy.companyBoardRefreshEnabled;
-        if (refreshKnownBoards) {
-          runs.recordPhase(run.id, "known-boards", now());
+        if (command.syncBoards !== false) {
           knownBoardCount = knownBoards.countEnabledBoards();
+        }
+        if (knownBoardCount > 0) {
+          runs.recordPhase(run.id, "known-boards", now());
           recordBoardProgress();
           await knownBoards.synchronizeEnabledBoards(
             command.boardJobLimit ?? policy.boardJobLimit,

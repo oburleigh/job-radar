@@ -186,7 +186,7 @@ test.describe
     test("adds an unknown ATS URL as a configurable search integration", async ({ page }) => {
       await page.goto("/settings/adapters/source-coverage");
 
-      await page.getByLabel("Company").fill("Example");
+      await page.getByLabel("Company", { exact: true }).fill("Example");
       await page
         .getByLabel("Public ATS job, careers, or board URL")
         .fill("https://careers.example.com/jobs");
@@ -223,7 +223,7 @@ test.describe
         table.getByRole("columnheader", { name: /^Sort by Company or slug/ }),
       ).toHaveAttribute("aria-sort", "ascending");
 
-      const headers = ["Company or slug", "ATS", "Last refresh", "Health", "Enabled"];
+      const headers = ["Company or slug", "ATS", "Last synchronized", "Health", "Enabled"];
       for (const label of headers) {
         const button = table.getByRole("button", { name: new RegExp(`^Sort by ${label}`) });
         const header = table.getByRole("columnheader", {
@@ -251,28 +251,49 @@ test.describe
       }
     });
 
-    test("keeps company-board refresh opt-in without losing the saved choice", async ({ page }) => {
+    test("enables and disables every company board from one truthful control", async ({ page }) => {
       await page.goto("/settings/adapters/source-coverage");
 
-      const disabledSwitch = page.getByRole("switch", {
-        name: "Enable all registered boards for discovery",
-      });
-      await expect(disabledSwitch).not.toBeChecked();
-      await disabledSwitch.click();
+      await page.getByLabel("Company", { exact: true }).fill("Bulk Acme");
+      await page
+        .getByLabel("Public ATS job, careers, or board URL")
+        .fill("https://jobs.ashbyhq.com/bulk-acme");
+      await page.getByRole("button", { name: "Add ATS URL" }).click();
+      await expect(page.getByRole("link", { name: "Bulk Acme" })).toBeVisible();
+
+      await expect(page.getByText("Refresh company boards", { exact: true })).toHaveCount(0);
+      await expect(page.getByText("Not synchronized", { exact: true })).toBeVisible();
+      await expect(page.getByText("Not refreshed", { exact: true })).toHaveCount(0);
       await expect(
-        page.getByRole("switch", { name: "Disable all registered boards for discovery" }),
-      ).toBeChecked();
+        page.getByText(
+          "Discovery connects to each enabled company board through its public ATS feed. This requires an internet connection and does not use the selected web search provider.",
+        ),
+      ).toBeVisible();
+
+      const table = page.getByRole("table");
+      const boardSwitches = table.getByRole("switch");
+      const boardCount = await boardSwitches.count();
+      expect(boardCount).toBeGreaterThanOrEqual(1);
+      const disableAll = page.getByRole("switch", { name: "Disable all company boards" });
+      await expect(disableAll).toBeChecked();
+      await disableAll.click();
+      await expect(
+        page.getByRole("switch", { name: "Enable all company boards" }),
+      ).not.toBeChecked();
+      await expect(table.getByRole("switch", { name: /^Enable / })).toHaveCount(boardCount);
 
       await page.reload();
-      const enabledSwitch = page.getByRole("switch", {
-        name: "Disable all registered boards for discovery",
-      });
-      await expect(enabledSwitch).toBeChecked();
+      const enableAll = page.getByRole("switch", { name: "Enable all company boards" });
+      await expect(enableAll).not.toBeChecked();
+      await expect(page.getByRole("table").getByRole("switch", { name: /^Enable / })).toHaveCount(
+        boardCount,
+      );
 
-      await enabledSwitch.click();
-      await expect(
-        page.getByRole("switch", { name: "Enable all registered boards for discovery" }),
-      ).not.toBeChecked();
+      await enableAll.click();
+      await expect(page.getByRole("switch", { name: "Disable all company boards" })).toBeChecked();
+      await expect(page.getByRole("table").getByRole("switch", { name: /^Disable / })).toHaveCount(
+        boardCount,
+      );
     });
 
     test("saves runtime settings and keeps the settings page accessible", async ({ page }) => {
@@ -426,11 +447,15 @@ test.describe
       });
     });
 
-    test("uses a compact contextual source registry control", async ({ page }) => {
+    test("keeps company-board synchronization with the company-board registry", async ({
+      page,
+    }) => {
       await page.setViewportSize({ width: 1440, height: 1000 });
       await page.goto("/settings/adapters/source-coverage");
 
-      const refreshRegistry = page.getByRole("button", { name: "Refresh board registry" });
+      const synchronizeBoards = page.getByRole("button", {
+        name: "Synchronize enabled company boards now",
+      });
       const sourceHeadingActions = page
         .locator(".source-section")
         .first()
@@ -439,25 +464,34 @@ test.describe
         .locator(".source-section")
         .first()
         .locator(".jr-section-header-trailing > span");
+      const boardHeadingActions = page
+        .locator(".source-section")
+        .nth(1)
+        .locator(".jr-section-header-trailing");
       await expect(page.getByText("Source registry actions", { exact: true })).toHaveCount(0);
       await expect(page.getByRole("link", { name: "Add ATS integration" })).toHaveCount(0);
-      await expect(refreshRegistry).toHaveAttribute("title", "Refresh board registry");
+      await expect(synchronizeBoards).toHaveAttribute(
+        "title",
+        "Synchronize enabled company boards now",
+      );
+      await expect(sourceHeadingActions.getByRole("button")).toHaveCount(0);
+      await expect(boardHeadingActions.getByRole("button")).toHaveCount(1);
       await expect(activeSourceCount).toHaveText(/^\d+ active$/);
-      const refreshBox = await refreshRegistry.boundingBox();
-      if (!refreshBox) {
+      const synchronizationBox = await synchronizeBoards.boundingBox();
+      if (!synchronizationBox) {
         throw new Error("Source registry control must be measurable.");
       }
-      expect(refreshBox.width).toBe(refreshBox.height);
+      expect(synchronizationBox.width).toBe(synchronizationBox.height);
       const [
         pageHeader,
         pageTitle,
         sourceHeadingRule,
         sourceHeading,
         sourceHeadingActionsBox,
-        activeSourceCountBox,
         sourceGrid,
         knownSitesHeadingRule,
         knownSitesHeading,
+        boardHeadingActionsBox,
         knownSitesCount,
         knownSitesPanel,
       ] = await Promise.all([
@@ -466,10 +500,10 @@ test.describe
         page.locator(".source-section").first().locator(".jr-section-header").boundingBox(),
         page.getByRole("heading", { level: 2, name: "Where discovery looks" }).boundingBox(),
         sourceHeadingActions.boundingBox(),
-        activeSourceCount.boundingBox(),
         page.locator(".source-grid").boundingBox(),
         page.locator(".source-section").nth(1).locator(".jr-section-header").boundingBox(),
         page.getByRole("heading", { level: 2, name: "Known company career sites" }).boundingBox(),
+        boardHeadingActions.boundingBox(),
         page
           .locator(".source-section")
           .nth(1)
@@ -483,10 +517,10 @@ test.describe
         !sourceHeadingRule ||
         !sourceHeading ||
         !sourceHeadingActionsBox ||
-        !activeSourceCountBox ||
         !sourceGrid ||
         !knownSitesHeadingRule ||
         !knownSitesHeading ||
+        !boardHeadingActionsBox ||
         !knownSitesCount ||
         !knownSitesPanel
       ) {
@@ -508,24 +542,27 @@ test.describe
         ),
       ).toBeLessThanOrEqual(2);
       expect(Math.abs(knownSitesHeadingRule.x - knownSitesPanel.x)).toBeLessThanOrEqual(1);
+      expect(Math.abs(knownSitesHeadingRule.width - knownSitesPanel.width)).toBeLessThanOrEqual(1);
       expect(Math.abs(knownSitesHeading.x - knownSitesPanel.x)).toBeLessThanOrEqual(1);
       expect(
         Math.abs(
-          knownSitesCount.x + knownSitesCount.width - (knownSitesPanel.x + knownSitesPanel.width),
+          boardHeadingActionsBox.x +
+            boardHeadingActionsBox.width -
+            (knownSitesPanel.x + knownSitesPanel.width),
         ),
       ).toBeLessThanOrEqual(2);
-      expect(refreshBox.x).toBeGreaterThan(activeSourceCountBox.x);
-      expect(refreshBox.x + refreshBox.width).toBeLessThanOrEqual(
-        sourceHeadingActionsBox.x + sourceHeadingActionsBox.width,
+      expect(synchronizationBox.x).toBeGreaterThan(knownSitesCount.x + knownSitesCount.width);
+      expect(synchronizationBox.x + synchronizationBox.width).toBeLessThanOrEqual(
+        boardHeadingActionsBox.x + boardHeadingActionsBox.width,
       );
       expect(
         Math.abs(
-          refreshBox.y +
-            refreshBox.height / 2 -
-            (activeSourceCountBox.y + activeSourceCountBox.height / 2),
+          synchronizationBox.y +
+            synchronizationBox.height / 2 -
+            (knownSitesCount.y + knownSitesCount.height / 2),
         ),
       ).toBeLessThanOrEqual(1);
-      const appearance = await refreshRegistry.evaluate((element) => {
+      const appearance = await synchronizeBoards.evaluate((element) => {
         const styles = getComputedStyle(element);
         return { background: styles.backgroundColor, borderColor: styles.borderTopColor };
       });

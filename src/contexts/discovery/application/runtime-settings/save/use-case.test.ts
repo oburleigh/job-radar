@@ -65,7 +65,6 @@ function runtimeSettings(): RuntimeSettingsCommand {
     discovery: {
       resultsPerQuery: 20,
       boardJobLimit: 500,
-      companyBoardRefreshEnabled: true,
       searchFreshnessDays: 30,
       workYieldBatchSize: 25,
       runHistoryLimit: 100,

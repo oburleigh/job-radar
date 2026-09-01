@@ -45,7 +45,7 @@ export function createDiscoveryRunExecution({
             summary.knownBoardSuccesses + summary.queries - summary.queryErrors;
           const message = [
             summary.syncErrors > 0
-              ? `${summary.syncErrors} known board refresh${summary.syncErrors === 1 ? "" : "es"} failed`
+              ? `${summary.syncErrors} known board synchronization${summary.syncErrors === 1 ? "" : "s"} failed`
               : "",
             summary.queryErrors > 0
               ? `${summary.queryErrors} web coverage request${summary.queryErrors === 1 ? "" : "s"} failed`

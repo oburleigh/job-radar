@@ -20,7 +20,6 @@ export type DiscoverySource = QuerySource & {
 export type DiscoveryPolicy = {
   readonly resultsPerQuery: number;
   readonly boardJobLimit: number;
-  readonly companyBoardRefreshEnabled: boolean;
   readonly searchFreshnessDays: number;
   readonly workYieldBatchSize: number;
   readonly strategies: readonly SearchStrategy[];

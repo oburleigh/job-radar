@@ -57,7 +57,6 @@ const saveAtsIntegration = createSaveAtsIntegration({
 });
 const setSourceCoverageEnabled = createSetSourceCoverageEnabled({
   coverage: createSqliteSourceCoverageStore(db),
-  now: () => new Date(),
 });
 const syncSourceCoverage = createSyncSourceCoverage({ boards: sqliteBoardSynchronizer });
 const addJobSource = createAddJobSource({
@@ -76,9 +75,7 @@ export const discoveryWeb = {
   countActiveDiscoveryRuns,
   getAtsLabels,
   getDashboardData: (filters: Parameters<typeof getDashboardData>[0]) =>
-    getDashboardData(filters, db, {
-      companyBoardRefreshEnabled: getJobRadarConfig().discovery.companyBoardRefreshEnabled,
-    }),
+    getDashboardData(filters, db),
   getProfiles: () => getProfiles(db),
   getRunDetail,
   getRunsData,

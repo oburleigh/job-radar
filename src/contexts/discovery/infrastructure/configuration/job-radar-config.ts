@@ -48,7 +48,6 @@ const discoverySchema = z
   .object({
     resultsPerQuery: integer(runtimeSettingConstraints.resultsPerQuery),
     boardJobLimit: integer(runtimeSettingConstraints.boardJobLimit),
-    companyBoardRefreshEnabled: z.boolean().default(false),
     searchFreshnessDays: integer(runtimeSettingConstraints.searchFreshnessDays),
     workYieldBatchSize: integer(runtimeSettingConstraints.workYieldBatchSize),
     runHistoryLimit: integer(runtimeSettingConstraints.runHistoryLimit),

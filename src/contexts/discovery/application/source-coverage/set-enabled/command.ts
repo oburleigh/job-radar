@@ -5,6 +5,6 @@ export type SetSourceCoverageEnabledCommand =
       readonly enabled: boolean;
     }
   | {
-      readonly kind: "company-board-refresh";
+      readonly kind: "company-boards";
       readonly enabled: boolean;
     };

@@ -67,12 +67,12 @@ Starting a Discovery Run has two stages:
 
 The application owns both decisions. SQLite decides how a reservation is stored, and the background adapter decides how deferred work is scheduled. A failed execution is written back only while the run is still active, so a late failure cannot overwrite a terminal state.
 
-The job discovery use case owns the run sequence: load configured inputs, plan queries, call the selected search provider, record progress, refresh discovered boards, and evaluate matches. It depends on five application-owned contracts:
+The job discovery use case owns the run sequence: load configured inputs, plan queries, call the selected search provider, record progress, synchronise discovered boards, and evaluate matches. It depends on five application-owned contracts:
 
 - `DiscoverySetupReader` supplies the profile, enabled sources, and typed discovery policy.
 - `DiscoveryRunJournal` records run and query lifecycle changes.
 - `SearchProviderDirectory` selects a configured web search provider by name.
-- `JobDiscoveryCatalog` records results, verifies listings, and refreshes boards.
+- `JobDiscoveryCatalog` records results, verifies listings, and synchronises boards.
 - `JobMatchEvaluator` evaluates the latest saved profile against active listings.
 
 Infrastructure implements those contracts with SQLite, ATS parsing, listing verification, provider

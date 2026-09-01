@@ -221,7 +221,7 @@ function upsertBoard(database: Database, identity: BoardIdentity, recordedAt: Da
       slug: identity.slug,
       baseUrl: identity.baseUrl,
       config: identity.config,
-      enabled: true,
+      enabled: false,
       discoveredAt: recordedAt,
     })
     .onConflictDoUpdate({
@@ -231,7 +231,6 @@ function upsertBoard(database: Database, identity: BoardIdentity, recordedAt: Da
         slug: identity.slug,
         baseUrl: identity.baseUrl,
         config: identity.config,
-        enabled: true,
       },
     })
     .run();

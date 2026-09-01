@@ -1,8 +1,9 @@
 import { Switch } from "@job-radar/design-ui";
 import { useFetcher } from "react-router";
 
-interface CompanyBoardRefreshToggleProps {
+interface CompanyBoardsToggleProps {
   readonly enabled: boolean;
+  readonly boardCount: number;
 }
 
 type ToggleResponse = {
@@ -10,34 +11,34 @@ type ToggleResponse = {
   readonly message: string;
 };
 
-export function CompanyBoardRefreshToggle({ enabled }: CompanyBoardRefreshToggleProps) {
+export function CompanyBoardsToggle({ enabled, boardCount }: CompanyBoardsToggleProps) {
   const fetcher = useFetcher<ToggleResponse>();
   const submittedValue = fetcher.formData?.get("enabled");
   const checked = submittedValue === "true" ? true : submittedValue === "false" ? false : enabled;
   const pending = fetcher.state !== "idle";
 
   return (
-    <div className="company-board-refresh-control">
+    <div className="company-boards-control">
       <div>
-        <strong>Refresh company boards</strong>
+        <strong>Include company boards</strong>
         <span>
-          Master control for discovery. Individual company-board choices are preserved when this is
-          off.
+          Discovery connects to each enabled company board through its public ATS feed. This
+          requires an internet connection and does not use the selected web search provider.
         </span>
       </div>
-      <div className="company-board-refresh-action">
+      <div className="company-boards-action">
         <Switch
           checked={checked}
-          disabled={pending}
-          label={`${checked ? "Disable" : "Enable"} all registered boards for discovery`}
+          disabled={pending || boardCount === 0}
+          label={`${checked ? "Disable" : "Enable"} all company boards`}
           onCheckedChange={(next) =>
             fetcher.submit(
-              { intent: "toggle-company-board-refresh", enabled: String(next) },
+              { intent: "toggle-company-boards", enabled: String(next) },
               { method: "post", action: "/settings/adapters/source-coverage" },
             )
           }
         />
-        <span aria-live="polite" className="company-board-refresh-status">
+        <span aria-live="polite" className="company-boards-status">
           {pending ? "Saving…" : fetcher.data && !fetcher.data.ok ? fetcher.data.message : ""}
         </span>
       </div>

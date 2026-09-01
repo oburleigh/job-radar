@@ -17,7 +17,7 @@ export interface CompanySiteBoard {
   readonly lastWarning: string;
 }
 
-export type CompanySitesSortKey = "company" | "ats" | "last-refresh" | "health" | "enabled";
+export type CompanySitesSortKey = "company" | "ats" | "last-synchronized" | "health" | "enabled";
 export type CompanySitesSortDirection = "ascending" | "descending";
 
 export interface CompanySitesSort {
@@ -63,8 +63,8 @@ export function CompanySitesTable({ boards, atsLabels }: CompanySitesTableProps)
             />
             <SortableHeader label="ATS" sortKey="ats" sort={sort} onSort={setSort} />
             <SortableHeader
-              label="Last refresh"
-              sortKey="last-refresh"
+              label="Last synchronized"
+              sortKey="last-synchronized"
               sort={sort}
               onSort={setSort}
             />
@@ -179,8 +179,8 @@ function comparePrimary(
   atsLabels: Readonly<Record<string, string>>,
   sort: CompanySitesSort,
 ): number {
-  if (sort.key === "last-refresh") {
-    return compareLastRefresh(left.lastSyncedAt, right.lastSyncedAt, sort.direction);
+  if (sort.key === "last-synchronized") {
+    return compareLastSynchronized(left.lastSyncedAt, right.lastSyncedAt, sort.direction);
   }
 
   let comparison: number;
@@ -205,7 +205,7 @@ function comparePrimary(
   return sort.direction === "ascending" ? comparison : -comparison;
 }
 
-function compareLastRefresh(
+function compareLastSynchronized(
   left: Date | null,
   right: Date | null,
   direction: CompanySitesSortDirection,
@@ -253,5 +253,5 @@ function formatDate(value: Date | null): string {
         dateStyle: "medium",
         timeStyle: "short",
       }).format(value)
-    : "Not refreshed";
+    : "Not synchronized";
 }

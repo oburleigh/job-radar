@@ -99,6 +99,70 @@ describe("Job Radar database bootstrap", () => {
     ).toBe(false);
   });
 
+  it("migrates the superseded disabled company-board policy into board choices once", () => {
+    bootstrapJobRadar(database, new Date("2026-08-20T00:00:00.000Z"));
+    database
+      .insert(companyBoards)
+      .values(
+        ["acme", "example"].map((slug) => ({
+          atsType: "ashby" as const,
+          canonicalKey: `ashby:${slug}`,
+          companyName: slug,
+          slug,
+          baseUrl: `https://jobs.ashbyhq.com/${slug}`,
+          config: {},
+          enabled: true,
+          discoveredAt: new Date("2026-08-20T00:00:00.000Z"),
+        })),
+      )
+      .run();
+    const discovery = database
+      .select({ value: appSettings.value })
+      .from(appSettings)
+      .where(eq(appSettings.key, "discovery"))
+      .get()?.value;
+    if (typeof discovery !== "object" || discovery === null || Array.isArray(discovery)) {
+      throw new Error("The discovery bootstrap fixture must be an object.");
+    }
+    database
+      .update(appSettings)
+      .set({ value: { ...discovery, companyBoardRefreshEnabled: false } })
+      .where(eq(appSettings.key, "discovery"))
+      .run();
+
+    bootstrapJobRadar(database, new Date("2026-08-21T00:00:00.000Z"));
+
+    expect(
+      database
+        .select()
+        .from(companyBoards)
+        .all()
+        .map((board) => board.enabled),
+    ).toEqual([false, false]);
+    expect(
+      database
+        .select({ value: appSettings.value })
+        .from(appSettings)
+        .where(eq(appSettings.key, "discovery"))
+        .get()?.value,
+    ).not.toHaveProperty("companyBoardRefreshEnabled");
+
+    database
+      .update(companyBoards)
+      .set({ enabled: true })
+      .where(eq(companyBoards.canonicalKey, "ashby:acme"))
+      .run();
+    bootstrapJobRadar(database, new Date("2026-08-22T00:00:00.000Z"));
+
+    expect(
+      database
+        .select({ enabled: companyBoards.enabled })
+        .from(companyBoards)
+        .where(eq(companyBoards.canonicalKey, "ashby:acme"))
+        .get()?.enabled,
+    ).toBe(true);
+  });
+
   it("backfills provider execution policy without overwriting discovery settings", () => {
     bootstrapJobRadar(database, new Date("2026-08-20T00:00:00.000Z"));
     const discovery = database

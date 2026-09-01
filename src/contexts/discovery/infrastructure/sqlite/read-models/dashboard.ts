@@ -28,15 +28,7 @@ export interface JobFilters {
   query?: string;
 }
 
-interface DashboardCoveragePolicy {
-  readonly companyBoardRefreshEnabled: boolean;
-}
-
-export function getDashboardData(
-  filters: JobFilters,
-  database: Database,
-  coverage: DashboardCoveragePolicy = { companyBoardRefreshEnabled: true },
-) {
+export function getDashboardData(filters: JobFilters, database: Database) {
   const profiles = getProfiles(database);
   const profile =
     profiles.find((item) => item.id === filters.profileId) ??
@@ -139,13 +131,11 @@ export function getDashboardData(
     .from(sourceDomains)
     .where(eq(sourceDomains.enabled, true))
     .all().length;
-  const activeBoards = coverage.companyBoardRefreshEnabled
-    ? database
-        .select({ id: companyBoards.id })
-        .from(companyBoards)
-        .where(eq(companyBoards.enabled, true))
-        .all().length
-    : 0;
+  const activeBoards = database
+    .select({ id: companyBoards.id })
+    .from(companyBoards)
+    .where(eq(companyBoards.enabled, true))
+    .all().length;
   const lastRun =
     database
       .select({

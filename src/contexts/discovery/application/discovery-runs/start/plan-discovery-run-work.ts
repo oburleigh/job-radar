@@ -37,9 +37,7 @@ export function createDiscoveryRunWorkPlanner({
           ).length
         : 0;
       return {
-        knownBoardCount: discovery.policy.companyBoardRefreshEnabled
-          ? boards.countEnabledBoards()
-          : 0,
+        knownBoardCount: boards.countEnabledBoards(),
         webRequestCount,
       };
     },

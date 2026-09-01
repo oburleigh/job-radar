@@ -84,7 +84,7 @@ describe("dashboard screening summary", () => {
     });
   });
 
-  it("does not expose company boards as runnable coverage when their refresh lane is off", () => {
+  it("counts enabled company boards as runnable coverage", () => {
     const profileId = database
       .insert(searchProfiles)
       .values({
@@ -120,12 +120,7 @@ describe("dashboard screening summary", () => {
       })
       .run();
 
-    expect(
-      getDashboardData({ profileId }, database, { companyBoardRefreshEnabled: true }).activeBoards,
-    ).toBe(1);
-    expect(
-      getDashboardData({ profileId }, database, { companyBoardRefreshEnabled: false }).activeBoards,
-    ).toBe(0);
+    expect(getDashboardData({ profileId }, database).activeBoards).toBe(1);
   });
 });
 

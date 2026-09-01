@@ -13,14 +13,14 @@ export function SyncButton() {
     <div className="inline-action">
       <IconButton
         busy={pending}
-        label="Refresh board registry"
+        label="Synchronize enabled company boards now"
         onClick={() =>
           void fetcher.submit(
             { intent: "sync-boards" },
             { method: "post", action: "/settings/adapters/source-coverage" },
           )
         }
-        title="Refresh board registry"
+        title="Synchronize enabled company boards now"
         variant="outlined"
       >
         <RefreshCw size={17} className={pending ? "spin" : ""} />

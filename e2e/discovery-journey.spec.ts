@@ -207,7 +207,10 @@ test("completes discovery and triage while profile editing remains responsive", 
   await expect(page.getByRole("cell", { name: "Head of Engineering" }).first()).toBeVisible();
   await captureRunStateMatrix(page, "completed");
 
-  await enableCompanyBoardRefresh(page);
+  await addKnownBoard(page, {
+    companyName: "Acme Fixture",
+    url: "https://boards.greenhouse.io/acme-fixture/jobs/12345",
+  });
   await page
     .getByRole("navigation", { name: "Primary navigation" })
     .getByRole("link", { name: "Opportunities", exact: true })
@@ -229,13 +232,12 @@ test("completes discovery and triage while profile editing remains responsive", 
   await page.getByRole("button", { name: "Run discovery" }).click();
   expect((await boardOnlyRequest).postDataJSON()).toEqual({ profileId, provider: "serpapi" });
   const boardOnlyStarted = (await (await boardOnlyResponse).json()) as { runId: number };
-  const boardOnlyNotice = page
-    .getByRole("status")
-    .filter({ hasText: "No web search provider was configured." });
-  await expect(boardOnlyNotice).toContainText("Discovery completed", { timeout: 30_000 });
-  await expect(boardOnlyNotice).toContainText("No web search provider was configured.");
-  await boardOnlyNotice.getByRole("link", { name: `View run #${boardOnlyStarted.runId}` }).click();
-  await page.getByRole("button", { name: "Dismiss discovery notification" }).click();
+  await page.getByRole("link", { name: "Activity" }).click();
+  const boardOnlyRun = page.getByRole("link", {
+    name: `Run #${boardOnlyStarted.runId} Completed`,
+  });
+  await expect(boardOnlyRun).toBeVisible({ timeout: 30_000 });
+  await boardOnlyRun.click();
   const boardOnlyOutcome = page.getByRole("region", { name: "Discovery completed" });
   await expect(boardOnlyOutcome).toBeVisible();
   await expect(boardOnlyOutcome.getByText("Completed", { exact: true })).toHaveCount(0);
@@ -382,7 +384,7 @@ test("shows persisted board progress while matching waits for collection", async
       name: `Discovery Run #${started.runId}`,
     });
     await expect(activeRun.getByText(profileName, { exact: true })).toBeVisible();
-    await expect(activeRun).toContainText("Refreshing known boards · 1 of 2 boards", {
+    await expect(activeRun).toContainText("Synchronizing company boards · 1 of 2 boards", {
       timeout: 30_000,
     });
     await expect(activeRun).toContainText("Active board: Beta Systems");
@@ -429,7 +431,7 @@ test("shows persisted board progress while matching waits for collection", async
     );
     await expect(page.getByText("Running", { exact: true })).toHaveCount(1);
     await expect(runProgress.getByText(profileName, { exact: true })).toHaveCount(0);
-    await expect(runProgress).toContainText("Refreshing known boards · 1 of 2 boards");
+    await expect(runProgress).toContainText("Synchronizing company boards · 1 of 2 boards");
     await expect(runProgress).toContainText("Active board: Beta Systems");
     await expect(
       runProgress.getByRole("button", { name: `Cancel discovery #${started.runId}` }),
@@ -535,7 +537,7 @@ test("cancels a running discovery without resurrecting a delayed poll", async ({
   const activeRun = page.getByRole("article", {
     name: `Discovery Run #${started.runId}`,
   });
-  await expect(activeRun).toContainText(/Refreshing known boards|expanding web coverage/i, {
+  await expect(activeRun).toContainText(/Synchronizing company boards|expanding web coverage/i, {
     timeout: 30_000,
   });
   await activeRun.getByRole("link", { name: `View run #${started.runId}` }).click();
@@ -902,29 +904,6 @@ async function addKnownBoard(
   await page.getByLabel("Public ATS job, careers, or board URL").fill(board.url);
   await page.getByRole("button", { name: "Add ATS URL" }).click();
   await expect(page.getByText("greenhouse board added.", { exact: false })).toBeVisible();
-
-  await enableCompanyBoardRefresh(page);
-}
-
-async function enableCompanyBoardRefresh(page: Page): Promise<void> {
-  if (!new URL(page.url()).pathname.startsWith("/settings/adapters/source-coverage")) {
-    await page.goto("/settings/adapters/source-coverage");
-  }
-  const enableBoardRefresh = page.getByRole("switch", {
-    name: "Enable all registered boards for discovery",
-  });
-  if ((await enableBoardRefresh.count()) > 0) {
-    const saved = page.waitForResponse(
-      (response) =>
-        response.request().method() === "POST" &&
-        response.request().postData()?.includes("intent=toggle-company-board-refresh") === true,
-    );
-    await enableBoardRefresh.click();
-    expect((await saved).ok()).toBe(true);
-    await expect(
-      page.getByRole("switch", { name: "Disable all registered boards for discovery" }),
-    ).toBeChecked();
-  }
 }
 
 async function runDiscovery(page: Page, profileId: number): Promise<number> {

@@ -121,7 +121,7 @@ describe("discover jobs", () => {
     expect(journal.failed).toEqual([]);
   });
 
-  it("refreshes known boards before web coverage and evaluates both lanes together", async () => {
+  it("synchronizes known boards before web coverage and evaluates both lanes together", async () => {
     const events: string[] = [];
     const journal = recordingJournal({
       onPhase: (phase) => events.push(`phase:${phase}`),
@@ -187,22 +187,14 @@ describe("discover jobs", () => {
     });
   });
 
-  it("skips company-board refresh when the run policy turns it off", async () => {
+  it("skips company-board synchronisation when none are enabled", async () => {
     const synchronizeEnabledBoards = vi.fn();
     const journal = recordingJournal();
     const discovery = createJobDiscovery({
-      setup: {
-        load: (command) => ({
-          ...configuredSetup().load(command),
-          policy: {
-            ...configuredSetup().load(command).policy,
-            companyBoardRefreshEnabled: false,
-          },
-        }),
-      },
+      setup: configuredSetup(),
       runs: journal,
       knownBoards: {
-        countEnabledBoards: () => 946,
+        countEnabledBoards: () => 0,
         synchronizeEnabledBoards,
       },
       jobs: {
@@ -405,7 +397,7 @@ describe("discover jobs", () => {
     expect(journal.failed).toEqual([]);
   });
 
-  it("does not record a completed board when cancellation wins after its refresh", async () => {
+  it("does not record a completed board when cancellation wins during synchronization", async () => {
     const controller = new AbortController();
     const journal = recordingJournal();
     const discovery = createJobDiscovery({
@@ -446,7 +438,7 @@ describe("discover jobs", () => {
     expect(journal.failed).toEqual([]);
   });
 
-  it("does not refresh a web-discovered board already handled by the known-board lane", async () => {
+  it("does not synchronize a web-discovered board already handled by the known-board lane", async () => {
     const synchronizeBoard = vi.fn(async () => ({ jobsWritten: 0, error: "" }));
     const discovery = createJobDiscovery({
       setup: configuredSetup(),
@@ -1242,7 +1234,6 @@ function configuredSetup(): DiscoverySetupReader {
       policy: {
         resultsPerQuery: 25,
         boardJobLimit: 200,
-        companyBoardRefreshEnabled: true,
         searchFreshnessDays: 30,
         workYieldBatchSize: 1,
         strategies: ["role-first"],

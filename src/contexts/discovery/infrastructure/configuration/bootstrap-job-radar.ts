@@ -10,6 +10,7 @@ import type * as schema from "@/contexts/discovery/infrastructure/sqlite/schema"
 import {
   appSettings,
   atsIntegrations,
+  companyBoards,
   sourceDomains,
 } from "@/contexts/discovery/infrastructure/sqlite/schema";
 
@@ -87,7 +88,6 @@ const settingDefaults: SettingDefault[] = [
     value: {
       resultsPerQuery: 20,
       boardJobLimit: 200,
-      companyBoardRefreshEnabled: false,
       strategies: ["role-first", "location-first", "phrase", "relaxed-title"],
       ...defaultAdaptivePaginationSettings,
       searchFreshnessDays: 0,
@@ -398,25 +398,33 @@ export function bootstrapJobRadar(database: Database, now = new Date()): void {
       .where(eq(appSettings.key, "discovery"))
       .get()?.value;
     if (typeof discovery === "object" && discovery !== null && !Array.isArray(discovery)) {
+      const discoveryRecord = discovery as Record<string, unknown>;
+      const hasLegacyCompanyBoardPolicy = "companyBoardRefreshEnabled" in discoveryRecord;
+      if (discoveryRecord.companyBoardRefreshEnabled === false) {
+        transaction.update(companyBoards).set({ enabled: false }).run();
+      }
+      const currentDiscovery = Object.fromEntries(
+        Object.entries(discoveryRecord).filter(([key]) => key !== "companyBoardRefreshEnabled"),
+      );
       const missingDefaults = {
-        ...(!("providerExecution" in discovery)
+        ...(!("providerExecution" in currentDiscovery)
           ? { providerExecution: defaultProviderExecutionSettings }
           : {}),
-        ...(!("minimumUsefulHitsPerPage" in discovery)
+        ...(!("minimumUsefulHitsPerPage" in currentDiscovery)
           ? { minimumUsefulHitsPerPage: defaultAdaptivePaginationSettings.minimumUsefulHitsPerPage }
           : {}),
-        ...(!("maxPagesPerLane" in discovery)
+        ...(!("maxPagesPerLane" in currentDiscovery)
           ? { maxPagesPerLane: defaultAdaptivePaginationSettings.maxPagesPerLane }
           : {}),
-        ...(!("maxRequestsPerRun" in discovery)
+        ...(!("maxRequestsPerRun" in currentDiscovery)
           ? { maxRequestsPerRun: defaultAdaptivePaginationSettings.maxRequestsPerRun }
           : {}),
       };
-      if (Object.keys(missingDefaults).length > 0) {
+      if (hasLegacyCompanyBoardPolicy || Object.keys(missingDefaults).length > 0) {
         transaction
           .update(appSettings)
           .set({
-            value: { ...discovery, ...missingDefaults },
+            value: { ...currentDiscovery, ...missingDefaults },
             updatedAt: now,
           })
           .where(eq(appSettings.key, "discovery"))

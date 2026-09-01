@@ -133,11 +133,11 @@ describe("execute discovery run", () => {
       discoveryRuns.executeDiscoveryRun({ ...execution, providerName: null }),
     ).resolves.toEqual({
       status: "failed",
-      message: "2 known board refreshes failed",
+      message: "2 known board synchronizations failed",
     });
   });
 
-  it("reports one failed known board without pluralizing refresh", async () => {
+  it("reports one failed known board without pluralizing synchronization", async () => {
     const discoveryRuns = createDiscoveryRunExecution({
       discovery: {
         discoverJobs: async () => ({
@@ -154,7 +154,7 @@ describe("execute discovery run", () => {
 
     await expect(discoveryRuns.executeDiscoveryRun(execution)).resolves.toEqual({
       status: "failed",
-      message: "1 known board refresh failed",
+      message: "1 known board synchronization failed",
     });
   });
 
@@ -174,7 +174,7 @@ describe("execute discovery run", () => {
 
     await expect(discoveryRuns.executeDiscoveryRun(execution)).resolves.toEqual({
       status: "failed",
-      message: "1 known board refresh failed; 1 web coverage request failed",
+      message: "1 known board synchronization failed; 1 web coverage request failed",
     });
   });
 
@@ -195,7 +195,7 @@ describe("execute discovery run", () => {
 
     await expect(discoveryRuns.executeDiscoveryRun(execution)).resolves.toEqual({
       status: "partial",
-      message: "1 known board refresh failed",
+      message: "1 known board synchronization failed",
     });
   });
 
@@ -215,7 +215,7 @@ describe("execute discovery run", () => {
 
     await expect(discoveryRuns.executeDiscoveryRun(execution)).resolves.toEqual({
       status: "partial",
-      message: "1 known board refresh failed",
+      message: "1 known board synchronization failed",
     });
   });
 

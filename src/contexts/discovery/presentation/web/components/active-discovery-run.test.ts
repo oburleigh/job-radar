@@ -8,7 +8,7 @@ import {
 
 describe("active discovery run progress", () => {
   it.each([
-    [{ phase: "known-boards", knownBoardCount: 2 }, "Refreshing known boards"],
+    [{ phase: "known-boards", knownBoardCount: 2 }, "Synchronizing company boards"],
     [
       { phase: "web-coverage", knownBoardCount: 0 },
       "No enabled company boards; expanding web coverage",
@@ -32,7 +32,7 @@ describe("active discovery run progress", () => {
         }),
       ),
     ).toBe(
-      "Refreshing known boards · 2 of 5 boards · Active board: Beta Systems · 7 jobs changed · 3 matches found",
+      "Synchronizing company boards · 2 of 5 boards · Active board: Beta Systems · 7 jobs changed · 3 matches found",
     );
   });
 
@@ -48,7 +48,7 @@ describe("active discovery run progress", () => {
           matchesFound: 1,
         }),
       ),
-    ).toBe("Refreshing known boards · 0 of 0 boards · 1 job changed · 1 match found");
+    ).toBe("Synchronizing company boards · 0 of 0 boards · 1 job changed · 1 match found");
   });
 });
 

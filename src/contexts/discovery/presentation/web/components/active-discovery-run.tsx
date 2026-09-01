@@ -127,7 +127,7 @@ export function describeDiscoveryPhase(
   run: Pick<ActiveDiscoveryRunState, "phase" | "knownBoardCount" | "id">,
 ): string {
   if (run.phase === "known-boards") {
-    return "Refreshing known boards";
+    return "Synchronizing company boards";
   }
   if (run.phase === "web-coverage") {
     return run.knownBoardCount === 0
