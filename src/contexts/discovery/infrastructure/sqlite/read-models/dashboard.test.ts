@@ -9,6 +9,7 @@ import { createAnnualSalaryRange } from "@/contexts/discovery/domain/annual-sala
 import type { ExclusionReason } from "@/contexts/discovery/domain/job-match";
 import * as schema from "@/contexts/discovery/infrastructure/sqlite/schema";
 import {
+  companyBoards,
   jobMatches,
   jobs,
   searchProfiles,
@@ -81,6 +82,50 @@ describe("dashboard screening summary", () => {
       context: 1,
       salary: 2,
     });
+  });
+
+  it("does not expose company boards as runnable coverage when their refresh lane is off", () => {
+    const profileId = database
+      .insert(searchProfiles)
+      .values({
+        name: "Dashboard fixture",
+        titleTerms: ["Engineering"],
+        locationTerms: ["United Arab Emirates"],
+        requiredJobTerms: [],
+        excludedTitleTerms: [],
+        excludedLocationTerms: [],
+        excludedDescriptionTerms: [],
+        includeRemote: false,
+        includeUnverified: false,
+        salaryCurrency: "",
+        salaryMin: null,
+        salaryMax: null,
+        maxAgeDays: 30,
+        minScore: 70,
+        createdAt: recordedAt,
+        updatedAt: recordedAt,
+      })
+      .returning({ id: searchProfiles.id })
+      .get().id;
+    database
+      .insert(companyBoards)
+      .values({
+        atsType: "greenhouse",
+        canonicalKey: "greenhouse:example",
+        slug: "example",
+        baseUrl: "https://boards.greenhouse.io/example",
+        config: {},
+        enabled: true,
+        discoveredAt: recordedAt,
+      })
+      .run();
+
+    expect(
+      getDashboardData({ profileId }, database, { companyBoardRefreshEnabled: true }).activeBoards,
+    ).toBe(1);
+    expect(
+      getDashboardData({ profileId }, database, { companyBoardRefreshEnabled: false }).activeBoards,
+    ).toBe(0);
   });
 });
 

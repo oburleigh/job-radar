@@ -76,7 +76,9 @@ export const discoveryWeb = {
   countActiveDiscoveryRuns,
   getAtsLabels,
   getDashboardData: (filters: Parameters<typeof getDashboardData>[0]) =>
-    getDashboardData(filters, db),
+    getDashboardData(filters, db, {
+      companyBoardRefreshEnabled: getJobRadarConfig().discovery.companyBoardRefreshEnabled,
+    }),
   getProfiles: () => getProfiles(db),
   getRunDetail,
   getRunsData,

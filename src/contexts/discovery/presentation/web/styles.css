@@ -1934,11 +1934,40 @@ td a {
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 11px;
   padding: 14px;
+  animation: discovery-notice-lifecycle var(--jr-discovery-notice-duration)
+    var(--jr-motion-easing-standard) both;
   color: var(--jr-color-nav-text);
   background: var(--jr-color-nav);
   border: 1px solid var(--jr-color-toast-border);
   box-shadow: 0 12px 30px var(--jr-shadow-toast);
   pointer-events: auto;
+}
+
+@keyframes discovery-notice-lifecycle {
+  0%,
+  90% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(calc(var(--jr-space-1) * -1));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .discovery-notice {
+    animation-name: discovery-notice-hold;
+  }
+}
+
+@keyframes discovery-notice-hold {
+  from,
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .discovery-notice strong {

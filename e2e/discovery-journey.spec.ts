@@ -136,6 +136,8 @@ test("completes discovery and triage while profile editing remains responsive", 
 
   const runningNotice = page.getByRole("status").filter({ hasText: "Discovery running" });
   await expect(runningNotice).toContainText(profileName);
+  await expect(runningNotice).toHaveCSS("animation-duration", "2s");
+  await expect(runningNotice).toHaveCSS("animation-name", "discovery-notice-lifecycle");
   const activeActivity = page.getByRole("link", { name: "Activity, 1 active run" });
   await expect(activeActivity).toBeVisible();
   const [activityIconBox, activityBadgeBox] = await Promise.all([
@@ -150,7 +152,7 @@ test("completes discovery and triage while profile editing remains responsive", 
   expect(activityBadgeBox.x).toBeGreaterThan(activityIconBox.x + activityIconBox.width / 2);
   expect(activityBadgeBox.y).toBeLessThan(activityIconBox.y + activityIconBox.height / 2);
   await page.screenshot({ path: "test-results/ui-review/discovery-running-desktop.png" });
-  await expect(runningNotice).toHaveCount(0, { timeout: 7_000 });
+  await expect(runningNotice).toHaveCount(0, { timeout: 3_000 });
 
   await expect(
     page.getByRole("button", { name: `Cancel discovery #${started.runId}` }),
@@ -205,6 +207,7 @@ test("completes discovery and triage while profile editing remains responsive", 
   await expect(page.getByRole("cell", { name: "Head of Engineering" }).first()).toBeVisible();
   await captureRunStateMatrix(page, "completed");
 
+  await enableCompanyBoardRefresh(page);
   await page
     .getByRole("navigation", { name: "Primary navigation" })
     .getByRole("link", { name: "Opportunities", exact: true })
@@ -899,6 +902,29 @@ async function addKnownBoard(
   await page.getByLabel("Public ATS job, careers, or board URL").fill(board.url);
   await page.getByRole("button", { name: "Add ATS URL" }).click();
   await expect(page.getByText("greenhouse board added.", { exact: false })).toBeVisible();
+
+  await enableCompanyBoardRefresh(page);
+}
+
+async function enableCompanyBoardRefresh(page: Page): Promise<void> {
+  if (!new URL(page.url()).pathname.startsWith("/settings/adapters/source-coverage")) {
+    await page.goto("/settings/adapters/source-coverage");
+  }
+  const enableBoardRefresh = page.getByRole("switch", {
+    name: "Enable all registered boards for discovery",
+  });
+  if ((await enableBoardRefresh.count()) > 0) {
+    const saved = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.request().postData()?.includes("intent=toggle-company-board-refresh") === true,
+    );
+    await enableBoardRefresh.click();
+    expect((await saved).ok()).toBe(true);
+    await expect(
+      page.getByRole("switch", { name: "Disable all registered boards for discovery" }),
+    ).toBeChecked();
+  }
 }
 
 async function runDiscovery(page: Page, profileId: number): Promise<number> {

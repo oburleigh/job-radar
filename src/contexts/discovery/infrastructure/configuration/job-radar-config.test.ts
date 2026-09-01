@@ -27,7 +27,8 @@ describe("SQLite configuration", () => {
     expect(config.ui.discoveryStaleAfterMs).toBeGreaterThan(config.ui.discoveryPollIntervalMs);
     expect(config.discovery.workYieldBatchSize).toBeGreaterThan(0);
     expect(config.discovery.runHistoryLimit).toBeGreaterThan(0);
-    expect(config.discovery.companyBoardRefreshEnabled).toBe(true);
+    expect(config.discovery.companyBoardRefreshEnabled).toBe(false);
+    expect(config.ui.discoveryNotificationDurationMs).toBe(2_000);
     expect(config.discovery.providerExecution).toEqual({
       concurrency: 2,
       requestsPerInterval: 5,
@@ -90,7 +91,7 @@ describe("SQLite configuration", () => {
 
     expect(parsed.providerExecution).toEqual(defaultProviderExecutionSettings);
     expect(parsed).toMatchObject({
-      companyBoardRefreshEnabled: true,
+      companyBoardRefreshEnabled: false,
       minimumUsefulHitsPerPage: 1,
       maxPagesPerLane: 3,
       maxRequestsPerRun: 111,

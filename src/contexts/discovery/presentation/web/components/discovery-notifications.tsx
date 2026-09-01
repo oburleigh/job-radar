@@ -1,6 +1,6 @@
 import { IconButton } from "@job-radar/design-ui";
 import { CheckCircle2, CircleAlert, CircleX, LoaderCircle, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { Link, useRevalidator } from "react-router";
 import type { DiscoveryRunOutcome } from "@/contexts/discovery/application/discovery-runs/outcome/derive-discovery-run-outcome";
 import type {
@@ -237,8 +237,14 @@ export function DiscoveryNotifications({
         return (
           <div
             className={`discovery-notice${running ? " notice-running" : failed ? " notice-failed" : cancelled ? " notice-cancelled" : partial ? " notice-partial" : ""}`}
-            key={run.id}
+            key={`${run.id}-${run.status}`}
+            onAnimationEnd={() => dismissNotice(run)}
             role={failed || partial ? "alert" : "status"}
+            style={
+              {
+                "--jr-discovery-notice-duration": `${notificationDurationMs}ms`,
+              } as CSSProperties
+            }
           >
             <span className="discovery-notice-icon">
               {running ? (

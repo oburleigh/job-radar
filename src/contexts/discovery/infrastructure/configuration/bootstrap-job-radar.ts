@@ -56,7 +56,7 @@ export const defaultAdaptivePaginationSettings = {
 } as const;
 
 export const defaultUiSettings = {
-  discoveryNotificationDurationMs: 5_000,
+  discoveryNotificationDurationMs: 2_000,
   discoveryPollIntervalMs: 3_000,
   discoveryStaleAfterMs: 300_000,
 } as const satisfies RuntimeSettings["ui"];
@@ -87,7 +87,7 @@ const settingDefaults: SettingDefault[] = [
     value: {
       resultsPerQuery: 20,
       boardJobLimit: 200,
-      companyBoardRefreshEnabled: true,
+      companyBoardRefreshEnabled: false,
       strategies: ["role-first", "location-first", "phrase", "relaxed-title"],
       ...defaultAdaptivePaginationSettings,
       searchFreshnessDays: 0,
