@@ -1,5 +1,5 @@
 import { Combobox } from "@base-ui/react/combobox";
-import { useId, useMemo, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 
 export type TokenAutocompleteOption = {
   readonly detail?: string;
@@ -62,6 +62,7 @@ export function TokenAutocomplete({
   const listboxId = useId();
   const errorId = useId();
   const hintId = useId();
+  const anchorRef = useRef<HTMLDivElement>(null);
   const [inputValue, setInputValue] = useState("");
   const [open, setOpen] = useState(false);
   const [selectionError, setSelectionError] = useState("");
@@ -79,6 +80,9 @@ export function TokenAutocomplete({
   });
   const invalidValues = values.filter((value) => !optionsByValue.has(valueNormalizer(value)));
   const selectedValueSet = new Set(selectedOptions.map((option) => valueNormalizer(option.value)));
+  const selectableOptions = availableOptions.filter(
+    (option) => !selectedValueSet.has(valueNormalizer(option.value)),
+  );
   const formValues = includeUnavailableValuesInFormValue
     ? values
     : selectedOptions.map((option) => option.value);
@@ -97,7 +101,6 @@ export function TokenAutocomplete({
       <Combobox.Root
         autoHighlight
         filter={(option, query) =>
-          !selectedValueSet.has(valueNormalizer(option.value)) &&
           [option.label, ...(option.searchTerms ?? [])].some((term) =>
             valueNormalizer(term).includes(valueNormalizer(query)),
           )
@@ -106,7 +109,7 @@ export function TokenAutocomplete({
           valueNormalizer(option.value) === valueNormalizer(value.value)
         }
         inputValue={inputValue}
-        items={availableOptions}
+        items={selectableOptions}
         itemToStringLabel={(option) => option.label}
         multiple
         onInputValueChange={(query) => {
@@ -143,99 +146,111 @@ export function TokenAutocomplete({
         open={open}
         value={selectedOptions}
       >
-        <Combobox.InputGroup className="jr-token-autocomplete-input">
-          <Combobox.Chips className="jr-token-autocomplete-chips">
-            <Combobox.Value>
-              {(currentOptions: TokenAutocompleteOption[]) => (
-                <>
-                  {currentOptions.map((option) => (
-                    <Combobox.Chip
-                      aria-label={option.label}
-                      className="jr-token-autocomplete-token"
-                      key={option.value}
-                    >
-                      <span>{option.label}</span>
-                      <Combobox.ChipRemove
-                        aria-label={`Remove ${option.label}`}
-                        className="jr-token-autocomplete-remove"
-                        disabled={disabled}
+        <div className="jr-token-autocomplete-anchor" ref={anchorRef}>
+          <Combobox.InputGroup className="jr-token-autocomplete-input">
+            <Combobox.Chips className="jr-token-autocomplete-chips">
+              <Combobox.Value>
+                {(currentOptions: TokenAutocompleteOption[]) => (
+                  <>
+                    {currentOptions.map((option) => (
+                      <Combobox.Chip
+                        aria-label={option.label}
+                        className="jr-token-autocomplete-token"
+                        key={option.value}
                       >
-                        <RemoveIcon />
-                      </Combobox.ChipRemove>
-                    </Combobox.Chip>
-                  ))}
-                  {invalidValues.map((value) => (
-                    <span
-                      className="jr-token-autocomplete-token"
-                      data-invalid="true"
-                      key={`invalid-${value}`}
-                    >
-                      <span>{value}</span>
-                      <button
-                        aria-label={`Remove ${value}`}
-                        className="jr-token-autocomplete-remove"
-                        disabled={disabled}
-                        onClick={() => onChange(values.filter((current) => current !== value))}
-                        type="button"
+                        <span>{option.label}</span>
+                        <Combobox.ChipRemove
+                          aria-label={`Remove ${option.label}`}
+                          className="jr-token-autocomplete-remove"
+                          disabled={disabled}
+                        >
+                          <RemoveIcon />
+                        </Combobox.ChipRemove>
+                      </Combobox.Chip>
+                    ))}
+                    {invalidValues.map((value) => (
+                      <span
+                        className="jr-token-autocomplete-token"
+                        data-invalid="true"
+                        key={`invalid-${value}`}
                       >
-                        <RemoveIcon />
-                      </button>
-                    </span>
-                  ))}
-                  <Combobox.Input
-                    aria-busy={busy || undefined}
-                    aria-controls={listboxId}
-                    aria-describedby={describedBy || undefined}
-                    aria-invalid={visibleError ? "true" : undefined}
-                    autoComplete="off"
-                    disabled={disabled}
-                    id={inputId}
-                    onBlur={() => {
-                      if (
-                        inputValue.trim() !== "" &&
-                        !optionsByValue.has(valueNormalizer(inputValue))
-                      ) {
-                        setSelectionError(invalidSelectionMessage);
-                      }
-                    }}
-                    onFocus={() => {
-                      setOpen(true);
-                      onQueryChange?.(inputValue);
-                    }}
-                    onKeyDown={(event) => {
-                      if (
-                        event.key === "Enter" &&
-                        inputValue.trim() !== "" &&
-                        !optionsByValue.has(valueNormalizer(inputValue))
-                      ) {
-                        event.preventDefault();
-                        setSelectionError(invalidSelectionMessage);
-                      }
-                    }}
-                    placeholder={values.length === 0 ? placeholder : secondaryPlaceholder}
-                    required={required && values.length === 0}
-                  />
-                </>
+                        <span>{value}</span>
+                        <button
+                          aria-label={`Remove ${value}`}
+                          className="jr-token-autocomplete-remove"
+                          disabled={disabled}
+                          onClick={() => onChange(values.filter((current) => current !== value))}
+                          type="button"
+                        >
+                          <RemoveIcon />
+                        </button>
+                      </span>
+                    ))}
+                    <Combobox.Input
+                      aria-busy={busy || undefined}
+                      aria-controls={listboxId}
+                      aria-describedby={describedBy || undefined}
+                      aria-invalid={visibleError ? "true" : undefined}
+                      autoComplete="off"
+                      disabled={disabled}
+                      id={inputId}
+                      onBlur={(event) => {
+                        if (
+                          inputValue.trim() !== "" &&
+                          !optionsByValue.has(valueNormalizer(inputValue))
+                        ) {
+                          setSelectionError(invalidSelectionMessage);
+                        }
+                        const nextFocus = event.relatedTarget;
+                        if (
+                          !(nextFocus instanceof Node) ||
+                          !anchorRef.current?.contains(nextFocus)
+                        ) {
+                          setOpen(false);
+                        }
+                      }}
+                      onFocus={() => {
+                        setOpen(true);
+                        onQueryChange?.(inputValue);
+                      }}
+                      onPointerDown={() => {
+                        setOpen(true);
+                      }}
+                      onKeyDown={(event) => {
+                        if (
+                          event.key === "Enter" &&
+                          inputValue.trim() !== "" &&
+                          !optionsByValue.has(valueNormalizer(inputValue))
+                        ) {
+                          event.preventDefault();
+                          setSelectionError(invalidSelectionMessage);
+                        }
+                      }}
+                      placeholder={values.length === 0 ? placeholder : secondaryPlaceholder}
+                      required={required && values.length === 0}
+                    />
+                  </>
+                )}
+              </Combobox.Value>
+            </Combobox.Chips>
+          </Combobox.InputGroup>
+          <div
+            className="jr-token-autocomplete-options"
+            hidden={!open || selectableOptions.length === 0}
+          >
+            <Combobox.List id={listboxId}>
+              {(option: TokenAutocompleteOption) => (
+                <Combobox.Item
+                  className="jr-token-autocomplete-option"
+                  key={option.value}
+                  value={option}
+                >
+                  <span>{option.label}</span>
+                  {option.detail ? <small>{option.detail}</small> : null}
+                </Combobox.Item>
               )}
-            </Combobox.Value>
-          </Combobox.Chips>
-        </Combobox.InputGroup>
-        <div
-          className="jr-token-autocomplete-options"
-          hidden={!open || availableOptions.length === 0}
-        >
-          <Combobox.List id={listboxId}>
-            {(option: TokenAutocompleteOption) => (
-              <Combobox.Item
-                className="jr-token-autocomplete-option"
-                key={option.value}
-                value={option}
-              >
-                <span>{option.label}</span>
-                {option.detail ? <small>{option.detail}</small> : null}
-              </Combobox.Item>
-            )}
-          </Combobox.List>
+            </Combobox.List>
+          </div>
         </div>
       </Combobox.Root>
       {hint ? (

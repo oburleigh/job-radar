@@ -351,10 +351,17 @@
     height: var(--jr-space-4);
   }
 
+  .jr-token-autocomplete-anchor {
+    position: relative;
+    display: grid;
+    min-width: 0;
+  }
+
   .jr-token-autocomplete-options {
     position: absolute;
     box-sizing: border-box;
     z-index: var(--jr-z-dropdown);
+    top: calc(100% + var(--jr-space-1));
     right: 0;
     left: 0;
     padding: var(--jr-space-1);

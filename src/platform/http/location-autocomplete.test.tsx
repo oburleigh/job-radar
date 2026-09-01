@@ -29,7 +29,7 @@ describe("platform location autocomplete", () => {
     expect(html).toContain('name="targetLocations"');
     expect(html).toContain('aria-label="Remove Dubai, United Arab Emirates"');
     expect(html).toContain('placeholder="Add another location"');
-    expect(html.match(/role="option"/g)).toHaveLength(1);
+    expect(html).not.toContain('role="option"');
     expect(html).not.toContain("Afghanistan");
   });
 

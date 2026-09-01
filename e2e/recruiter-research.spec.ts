@@ -609,6 +609,73 @@ function assertContained(
   expect(child.x + child.width).toBeLessThanOrEqual(container.x + container.width);
 }
 
+test("keeps the suggestion list reachable while adding several specialisms", async ({ page }) => {
+  await page.goto("/recruiter-search");
+
+  const specialisms = page.getByRole("combobox", { name: /specialisms/i });
+  await specialisms.click();
+  await expect(suggestionsFor(page).first()).toBeVisible();
+  await suggestionsFor(page).first().click();
+  await expect(page.getByRole("button", { name: /^Remove / })).toHaveCount(1);
+
+  // Adding another one means clicking straight back into the same input, which fires no focus
+  // event because the input never lost focus.
+  await specialisms.click();
+  await expect(suggestionsFor(page).first()).toBeVisible();
+  await suggestionsFor(page).first().click();
+
+  await expect(page.getByRole("button", { name: /^Remove / })).toHaveCount(2);
+});
+
+test("dismisses location suggestions once focus moves to another field", async ({ page }) => {
+  await page.goto("/recruiter-search");
+
+  const locations = page.getByLabel(/target locations/i);
+  await locations.click();
+  await locations.pressSequentially("German");
+  await expect(suggestionsFor(page).first()).toBeVisible();
+  await expect(locations).toHaveAttribute("aria-expanded", "true");
+
+  await page.getByLabel(/target industries/i).click();
+
+  await expect(locations).toHaveAttribute("aria-expanded", "false");
+});
+
+test("keeps the location input clickable while its suggestions are open", async ({ page }) => {
+  await page.goto("/recruiter-search");
+
+  const locations = page.getByRole("combobox", { name: /target locations/i });
+  await locations.click();
+  await locations.pressSequentially("Ger");
+  await expect(suggestionsFor(page).first()).toBeVisible();
+
+  // An open panel that covers its own control swallows every click aimed at the field.
+  await locations.click({ timeout: 5_000 });
+
+  await expect(locations).toBeFocused();
+});
+
+test("places the suggestion panel below the field it belongs to", async ({ page }) => {
+  await page.goto("/recruiter-search");
+
+  const locations = page.getByLabel(/target locations/i);
+  await locations.click();
+  await locations.pressSequentially("Ger");
+  await expect(suggestionsFor(page).first()).toBeVisible();
+
+  const field = await locations.boundingBox();
+  const panel = await page.locator(".jr-token-autocomplete-options:not([hidden])").boundingBox();
+  if (!field || !panel) {
+    throw new Error("The field and its suggestion panel must both be measurable.");
+  }
+
+  expect(panel.y).toBeGreaterThanOrEqual(field.y + field.height);
+});
+
+function suggestionsFor(page: Page) {
+  return page.getByRole("listbox").getByRole("option");
+}
+
 async function selectRecruiterCriterion(page: Page, field: string, option: string) {
   const criterion = page.getByRole("combobox", { name: new RegExp(field, "i") });
   await criterion.fill(option);
