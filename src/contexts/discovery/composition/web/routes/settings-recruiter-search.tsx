@@ -6,6 +6,7 @@ const sections = [
   { label: "Research criteria", to: "/settings/recruiter-search/research-criteria" },
   { label: "Public search", to: "/settings/recruiter-search/public-search" },
   { label: "Directory ranking", to: "/settings/recruiter-search/directory-ranking" },
+  { label: "Research execution", to: "/settings/recruiter-search/execution" },
 ] as const;
 
 export default function RecruiterSearchSettingsLayout() {

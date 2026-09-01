@@ -20,6 +20,7 @@ export default [
       route("research-criteria", "./routes/settings-recruiter-research-criteria.tsx"),
       route("public-search", "./routes/settings-recruiter-public-search.tsx"),
       route("directory-ranking", "./routes/settings-recruiter-directory-ranking.tsx"),
+      route("execution", "./routes/settings-recruiter-execution.tsx"),
     ]),
     route("adapters", "./routes/settings-adapters-layout.tsx", [
       index("./routes/settings-adapters-index.ts"),

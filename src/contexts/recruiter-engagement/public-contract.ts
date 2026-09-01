@@ -1,4 +1,5 @@
 export { DirectoryMatchSettingsForm } from "./presentation/web/directory-match-settings-form";
+export { ExecutionSettingsForm } from "./presentation/web/execution-settings-form";
 export { PublicSearchSettingsForm } from "./presentation/web/public-search-settings-form";
 export { ResearchCriteriaOptionsForm } from "./presentation/web/research-criteria-options-form";
 
