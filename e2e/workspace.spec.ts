@@ -202,7 +202,10 @@ test("keeps settings in stable sections without carrying opportunity selection",
   const recruiterSettingsNavigation = page.getByRole("navigation", {
     name: "Recruiter Search settings",
   });
-  await expect(recruiterSettingsNavigation.getByRole("link")).toHaveCount(3);
+  await expect(recruiterSettingsNavigation.getByRole("link")).toHaveCount(4);
+  await expect(
+    recruiterSettingsNavigation.getByRole("link", { name: "Research execution" }),
+  ).toBeVisible();
   await expect(page.getByRole("button", { name: "Save Research criteria" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Save public search settings" })).toHaveCount(0);
 
@@ -249,6 +252,7 @@ test("captures primary route review evidence at desktop and mobile widths", asyn
     ["/recruiter-search", "Recruiter Search", "recruiter-search"],
     ["/settings/opportunities", "Settings", "settings"],
     ["/settings/recruiter-search", "Settings", "recruiter-settings"],
+    ["/settings/recruiter-search/execution", "Settings", "recruiter-execution-settings"],
     ["/settings/adapters/source-coverage", "Settings", "source-coverage"],
     ["/settings/adapters/ats-registry", "Settings", "ats-registry"],
   ] as const;
