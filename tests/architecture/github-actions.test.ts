@@ -15,7 +15,12 @@ describe("GitHub Actions quality gates", () => {
   it("keeps the pull-request triggers, read-only permissions, matrix, and repository gates", () => {
     expect(ciWorkflow).toMatch(/on:\s*\n\s+push:\s*\n\s+branches:\s+\[main\]\s*\n\s+pull_request:/);
     expect(ciWorkflow).toMatch(/permissions:\s*\n\s+contents:\s*read/);
-    expect(ciWorkflow).toContain("os: [ubuntu-latest, macos-latest, windows-latest]");
+    expect(ciWorkflow).toMatch(/\n\s+workflow_dispatch:\s*(?:\n|$)/);
+    expect(ciWorkflow).toContain("github.event_name == 'workflow_dispatch'");
+    expect(ciWorkflow).toContain(
+      'fromJSON(\'["ubuntu-latest", "macos-latest", "windows-latest"]\')',
+    );
+    expect(ciWorkflow).toContain("fromJSON('[\"ubuntu-latest\"]')");
 
     for (const command of [
       "pnpm install --frozen-lockfile",

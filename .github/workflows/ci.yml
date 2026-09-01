@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -15,7 +16,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # Linux only on push and pull request. macOS bills at 10x and Windows at 2x, which
+        # exhausted the runner allowance and blocked the gates that guard every change.
+        # Run the full matrix on demand with: gh workflow run ci.yml
+        os: >-
+          ${{ github.event_name == 'workflow_dispatch'
+          && fromJSON('["ubuntu-latest", "macos-latest", "windows-latest"]')
+          || fromJSON('["ubuntu-latest"]') }}
     env:
       DB_PATH: ${{ github.workspace }}/job-radar-clean-start.sqlite
       SERPER_API_KEY: clean-start-ci-key
