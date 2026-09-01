@@ -48,12 +48,17 @@ const scheduledWorkflow = existsSync(scheduledWorkflowPath)
   ? readFileSync(scheduledWorkflowPath, "utf8")
   : "";
 const { default: lighthouseConfig } = await import(path.join(repositoryRoot, "lighthouserc.cjs"));
+const sizeLimitConfigPath = path.join(repositoryRoot, ".size-limit.cjs");
+const sizeLimitConfig = existsSync(sizeLimitConfigPath)
+  ? (await import(sizeLimitConfigPath)).default
+  : undefined;
 
 describe("production client asset budgets", () => {
   it("pins Size Limit and defines the JavaScript and CSS production asset budgets", () => {
     expect(packageJson.devDependencies?.["size-limit"]).toBe("13.0.3");
     expect(packageJson.devDependencies?.["@size-limit/file"]).toBe("13.0.3");
-    expect(packageJson["size-limit"]).toEqual([
+    expect(packageJson["size-limit"]).toBeUndefined();
+    expect(sizeLimitConfig).toEqual([
       {
         name: "all production JavaScript",
         path: "build/client/assets/*.js",
@@ -70,7 +75,7 @@ describe("production client asset budgets", () => {
   it("exposes a local build-and-budget check and runs its budget phase in CI after the build", () => {
     expect(packageJson.scripts?.["performance:size"]).toBe("size-limit");
     expect(packageJson.scripts?.["test:performance:size"]).toBe(
-      "pnpm build && pnpm performance:size",
+      "pnpm build:verification && cross-env JOB_RADAR_BUILD_DIRECTORY=build/verification pnpm performance:size",
     );
     expect(ciWorkflow).toContain("pnpm performance:size");
     expect(ciWorkflow.indexOf("pnpm performance:size")).toBeGreaterThan(
@@ -100,7 +105,7 @@ describe("production client asset budgets", () => {
     );
     expect(packageJson.scripts?.["performance:lighthouse"]).toBe("lhci autorun");
     expect(packageJson.scripts?.["test:performance:lighthouse"]).toBe(
-      "pnpm build && pnpm performance:lighthouse",
+      "pnpm build:verification && cross-env JOB_RADAR_BUILD_DIRECTORY=build/verification pnpm performance:lighthouse",
     );
   });
 
@@ -129,7 +134,10 @@ describe("production client asset budgets", () => {
     expect(performanceServer).toContain("job-radar-performance-");
     expect(performanceServer).toContain("job-radar.sqlite");
     expect(performanceServer).toContain('"db:setup"');
-    expect(performanceServer).toContain('"start"');
+    expect(performanceServer).toContain('"setup:check"');
+    expect(performanceServer).toContain('"react-router-serve"');
+    expect(performanceServer).toContain("JOB_RADAR_BUILD_DIRECTORY");
+    expect(performanceServer).not.toContain('startPnpm(["start"]');
     expect(performanceServer).toContain("String(port)");
     expect(performanceServer).toContain('SERPER_API_KEY: "performance-fixture-key"');
     expect(performanceSeeder).toContain('name: "Performance fixture"');
@@ -172,7 +180,7 @@ describe("browser interaction and Web Vitals budgets", () => {
       "playwright test --config playwright.performance.config.ts",
     );
     expect(packageJson.scripts?.["test:performance:browser"]).toBe(
-      "pnpm build && pnpm performance:browser",
+      "pnpm build:verification && cross-env JOB_RADAR_BUILD_DIRECTORY=build/verification pnpm performance:browser",
     );
     expect(packageJson.scripts?.["probe:performance:browser"]).toContain(
       "JOB_RADAR_PERFORMANCE_PROBE=slow-interaction",
@@ -239,7 +247,9 @@ describe("complete maintainer performance command", () => {
     expect(packageJson.scripts?.["performance:all"]).toBe(
       "pnpm performance:size && pnpm performance:lighthouse && pnpm performance:browser && pnpm performance:latency",
     );
-    expect(packageJson.scripts?.["test:performance"]).toBe("pnpm build && pnpm performance:all");
+    expect(packageJson.scripts?.["test:performance"]).toBe(
+      "pnpm build:verification && cross-env JOB_RADAR_BUILD_DIRECTORY=build/verification pnpm performance:all",
+    );
     expect(performanceGuide).toContain("pnpm test:performance");
   });
 });

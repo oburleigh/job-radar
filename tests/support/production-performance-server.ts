@@ -30,8 +30,15 @@ export async function startProductionPerformanceServer(
 
   try {
     await runPnpm(["db:setup"], environment, options.output);
+    await runPnpm(["setup:check"], environment, options.output);
     const { profileId } = seedPerformanceDatabase(databasePath);
-    productionServer = startPnpm(["start"], environment, options.output);
+    const buildDirectory = environment.JOB_RADAR_BUILD_DIRECTORY?.trim() || "build";
+    const serverBuildPath = path.join(buildDirectory, "server", "index.js");
+    productionServer = startPnpm(
+      ["exec", "react-router-serve", serverBuildPath],
+      environment,
+      options.output,
+    );
     const exited = observeExit(productionServer);
     await waitForReady(productionServer);
 

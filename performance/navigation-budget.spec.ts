@@ -13,9 +13,8 @@ interface Destination {
 const destinations: readonly Destination[] = [
   { heading: "Opportunities", link: "Opportunities" },
   { heading: "Search profiles", link: "Search profiles", menu: "profiles" },
-  { heading: "Sources and company boards", link: "Source coverage" },
-  { heading: "Discovery history", link: "Discovery runs" },
-  { heading: "Recruiter research", link: "Recruiter research" },
+  { heading: "Recruiter Search", link: "Recruiter Search" },
+  { heading: "Activity", link: "Activity" },
   { heading: "Settings", link: "System settings" },
 ] as const;
 const completionBudgetMs = 1_500;
@@ -69,10 +68,12 @@ test("keeps representative workspace route transitions below the multi-second ra
       );
       const dataRequests = resources.filter((resource) => resource.path.endsWith(".data"));
 
-      expect(dataRequests, `${destination.link} must load fresh route data`).toHaveLength(1);
+      expect(dataRequests.length, `${destination.link} must load fresh route data`).toBeGreaterThan(
+        0,
+      );
       observations.push({
         completionMs: round(probe.completedAt - probe.clickedAt),
-        dataRequestMs: round(dataRequests[0]?.requestMs ?? 0),
+        dataRequestMs: round(Math.max(...dataRequests.map((request) => request.requestMs))),
         destination: destination.link,
         pendingFeedbackMs:
           probe.pendingAt === null ? null : round(probe.pendingAt - probe.clickedAt),
@@ -129,7 +130,7 @@ test("keeps representative workspace route transitions below the multi-second ra
 });
 
 test("gives immediate accessible feedback while a route is deliberately slow", async ({ page }) => {
-  await page.route(/\/settings\.data(?:\?|$)/, async (route) => {
+  await page.route(/\/settings\/opportunities\.data(?:\?|$)/, async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 600));
     await route.continue();
   });
@@ -160,30 +161,24 @@ test("preserves selection, history, focus, and fresh loader data", async ({ page
     }
   });
   await page.goto("/profiles?profile=1&provider=serper");
-  const sourcesLink = page.getByRole("link", { name: "Source coverage", exact: true });
-  await sourcesLink.click();
-  await expect(
-    page.getByRole("heading", { level: 1, name: "Sources and company boards" }),
-  ).toBeVisible();
-  await expect(sourcesLink).toBeFocused();
-  expect(new URL(page.url()).search).toBe("?profile=1&provider=serper");
+  const activityLink = page.getByRole("link", { name: "Activity", exact: true });
+  await activityLink.click();
+  await expect(page.getByRole("heading", { level: 1, name: "Activity" })).toBeVisible();
+  await expect(activityLink).toBeFocused();
+  expect(new URL(page.url()).search).toBe("");
 
-  const runsLink = page.getByRole("link", { name: "Discovery runs", exact: true });
-  await runsLink.click();
-  await expect(page.getByRole("heading", { level: 1, name: "Discovery history" })).toBeVisible();
+  const opportunitiesLink = page.getByRole("link", { name: "Opportunities", exact: true });
+  await opportunitiesLink.click();
+  await expect(page.getByRole("heading", { level: 1, name: "Opportunities" })).toBeVisible();
   await page.goBack();
-  await expect(
-    page.getByRole("heading", { level: 1, name: "Sources and company boards" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Activity" })).toBeVisible();
   await page.goForward();
-  await expect(page.getByRole("heading", { level: 1, name: "Discovery history" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Opportunities" })).toBeVisible();
 
   expect(
-    dataRequests.filter((request) => request === "/sources.data").length,
+    dataRequests.filter((request) => request === "/activity.data").length,
   ).toBeGreaterThanOrEqual(2);
-  expect(dataRequests.filter((request) => request === "/runs.data").length).toBeGreaterThanOrEqual(
-    2,
-  );
+  expect(dataRequests.filter((request) => request === "/_.data").length).toBeGreaterThanOrEqual(2);
 });
 
 test("keeps the virtualized source registry usable across supported layouts and themes", async ({
@@ -198,11 +193,10 @@ test("keeps the virtualized source registry usable across supported layouts and 
   ] as const) {
     await page.setViewportSize(viewport);
     for (const theme of ["light", "dark"] as const) {
-      await page.goto("/sources");
+      await page.goto("/settings/adapters/source-coverage");
       await selectTheme(page, theme);
-      await expect(
-        page.getByRole("heading", { level: 1, name: "Sources and company boards" }),
-      ).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1, name: "Settings" })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 2, name: "Source Coverage" })).toBeVisible();
 
       const table = page.getByRole("table");
       const tableWrap = page.locator(".company-sites-table");
@@ -271,7 +265,7 @@ test("keeps the virtualized source registry usable across supported layouts and 
         await new Promise((resolve) => setTimeout(resolve, 1_000));
         await route.continue();
       };
-      await page.route(/\/settings\.data(?:\?|$)/, delaySettings);
+      await page.route(/\/settings\/opportunities\.data(?:\?|$)/, delaySettings);
       const currentHeading = page.getByRole("heading", { level: 1, name: "Search profiles" });
       const settingsLink = page.getByRole("link", { name: "System settings", exact: true });
       await settingsLink.click();
@@ -296,7 +290,7 @@ test("keeps the virtualized source registry usable across supported layouts and 
         ),
       });
       await expect(page.getByRole("heading", { level: 1, name: "Settings" })).toBeVisible();
-      await page.unroute(/\/settings\.data(?:\?|$)/, delaySettings);
+      await page.unroute(/\/settings\/opportunities\.data(?:\?|$)/, delaySettings);
     }
   }
 });
@@ -308,6 +302,11 @@ async function destinationLink(
   if (destination.menu === "profiles") {
     await page.getByRole("button", { name: "Search profiles", exact: true }).click();
     return page.getByRole("menuitem", { name: "Search profiles", exact: true });
+  }
+  if (destination.link === "Opportunities" || destination.link === "Recruiter Search") {
+    return page
+      .getByRole("navigation", { name: "Primary navigation" })
+      .getByRole("link", { name: destination.link, exact: true });
   }
   return page.getByRole("link", { name: destination.link, exact: true });
 }

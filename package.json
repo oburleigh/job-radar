@@ -11,6 +11,7 @@
   "scripts": {
     "dev": "react-router dev",
     "build": "pnpm packages:build && react-router build",
+    "build:verification": "cross-env JOB_RADAR_BUILD_DIRECTORY=build/verification pnpm build",
     "start": "pnpm setup:check && cross-env HOST=127.0.0.1 NODE_OPTIONS=--import=dotenv/config react-router-serve build/server/index.js",
     "lint": "biome check --error-on-warnings . && pnpm lint:workflows",
     "lint:fix": "biome check --write --error-on-warnings .",
@@ -22,17 +23,17 @@
     "test:mutation": "stryker run",
     "test:mutation:focused": "stryker run stryker.focused.config.mjs",
     "performance:size": "size-limit",
-    "test:performance:size": "pnpm build && pnpm performance:size",
+    "test:performance:size": "pnpm build:verification && cross-env JOB_RADAR_BUILD_DIRECTORY=build/verification pnpm performance:size",
     "serve:lighthouse": "pnpm exec tsx tests/support/lighthouse-server.ts",
     "performance:lighthouse": "lhci autorun",
-    "test:performance:lighthouse": "pnpm build && pnpm performance:lighthouse",
+    "test:performance:lighthouse": "pnpm build:verification && cross-env JOB_RADAR_BUILD_DIRECTORY=build/verification pnpm performance:lighthouse",
     "performance:browser": "playwright test --config playwright.performance.config.ts",
-    "test:performance:browser": "pnpm build && pnpm performance:browser",
+    "test:performance:browser": "pnpm build:verification && cross-env JOB_RADAR_BUILD_DIRECTORY=build/verification pnpm performance:browser",
     "probe:performance:browser": "cross-env JOB_RADAR_PERFORMANCE_PROBE=slow-interaction pnpm performance:browser",
     "performance:latency": "tsx scripts/measure-performance-latency.ts",
-    "test:performance:latency": "pnpm build && pnpm performance:latency",
+    "test:performance:latency": "pnpm build:verification && cross-env JOB_RADAR_BUILD_DIRECTORY=build/verification pnpm performance:latency",
     "performance:all": "pnpm performance:size && pnpm performance:lighthouse && pnpm performance:browser && pnpm performance:latency",
-    "test:performance": "pnpm build && pnpm performance:all",
+    "test:performance": "pnpm build:verification && cross-env JOB_RADAR_BUILD_DIRECTORY=build/verification pnpm performance:all",
     "test:browser": "playwright test --config playwright.config.ts",
     "test:e2e": "pnpm test:browser && pnpm test:e2e:recruiter-real",
     "test:e2e:recruiter-real": "playwright test --config playwright.recruiter-real.config.ts",
@@ -100,17 +101,5 @@
     "vite": "8.2.2",
     "vitest": "4.1.11",
     "web-vitals": "6.1.1"
-  },
-  "size-limit": [
-    {
-      "name": "all production JavaScript",
-      "path": "build/client/assets/*.js",
-      "limit": "215 kB"
-    },
-    {
-      "name": "production CSS",
-      "path": "build/client/assets/*.css",
-      "limit": "14 kB"
-    }
-  ]
+  }
 }

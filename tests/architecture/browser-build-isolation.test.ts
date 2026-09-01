@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -55,6 +56,24 @@ describe("browser verification build isolation", () => {
       expect(path.basename(buildDirectory ?? "")).toMatch(/^playwright-/);
       expect(server?.command).toContain(`${buildDirectory}${path.sep}server${path.sep}index.js`);
       expect(server?.command).not.toContain("pnpm start");
+    }
+  });
+
+  it("routes every test-owned production build away from the live build directory", () => {
+    const packageJson = JSON.parse(readFileSync("package.json", "utf8")) as {
+      scripts?: Record<string, string>;
+    };
+    const testBuildScripts = Object.entries(packageJson.scripts ?? {}).filter(
+      ([name, command]) => name.startsWith("test:") && command.includes("pnpm build"),
+    );
+
+    expect(packageJson.scripts?.["build:verification"]).toBe(
+      "cross-env JOB_RADAR_BUILD_DIRECTORY=build/verification pnpm build",
+    );
+    expect(testBuildScripts.length).toBeGreaterThan(0);
+    for (const [, command] of testBuildScripts) {
+      expect(command).toContain("pnpm build:verification");
+      expect(command).not.toMatch(/pnpm build(?:\s|$|&&)/);
     }
   });
 });

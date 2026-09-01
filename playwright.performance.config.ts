@@ -19,7 +19,10 @@ export default defineConfig({
   },
   webServer: {
     command: "pnpm serve:lighthouse",
-    env: { JOB_RADAR_PERFORMANCE_FIXTURE: "workspace-scale" },
+    env: {
+      JOB_RADAR_BUILD_DIRECTORY: process.env.JOB_RADAR_BUILD_DIRECTORY ?? "build",
+      JOB_RADAR_PERFORMANCE_FIXTURE: "workspace-scale",
+    },
     url: "http://127.0.0.1:3300/profiles?new=1",
     reuseExistingServer: false,
     timeout: 120_000,
