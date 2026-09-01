@@ -336,7 +336,7 @@ test("shows a Web3 source and search-lead state after opted-in discovery", async
   ).toBeVisible();
 });
 
-test("shows persisted board progress and matches while later boards continue", async ({
+test("shows persisted board progress while matching waits for collection", async ({
   page,
   request,
 }) => {
@@ -383,14 +383,9 @@ test("shows persisted board progress and matches while later boards continue", a
       timeout: 30_000,
     });
     await expect(activeRun).toContainText("Active board: Beta Systems");
-    await expect(activeRun).toContainText(/1 job changed · [1-9]\d* match(?:es)? found/);
+    await expect(activeRun).toContainText("1 job changed · 0 matches found");
     await captureRunStateMatrix(page, "running");
-    const runningText = await activeRun.textContent();
-    const matchCount = Number(
-      runningText?.match(/1 job changed · (\d+) match(?:es)? found/)?.[1] ?? 0,
-    );
-    expect(matchCount).toBeGreaterThan(0);
-    const runningTotals = `1 job changed · ${matchCount} ${matchCount === 1 ? "match" : "matches"} found`;
+    const runningTotals = "1 job changed · 0 matches found";
     const viewRun = activeRun.getByRole("link", {
       name: `View run #${started.runId}`,
     });
@@ -451,9 +446,8 @@ test("shows persisted board progress and matches while later boards continue", a
     const completedNotice = discoveryLayer.getByRole("status").filter({
       has: page.getByRole("link", { name: `View run #${started.runId}` }),
     });
-    const finalMatches = `${matchCount} current profile match${matchCount === 1 ? "" : "es"}`;
     await expect(completedNotice).toContainText(
-      `2 boards completed, 1 job changed, web coverage skipped, and ${finalMatches}`,
+      /2 boards completed, 1 job changed, web coverage skipped, and [1-9]\d* current profile match(?:es)?/,
       { timeout: 30_000 },
     );
   } finally {

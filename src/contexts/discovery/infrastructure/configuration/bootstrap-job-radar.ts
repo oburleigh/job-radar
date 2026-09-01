@@ -87,6 +87,7 @@ const settingDefaults: SettingDefault[] = [
     value: {
       resultsPerQuery: 20,
       boardJobLimit: 200,
+      companyBoardRefreshEnabled: true,
       strategies: ["role-first", "location-first", "phrase", "relaxed-title"],
       ...defaultAdaptivePaginationSettings,
       searchFreshnessDays: 0,

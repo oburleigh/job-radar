@@ -27,6 +27,7 @@ describe("SQLite configuration", () => {
     expect(config.ui.discoveryStaleAfterMs).toBeGreaterThan(config.ui.discoveryPollIntervalMs);
     expect(config.discovery.workYieldBatchSize).toBeGreaterThan(0);
     expect(config.discovery.runHistoryLimit).toBeGreaterThan(0);
+    expect(config.discovery.companyBoardRefreshEnabled).toBe(true);
     expect(config.discovery.providerExecution).toEqual({
       concurrency: 2,
       requestsPerInterval: 5,
@@ -89,10 +90,20 @@ describe("SQLite configuration", () => {
 
     expect(parsed.providerExecution).toEqual(defaultProviderExecutionSettings);
     expect(parsed).toMatchObject({
+      companyBoardRefreshEnabled: true,
       minimumUsefulHitsPerPage: 1,
       maxPagesPerLane: 3,
       maxRequestsPerRun: 111,
     });
+  });
+
+  it("keeps an explicitly disabled company-board refresh policy", () => {
+    expect(
+      parseDiscoverySettings({
+        ...getJobRadarConfig().discovery,
+        companyBoardRefreshEnabled: false,
+      }).companyBoardRefreshEnabled,
+    ).toBe(false);
   });
 
   it("maps legacy title modes to ordered strategies", () => {

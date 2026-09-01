@@ -33,6 +33,7 @@ export interface RuntimeSettings {
   readonly discovery: {
     readonly resultsPerQuery: number;
     readonly boardJobLimit: number;
+    readonly companyBoardRefreshEnabled: boolean;
     readonly searchFreshnessDays: number;
     readonly workYieldBatchSize: number;
     readonly runHistoryLimit: number;

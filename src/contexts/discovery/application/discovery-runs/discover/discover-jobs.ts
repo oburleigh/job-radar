@@ -154,8 +154,10 @@ export function createJobDiscovery({
         );
 
       try {
-        runs.recordPhase(run.id, "known-boards", now());
-        if (command.syncBoards !== false) {
+        const refreshKnownBoards =
+          command.syncBoards !== false && policy.companyBoardRefreshEnabled;
+        if (refreshKnownBoards) {
+          runs.recordPhase(run.id, "known-boards", now());
           knownBoardCount = knownBoards.countEnabledBoards();
           recordBoardProgress();
           await knownBoards.synchronizeEnabledBoards(
@@ -175,9 +177,6 @@ export function createJobDiscovery({
                   runErrors.push(`Known board ${result.boardId}: ${result.error}`);
                 } else {
                   knownBoardSuccesses += 1;
-                }
-                if (result.jobsWritten > 0) {
-                  matchesFound = (await evaluateMatches()).matched;
                 }
                 knownBoardCompletedCount += 1;
                 activeBoardName =

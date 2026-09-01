@@ -251,6 +251,32 @@ test.describe
       }
     });
 
+    test("turns all company-board refreshes off without losing the saved choice", async ({
+      page,
+    }) => {
+      await page.goto("/settings/adapters/source-coverage");
+
+      const enabledSwitch = page.getByRole("switch", {
+        name: "Disable all registered boards for discovery",
+      });
+      await expect(enabledSwitch).toBeChecked();
+      await enabledSwitch.click();
+      await expect(
+        page.getByRole("switch", { name: "Enable all registered boards for discovery" }),
+      ).not.toBeChecked();
+
+      await page.reload();
+      const disabledSwitch = page.getByRole("switch", {
+        name: "Enable all registered boards for discovery",
+      });
+      await expect(disabledSwitch).not.toBeChecked();
+
+      await disabledSwitch.click();
+      await expect(
+        page.getByRole("switch", { name: "Disable all registered boards for discovery" }),
+      ).toBeChecked();
+    });
+
     test("saves runtime settings and keeps the settings page accessible", async ({ page }) => {
       await page.goto("/settings/opportunities");
 

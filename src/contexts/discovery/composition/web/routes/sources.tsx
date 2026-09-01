@@ -4,10 +4,12 @@ import { type ActionFunctionArgs, useLoaderData } from "react-router";
 import type { AddJobSourceResult } from "@/contexts/discovery/application/source-coverage/add/result";
 import { discoveryWeb } from "@/contexts/discovery/composition/discovery-web.server";
 import { AddBoardForm } from "@/contexts/discovery/presentation/web/components/add-board-form";
+import { CompanyBoardRefreshToggle } from "@/contexts/discovery/presentation/web/components/company-board-refresh-toggle";
 import { CompanySitesTable } from "@/contexts/discovery/presentation/web/components/company-sites-table";
 import { SyncButton } from "@/contexts/discovery/presentation/web/components/sync-button";
 import { ToggleButton } from "@/contexts/discovery/presentation/web/components/toggle-button";
 import { parseAddJobSourceRequest } from "@/contexts/discovery/presentation/web/requests/add-job-source-request";
+import { parseCompanyBoardRefreshRequest } from "@/contexts/discovery/presentation/web/requests/company-board-refresh-request";
 import { assertLocalHost } from "@/platform/http/require-local-request";
 
 export function loader() {
@@ -55,6 +57,19 @@ export async function action({ request }: ActionFunctionArgs) {
       enabled: formData.get("enabled") === "true",
     });
     return { ok: true, message: "Board coverage updated." };
+  }
+  if (intent === "toggle-company-board-refresh") {
+    const parsed = parseCompanyBoardRefreshRequest(formData);
+    if (!parsed.ok) {
+      return parsed;
+    }
+    discoveryWeb.setSourceCoverageEnabled(parsed.command);
+    return {
+      ok: true,
+      message: parsed.command.enabled
+        ? "Company boards will be refreshed during discovery."
+        : "Company boards will be skipped during discovery.",
+    };
   }
   return { ok: false, message: "Unknown source action." };
 }
@@ -118,6 +133,8 @@ export default function SourcesPage() {
           meta={`${data.boards.length} registered`}
           title="Known company career sites"
         />
+
+        <CompanyBoardRefreshToggle enabled={data.companyBoardRefreshEnabled} />
 
         <div className="panel">
           <AddBoardForm />

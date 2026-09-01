@@ -172,6 +172,7 @@ export function parseRuntimeSettingsRequest(
       discovery: {
         resultsPerQuery: values.resultsPerQuery,
         boardJobLimit: values.boardJobLimit,
+        companyBoardRefreshEnabled: current.discovery.companyBoardRefreshEnabled,
         searchFreshnessDays: values.searchFreshnessDays,
         workYieldBatchSize: values.workYieldBatchSize,
         runHistoryLimit: values.runHistoryLimit,

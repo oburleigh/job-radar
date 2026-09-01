@@ -171,7 +171,6 @@ describe("discover jobs", () => {
     expect(events).toEqual([
       "phase:known-boards",
       "sync:known-boards",
-      "evaluate:profile-7",
       "phase:web-coverage",
       "search:serper",
       "search:serper",
@@ -188,7 +187,47 @@ describe("discover jobs", () => {
     });
   });
 
-  it("matches and records progress after each completed known board before starting the next", async () => {
+  it("skips company-board refresh when the run policy turns it off", async () => {
+    const synchronizeEnabledBoards = vi.fn();
+    const journal = recordingJournal();
+    const discovery = createJobDiscovery({
+      setup: {
+        load: (command) => ({
+          ...configuredSetup().load(command),
+          policy: {
+            ...configuredSetup().load(command).policy,
+            companyBoardRefreshEnabled: false,
+          },
+        }),
+      },
+      runs: journal,
+      knownBoards: {
+        countEnabledBoards: () => 946,
+        synchronizeEnabledBoards,
+      },
+      jobs: {
+        recordHit: vi.fn(async () => ({ inserted: false, isUseful: false, jobsWritten: 0 })),
+        synchronizeBoard: vi.fn(async () => ({ jobsWritten: 0, error: "" })),
+      },
+      matches: { evaluate: vi.fn(async () => ({ matched: 0 })) },
+      providers: providerDirectory(async () => []),
+      now: () => timestamp,
+      yieldControl: vi.fn(),
+    });
+
+    const summary = await discovery.discoverJobs({
+      profileId: 7,
+      providerName: "serper",
+      runId: 41,
+    });
+
+    expect(synchronizeEnabledBoards).not.toHaveBeenCalled();
+    expect(journal.phases).toEqual(["web-coverage", "matching"]);
+    expect(summary.knownBoards).toBe(0);
+    expect(summary.webCoverageStatus).toBe("completed");
+  });
+
+  it("records each completed board and matches the collected jobs once", async () => {
     type BoardObserver = {
       readonly boardStarted: (board: { readonly id: number; readonly name: string }) => void;
       readonly boardCompleted: (evidence: {
@@ -201,14 +240,6 @@ describe("discover jobs", () => {
     const journal = recordingJournal();
     const evaluateMatches = vi
       .fn<JobDiscoveryDependencies["matches"]["evaluate"]>()
-      .mockImplementationOnce(async () => {
-        events.push("match:acme");
-        return { matched: 2 };
-      })
-      .mockImplementationOnce(async () => {
-        events.push("match:beta");
-        return { matched: 5 };
-      })
       .mockImplementationOnce(async () => {
         events.push("match:final");
         return { matched: 5 };
@@ -248,7 +279,7 @@ describe("discover jobs", () => {
       boardJobLimit: 75,
     });
 
-    expect(events).toEqual(["sync:acme", "match:acme", "sync:beta", "match:beta", "match:final"]);
+    expect(events).toEqual(["sync:acme", "sync:beta", "match:final"]);
     expect(journal.boardProgress).toEqual([
       expect.objectContaining({
         totalBoardCount: 2,
@@ -272,7 +303,7 @@ describe("discover jobs", () => {
         successfulBoardCount: 1,
         activeBoardName: "Acme",
         jobsUpserted: 3,
-        matchesFound: 2,
+        matchesFound: 0,
       }),
       expect.objectContaining({
         totalBoardCount: 2,
@@ -280,7 +311,7 @@ describe("discover jobs", () => {
         successfulBoardCount: 1,
         activeBoardName: "Beta",
         jobsUpserted: 3,
-        matchesFound: 2,
+        matchesFound: 0,
       }),
       expect.objectContaining({
         totalBoardCount: 2,
@@ -288,7 +319,7 @@ describe("discover jobs", () => {
         successfulBoardCount: 2,
         activeBoardName: null,
         jobsUpserted: 7,
-        matchesFound: 5,
+        matchesFound: 0,
       }),
     ]);
     expect(summary).toMatchObject({
@@ -305,11 +336,7 @@ describe("discover jobs", () => {
     const evaluateMatches = vi
       .fn<JobDiscoveryDependencies["matches"]["evaluate"]>()
       .mockImplementationOnce(async () => {
-        events.push("match:partial-board");
-        return { matched: 1 };
-      })
-      .mockImplementationOnce(async () => {
-        events.push("match:final");
+        events.push("match:collected-jobs");
         return { matched: 1 };
       });
     const discovery = createJobDiscovery({
@@ -338,7 +365,7 @@ describe("discover jobs", () => {
       runId: 41,
     });
 
-    expect(events).toEqual(["sync:acme", "match:partial-board", "match:final"]);
+    expect(events).toEqual(["sync:acme", "match:collected-jobs"]);
     expect(summary).toMatchObject({ jobs: 2, matches: 1, syncErrors: 1 });
     expect(journal.completed[0]?.errors).toEqual(["Known board 11: Connection reset"]);
   });
@@ -1215,6 +1242,7 @@ function configuredSetup(): DiscoverySetupReader {
       policy: {
         resultsPerQuery: 25,
         boardJobLimit: 200,
+        companyBoardRefreshEnabled: true,
         searchFreshnessDays: 30,
         workYieldBatchSize: 1,
         strategies: ["role-first"],

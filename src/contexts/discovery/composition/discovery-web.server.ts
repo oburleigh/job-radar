@@ -57,6 +57,7 @@ const saveAtsIntegration = createSaveAtsIntegration({
 });
 const setSourceCoverageEnabled = createSetSourceCoverageEnabled({
   coverage: createSqliteSourceCoverageStore(db),
+  now: () => new Date(),
 });
 const syncSourceCoverage = createSyncSourceCoverage({ boards: sqliteBoardSynchronizer });
 const addJobSource = createAddJobSource({

@@ -1,9 +1,11 @@
+import { getJobRadarConfig } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
 import { getAtsLabels } from "@/contexts/discovery/infrastructure/job-sources/catalog";
 import { db } from "@/contexts/discovery/infrastructure/sqlite/database";
 import { companyBoards, sourceDomains } from "@/contexts/discovery/infrastructure/sqlite/schema";
 
 export function getSourcesData() {
   return {
+    companyBoardRefreshEnabled: getJobRadarConfig(db).discovery.companyBoardRefreshEnabled,
     sources: sortSourceRegistry(db.select().from(sourceDomains).all(), getAtsLabels()),
     boards: db
       .select({

@@ -242,6 +242,7 @@ function currentRuntimeSettings(): RuntimeSettingsCommand {
     discovery: {
       resultsPerQuery: 20,
       boardJobLimit: 200,
+      companyBoardRefreshEnabled: false,
       searchFreshnessDays: 0,
       workYieldBatchSize: 25,
       runHistoryLimit: 100,

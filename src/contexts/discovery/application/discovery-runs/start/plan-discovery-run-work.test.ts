@@ -26,6 +26,23 @@ describe("plan discovery run work", () => {
       webRequestCount: 0,
     });
   });
+
+  it("does not schedule company boards when their refresh policy is off", () => {
+    const planner = createDiscoveryRunWorkPlanner({
+      setup: {
+        load: (command) => ({
+          ...setup.load(command),
+          policy: { ...setup.load(command).policy, companyBoardRefreshEnabled: false },
+        }),
+      },
+      boards: { countEnabledBoards: () => 946 },
+    });
+
+    expect(planner.plan({ profileId: 7, providerName: "serper" })).toEqual({
+      knownBoardCount: 0,
+      webRequestCount: 2,
+    });
+  });
 });
 
 const setup: DiscoverySetupReader = {
@@ -48,6 +65,7 @@ const setup: DiscoverySetupReader = {
     policy: {
       resultsPerQuery: 25,
       boardJobLimit: 200,
+      companyBoardRefreshEnabled: true,
       searchFreshnessDays: 30,
       workYieldBatchSize: 25,
       strategies: ["role-first"],
