@@ -6,7 +6,7 @@
 
 **Architecture:** A new driven adapter implements the existing `ResearchSource` port by invoking `codex exec` as a subprocess with live web search and a JSON Schema constrained final response. The frozen run supplies every value in the prompt; the adapter maps the validated reply into `FirmObservation` and `RecruiterObservation`. Provider search adapters stay in the codebase and remain selectable, but leave the default critical path. One stage becomes one or two subprocess invocations instead of up to 50 provider requests, which removes the request allowance exhaustion that made runs fail.
 
-**Tech Stack:** TypeScript, `node:child_process.execFile`, Zod 4 (`z.toJSONSchema`), Vitest, SQLite via Drizzle, codex-cli 0.151.0 authenticated by ChatGPT plan login.
+**Tech Stack:** TypeScript, `node:child_process.spawn`, Zod 4 (`z.toJSONSchema`), Vitest, SQLite via Drizzle, codex-cli 0.151.0 authenticated by ChatGPT plan login.
 
 **Spec:** This plan is the design record. The defects it closes are ADM-302 (targets do not bound what a run returns), ADM-304 (unqualified firms are ranked but never filtered) and ADM-305 (request allowance cannot cover the work a run generates). ADM-303 (a run shows the whole directory, not that run's region) is deliberately out of scope and lands in the following batch, together with the separate accumulated-directory browsing surface.
 
@@ -70,7 +70,7 @@ Established by running the commands, not assumed. Do not re-derive.
 
 ---
 
-### Task 1: Confirm the reasoning effort vocabulary
+### Task 1: Confirm the reasoning effort vocabulary — DONE
 
 **Files:** none. This task produces evidence, not code.
 
@@ -106,7 +106,9 @@ rm -rf /tmp/claude-1000/codex-effort-check
 
 ---
 
-### Task 2: Codex CLI transport
+### Task 2: Codex CLI transport — DONE (2d41a84)
+
+**Delivered with `spawn`, not `execFile`.** `execFile` has no `stdio` option, so it leaves the child's stdin an open pipe and reproduces the recorded hang. The committed code and tests are authoritative over the code blocks below.
 
 **Files:**
 - Create: `src/contexts/recruiter-engagement/infrastructure/codex/codex-cli-client.ts`
@@ -366,7 +368,7 @@ Expected: PASS, 5 tests.
 git add src/contexts/recruiter-engagement/infrastructure/codex/codex-cli-client.ts \
         src/contexts/recruiter-engagement/infrastructure/codex/codex-cli-client.test.ts \
         src/contexts/recruiter-engagement/test-support/stub-codex-cli.mjs
-git commit -m "feat(recruiter-engagement): add a Codex CLI transport for research runs"
+git commit -m "feat(search): add a Codex CLI transport for research runs"
 ```
 
 ---
@@ -533,7 +535,7 @@ If `z.toJSONSchema` emits a `$ref`-bearing document the binary rejects at Task 8
 ```bash
 git add src/contexts/recruiter-engagement/infrastructure/codex/codex-research-schema.ts \
         src/contexts/recruiter-engagement/infrastructure/codex/codex-research-schema.test.ts
-git commit -m "feat(recruiter-engagement): describe the Codex research reply contract"
+git commit -m "feat(search): describe the Codex research reply contract"
 ```
 
 ---
@@ -701,7 +703,7 @@ Expected: PASS, 7 tests.
 git add src/contexts/recruiter-engagement/infrastructure/codex/codex-research-prompt.ts \
         src/contexts/recruiter-engagement/infrastructure/codex/codex-research-prompt.test.ts \
         src/contexts/recruiter-engagement/test-support/research-run-fakes.ts
-git commit -m "feat(recruiter-engagement): derive Codex stage instructions from the frozen run"
+git commit -m "feat(search): derive Codex stage instructions from the frozen run"
 ```
 
 ---
@@ -869,7 +871,7 @@ Expected: PASS. Existing settings tests that assert the absence of `execution` w
 ```bash
 git add src/contexts/recruiter-engagement/application/research-settings \
         src/contexts/recruiter-engagement/infrastructure/sqlite
-git commit -m "feat(recruiter-engagement): restore Codex execution settings to research settings"
+git commit -m "feat(search): restore Codex execution settings to research settings"
 ```
 
 ---
@@ -1110,7 +1112,7 @@ Expected: PASS.
 
 ```bash
 git add src/contexts/recruiter-engagement/infrastructure/codex
-git commit -m "feat(recruiter-engagement): research firms and recruiters through the local Codex CLI"
+git commit -m "feat(search): research firms and recruiters through the local Codex CLI"
 ```
 
 ---
@@ -1161,7 +1163,7 @@ Expected: PASS. `infrastructure` may import `application` and `domain` and `src/
 
 ```bash
 git add src/contexts/recruiter-engagement/composition .env.example
-git commit -m "feat(recruiter-engagement): make the local Codex Source the default research path"
+git commit -m "feat(search): make the local Codex Source the default research path"
 ```
 
 ---
@@ -1207,7 +1209,7 @@ Common failures and their causes: a hang means stdin was not set to `ignore`; `u
 
 ```bash
 git add scripts/smoke-codex-research.ts package.json
-git commit -m "test(recruiter-engagement): smoke the Codex research boundary end to end"
+git commit -m "test(search): smoke the Codex research boundary end to end"
 ```
 
 ---
@@ -1240,7 +1242,7 @@ Capture the Settings route at desktop and mobile widths in light and dark themes
 
 ```bash
 git add src/contexts/recruiter-engagement/presentation src/contexts/discovery/presentation
-git commit -m "feat(recruiter-engagement): expose Codex execution settings in Settings"
+git commit -m "feat(search): expose Codex execution settings in Settings"
 ```
 
 ---
