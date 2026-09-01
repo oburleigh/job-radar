@@ -10,6 +10,13 @@ import type { LocationOption } from "@/platform/http/location-option";
 
 export type { LocationOption } from "@/platform/http/location-option";
 
+type RankedOption = {
+  readonly canonicalLabel: string;
+  readonly kindRank: number;
+  readonly matchRank: number;
+  readonly option: LocationOption;
+};
+
 const countries = CountryStateCity.getAllCountries() as Country[];
 const countryAliases = new Map(
   countries.flatMap((country) => aliases(country).map((alias) => [normalise(alias), country])),
@@ -27,7 +34,8 @@ export function searchLocations(query: string, requestedLimit = 50): readonly Lo
       .map(countryOption);
   }
   const limit = Math.max(1, Math.min(50, requestedLimit));
-  return [
+  const target = normalise(query);
+  const ranked = [
     ...CountryStateCity.searchCountries(query).map(countryOption),
     ...CountryStateCity.searchStates(query)
       .filter((state) => state.lifecycleStatus !== "historical")
@@ -36,14 +44,26 @@ export function searchLocations(query: string, requestedLimit = 50): readonly Lo
       .filter((city) => city.lifecycleStatus !== "historical")
       .map(cityOption),
   ]
+    .map((option) => rankOption(option, target))
     .toSorted(
       (left, right) =>
-        matchRank(left, query) - matchRank(right, query) ||
-        kindRank(left) - kindRank(right) ||
-        left.label.localeCompare(right.label),
-    )
-    .filter(uniqueLocationLabel)
-    .slice(0, limit);
+        left.matchRank - right.matchRank ||
+        left.kindRank - right.kindRank ||
+        left.option.label.localeCompare(right.option.label),
+    );
+
+  const preferred = new Map<string, RankedOption>();
+  for (const candidate of ranked) {
+    const incumbent = preferred.get(candidate.canonicalLabel);
+    if (incumbent === undefined || (incumbent.option.kind !== "city" && isCity(candidate))) {
+      preferred.set(candidate.canonicalLabel, candidate);
+    }
+  }
+  const chosen = new Set(preferred.values());
+  return ranked
+    .filter((candidate) => chosen.has(candidate))
+    .slice(0, limit)
+    .map((candidate) => candidate.option);
 }
 
 export function resolveLocations(values: readonly string[]): readonly LocationOption[] {
@@ -105,18 +125,18 @@ function cityOption(city: City): LocationOption {
   };
 }
 
-function uniqueLocationLabel(
-  option: LocationOption,
-  _index: number,
-  options: readonly LocationOption[],
-): boolean {
-  const label = canonicalLocationLabel(option.label);
-  const equivalentOptions = options.filter(
-    (candidate) => canonicalLocationLabel(candidate.label) === label,
-  );
-  const preferredOption =
-    equivalentOptions.find((candidate) => candidate.kind === "city") ?? equivalentOptions[0];
-  return option === preferredOption;
+function rankOption(option: LocationOption, target: string): RankedOption {
+  const candidate = normalise(option.searchTerms[0] ?? option.label);
+  return {
+    canonicalLabel: canonicalLocationLabel(option.label),
+    kindRank: kindRank(option),
+    matchRank: candidate === target ? 0 : candidate.startsWith(target) ? 1 : 2,
+    option,
+  };
+}
+
+function isCity(candidate: RankedOption): boolean {
+  return candidate.option.kind === "city";
 }
 
 function sameLocationLabel(left: string, right: string): boolean {
@@ -156,12 +176,6 @@ function aliases(country: Country): readonly string[] {
 
 function kindRank(option: LocationOption): number {
   return option.kind === "country" ? 0 : option.kind === "administrative-area" ? 1 : 2;
-}
-
-function matchRank(option: LocationOption, query: string): number {
-  const candidate = normalise(option.searchTerms[0] ?? option.label);
-  const target = normalise(query);
-  return candidate === target ? 0 : candidate.startsWith(target) ? 1 : 2;
 }
 
 function normalise(value: string): string {

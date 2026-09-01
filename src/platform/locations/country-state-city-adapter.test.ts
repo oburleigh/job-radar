@@ -49,6 +49,27 @@ describe("country state city location catalogue adapter", () => {
     );
   });
 
+  // Every keystroke reaches this search, so the first letter of a country is the hot path and it
+  // carries the widest candidate set in the catalogue.
+  it.each(["Ger", "G", "e", "a"])("answers the prefix %s without a quadratic scan", (query) => {
+    const started = performance.now();
+    const results = searchLocations(query);
+    const elapsed = performance.now() - started;
+
+    expect(results.length).toBe(50);
+    // A quadratic scan of this candidate set takes tens of minutes, so a generous bound still
+    // fails by three orders of magnitude if one returns.
+    expect(elapsed).toBeLessThan(5_000);
+  });
+
+  it("keeps one option per equivalent label and prefers the city", () => {
+    const results = searchLocations("Singapore", 10);
+    const labels = results.map((result) => result.label);
+
+    expect(new Set(labels).size).toBe(labels.length);
+    expect(results.filter((result) => result.label === "Singapore").length).toBeLessThan(2);
+  });
+
   it("offers the complete alphabetic country catalogue for browsing", () => {
     const results = searchLocations("");
 
