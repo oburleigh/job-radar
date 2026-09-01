@@ -49,7 +49,6 @@ export function createCodexCliClient(options: {
         await runCodex({
           arguments: [
             "exec",
-            "--search",
             "--ignore-user-config",
             "--ephemeral",
             "--skip-git-repo-check",
@@ -59,6 +58,8 @@ export function createCodexCliClient(options: {
             directory,
             "-m",
             execution.model,
+            "-c",
+            "tools.web_search=true",
             "-c",
             `model_reasoning_effort=${execution.reasoningEffort}`,
             "--output-schema",

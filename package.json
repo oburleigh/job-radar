@@ -35,6 +35,7 @@
     "performance:all": "pnpm performance:size && pnpm performance:lighthouse && pnpm performance:browser && pnpm performance:latency",
     "test:performance": "pnpm build:verification && cross-env JOB_RADAR_BUILD_DIRECTORY=build/verification pnpm performance:all",
     "test:browser": "playwright test --config playwright.config.ts",
+    "test:smoke:codex": "tsx scripts/smoke-codex-research.ts",
     "test:e2e": "pnpm test:browser && pnpm test:e2e:web-search-real",
     "test:e2e:web-search-real": "playwright test --config playwright.web-search-real.config.ts",
     "format": "biome format --write .",

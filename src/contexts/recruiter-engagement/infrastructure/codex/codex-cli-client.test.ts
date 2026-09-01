@@ -52,7 +52,7 @@ describe("codex cli client", () => {
     await client().complete(request);
     const args = recordedArguments();
     expect(args[0]).toBe("exec");
-    expect(args).toContain("--search");
+    expect(args).toContain("tools.web_search=true");
     expect(args).toContain("--ignore-user-config");
     expect(args).toContain("--ephemeral");
     expect(args).toContain("--skip-git-repo-check");
