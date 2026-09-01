@@ -373,7 +373,7 @@ git commit -m "feat(search): add a Codex CLI transport for research runs"
 
 ---
 
-### Task 3: Research reply schemas
+### Task 3: Research reply schemas — DONE (b5b4295)
 
 **Files:**
 - Create: `src/contexts/recruiter-engagement/infrastructure/codex/codex-research-schema.ts`
@@ -540,7 +540,7 @@ git commit -m "feat(search): describe the Codex research reply contract"
 
 ---
 
-### Task 4: Stage instructions built from the frozen run
+### Task 4: Stage instructions built from the frozen run — DONE (adb3415)
 
 **Files:**
 - Create: `src/contexts/recruiter-engagement/infrastructure/codex/codex-research-prompt.ts`
@@ -708,7 +708,7 @@ git commit -m "feat(search): derive Codex stage instructions from the frozen run
 
 ---
 
-### Task 5: Execution settings
+### Task 5: Execution settings — DONE (28a11bc)
 
 **Files:**
 - Modify: `src/contexts/recruiter-engagement/application/research-settings/settings.ts`
@@ -876,7 +876,7 @@ git commit -m "feat(search): restore Codex execution settings to research settin
 
 ---
 
-### Task 6: The Codex research source
+### Task 6: The Codex research source — DONE (c01e093)
 
 **Files:**
 - Create: `src/contexts/recruiter-engagement/infrastructure/codex/codex-research-source.ts`
@@ -1117,7 +1117,7 @@ git commit -m "feat(search): research firms and recruiters through the local Cod
 
 ---
 
-### Task 7: Wire the source into composition
+### Task 7: Wire the source into composition — DONE (c6b7dfe)
 
 **Files:**
 - Modify: `src/contexts/recruiter-engagement/composition/recruiter-engagement-web.server.ts:60-77` and `:170-200`
@@ -1168,7 +1168,7 @@ git commit -m "feat(search): make the local Codex Source the default research pa
 
 ---
 
-### Task 8: Real-boundary smoke check
+### Task 8: Real-boundary smoke check — DONE (aa7bef4)
 
 **Files:**
 - Create: `scripts/smoke-codex-research.ts`
@@ -1214,7 +1214,7 @@ git commit -m "test(search): smoke the Codex research boundary end to end"
 
 ---
 
-### Task 9: Settings surface for execution
+### Task 9: Settings surface for execution — DONE (2edd509, b43ef85)
 
 **Files:**
 - Modify: the Settings route under `src/contexts/discovery/presentation/web` that renders recruiter research settings — find it with `rg -l "getPublicSearchSettings" src`
