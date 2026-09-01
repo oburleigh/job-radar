@@ -7,7 +7,10 @@ import { defineConfig, devices } from "@playwright/test";
 import teardownPlaywrightArtifacts from "./tests/support/teardown-playwright-artifacts";
 
 const BASE_URL = "http://127.0.0.1:3300";
-const databaseDirectory = path.join(tmpdir(), `job-radar-playwright-recruiter-real-${process.pid}`);
+const databaseDirectory = path.join(
+  tmpdir(),
+  `job-radar-playwright-web-search-real-${process.pid}`,
+);
 const databasePath = path.join(databaseDirectory, "job-radar.sqlite");
 const buildDirectory = path.join(process.cwd(), "build", `playwright-real-${process.pid}`);
 const serverBuildPath = path.join(buildDirectory, "server", "index.js");
@@ -15,7 +18,7 @@ const useSystemChrome = process.env.PLAYWRIGHT_USE_SYSTEM_CHROME === "1";
 const braveSearchApiKey = process.env.BRAVE_SEARCH_API_KEY;
 
 if (!braveSearchApiKey) {
-  throw new Error("BRAVE_SEARCH_API_KEY is required for the real Recruiter Search browser check.");
+  throw new Error("BRAVE_SEARCH_API_KEY is required for the real web-search browser checks.");
 }
 
 process.env.JOB_RADAR_E2E_DIRECTORY = databaseDirectory;
@@ -38,7 +41,7 @@ export default defineConfig({
   reporter: "list",
   retries: 0,
   testDir: "e2e",
-  testMatch: "**/recruiter-search.real.spec.ts",
+  testMatch: "**/*.real.spec.ts",
   timeout: 360_000,
   use: {
     baseURL: BASE_URL,

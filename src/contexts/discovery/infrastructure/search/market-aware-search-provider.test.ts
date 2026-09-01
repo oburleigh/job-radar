@@ -37,7 +37,7 @@ describe("market-aware search providers", () => {
     expect(new Set(rendered)).toHaveProperty("size", 4);
   });
 
-  it("maps Brave geography, language, zero-based offset, and explicit continuation", async () => {
+  it("uses Brave-supported geography and language parameters for UAE searches", async () => {
     let requestedUrl: URL | undefined;
     const provider = new BraveSearchProvider("test-key", async (input) => {
       requestedUrl = new URL(String(input));
@@ -56,15 +56,68 @@ describe("market-aware search providers", () => {
     expect(Object.fromEntries(requestedUrl?.searchParams ?? [])).toMatchObject({
       q: prepared.renderedQuery,
       count: "3",
-      country: "AE",
+      country: "ALL",
       search_lang: "en",
-      ui_lang: "en-AE",
       offset: "1",
     });
+    expect(requestedUrl?.searchParams.has("ui_lang")).toBe(false);
     expect(page).toEqual({
       results: [{ title: "Role", url: "https://example.com/role", snippet: "" }],
       hasMore: true,
     });
+  });
+
+  it("splits an oversized UAE lane into valid Brave requests without losing title terms", () => {
+    const titleTerms = [
+      "Head of Engineering",
+      "VP Engineering",
+      "Vice President of Engineering",
+      "Director of Engineering",
+      "Engineering Director",
+      "Technology Director",
+      "Head of Technology",
+      "Senior Engineering Manager",
+      "Director of Platform Engineering",
+      "Director of Infrastructure",
+      "Director of AI Engineering",
+      "Principal Cloud Architect",
+    ];
+    const provider = new BraveSearchProvider("test-key", async () =>
+      Response.json({ web: { results: [] } }),
+    );
+
+    const requestLanes = provider.planRequests({
+      ...roleLane,
+      market: {
+        scope: {
+          key: "country:AE",
+          label: "United Arab Emirates",
+          terms: ["United Arab Emirates", "UAE", "Abu Dhabi", "Dubai"],
+        },
+        countryCode: "AE",
+        searchLanguage: "en",
+      },
+      titleTerms,
+    });
+    const renderedQueries = requestLanes.map(renderSearchLane);
+
+    expect(requestLanes.length).toBeGreaterThan(1);
+    expect(requestLanes.flatMap((lane) => lane.titleTerms)).toEqual(titleTerms);
+    expect(renderedQueries.every((query) => query.length <= 400)).toBe(true);
+    expect(renderedQueries.every((query) => query.trim().split(/\s+/).length <= 50)).toBe(true);
+  });
+
+  it("rejects a single title term that cannot fit within a Brave request", () => {
+    const provider = new BraveSearchProvider("test-key", async () =>
+      Response.json({ web: { results: [] } }),
+    );
+
+    expect(() =>
+      provider.planRequests({
+        ...roleLane,
+        titleTerms: ["Head of Engineering", "x".repeat(401)],
+      }),
+    ).toThrow(/cannot represent the title term/);
   });
 
   it("maps SerpAPI configured location, country, language, start, and next-page evidence", async () => {

@@ -46,6 +46,9 @@ export function createScheduledSearchProvider(
   return {
     name: provider.name,
     onIdle: () => executionQueue.onIdle(),
+    ...(provider.planRequests
+      ? { planRequests: (lane) => provider.planRequests?.(lane) ?? [lane] }
+      : {}),
     prepare,
     schedule,
   };

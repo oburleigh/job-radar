@@ -159,6 +159,33 @@ describe("Brave search provider", () => {
     } satisfies Partial<SearchProviderFailure>);
   });
 
+  it("surfaces Brave validation details for rejected requests", async () => {
+    const provider = new BraveSearchProvider("test-key", async () =>
+      Response.json(
+        {
+          error: {
+            detail: "Unable to validate request parameter(s)",
+            meta: {
+              errors: [
+                {
+                  loc: ["query", "q"],
+                  msg: "String should have at most 400 characters",
+                },
+              ],
+            },
+          },
+        },
+        { status: 422 },
+      ),
+    );
+
+    await expect(execute(provider, "engineering")).rejects.toMatchObject({
+      classification: "fatal",
+      code: "invalid-request",
+      message: expect.stringContaining("String should have at most 400 characters"),
+    });
+  });
+
   it("applies the profile age window as a freshness filter", async () => {
     let requestedUrl: URL | undefined;
     const fetcher: typeof fetch = async (input) => {

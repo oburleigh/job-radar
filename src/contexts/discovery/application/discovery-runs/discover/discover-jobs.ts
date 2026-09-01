@@ -204,7 +204,10 @@ export function createJobDiscovery({
             recordedAt: now(),
           });
           const provider = providers.get(command.providerName);
-          laneLoop: for (const [queryIndex, lane] of plannedLanes.entries()) {
+          const requestLanes = plannedLanes.flatMap((lane) =>
+            provider.planRequests ? provider.planRequests(lane) : [lane],
+          );
+          laneLoop: for (const [queryIndex, lane] of requestLanes.entries()) {
             if (admittedQueryCount >= policy.maxRequestsPerRun) {
               budgetStopReason = "max-requests-per-run";
               break;
@@ -244,7 +247,7 @@ export function createJobDiscovery({
                   throw error;
                 }
                 if (error instanceof SearchProviderFailure) {
-                  const skippedQueries = plannedLanes.length - queryIndex - 1;
+                  const skippedQueries = requestLanes.length - queryIndex - 1;
                   const failureSummary = `${error.provider} ${error.classification} ${error.code} after ${error.attempts} ${error.attempts === 1 ? "attempt" : "attempts"}; skipped ${skippedQueries} ${skippedQueries === 1 ? "query" : "queries"}`;
                   queryErrors.push(failureSummary);
                   runs.failQuery(query.id, error.message, now());

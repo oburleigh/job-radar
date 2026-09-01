@@ -41,7 +41,7 @@ describe("browser verification build isolation", () => {
     process.env.BRAVE_SEARCH_API_KEY = "browser-build-isolation-test";
 
     const standardConfig = await loadPlaywrightConfig("../../playwright.config.ts");
-    const realConfig = await loadPlaywrightConfig("../../playwright.recruiter-real.config.ts");
+    const realConfig = await loadPlaywrightConfig("../../playwright.web-search-real.config.ts");
     const standardServer = Array.isArray(standardConfig.webServer)
       ? standardConfig.webServer.find((server) => server.url === "http://127.0.0.1:3100")
       : standardConfig.webServer;

@@ -40,7 +40,7 @@ describe("GitHub Actions quality gates", () => {
     );
     expect(packageJson.scripts?.lint).toContain("pnpm lint:workflows");
     expect(packageJson.scripts?.["test:e2e"]).toBe(
-      "pnpm test:browser && pnpm test:e2e:recruiter-real",
+      "pnpm test:browser && pnpm test:e2e:web-search-real",
     );
     expect(packageJson.scripts?.["lint:workflows"]).toBe(
       "go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 && node scripts/check-github-actions.ts",

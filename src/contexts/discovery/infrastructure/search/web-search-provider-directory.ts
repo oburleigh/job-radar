@@ -51,6 +51,9 @@ export function createWebSearchProviderDirectory({
       };
       const configured: SearchProvider = {
         name: provider.name,
+        ...(provider.planRequests
+          ? { planRequests: (lane) => provider.planRequests?.(lane) ?? [lane] }
+          : {}),
         prepare,
       };
       providers.set(name, configured);

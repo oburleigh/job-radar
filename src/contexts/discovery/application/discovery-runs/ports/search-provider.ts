@@ -51,5 +51,6 @@ export class SearchProviderFailure extends Error {
 
 export interface SearchProvider {
   readonly name: string;
+  readonly planRequests?: (lane: SearchLane) => readonly SearchLane[];
   readonly prepare: (lane: SearchLane, request?: SearchRequest) => PreparedSearchRequest;
 }

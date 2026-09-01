@@ -24,6 +24,10 @@ export class BraveSearchProvider implements SearchProvider {
     }
   }
 
+  planRequests(lane: SearchLane): readonly SearchLane[] {
+    return splitBraveSearchLane(lane);
+  }
+
   prepare(lane: SearchLane, options: SearchRequest = {}) {
     const query = renderSearchLane(lane);
     return {
@@ -142,6 +146,54 @@ function quoted(value: string): string {
 
 function orClause(terms: readonly string[]): string {
   return `(${terms.join(" OR ")})`;
+}
+
+const BRAVE_QUERY_MAX_CHARACTERS = 400;
+const BRAVE_QUERY_MAX_WORDS = 50;
+
+function splitBraveSearchLane(lane: SearchLane): readonly SearchLane[] {
+  if (braveAccepts(renderSearchLane(lane)) || lane.titleTerms.length === 0) {
+    return [lane];
+  }
+
+  const requests: SearchLane[] = [];
+  let titleTerms: string[] = [];
+  for (const titleTerm of lane.titleTerms) {
+    const candidate = [...titleTerms, titleTerm];
+    if (braveAccepts(renderSearchLane({ ...lane, titleTerms: candidate }))) {
+      titleTerms = candidate;
+      continue;
+    }
+    if (titleTerms.length === 0) {
+      throw unrepresentableBraveTitle(titleTerm);
+    }
+    requests.push({ ...lane, titleTerms });
+    if (!braveAccepts(renderSearchLane({ ...lane, titleTerms: [titleTerm] }))) {
+      throw unrepresentableBraveTitle(titleTerm);
+    }
+    titleTerms = [titleTerm];
+  }
+  if (titleTerms.length > 0) {
+    requests.push({ ...lane, titleTerms });
+  }
+  return requests;
+}
+
+function unrepresentableBraveTitle(titleTerm: string): SearchProviderFailure {
+  return new SearchProviderFailure({
+    attempts: 1,
+    classification: "fatal",
+    code: "invalid-request",
+    message: `Brave Search cannot represent the title term "${titleTerm}" within its query limits.`,
+    provider: "brave",
+  });
+}
+
+function braveAccepts(query: string): boolean {
+  return (
+    query.length <= BRAVE_QUERY_MAX_CHARACTERS &&
+    query.trim().split(/\s+/).length <= BRAVE_QUERY_MAX_WORDS
+  );
 }
 
 export function createSearchProvider(name: string): SearchProvider {

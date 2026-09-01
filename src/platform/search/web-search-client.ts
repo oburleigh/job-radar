@@ -91,7 +91,66 @@ const serperResponseSchema = z.looseObject({
   organic: z.array(googleResultSchema),
   pagination: z.looseObject({ next: z.string().optional() }).optional(),
 });
-const providerErrorSchema = z.looseObject({ message: z.string().optional() });
+const providerErrorSchema = z.looseObject({
+  message: z.string().optional(),
+  error: z
+    .looseObject({
+      detail: z.string().optional(),
+      meta: z
+        .looseObject({
+          errors: z
+            .array(
+              z.looseObject({
+                loc: z.array(z.union([z.string(), z.number()])).optional(),
+                msg: z.string(),
+              }),
+            )
+            .optional(),
+        })
+        .optional(),
+    })
+    .optional(),
+});
+
+const BRAVE_COUNTRIES = new Set([
+  "ALL",
+  "AR",
+  "AU",
+  "AT",
+  "BE",
+  "BR",
+  "CA",
+  "CL",
+  "DK",
+  "FI",
+  "FR",
+  "DE",
+  "HK",
+  "IN",
+  "ID",
+  "IT",
+  "JP",
+  "KR",
+  "MY",
+  "MX",
+  "NL",
+  "NZ",
+  "NO",
+  "CN",
+  "PL",
+  "PT",
+  "PH",
+  "RU",
+  "SA",
+  "ZA",
+  "ES",
+  "SE",
+  "CH",
+  "TW",
+  "TR",
+  "GB",
+  "US",
+]);
 
 export function createWebSearchClient(
   config: WebSearchClientConfig,
@@ -126,16 +185,13 @@ async function searchBrave(
     url.searchParams.set("freshness", dateRange(request.maxAgeDays, new Date()));
   }
   if (request.countryCode) {
-    url.searchParams.set("country", request.countryCode);
+    url.searchParams.set(
+      "country",
+      BRAVE_COUNTRIES.has(request.countryCode) ? request.countryCode : "ALL",
+    );
   }
   if (request.searchLanguage) {
     url.searchParams.set("search_lang", request.searchLanguage);
-    url.searchParams.set(
-      "ui_lang",
-      request.countryCode
-        ? `${request.searchLanguage}-${request.countryCode}`
-        : request.searchLanguage,
-    );
   }
   url.searchParams.set("offset", String(request.page - 1));
   const response = await fetcher(url, {
@@ -270,7 +326,7 @@ function parseResponse<Output>(
 async function requireOk(config: WebSearchClientConfig, response: Response): Promise<void> {
   if (response.ok) return;
   const parsed = providerErrorSchema.safeParse(await response.json().catch(() => ({})));
-  const detail = parsed.success ? (parsed.data.message ?? "") : "";
+  const detail = parsed.success ? providerErrorDetail(parsed.data) : "";
   const message = `${config.label} returned HTTP ${response.status}${detail ? `: ${detail}` : ""}`;
   if (/not enough credits|insufficient credits|quota exceeded/i.test(detail)) {
     throw failure(config, "fatal", "credit-exhausted", message);
@@ -284,6 +340,13 @@ async function requireOk(config: WebSearchClientConfig, response: Response): Pro
     throw failure(config, "transient", "server-error", message);
   }
   throw failure(config, "fatal", "invalid-request", message);
+}
+
+function providerErrorDetail(error: z.infer<typeof providerErrorSchema>): string {
+  const validationErrors = error.error?.meta?.errors
+    ?.map((item) => `${item.loc?.join(".") ?? "request"}: ${item.msg}`)
+    .join("; ");
+  return validationErrors ?? error.error?.detail ?? error.message ?? "";
 }
 
 function failure(

@@ -568,6 +568,57 @@ describe("discover jobs", () => {
     expect(summary.queries).toBe(2);
   });
 
+  it("admits every provider-planned request separately", async () => {
+    const journal = recordingJournal();
+    const setup = configuredSetup();
+    const discovery = createJobDiscovery({
+      setup: {
+        load: (command) => ({
+          ...setup.load(command),
+          profile: {
+            ...setup.load(command).profile,
+            titleTerms: ["Head of Engineering", "VP Engineering"],
+          },
+        }),
+      },
+      runs: journal,
+      jobs: {
+        recordHit: vi.fn(async () => ({ inserted: false, isUseful: false, jobsWritten: 0 })),
+        synchronizeBoard: vi.fn(async () => ({ jobsWritten: 0, error: "" })),
+      },
+      matches: { evaluate: vi.fn(async () => ({ matched: 0 })) },
+      providers: {
+        get: (name) => ({
+          name,
+          planRequests: (lane) =>
+            lane.kind === "role"
+              ? lane.titleTerms.map((titleTerm) => ({ ...lane, titleTerms: [titleTerm] }))
+              : [lane],
+          prepare: (lane) => ({
+            renderedQuery: `${lane.kind}:${lane.titleTerms.join("|")}`,
+            execute: async () => ({ results: [], hasMore: false }),
+          }),
+        }),
+      },
+      now: () => timestamp,
+      yieldControl: vi.fn(),
+    });
+
+    const summary = await discovery.discoverJobs({
+      profileId: 7,
+      providerName: "brave",
+      runId: 41,
+      syncBoards: false,
+    });
+
+    expect(journal.admittedRequests.map(({ text }) => text)).toEqual([
+      "role:Head of Engineering",
+      "role:VP Engineering",
+      "board-discovery:",
+    ]);
+    expect(summary.queries).toBe(3);
+  });
+
   it("admits page two after a productive page reports more results", async () => {
     const journal = recordingJournal();
     const executePage = vi.fn(async (_lane: SearchLane, request: SearchRequest) => ({
