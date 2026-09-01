@@ -1,3 +1,7 @@
+export { parseDirectoryMatchSettingsRequest } from "./presentation/web/requests/directory-match-settings-request";
+export { parsePublicSearchSettingsRequest } from "./presentation/web/requests/public-search-settings-request";
+export { parseResearchCriteriaOptionsRequest } from "./presentation/web/requests/research-criteria-options-request";
+
 import { recruiterEngagementWeb } from "./composition/recruiter-engagement-web.server";
 import { isActiveResearchRunActivity, type ResearchRunActivity } from "./public-contract";
 

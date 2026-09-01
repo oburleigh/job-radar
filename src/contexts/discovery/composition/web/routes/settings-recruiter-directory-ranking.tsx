@@ -1,10 +1,10 @@
 import { type ActionFunctionArgs, useLoaderData } from "react-router";
 
+import { DirectoryMatchSettingsForm } from "@/contexts/recruiter-engagement/public-contract";
 import {
-  DirectoryMatchSettingsForm,
   parseDirectoryMatchSettingsRequest,
-} from "@/contexts/recruiter-engagement/public-contract";
-import { recruiterResearchSettingsContract } from "@/contexts/recruiter-engagement/public-contract.server";
+  recruiterResearchSettingsContract,
+} from "@/contexts/recruiter-engagement/public-contract.server";
 import { assertLocalHost } from "@/platform/http/require-local-request";
 
 export function loader() {

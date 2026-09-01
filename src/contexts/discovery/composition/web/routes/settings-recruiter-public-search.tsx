@@ -1,10 +1,10 @@
 import { type ActionFunctionArgs, useLoaderData } from "react-router";
 
+import { PublicSearchSettingsForm } from "@/contexts/recruiter-engagement/public-contract";
 import {
-  PublicSearchSettingsForm,
   parsePublicSearchSettingsRequest,
-} from "@/contexts/recruiter-engagement/public-contract";
-import { recruiterResearchSettingsContract } from "@/contexts/recruiter-engagement/public-contract.server";
+  recruiterResearchSettingsContract,
+} from "@/contexts/recruiter-engagement/public-contract.server";
 import { assertLocalHost } from "@/platform/http/require-local-request";
 
 export function loader() {
