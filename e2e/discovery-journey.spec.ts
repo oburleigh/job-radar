@@ -125,7 +125,26 @@ test("completes discovery and triage while profile editing remains responsive", 
     (request) =>
       request.method() === "POST" && new URL(request.url()).pathname === "/api/discovery-runs",
   );
-  await page.getByRole("button", { name: "Run discovery" }).click();
+  let releaseStartRequest = () => {};
+  const startRequestGate = new Promise<void>((resolve) => {
+    releaseStartRequest = resolve;
+  });
+  await page.route("**/api/discovery-runs", async (route) => {
+    if (route.request().method() === "POST") {
+      await startRequestGate;
+    }
+    await route.continue();
+  });
+  const runningNotice = page.getByRole("status").filter({ hasText: "Discovery running" });
+  const startDiscovery = page.getByRole("button", { name: "Run discovery" }).click();
+  const noticeStartedAt = Date.now();
+  try {
+    await expect(runningNotice).toContainText(profileName, { timeout: 500 });
+  } finally {
+    releaseStartRequest();
+  }
+  await startDiscovery;
+  await page.unroute("**/api/discovery-runs");
   expect((await startedRequest).postDataJSON()).toEqual({
     profileId,
     provider: "serper",
@@ -134,10 +153,11 @@ test("completes discovery and triage while profile editing remains responsive", 
   expect(response.status()).toBe(202);
   const started = (await response.json()) as { runId: number };
 
-  const runningNotice = page.getByRole("status").filter({ hasText: "Discovery running" });
   await expect(runningNotice).toContainText(profileName);
-  await expect(runningNotice).toHaveCSS("animation-duration", "2s");
-  await expect(runningNotice).toHaveCSS("animation-name", "discovery-notice-lifecycle");
+  const runningToast = page.locator("[data-sonner-toast]").filter({ has: runningNotice });
+  await expect(runningToast).toHaveCSS("animation-delay", "3s");
+  await expect(runningToast).toHaveCSS("animation-duration", "0.32s");
+  await expect(runningToast).toHaveCSS("animation-name", "discovery-notice-exit");
   const activeActivity = page.getByRole("link", { name: "Activity, 1 active run" });
   await expect(activeActivity).toBeVisible();
   const [activityIconBox, activityBadgeBox] = await Promise.all([
@@ -152,7 +172,8 @@ test("completes discovery and triage while profile editing remains responsive", 
   expect(activityBadgeBox.x).toBeGreaterThan(activityIconBox.x + activityIconBox.width / 2);
   expect(activityBadgeBox.y).toBeLessThan(activityIconBox.y + activityIconBox.height / 2);
   await page.screenshot({ path: "test-results/ui-review/discovery-running-desktop.png" });
-  await expect(runningNotice).toHaveCount(0, { timeout: 3_000 });
+  await expect(runningNotice).toHaveCount(0, { timeout: 4_500 });
+  expect(Date.now() - noticeStartedAt).toBeGreaterThanOrEqual(3_000);
 
   await expect(
     page.getByRole("button", { name: `Cancel discovery #${started.runId}` }),
@@ -271,7 +292,7 @@ test("completes discovery and triage while profile editing remains responsive", 
     { timeout: 30_000 },
   );
   await partialNotice.getByRole("link", { name: `View run #${failedStart.runId}` }).click();
-  await page.getByRole("button", { name: "Dismiss discovery notification" }).click();
+  await partialNotice.getByRole("button", { name: "Dismiss discovery notification" }).click();
   await expect(
     page.getByRole("heading", { level: 1, name: `Run #${failedStart.runId}` }),
   ).toBeVisible();

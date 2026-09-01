@@ -28,7 +28,7 @@ describe("SQLite configuration", () => {
     expect(config.discovery.workYieldBatchSize).toBeGreaterThan(0);
     expect(config.discovery.runHistoryLimit).toBeGreaterThan(0);
     expect(config.discovery).not.toHaveProperty("companyBoardRefreshEnabled");
-    expect(config.ui.discoveryNotificationDurationMs).toBe(2_000);
+    expect(config.ui.discoveryNotificationDurationMs).toBe(3_000);
     expect(config.discovery.providerExecution).toEqual({
       concurrency: 2,
       requestsPerInterval: 5,

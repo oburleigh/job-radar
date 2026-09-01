@@ -57,7 +57,7 @@ export const defaultAdaptivePaginationSettings = {
 } as const;
 
 export const defaultUiSettings = {
-  discoveryNotificationDurationMs: 2_000,
+  discoveryNotificationDurationMs: 3_000,
   discoveryPollIntervalMs: 3_000,
   discoveryStaleAfterMs: 300_000,
 } as const satisfies RuntimeSettings["ui"];
@@ -392,6 +392,24 @@ export function bootstrapJobRadar(database: Database, now = new Date()): void {
       .values(settingDefaults.map((setting) => ({ ...setting, updatedAt: now })))
       .onConflictDoNothing()
       .run();
+    const ui = transaction
+      .select({ value: appSettings.value })
+      .from(appSettings)
+      .where(eq(appSettings.key, "ui"))
+      .get()?.value;
+    if (typeof ui === "object" && ui !== null && !Array.isArray(ui)) {
+      const uiRecord = ui as Record<string, unknown>;
+      if (uiRecord.discoveryNotificationDurationMs === 2_000) {
+        transaction
+          .update(appSettings)
+          .set({
+            value: { ...uiRecord, discoveryNotificationDurationMs: 3_000 },
+            updatedAt: now,
+          })
+          .where(eq(appSettings.key, "ui"))
+          .run();
+      }
+    }
     const discovery = transaction
       .select({ value: appSettings.value })
       .from(appSettings)

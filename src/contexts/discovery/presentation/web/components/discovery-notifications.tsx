@@ -1,18 +1,24 @@
 import { IconButton } from "@job-radar/design-ui";
 import { CheckCircle2, CircleAlert, CircleX, LoaderCircle, X } from "lucide-react";
-import { type CSSProperties, useEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useRef } from "react";
 import { Link, useRevalidator } from "react-router";
+import { Toaster, toast } from "sonner";
 import type { DiscoveryRunOutcome } from "@/contexts/discovery/application/discovery-runs/outcome/derive-discovery-run-outcome";
 import type {
   DiscoveryRunPhase,
   WebCoverageStatus,
 } from "@/contexts/discovery/application/discovery-runs/ports/discovery-run-journal";
-import { DISCOVERY_RUN_STARTED_EVENT } from "@/contexts/discovery/presentation/web/client-events";
+import {
+  DISCOVERY_RUN_START_EVENT,
+  type DiscoveryRunStartEventDetail,
+} from "@/contexts/discovery/presentation/web/client-events";
 import { describeDiscoveryProgress } from "@/contexts/discovery/presentation/web/components/active-discovery-run";
 import { formatDiscoveryFailure } from "@/contexts/discovery/presentation/web/formatters/discovery-failure";
 import { presentDiscoveryRunOutcome } from "@/contexts/discovery/presentation/web/run-outcome-presentation";
 
 const PENDING_RUNS_KEY = "job-radar.pending-discovery-runs";
+const DISCOVERY_TOASTER_ID = "discovery-notifications";
+const DISCOVERY_NOTICE_EXIT_DURATION_MS = 320;
 
 export interface DiscoveryRunStatus {
   id: number;
@@ -53,49 +59,173 @@ export function DiscoveryNotifications({
   const pendingIds = useRef(new Set<number>());
   const suppressedIds = useRef(new Set<number>());
   const hiddenRunningIds = useRef(new Set<number>());
-  const autoDismissTimers = useRef(
-    new Map<number, { readonly status: DiscoveryRunStatus["status"]; readonly timer: number }>(),
-  );
+  const startingToastIds = useRef(new Map<string, string>());
+  const startingRunIds = useRef(new Map<string, number>());
+  const dismissedStartingRequests = useRef(new Set<string>());
+  const runToastIds = useRef(new Map<number, string>());
   const polling = useRef(false);
-  const [notices, setNotices] = useState<DiscoveryRunStatus[]>([]);
 
   useEffect(() => {
     let active = true;
 
-    function clearAutoDismiss(runId: number) {
-      const scheduled = autoDismissTimers.current.get(runId);
-      if (scheduled) {
-        window.clearTimeout(scheduled.timer);
-        autoDismissTimers.current.delete(runId);
+    function forgetRunToast(runId: number) {
+      runToastIds.current.delete(runId);
+      for (const [requestId, acceptedRunId] of startingRunIds.current) {
+        if (acceptedRunId === runId) {
+          startingRunIds.current.delete(requestId);
+          startingToastIds.current.delete(requestId);
+          dismissedStartingRequests.current.delete(requestId);
+        }
       }
     }
 
+    function hideStartingRequest(requestId: string) {
+      dismissedStartingRequests.current.add(requestId);
+      const runId = startingRunIds.current.get(requestId);
+      if (runId) {
+        hiddenRunningIds.current.add(runId);
+      }
+    }
+
+    function showStartingNotice(
+      detail: Extract<DiscoveryRunStartEventDetail, { readonly state: "starting" }>,
+    ) {
+      const toastId = `discovery-request-${detail.requestId}`;
+      startingToastIds.current.set(detail.requestId, toastId);
+      const dismiss = () => {
+        hideStartingRequest(detail.requestId);
+        toast.dismiss(toastId);
+      };
+      toast.custom(
+        () => {
+          return (
+            <DiscoveryNoticeContent
+              kind="running"
+              message={`${detail.profileName}: Starting discovery`}
+              onDismiss={dismiss}
+              profileId={detail.profileId}
+              title="Discovery running"
+            />
+          );
+        },
+        {
+          className: "discovery-notice notice-running",
+          duration: notificationDurationMs + DISCOVERY_NOTICE_EXIT_DURATION_MS,
+          id: toastId,
+          onAutoClose: () => hideStartingRequest(detail.requestId),
+          onDismiss: () => hideStartingRequest(detail.requestId),
+          toasterId: DISCOVERY_TOASTER_ID,
+          unstyled: true,
+          style: {
+            "--jr-discovery-notice-hold-duration": `${notificationDurationMs}ms`,
+          } as CSSProperties,
+        },
+      );
+    }
+
     function showNotice(run: DiscoveryRunStatus) {
-      if (run.status === "running" && hiddenRunningIds.current.has(run.id)) {
-        return;
-      }
-
-      setNotices((current) => {
-        const existingIndex = current.findIndex((notice) => notice.id === run.id);
-        if (existingIndex === -1) {
-          return [...current, run];
+      if (run.status === "running") {
+        if (hiddenRunningIds.current.has(run.id) || runToastIds.current.has(run.id)) {
+          return;
         }
-        return current.map((notice, index) => (index === existingIndex ? run : notice));
-      });
-
-      const scheduled = autoDismissTimers.current.get(run.id);
-      if (scheduled?.status === run.status) {
-        return;
+      } else {
+        hiddenRunningIds.current.delete(run.id);
       }
-      clearAutoDismiss(run.id);
-      const timer = window.setTimeout(() => {
-        autoDismissTimers.current.delete(run.id);
+
+      const currentToastId = runToastIds.current.get(run.id);
+      if (run.status !== "running" && currentToastId) {
+        toast.dismiss(currentToastId);
+      }
+      const toastId =
+        run.status === "running"
+          ? (currentToastId ?? `discovery-run-${run.id}`)
+          : `discovery-run-${run.id}-${run.status}`;
+      runToastIds.current.set(run.id, toastId);
+      const presentation = describeDiscoveryNotice(run);
+      const dismiss = () => {
         if (run.status === "running") {
           hiddenRunningIds.current.add(run.id);
+        } else {
+          forgetRunToast(run.id);
         }
-        setNotices((current) => current.filter((notice) => notice.id !== run.id));
-      }, notificationDurationMs);
-      autoDismissTimers.current.set(run.id, { status: run.status, timer });
+        toast.dismiss(toastId);
+      };
+      toast.custom(
+        () => {
+          return (
+            <DiscoveryNoticeContent
+              kind={presentation.kind}
+              message={presentation.message}
+              onDismiss={dismiss}
+              profileId={run.profileId}
+              runId={run.id}
+              title={presentation.title}
+            />
+          );
+        },
+        {
+          className: discoveryNoticeClassName(presentation.kind),
+          duration: notificationDurationMs + DISCOVERY_NOTICE_EXIT_DURATION_MS,
+          id: toastId,
+          onAutoClose: () => {
+            if (run.status === "running") {
+              hiddenRunningIds.current.add(run.id);
+            } else {
+              forgetRunToast(run.id);
+            }
+          },
+          onDismiss: () => {
+            if (run.status === "running") {
+              hiddenRunningIds.current.add(run.id);
+            } else {
+              forgetRunToast(run.id);
+            }
+          },
+          toasterId: DISCOVERY_TOASTER_ID,
+          unstyled: true,
+          style: {
+            "--jr-discovery-notice-hold-duration": `${notificationDurationMs}ms`,
+          } as CSSProperties,
+        },
+      );
+    }
+
+    function acceptStartingRequest(requestId: string, runId: number) {
+      startingRunIds.current.set(requestId, runId);
+      const startingToastId = startingToastIds.current.get(requestId);
+      if (startingToastId) {
+        runToastIds.current.set(runId, startingToastId);
+      }
+      if (dismissedStartingRequests.current.has(requestId)) {
+        hiddenRunningIds.current.add(runId);
+      }
+      trackRun(runId);
+      void revalidator.revalidate();
+      void pollRuns();
+    }
+
+    function rejectStartingRequest(requestId: string) {
+      const toastId = startingToastIds.current.get(requestId);
+      if (toastId) {
+        toast.dismiss(toastId);
+      }
+      startingToastIds.current.delete(requestId);
+      startingRunIds.current.delete(requestId);
+      dismissedStartingRequests.current.delete(requestId);
+    }
+
+    function handleStartEvent(event: Event) {
+      const detail = (event as CustomEvent<DiscoveryRunStartEventDetail>).detail;
+      if (!detail) {
+        return;
+      }
+      if (detail.state === "starting") {
+        showStartingNotice(detail);
+      } else if (detail.state === "accepted") {
+        acceptStartingRequest(detail.requestId, detail.runId);
+      } else {
+        rejectStartingRequest(detail.requestId);
+      }
     }
 
     function trackRun(runId: number) {
@@ -179,14 +309,6 @@ export function DiscoveryNotifications({
     void adoptActiveRuns().then(pollRuns);
 
     const interval = window.setInterval(pollRuns, pollIntervalMs);
-    const handleStarted = (event: Event) => {
-      const runId = (event as CustomEvent<{ runId?: number }>).detail?.runId;
-      if (runId) {
-        trackRun(runId);
-        void revalidator.revalidate();
-        void pollRuns();
-      }
-    };
     const handleStorage = (event: StorageEvent) => {
       if (event.key !== PENDING_RUNS_KEY) {
         return;
@@ -199,84 +321,104 @@ export function DiscoveryNotifications({
       persistPendingRuns(pendingIds);
       void pollRuns();
     };
-    window.addEventListener(DISCOVERY_RUN_STARTED_EVENT, handleStarted);
+    window.addEventListener(DISCOVERY_RUN_START_EVENT, handleStartEvent);
     window.addEventListener("storage", handleStorage);
 
     return () => {
       active = false;
       window.clearInterval(interval);
-      for (const scheduled of autoDismissTimers.current.values()) {
-        window.clearTimeout(scheduled.timer);
-      }
-      autoDismissTimers.current.clear();
-      window.removeEventListener(DISCOVERY_RUN_STARTED_EVENT, handleStarted);
+      window.removeEventListener(DISCOVERY_RUN_START_EVENT, handleStartEvent);
       window.removeEventListener("storage", handleStorage);
     };
   }, [notificationDurationMs, pollIntervalMs, revalidator]);
 
-  function dismissNotice(run: DiscoveryRunStatus) {
-    const scheduled = autoDismissTimers.current.get(run.id);
-    if (scheduled) {
-      window.clearTimeout(scheduled.timer);
-      autoDismissTimers.current.delete(run.id);
-    }
-    if (run.status === "running") {
-      hiddenRunningIds.current.add(run.id);
-    }
-    setNotices((current) => current.filter((notice) => notice.id !== run.id));
-  }
-
   return (
-    <aside className="discovery-notification-layer" aria-label="Discovery status">
-      {notices.map((run) => {
-        const presentation = describeDiscoveryNotice(run);
-        const failed = presentation.kind === "failed";
-        const cancelled = presentation.kind === "cancelled";
-        const partial = presentation.kind === "partial";
-        const running = presentation.kind === "running";
-        return (
-          <div
-            className={`discovery-notice${running ? " notice-running" : failed ? " notice-failed" : cancelled ? " notice-cancelled" : partial ? " notice-partial" : ""}`}
-            key={`${run.id}-${run.status}`}
-            onAnimationEnd={() => dismissNotice(run)}
-            role={failed || partial ? "alert" : "status"}
-            style={
-              {
-                "--jr-discovery-notice-duration": `${notificationDurationMs}ms`,
-              } as CSSProperties
-            }
-          >
-            <span className="discovery-notice-icon">
-              {running ? (
-                <LoaderCircle className="spin" size={20} />
-              ) : failed || partial ? (
-                <CircleAlert size={20} />
-              ) : cancelled ? (
-                <CircleX size={20} />
-              ) : (
-                <CheckCircle2 size={20} />
-              )}
-            </span>
-            <div>
-              <strong>{presentation.title}</strong>
-              <p>{presentation.message}</p>
-              <div className="discovery-notice-links">
-                {!running && !failed && !cancelled ? (
-                  <Link to={`/?profile=${run.profileId}`}>View results</Link>
-                ) : null}
-                <Link to={`/runs/${run.id}`} aria-label={`View run #${run.id}`}>
-                  View run
-                </Link>
-              </div>
-            </div>
-            <IconButton onClick={() => dismissNotice(run)} label="Dismiss discovery notification">
-              <X size={17} />
-            </IconButton>
-          </div>
-        );
-      })}
-    </aside>
+    <Toaster
+      className="discovery-notification-layer"
+      duration={notificationDurationMs}
+      expand
+      gap={8}
+      id={DISCOVERY_TOASTER_ID}
+      mobileOffset={{ top: 72, right: 10, left: 10 }}
+      offset={{ top: 88, right: 18 }}
+      position="top-right"
+      toastOptions={{
+        closeButtonAriaLabel: "Dismiss discovery notification",
+        unstyled: true,
+      }}
+    />
   );
+}
+
+interface DiscoveryNoticeContentProps {
+  readonly kind: DiscoveryRunOutcome | "running";
+  readonly message: string;
+  readonly onDismiss: () => void;
+  readonly profileId: number;
+  readonly runId?: number;
+  readonly title: string;
+}
+
+function DiscoveryNoticeContent({
+  kind,
+  message,
+  onDismiss,
+  profileId,
+  runId,
+  title,
+}: DiscoveryNoticeContentProps) {
+  const running = kind === "running";
+  const failed = kind === "failed";
+  const cancelled = kind === "cancelled";
+  const partial = kind === "partial";
+  return (
+    <div className="discovery-notice-content" role={failed || partial ? "alert" : "status"}>
+      <span className="discovery-notice-icon">
+        {running ? (
+          <LoaderCircle className="spin" size={20} />
+        ) : failed || partial ? (
+          <CircleAlert size={20} />
+        ) : cancelled ? (
+          <CircleX size={20} />
+        ) : (
+          <CheckCircle2 size={20} />
+        )}
+      </span>
+      <div>
+        <strong>{title}</strong>
+        <p>{message}</p>
+        {runId ? (
+          <div className="discovery-notice-links">
+            {!running && !failed && !cancelled ? (
+              <Link to={`/?profile=${profileId}`}>View results</Link>
+            ) : null}
+            <Link to={`/runs/${runId}`} aria-label={`View run #${runId}`}>
+              View run
+            </Link>
+          </div>
+        ) : null}
+      </div>
+      <IconButton onClick={onDismiss} label="Dismiss discovery notification">
+        <X size={17} />
+      </IconButton>
+    </div>
+  );
+}
+
+function discoveryNoticeClassName(kind: DiscoveryRunOutcome | "running"): string {
+  if (kind === "running") {
+    return "discovery-notice notice-running";
+  }
+  if (kind === "failed") {
+    return "discovery-notice notice-failed";
+  }
+  if (kind === "cancelled") {
+    return "discovery-notice notice-cancelled";
+  }
+  if (kind === "partial") {
+    return "discovery-notice notice-partial";
+  }
+  return "discovery-notice";
 }
 
 function readPendingRuns(): number[] {

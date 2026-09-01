@@ -2,7 +2,7 @@ import { Button, SelectField } from "@job-radar/design-ui";
 import { Play } from "lucide-react";
 import { useState, useTransition } from "react";
 import { Link, useLocation, useNavigate, useNavigation, useSearchParams } from "react-router";
-import { DISCOVERY_RUN_STARTED_EVENT } from "@/contexts/discovery/presentation/web/client-events";
+import { dispatchDiscoveryRunStart } from "@/contexts/discovery/presentation/web/client-events";
 
 interface RunControlsProps {
   profileId: number;
@@ -45,6 +45,15 @@ export function RunControls({
   }
 
   function runDiscovery() {
+    const requestId = crypto.randomUUID();
+    const profileName =
+      profiles.find((profile) => profile.id === profileId)?.name ?? `Profile ${profileId}`;
+    dispatchDiscoveryRunStart({
+      state: "starting",
+      requestId,
+      profileId,
+      profileName,
+    });
     setMessage("Starting discovery...");
     startTransition(async () => {
       try {
@@ -63,13 +72,12 @@ export function RunControls({
         };
         setMessage(result.message);
         if (result.ok && result.runId) {
-          window.dispatchEvent(
-            new CustomEvent(DISCOVERY_RUN_STARTED_EVENT, {
-              detail: { runId: result.runId },
-            }),
-          );
+          dispatchDiscoveryRunStart({ state: "accepted", requestId, runId: result.runId });
+        } else {
+          dispatchDiscoveryRunStart({ state: "rejected", requestId });
         }
       } catch {
+        dispatchDiscoveryRunStart({ state: "rejected", requestId });
         setMessage(
           "The discovery request did not reach the local app. Reload the page after restarting the app.",
         );

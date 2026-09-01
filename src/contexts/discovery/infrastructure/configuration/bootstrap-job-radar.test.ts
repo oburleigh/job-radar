@@ -99,6 +99,33 @@ describe("Job Radar database bootstrap", () => {
     ).toBe(false);
   });
 
+  it("updates the legacy notification duration once and preserves a user-configured duration", () => {
+    const legacyUi = {
+      discoveryNotificationDurationMs: 2_000,
+      discoveryPollIntervalMs: 3_000,
+      discoveryStaleAfterMs: 300_000,
+    };
+    bootstrapJobRadar(database, new Date("2026-08-20T00:00:00.000Z"));
+    database.update(appSettings).set({ value: legacyUi }).where(eq(appSettings.key, "ui")).run();
+
+    bootstrapJobRadar(database, new Date("2026-08-21T00:00:00.000Z"));
+
+    expect(
+      database.select().from(appSettings).where(eq(appSettings.key, "ui")).get()?.value,
+    ).toEqual({ ...legacyUi, discoveryNotificationDurationMs: 3_000 });
+
+    database
+      .update(appSettings)
+      .set({ value: { ...legacyUi, discoveryNotificationDurationMs: 5_000 } })
+      .where(eq(appSettings.key, "ui"))
+      .run();
+    bootstrapJobRadar(database, new Date("2026-08-22T00:00:00.000Z"));
+
+    expect(
+      database.select().from(appSettings).where(eq(appSettings.key, "ui")).get()?.value,
+    ).toEqual({ ...legacyUi, discoveryNotificationDurationMs: 5_000 });
+  });
+
   it("migrates the superseded disabled company-board policy into board choices once", () => {
     bootstrapJobRadar(database, new Date("2026-08-20T00:00:00.000Z"));
     database

@@ -1918,55 +1918,38 @@ td a {
   text-transform: capitalize;
 }
 
-.discovery-notification-layer {
-  position: fixed;
-  top: 88px;
-  right: 18px;
+[data-sonner-toaster].discovery-notification-layer {
   z-index: 60;
-  display: grid;
   width: min(430px, calc(100vw - 36px));
-  gap: 8px;
-  pointer-events: none;
 }
 
-.discovery-notice {
+.discovery-notice-content {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 11px;
   padding: 14px;
-  animation: discovery-notice-lifecycle var(--jr-discovery-notice-duration)
-    var(--jr-motion-easing-standard) both;
+}
+
+[data-sonner-toast].discovery-notice {
+  width: min(430px, calc(100vw - 36px));
   color: var(--jr-color-nav-text);
   background: var(--jr-color-nav);
   border: 1px solid var(--jr-color-toast-border);
   box-shadow: 0 12px 30px var(--jr-shadow-toast);
   pointer-events: auto;
+  animation: discovery-notice-exit var(--jr-motion-duration-slow) var(--jr-motion-easing-emphasized)
+    var(--jr-discovery-notice-hold-duration) both;
 }
 
-@keyframes discovery-notice-lifecycle {
-  0%,
-  90% {
+@keyframes discovery-notice-exit {
+  from {
     opacity: 1;
     transform: translateY(0);
   }
 
-  100% {
+  to {
     opacity: 0;
     transform: translateY(calc(var(--jr-space-1) * -1));
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .discovery-notice {
-    animation-name: discovery-notice-hold;
-  }
-}
-
-@keyframes discovery-notice-hold {
-  from,
-  to {
-    opacity: 1;
-    transform: none;
   }
 }
 
@@ -2358,12 +2341,6 @@ td a {
 
   .form-submit-row {
     padding-inline: 18px;
-  }
-
-  .discovery-notification-layer {
-    top: 72px;
-    right: 10px;
-    width: calc(100vw - 20px);
   }
 }
 
