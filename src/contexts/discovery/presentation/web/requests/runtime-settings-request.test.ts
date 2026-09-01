@@ -261,7 +261,11 @@ function currentRuntimeSettings(): RuntimeSettingsCommand {
       structuredVerificationSources: ["web3-career"],
       closedListingMarkers: ["no longer available"],
     },
-    ui: { discoveryPollIntervalMs: 3_000, discoveryStaleAfterMs: 300_000 },
+    ui: {
+      discoveryNotificationDurationMs: 5_000,
+      discoveryPollIntervalMs: 3_000,
+      discoveryStaleAfterMs: 300_000,
+    },
     matching: {
       exactTitleScore: 60,
       fullTokenScore: 50,
@@ -335,6 +339,7 @@ function runtimeSettingsForm(profileDefaults: {
     maxRequestsPerRun: String(config.discovery.maxRequestsPerRun),
     structuredVerificationSources: config.discovery.structuredVerificationSources.join("\n"),
     closedListingMarkers: config.discovery.closedListingMarkers.join("\n"),
+    discoveryNotificationDurationMs: String(config.ui.discoveryNotificationDurationMs),
     discoveryPollIntervalMs: String(config.ui.discoveryPollIntervalMs),
     discoveryStaleAfterMs: String(config.ui.discoveryStaleAfterMs),
     exactTitleScore: String(config.matching.exactTitleScore),

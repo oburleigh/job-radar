@@ -1,5 +1,5 @@
 import { recruiterEngagementWeb } from "./composition/recruiter-engagement-web.server";
-import type { ResearchRunActivity } from "./public-contract";
+import { isActiveResearchRunActivity, type ResearchRunActivity } from "./public-contract";
 
 export const recruiterResearchSettingsContract = {
   getDirectoryMatchWeights: recruiterEngagementWeb.getDirectoryMatchWeights,
@@ -14,4 +14,6 @@ export const recruiterResearchSettingsContract = {
 export const recruiterActivityContract = {
   listResearchRuns: (): Promise<readonly ResearchRunActivity[]> =>
     recruiterEngagementWeb.listResearchRuns(),
+  countActiveResearchRuns: async (): Promise<number> =>
+    (await recruiterEngagementWeb.listResearchRuns()).filter(isActiveResearchRunActivity).length,
 };

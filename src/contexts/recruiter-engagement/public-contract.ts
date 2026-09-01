@@ -5,9 +5,13 @@ export { parsePublicSearchSettingsRequest } from "./presentation/web/requests/pu
 export { parseResearchCriteriaOptionsRequest } from "./presentation/web/requests/research-criteria-options-request";
 export { ResearchCriteriaOptionsForm } from "./presentation/web/research-criteria-options-form";
 
-import type { ResearchRun } from "./domain/research-run";
+import { isRunAcceptingObservations, type ResearchRun } from "./domain/research-run";
 
 export type ResearchRunActivity = Pick<
   ResearchRun,
   "brief" | "checkpoint" | "completionReason" | "id" | "startedAt" | "status"
 >;
+
+export function isActiveResearchRunActivity(run: ResearchRunActivity): boolean {
+  return isRunAcceptingObservations(run);
+}

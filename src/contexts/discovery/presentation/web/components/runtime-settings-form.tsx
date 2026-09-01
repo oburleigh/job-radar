@@ -129,6 +129,13 @@ export function RuntimeSettingsForm({
             help="Maximum number of completed and in-progress runs shown in Run history."
           />
           <NumberField
+            label="Discovery notification duration (ms)"
+            name="discoveryNotificationDurationMs"
+            value={ui.discoveryNotificationDurationMs}
+            min={limits.discoveryNotificationDurationMs.min}
+            max={limits.discoveryNotificationDurationMs.max}
+          />
+          <NumberField
             label="Run status polling (ms)"
             name="discoveryPollIntervalMs"
             value={ui.discoveryPollIntervalMs}

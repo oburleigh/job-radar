@@ -20,6 +20,7 @@ import { db } from "@/contexts/discovery/infrastructure/sqlite/database";
 import { getDashboardData } from "@/contexts/discovery/infrastructure/sqlite/read-models/dashboard";
 import { getProfiles } from "@/contexts/discovery/infrastructure/sqlite/read-models/profiles";
 import {
+  countActiveDiscoveryRuns,
   getRunDetail,
   getRunsData,
 } from "@/contexts/discovery/infrastructure/sqlite/read-models/runs";
@@ -71,6 +72,7 @@ export const discoveryWeb = {
   changeJobListingState,
   diagnoseKnownRole,
   canConfigureBoardSync: isBuiltInAtsType,
+  countActiveDiscoveryRuns,
   getAtsLabels,
   getDashboardData: (filters: Parameters<typeof getDashboardData>[0]) =>
     getDashboardData(filters, db),

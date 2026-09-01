@@ -55,6 +55,7 @@ export interface RuntimeSettings {
   readonly matching: MatchingPolicy;
   readonly marketVocabulary: MarketVocabulary;
   readonly ui: {
+    readonly discoveryNotificationDurationMs: number;
     readonly discoveryPollIntervalMs: number;
     readonly discoveryStaleAfterMs: number;
   };

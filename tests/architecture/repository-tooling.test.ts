@@ -34,7 +34,7 @@ describe("repository tooling", () => {
 
   it("keeps the web framework inside the Discovery composition adapter", () => {
     expect(packageJson.dependencies).not.toHaveProperty("next");
-    expect(packageJson.scripts?.dev).toBe("react-router dev");
+    expect(packageJson.scripts?.dev).toBe("react-router dev --force --strictPort");
     expect(existsSync(path.join(repositoryRoot, "src", "app"))).toBe(false);
     expect(
       existsSync(

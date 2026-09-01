@@ -19,7 +19,7 @@ import {
   jobs,
   searchProfiles,
 } from "@/contexts/discovery/infrastructure/sqlite/schema";
-import { readRunDetail } from "./runs";
+import { countActiveDiscoveryRuns, readRunDetail } from "./runs";
 
 const recordedAt = new Date("2026-08-25T12:00:00.000Z");
 
@@ -36,6 +36,24 @@ describe("completed discovery run funnel", () => {
 
   afterEach(() => {
     sqlite.close();
+  });
+
+  it("counts every running discovery independently of run history presentation", () => {
+    const first = seedRun(database, { hitCount: 1, matchesFound: 0 });
+    const second = seedRun(database, { hitCount: 2, matchesFound: 0 });
+    seedRun(database, { hitCount: 3, matchesFound: 0 });
+    database
+      .update(discoveryRuns)
+      .set({ status: "running", finishedAt: null })
+      .where(eq(discoveryRuns.id, first.runId))
+      .run();
+    database
+      .update(discoveryRuns)
+      .set({ status: "running", finishedAt: null })
+      .where(eq(discoveryRuns.id, second.runId))
+      .run();
+
+    expect(countActiveDiscoveryRuns(database)).toBe(2);
   });
 
   it("counts direct candidates across typed and legacy exclusion reasons", () => {

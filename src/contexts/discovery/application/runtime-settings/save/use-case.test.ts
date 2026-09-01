@@ -111,7 +111,11 @@ function runtimeSettings(): RuntimeSettingsCommand {
         { key: "subdivision:AE-DU", label: "Dubai", aliases: [] },
       ],
     },
-    ui: { discoveryPollIntervalMs: 2_000, discoveryStaleAfterMs: 300_000 },
+    ui: {
+      discoveryNotificationDurationMs: 5_000,
+      discoveryPollIntervalMs: 2_000,
+      discoveryStaleAfterMs: 300_000,
+    },
     searchProviders: {},
     integrationPolicy: { customPriority: 1_000 },
     profileDefaults: { maximumAgeDays: 30, minimumScore: 70, salaryCurrency: "" },

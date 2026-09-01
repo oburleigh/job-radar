@@ -134,6 +134,24 @@ test("completes discovery and triage while profile editing remains responsive", 
   expect(response.status()).toBe(202);
   const started = (await response.json()) as { runId: number };
 
+  const runningNotice = page.getByRole("status").filter({ hasText: "Discovery running" });
+  await expect(runningNotice).toContainText(profileName);
+  const activeActivity = page.getByRole("link", { name: "Activity, 1 active run" });
+  await expect(activeActivity).toBeVisible();
+  const [activityIconBox, activityBadgeBox] = await Promise.all([
+    activeActivity.locator("svg").boundingBox(),
+    activeActivity.locator(".jr-notification-badge").boundingBox(),
+  ]);
+  if (!activityIconBox || !activityBadgeBox) {
+    throw new Error("The Activity icon and notification badge must be measurable.");
+  }
+  expect(activityBadgeBox.width).toBeLessThan(activityIconBox.width);
+  expect(activityBadgeBox.height).toBeLessThan(activityIconBox.height);
+  expect(activityBadgeBox.x).toBeGreaterThan(activityIconBox.x + activityIconBox.width / 2);
+  expect(activityBadgeBox.y).toBeLessThan(activityIconBox.y + activityIconBox.height / 2);
+  await page.screenshot({ path: "test-results/ui-review/discovery-running-desktop.png" });
+  await expect(runningNotice).toHaveCount(0, { timeout: 7_000 });
+
   await expect(
     page.getByRole("button", { name: `Cancel discovery #${started.runId}` }),
   ).toHaveCount(0);

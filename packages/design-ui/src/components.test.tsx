@@ -6,6 +6,7 @@ import {
   buttonAttributes,
   IconButton,
   Modal,
+  NotificationBadge,
   PageHeader,
   SectionHeader,
   SelectField,
@@ -49,6 +50,15 @@ describe("generic UI public contract", () => {
     expect(html).toContain('aria-label="Archive job"');
     expect(html).toContain('aria-pressed="true"');
     expect(html).toContain('data-variant="outlined"');
+  });
+
+  it("renders a compact visual notification count without duplicating the parent label", () => {
+    const html = renderToStaticMarkup(<NotificationBadge count={12} />);
+
+    expect(html).toContain('class="jr-notification-badge"');
+    expect(html).toContain('aria-hidden="true"');
+    expect(html).toContain(">12</span>");
+    expect(renderToStaticMarkup(<NotificationBadge count={0} />)).toBe("");
   });
 
   it("connects a text field to its label, hint, and error", () => {

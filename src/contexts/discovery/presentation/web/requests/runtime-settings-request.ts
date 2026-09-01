@@ -63,6 +63,9 @@ const runtimeSettingsSchema = z
     maxRequestsPerRun: integer(runtimeSettingConstraints.maxRequestsPerRun),
     structuredVerificationSources: z.string().transform(splitLines),
     closedListingMarkers: z.string().transform(splitLines).pipe(z.array(z.string()).min(1)),
+    discoveryNotificationDurationMs: integer(
+      runtimeSettingConstraints.discoveryNotificationDurationMs,
+    ),
     discoveryPollIntervalMs: integer(runtimeSettingConstraints.discoveryPollIntervalMs),
     discoveryStaleAfterMs: integer(runtimeSettingConstraints.discoveryStaleAfterMs),
     exactTitleScore: integer(runtimeSettingConstraints.exactTitleScore),
@@ -206,6 +209,7 @@ export function parseRuntimeSettingsRequest(
       },
       marketVocabulary: values.marketVocabulary,
       ui: {
+        discoveryNotificationDurationMs: values.discoveryNotificationDurationMs,
         discoveryPollIntervalMs: values.discoveryPollIntervalMs,
         discoveryStaleAfterMs: values.discoveryStaleAfterMs,
       },

@@ -8,6 +8,27 @@ import {
 } from "./discovery-notifications";
 
 describe("discovery notification polling reconciliation", () => {
+  it("presents a running run with its current progress", () => {
+    expect(
+      describeDiscoveryNotice(
+        completedRun({
+          status: "running",
+          outcome: "completed",
+          phase: "web-coverage",
+          knownBoardCount: 2,
+          knownBoardCompletedCount: 2,
+          jobsUpserted: 4,
+          matchesFound: 1,
+        }),
+      ),
+    ).toEqual({
+      kind: "running",
+      title: "Discovery running",
+      message:
+        "Asia leadership: Expanding web coverage · 2 of 2 boards · 4 jobs changed · 1 match found",
+    });
+  });
+
   it("removes ids omitted by a storage event and suppresses their re-adoption", () => {
     const pendingIds = new Set([41, 42]);
     const suppressedIds = new Set<number>();

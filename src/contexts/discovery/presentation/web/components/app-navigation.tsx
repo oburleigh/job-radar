@@ -1,4 +1,4 @@
-import { Button } from "@job-radar/design-ui";
+import { Button, NotificationBadge, Tooltip } from "@job-radar/design-ui";
 import {
   BriefcaseBusiness,
   CircleUserRound,
@@ -57,7 +57,7 @@ const primaryNavigation = [
   },
 ] as const;
 
-export function AppNavigation() {
+export function AppNavigation({ activeRunCount }: { readonly activeRunCount: number }) {
   const { pathname } = useLocation();
   const routeNavigation = useNavigation();
   const theme = useSyncExternalStore(subscribeToTheme, getThemeSnapshot, getServerThemeSnapshot);
@@ -76,6 +76,11 @@ export function AppNavigation() {
   const activityPending = pendingPathname
     ? matchesNavigationPath("/activity", pendingPathname)
     : false;
+  const activityLabel =
+    activeRunCount === 0
+      ? "Activity"
+      : `Activity, ${activeRunCount} active run${activeRunCount === 1 ? "" : "s"}`;
+  const themeLabel = `Theme: ${theme}. Change theme`;
 
   function cycleTheme() {
     const next: ThemeMode = theme === "system" ? "light" : theme === "light" ? "dark" : "system";
@@ -162,18 +167,20 @@ export function AppNavigation() {
 
       <div className="utility-controls">
         <div className="profile-menu" ref={profileMenuRef}>
-          <Button
-            aria-controls="search-profiles-menu"
-            aria-current={profileActive ? "page" : undefined}
-            aria-expanded={profileMenuOpen}
-            aria-haspopup="menu"
-            className={`utility-control${profileActive ? " utility-control-active" : ""}`}
-            id="search-profiles-trigger"
-            onClick={() => setProfileMenuOpen((open) => !open)}
-          >
-            <CircleUserRound size={19} aria-hidden="true" />
-            <span className="sr-only">Search profiles</span>
-          </Button>
+          <Tooltip label="Search profiles">
+            <Button
+              aria-controls="search-profiles-menu"
+              aria-current={profileActive ? "page" : undefined}
+              aria-expanded={profileMenuOpen}
+              aria-haspopup="menu"
+              className={`utility-control${profileActive ? " utility-control-active" : ""}`}
+              id="search-profiles-trigger"
+              onClick={() => setProfileMenuOpen((open) => !open)}
+            >
+              <CircleUserRound size={19} aria-hidden="true" />
+              <span className="sr-only">Search profiles</span>
+            </Button>
+          </Tooltip>
           {profileMenuOpen ? (
             <div className="profile-menu-content" id="search-profiles-menu" role="menu">
               <Link
@@ -196,33 +203,33 @@ export function AppNavigation() {
             </div>
           ) : null}
         </div>
-        <Link
-          aria-busy={activityPending || undefined}
-          aria-current={matchesNavigationPath("/activity", pathname) ? "page" : undefined}
-          aria-label="Activity"
-          className={`utility-link${matchesNavigationPath("/activity", pathname) ? " utility-control-active" : ""}${activityPending ? " utility-control-pending" : ""}`}
-          to="/activity"
-        >
-          <History size={19} aria-hidden="true" />
-        </Link>
-        <Link
-          aria-busy={settingsPending || undefined}
-          aria-current={matchesNavigationPath("/settings", pathname) ? "page" : undefined}
-          aria-label="System settings"
-          className={`utility-link${matchesNavigationPath("/settings", pathname) ? " utility-control-active" : ""}${settingsPending ? " utility-control-pending" : ""}`}
-          to="/settings/opportunities"
-        >
-          <Cog size={19} aria-hidden="true" />
-        </Link>
-        <Button
-          className="theme-toggle utility-control"
-          onClick={cycleTheme}
-          aria-label={`Theme: ${theme}. Change theme`}
-          title={`Theme: ${theme}. Click for the next mode.`}
-        >
-          <ThemeIcon size={16} aria-hidden="true" />
-          <span>{theme}</span>
-        </Button>
+        <Tooltip label={activityLabel}>
+          <Link
+            aria-busy={activityPending || undefined}
+            aria-current={matchesNavigationPath("/activity", pathname) ? "page" : undefined}
+            className={`utility-link${matchesNavigationPath("/activity", pathname) ? " utility-control-active" : ""}${activityPending ? " utility-control-pending" : ""}`}
+            to="/activity"
+          >
+            <History size={19} aria-hidden="true" />
+            <NotificationBadge count={activeRunCount} />
+          </Link>
+        </Tooltip>
+        <Tooltip label="System settings">
+          <Link
+            aria-busy={settingsPending || undefined}
+            aria-current={matchesNavigationPath("/settings", pathname) ? "page" : undefined}
+            className={`utility-link${matchesNavigationPath("/settings", pathname) ? " utility-control-active" : ""}${settingsPending ? " utility-control-pending" : ""}`}
+            to="/settings/opportunities"
+          >
+            <Cog size={19} aria-hidden="true" />
+          </Link>
+        </Tooltip>
+        <Tooltip label={themeLabel}>
+          <Button className="theme-toggle utility-control" onClick={cycleTheme}>
+            <ThemeIcon size={16} aria-hidden="true" />
+            <span>{theme}</span>
+          </Button>
+        </Tooltip>
       </div>
     </header>
   );

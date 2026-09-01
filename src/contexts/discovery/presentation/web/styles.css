@@ -8,6 +8,7 @@
   html {
     min-width: 320px;
     background: var(--jr-color-canvas);
+    scrollbar-gutter: stable;
   }
 
   body {
@@ -134,7 +135,7 @@
   font-stretch: condensed;
   font-weight: 800;
   letter-spacing: -0.03em;
-  line-height: 1;
+  line-height: var(--jr-line-height-tight);
   text-transform: uppercase;
 }
 
@@ -219,6 +220,7 @@
 
 .utility-control,
 .utility-link {
+  position: relative;
   display: inline-flex;
   width: 68px;
   min-width: 52px;

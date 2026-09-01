@@ -237,7 +237,7 @@ export function isTerminalResearchRun(run: ResearchRun): boolean {
   return ["completed", "partial", "failed", "cancelled"].includes(run.status);
 }
 
-export function isRunAcceptingObservations(run: ResearchRun): boolean {
+export function isRunAcceptingObservations(run: Pick<ResearchRun, "status">): boolean {
   return run.status === "pending" || run.status === "running" || run.status === "interrupted";
 }
 

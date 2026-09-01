@@ -58,6 +58,10 @@ const setNumericSetting: Record<RuntimeNumericSetting, SetNumericSetting> = {
   providerRetryMaxDelayMs: withProviderRetryMaxDelay,
   providerRetryMaxTimeMs: (settings, retryMaxTimeMs) =>
     withProviderExecution(settings, { retryMaxTimeMs }),
+  discoveryNotificationDurationMs: (settings, discoveryNotificationDurationMs) => ({
+    ...settings,
+    ui: { ...settings.ui, discoveryNotificationDurationMs },
+  }),
   discoveryPollIntervalMs: (settings, discoveryPollIntervalMs) => ({
     ...settings,
     ui: { ...settings.ui, discoveryPollIntervalMs },
@@ -358,7 +362,11 @@ function runtimeSettings(): RuntimeSettingsCommand {
         { key: "subdivision:AE-DU", label: "Dubai", aliases: [] },
       ],
     },
-    ui: { discoveryPollIntervalMs: 2_000, discoveryStaleAfterMs: 300_000 },
+    ui: {
+      discoveryNotificationDurationMs: 5_000,
+      discoveryPollIntervalMs: 2_000,
+      discoveryStaleAfterMs: 300_000,
+    },
     searchProviders: {
       test: {
         label: "Test",

@@ -18,6 +18,7 @@ const decimal = (min: number, max: number, step: number): NumericConstraint => (
 export const runtimeSettingConstraints = {
   boardJobLimit: integer(1, 2_000),
   customIntegrationPriority: integer(0, 10_000),
+  discoveryNotificationDurationMs: integer(1_000, 30_000),
   discoveryPollIntervalMs: integer(1_000, 60_000),
   discoveryStaleAfterMs: integer(60_000, 3_600_000),
   freshnessMaxScore: integer(0, 100),
@@ -84,6 +85,7 @@ export function findInvalidRuntimeSetting(
     ["providerRetryMinDelayMs", discovery.providerExecution.retryMinDelayMs],
     ["providerRetryMaxDelayMs", discovery.providerExecution.retryMaxDelayMs],
     ["providerRetryMaxTimeMs", discovery.providerExecution.retryMaxTimeMs],
+    ["discoveryNotificationDurationMs", ui.discoveryNotificationDurationMs],
     ["discoveryPollIntervalMs", ui.discoveryPollIntervalMs],
     ["discoveryStaleAfterMs", ui.discoveryStaleAfterMs],
     ["exactTitleScore", matching.exactTitleScore],

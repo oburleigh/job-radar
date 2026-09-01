@@ -1,5 +1,5 @@
 import { IconButton } from "@job-radar/design-ui";
-import { CheckCircle2, CircleAlert, CircleX, X } from "lucide-react";
+import { CheckCircle2, CircleAlert, CircleX, LoaderCircle, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useRevalidator } from "react-router";
 import type { DiscoveryRunOutcome } from "@/contexts/discovery/application/discovery-runs/outcome/derive-discovery-run-outcome";
@@ -8,6 +8,7 @@ import type {
   WebCoverageStatus,
 } from "@/contexts/discovery/application/discovery-runs/ports/discovery-run-journal";
 import { DISCOVERY_RUN_STARTED_EVENT } from "@/contexts/discovery/presentation/web/client-events";
+import { describeDiscoveryProgress } from "@/contexts/discovery/presentation/web/components/active-discovery-run";
 import { formatDiscoveryFailure } from "@/contexts/discovery/presentation/web/formatters/discovery-failure";
 import { presentDiscoveryRunOutcome } from "@/contexts/discovery/presentation/web/run-outcome-presentation";
 
@@ -40,18 +41,62 @@ interface StatusResponse {
 }
 
 interface DiscoveryNotificationsProps {
-  pollIntervalMs: number;
+  readonly notificationDurationMs: number;
+  readonly pollIntervalMs: number;
 }
 
-export function DiscoveryNotifications({ pollIntervalMs }: DiscoveryNotificationsProps) {
+export function DiscoveryNotifications({
+  notificationDurationMs,
+  pollIntervalMs,
+}: DiscoveryNotificationsProps) {
   const revalidator = useRevalidator();
   const pendingIds = useRef(new Set<number>());
   const suppressedIds = useRef(new Set<number>());
+  const hiddenRunningIds = useRef(new Set<number>());
+  const autoDismissTimers = useRef(
+    new Map<number, { readonly status: DiscoveryRunStatus["status"]; readonly timer: number }>(),
+  );
   const polling = useRef(false);
   const [notices, setNotices] = useState<DiscoveryRunStatus[]>([]);
 
   useEffect(() => {
     let active = true;
+
+    function clearAutoDismiss(runId: number) {
+      const scheduled = autoDismissTimers.current.get(runId);
+      if (scheduled) {
+        window.clearTimeout(scheduled.timer);
+        autoDismissTimers.current.delete(runId);
+      }
+    }
+
+    function showNotice(run: DiscoveryRunStatus) {
+      if (run.status === "running" && hiddenRunningIds.current.has(run.id)) {
+        return;
+      }
+
+      setNotices((current) => {
+        const existingIndex = current.findIndex((notice) => notice.id === run.id);
+        if (existingIndex === -1) {
+          return [...current, run];
+        }
+        return current.map((notice, index) => (index === existingIndex ? run : notice));
+      });
+
+      const scheduled = autoDismissTimers.current.get(run.id);
+      if (scheduled?.status === run.status) {
+        return;
+      }
+      clearAutoDismiss(run.id);
+      const timer = window.setTimeout(() => {
+        autoDismissTimers.current.delete(run.id);
+        if (run.status === "running") {
+          hiddenRunningIds.current.add(run.id);
+        }
+        setNotices((current) => current.filter((notice) => notice.id !== run.id));
+      }, notificationDurationMs);
+      autoDismissTimers.current.set(run.id, { status: run.status, timer });
+    }
 
     function trackRun(runId: number) {
       if (!Number.isInteger(runId) || runId < 1 || suppressedIds.current.has(runId)) {
@@ -105,16 +150,21 @@ export function DiscoveryNotifications({ pollIntervalMs }: DiscoveryNotification
         pendingIds.current,
         suppressedIds.current,
       );
-      const finished = currentRuns.filter((run) => run.status !== "running");
+      const finished: DiscoveryRunStatus[] = [];
+      for (const run of currentRuns) {
+        if (run.status === "running") {
+          showNotice(run);
+          continue;
+        }
+        hiddenRunningIds.current.delete(run.id);
+        showNotice(run);
+        finished.push(run);
+      }
       if (finished.length > 0) {
         for (const run of finished) {
           pendingIds.current.delete(run.id);
           suppressedIds.current.add(run.id);
         }
-        setNotices((current) => {
-          const known = new Set(current.map((notice) => notice.id));
-          return [...current, ...finished.filter((run) => !known.has(run.id))];
-        });
         void revalidator.revalidate();
       }
       persistPendingRuns(pendingIds);
@@ -133,6 +183,7 @@ export function DiscoveryNotifications({ pollIntervalMs }: DiscoveryNotification
       const runId = (event as CustomEvent<{ runId?: number }>).detail?.runId;
       if (runId) {
         trackRun(runId);
+        void revalidator.revalidate();
         void pollRuns();
       }
     };
@@ -154,10 +205,26 @@ export function DiscoveryNotifications({ pollIntervalMs }: DiscoveryNotification
     return () => {
       active = false;
       window.clearInterval(interval);
+      for (const scheduled of autoDismissTimers.current.values()) {
+        window.clearTimeout(scheduled.timer);
+      }
+      autoDismissTimers.current.clear();
       window.removeEventListener(DISCOVERY_RUN_STARTED_EVENT, handleStarted);
       window.removeEventListener("storage", handleStorage);
     };
-  }, [pollIntervalMs, revalidator]);
+  }, [notificationDurationMs, pollIntervalMs, revalidator]);
+
+  function dismissNotice(run: DiscoveryRunStatus) {
+    const scheduled = autoDismissTimers.current.get(run.id);
+    if (scheduled) {
+      window.clearTimeout(scheduled.timer);
+      autoDismissTimers.current.delete(run.id);
+    }
+    if (run.status === "running") {
+      hiddenRunningIds.current.add(run.id);
+    }
+    setNotices((current) => current.filter((notice) => notice.id !== run.id));
+  }
 
   return (
     <aside className="discovery-notification-layer" aria-label="Discovery status">
@@ -166,14 +233,17 @@ export function DiscoveryNotifications({ pollIntervalMs }: DiscoveryNotification
         const failed = presentation.kind === "failed";
         const cancelled = presentation.kind === "cancelled";
         const partial = presentation.kind === "partial";
+        const running = presentation.kind === "running";
         return (
           <div
-            className={`discovery-notice${failed ? " notice-failed" : cancelled ? " notice-cancelled" : partial ? " notice-partial" : ""}`}
+            className={`discovery-notice${running ? " notice-running" : failed ? " notice-failed" : cancelled ? " notice-cancelled" : partial ? " notice-partial" : ""}`}
             key={run.id}
             role={failed || partial ? "alert" : "status"}
           >
             <span className="discovery-notice-icon">
-              {failed || partial ? (
+              {running ? (
+                <LoaderCircle className="spin" size={20} />
+              ) : failed || partial ? (
                 <CircleAlert size={20} />
               ) : cancelled ? (
                 <CircleX size={20} />
@@ -185,7 +255,7 @@ export function DiscoveryNotifications({ pollIntervalMs }: DiscoveryNotification
               <strong>{presentation.title}</strong>
               <p>{presentation.message}</p>
               <div className="discovery-notice-links">
-                {!failed && !cancelled ? (
+                {!running && !failed && !cancelled ? (
                   <Link to={`/?profile=${run.profileId}`}>View results</Link>
                 ) : null}
                 <Link to={`/runs/${run.id}`} aria-label={`View run #${run.id}`}>
@@ -193,12 +263,7 @@ export function DiscoveryNotifications({ pollIntervalMs }: DiscoveryNotification
                 </Link>
               </div>
             </div>
-            <IconButton
-              onClick={() =>
-                setNotices((current) => current.filter((notice) => notice.id !== run.id))
-              }
-              label="Dismiss discovery notification"
-            >
+            <IconButton onClick={() => dismissNotice(run)} label="Dismiss discovery notification">
               <X size={17} />
             </IconButton>
           </div>
@@ -225,10 +290,17 @@ function persistPendingRuns(pendingIds: { readonly current: Set<number> }): void
 }
 
 export function describeDiscoveryNotice(run: DiscoveryRunStatus): {
-  readonly kind: DiscoveryRunOutcome;
+  readonly kind: DiscoveryRunOutcome | "running";
   readonly title: string;
   readonly message: string;
 } {
+  if (run.status === "running") {
+    return {
+      kind: "running",
+      title: "Discovery running",
+      message: `${run.profileName}: ${describeDiscoveryProgress(run)}`,
+    };
+  }
   const presentation = presentDiscoveryRunOutcome(run.outcome);
   if (run.outcome === "failed") {
     return {

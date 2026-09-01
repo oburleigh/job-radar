@@ -81,7 +81,14 @@ describe("search brief", () => {
     });
   });
 
-  it("makes cancellation terminal before a later source observation can be stored", () => {
+  it("counts only research runs that can still accept observations as active", () => {
+    for (const status of ["pending", "running", "interrupted"] as const) {
+      expect(isRunAcceptingObservations({ status })).toBe(true);
+    }
+    for (const status of ["completed", "partial", "failed", "cancelled"] as const) {
+      expect(isRunAcceptingObservations({ status })).toBe(false);
+    }
+
     const run = createResearchRun({
       id: "run-1",
       brief: brief(),
@@ -93,7 +100,6 @@ describe("search brief", () => {
     const cancelled = cancelResearchRun(run, new Date("2026-08-27T10:01:00.000Z"));
 
     expect(cancelled.status).toBe("cancelled");
-    expect(isRunAcceptingObservations(cancelled)).toBe(false);
   });
 
   it("reports coverage against the coupled firm and recruiter targets", () => {

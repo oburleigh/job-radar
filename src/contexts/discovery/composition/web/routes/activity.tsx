@@ -7,7 +7,10 @@ import {
   ActiveDiscoveryRunPolling,
 } from "@/contexts/discovery/presentation/web/components/active-discovery-run";
 import { presentDiscoveryRunOutcome } from "@/contexts/discovery/presentation/web/run-outcome-presentation";
-import type { ResearchRunActivity } from "@/contexts/recruiter-engagement/public-contract";
+import {
+  isActiveResearchRunActivity,
+  type ResearchRunActivity,
+} from "@/contexts/recruiter-engagement/public-contract";
 import { recruiterActivityContract } from "@/contexts/recruiter-engagement/public-contract.server";
 
 export async function loader() {
@@ -144,7 +147,7 @@ function discoveryActivity(run: ReturnType<typeof discoveryWeb.getRunsData>[numb
 }
 
 function researchActivity(run: ResearchRunActivity) {
-  const active = ["pending", "running", "interrupted"].includes(run.status);
+  const active = isActiveResearchRunActivity(run);
   const status = titleCase(run.status);
   return {
     active,

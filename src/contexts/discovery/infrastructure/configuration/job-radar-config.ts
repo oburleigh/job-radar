@@ -16,6 +16,7 @@ import { appSettings, atsIntegrations } from "@/contexts/discovery/infrastructur
 import {
   defaultAdaptivePaginationSettings,
   defaultProviderExecutionSettings,
+  defaultUiSettings,
 } from "./bootstrap-job-radar";
 
 type Database = typeof db;
@@ -85,6 +86,9 @@ const discoverySchema = z
   }));
 
 const uiSchema = z.object({
+  discoveryNotificationDurationMs: integer(
+    runtimeSettingConstraints.discoveryNotificationDurationMs,
+  ).default(defaultUiSettings.discoveryNotificationDurationMs),
   discoveryPollIntervalMs: integer(runtimeSettingConstraints.discoveryPollIntervalMs),
   discoveryStaleAfterMs: integer(runtimeSettingConstraints.discoveryStaleAfterMs),
 });

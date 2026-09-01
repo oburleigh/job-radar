@@ -55,6 +55,12 @@ export const defaultAdaptivePaginationSettings = {
   maxRequestsPerRun: 111,
 } as const;
 
+export const defaultUiSettings = {
+  discoveryNotificationDurationMs: 5_000,
+  discoveryPollIntervalMs: 3_000,
+  discoveryStaleAfterMs: 300_000,
+} as const satisfies RuntimeSettings["ui"];
+
 export const defaultMarketVocabulary = {
   markets: [
     {
@@ -99,10 +105,7 @@ const settingDefaults: SettingDefault[] = [
   },
   {
     key: "ui",
-    value: {
-      discoveryPollIntervalMs: 3000,
-      discoveryStaleAfterMs: 300000,
-    },
+    value: defaultUiSettings,
   },
   {
     key: "marketVocabulary",

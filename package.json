@@ -9,7 +9,7 @@
     "pnpm": ">=11 <12"
   },
   "scripts": {
-    "dev": "react-router dev",
+    "dev": "react-router dev --force --strictPort",
     "build": "pnpm packages:build && react-router build",
     "build:verification": "cross-env JOB_RADAR_BUILD_DIRECTORY=build/verification pnpm build",
     "start": "pnpm setup:check && cross-env HOST=127.0.0.1 NODE_OPTIONS=--import=dotenv/config react-router-serve build/server/index.js",

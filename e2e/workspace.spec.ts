@@ -19,6 +19,11 @@ test("keeps personal and system controls in the masthead without crowding primar
   await expect(page.getByRole("link", { name: "Opportunities", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Recruiter Search" })).toBeVisible();
   await expect(activity).toBeVisible();
+  await activity.hover();
+  await expect(page.getByRole("tooltip")).toHaveText("Activity");
+  await activity.focus();
+  await expect(page.getByRole("tooltip")).toHaveText("Activity");
+  await page.screenshot({ path: "test-results/ui-review/activity-tooltip-desktop.png" });
   await expect(page.getByRole("link", { name: "Source coverage" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Discovery runs" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Recruiter research" })).toHaveCount(0);
@@ -115,6 +120,32 @@ test("loads the opportunity workspace with its visible page header and without d
   }
   expect(mobileMatches.y).toBeLessThan(776);
   await page.screenshot({ path: "test-results/opportunities-mobile.png", fullPage: true });
+});
+
+test("keeps the workspace aligned when routes gain or lose a vertical scrollbar", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/settings/recruiter-search/public-search");
+  await expect(page.getByRole("heading", { level: 1, name: "Settings" })).toBeVisible();
+  await expect(page.locator("html")).toHaveCSS("scrollbar-gutter", "stable");
+  expect(
+    await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight),
+  ).toBe(true);
+  const shortPage = await page.locator(".page").boundingBox();
+
+  await page.goto("/settings/adapters/source-coverage");
+  await expect(page.getByRole("heading", { level: 2, name: "Source Coverage" })).toBeVisible();
+  expect(
+    await page.evaluate(() => document.documentElement.scrollHeight > window.innerHeight),
+  ).toBe(true);
+  const longPage = await page.locator(".page").boundingBox();
+
+  if (!shortPage || !longPage) {
+    throw new Error("Both workspace layouts must be measurable.");
+  }
+  expect(Math.abs(longPage.x - shortPage.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(longPage.width - shortPage.width)).toBeLessThanOrEqual(1);
 });
 
 test("opens the ATS integration editor where the action is presented", async ({ page }) => {

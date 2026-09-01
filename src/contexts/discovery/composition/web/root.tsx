@@ -7,9 +7,17 @@ import { Links, Meta, Outlet, Scripts, ScrollRestoration, useLoaderData } from "
 import { discoveryWeb } from "@/contexts/discovery/composition/discovery-web.server";
 import { AppNavigation } from "@/contexts/discovery/presentation/web/components/app-navigation";
 import { DiscoveryNotifications } from "@/contexts/discovery/presentation/web/components/discovery-notifications";
+import { recruiterActivityContract } from "@/contexts/recruiter-engagement/public-contract.server";
 
-export function loader() {
-  return { discoveryPollIntervalMs: discoveryWeb.getUiSettings().discoveryPollIntervalMs };
+export async function loader() {
+  const ui = discoveryWeb.getUiSettings();
+  const activeResearchRunCount = await recruiterActivityContract.countActiveResearchRuns();
+  const activeDiscoveryRunCount = discoveryWeb.countActiveDiscoveryRuns();
+  return {
+    activeRunCount: activeDiscoveryRunCount + activeResearchRunCount,
+    discoveryNotificationDurationMs: ui.discoveryNotificationDurationMs,
+    discoveryPollIntervalMs: ui.discoveryPollIntervalMs,
+  };
 }
 
 export const meta = () => [
@@ -23,7 +31,7 @@ export const meta = () => [
 
 export function Layout({ children }: { readonly children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -41,7 +49,8 @@ export function Layout({ children }: { readonly children: React.ReactNode }) {
 }
 
 export default function DiscoveryWebApplication() {
-  const { discoveryPollIntervalMs } = useLoaderData<typeof loader>();
+  const { activeRunCount, discoveryNotificationDurationMs, discoveryPollIntervalMs } =
+    useLoaderData<typeof loader>();
 
   return (
     <>
@@ -49,11 +58,14 @@ export default function DiscoveryWebApplication() {
         Skip to main content
       </a>
       <div className="app-shell">
-        <AppNavigation />
+        <AppNavigation activeRunCount={activeRunCount} />
         <main className="app-main" id="main-content">
           <Outlet />
         </main>
-        <DiscoveryNotifications pollIntervalMs={discoveryPollIntervalMs} />
+        <DiscoveryNotifications
+          notificationDurationMs={discoveryNotificationDurationMs}
+          pollIntervalMs={discoveryPollIntervalMs}
+        />
       </div>
     </>
   );

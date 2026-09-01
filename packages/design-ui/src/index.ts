@@ -6,6 +6,10 @@ export {
 } from "./button.js";
 export { IconButton, type IconButtonProps } from "./icon-button.js";
 export { Modal, type ModalProps } from "./modal.js";
+export {
+  NotificationBadge,
+  type NotificationBadgeProps,
+} from "./notification-badge.js";
 export { PageHeader, type PageHeaderProps } from "./page-header.js";
 export { SectionHeader, type SectionHeaderProps } from "./section-header.js";
 export { SelectField, type SelectFieldProps } from "./select-field.js";
@@ -18,3 +22,4 @@ export {
   type TokenAutocompleteOption,
   type TokenAutocompleteProps,
 } from "./token-autocomplete.js";
+export { Tooltip, type TooltipProps } from "./tooltip.js";

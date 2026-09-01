@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 
 import { deriveDiscoveryRunOutcome } from "@/contexts/discovery/application/discovery-runs/outcome/derive-discovery-run-outcome";
 import type { ExclusionReason } from "@/contexts/discovery/domain/job-match";
@@ -16,6 +16,16 @@ import {
 } from "@/contexts/discovery/infrastructure/sqlite/schema";
 
 type Database = typeof db;
+
+export function countActiveDiscoveryRuns(database: Database = db): number {
+  return (
+    database
+      .select({ value: count() })
+      .from(discoveryRuns)
+      .where(eq(discoveryRuns.status, "running"))
+      .get()?.value ?? 0
+  );
+}
 
 export function getRunsData() {
   const { runHistoryLimit } = getJobRadarConfig().discovery;
