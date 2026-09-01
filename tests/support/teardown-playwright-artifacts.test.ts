@@ -4,32 +4,46 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import teardownPlaywrightDatabase from "./teardown-playwright-database";
+import teardownPlaywrightArtifacts from "./teardown-playwright-artifacts";
 
 vi.mock("node:fs", () => ({
   rmSync: vi.fn(),
 }));
 
-describe("Playwright database teardown", () => {
+describe("Playwright artifact teardown", () => {
   const originalDirectory = process.env.JOB_RADAR_E2E_DIRECTORY;
+  const originalBuildDirectory = process.env.JOB_RADAR_E2E_BUILD_DIRECTORY;
 
   afterEach(() => {
     vi.mocked(rmSync).mockReset();
     vi.restoreAllMocks();
     if (originalDirectory === undefined) {
       delete process.env.JOB_RADAR_E2E_DIRECTORY;
-      return;
+    } else {
+      process.env.JOB_RADAR_E2E_DIRECTORY = originalDirectory;
     }
-    process.env.JOB_RADAR_E2E_DIRECTORY = originalDirectory;
+    if (originalBuildDirectory === undefined) {
+      delete process.env.JOB_RADAR_E2E_BUILD_DIRECTORY;
+    } else {
+      process.env.JOB_RADAR_E2E_BUILD_DIRECTORY = originalBuildDirectory;
+    }
   });
 
   it("asks Node to retry transient directory locks", () => {
     const directory = path.join(tmpdir(), "job-radar-playwright-test");
+    const buildDirectory = path.join(process.cwd(), "build", "playwright-test");
     process.env.JOB_RADAR_E2E_DIRECTORY = directory;
+    process.env.JOB_RADAR_E2E_BUILD_DIRECTORY = buildDirectory;
 
-    teardownPlaywrightDatabase();
+    teardownPlaywrightArtifacts();
 
     expect(rmSync).toHaveBeenCalledWith(path.resolve(directory), {
+      force: true,
+      maxRetries: 5,
+      recursive: true,
+      retryDelay: 100,
+    });
+    expect(rmSync).toHaveBeenCalledWith(buildDirectory, {
       force: true,
       maxRetries: 5,
       recursive: true,
@@ -44,6 +58,6 @@ describe("Playwright database teardown", () => {
     const { default: config } = await import(configUrl.href);
 
     expect(config.globalTeardown).toBeUndefined();
-    expect(once).toHaveBeenCalledWith("exit", teardownPlaywrightDatabase);
+    expect(once).toHaveBeenCalledWith("exit", teardownPlaywrightArtifacts);
   });
 });

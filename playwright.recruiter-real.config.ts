@@ -4,11 +4,13 @@ import process from "node:process";
 
 import { defineConfig, devices } from "@playwright/test";
 
-import teardownPlaywrightDatabase from "./tests/support/teardown-playwright-database";
+import teardownPlaywrightArtifacts from "./tests/support/teardown-playwright-artifacts";
 
 const BASE_URL = "http://127.0.0.1:3300";
 const databaseDirectory = path.join(tmpdir(), `job-radar-playwright-recruiter-real-${process.pid}`);
 const databasePath = path.join(databaseDirectory, "job-radar.sqlite");
+const buildDirectory = path.join(process.cwd(), "build", `playwright-real-${process.pid}`);
+const serverBuildPath = path.join(buildDirectory, "server", "index.js");
 const useSystemChrome = process.env.PLAYWRIGHT_USE_SYSTEM_CHROME === "1";
 const braveSearchApiKey = process.env.BRAVE_SEARCH_API_KEY;
 
@@ -17,7 +19,8 @@ if (!braveSearchApiKey) {
 }
 
 process.env.JOB_RADAR_E2E_DIRECTORY = databaseDirectory;
-process.once("exit", teardownPlaywrightDatabase);
+process.env.JOB_RADAR_E2E_BUILD_DIRECTORY = buildDirectory;
+process.once("exit", teardownPlaywrightArtifacts);
 
 export default defineConfig({
   expect: { timeout: 300_000 },
@@ -42,10 +45,11 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   webServer: {
-    command: "pnpm db:setup && pnpm build && pnpm start",
+    command: `pnpm db:setup && pnpm build && pnpm exec react-router-serve ${serverBuildPath}`,
     env: {
       DB_PATH: databasePath,
       HOST: "127.0.0.1",
+      JOB_RADAR_BUILD_DIRECTORY: buildDirectory,
       PORT: "3300",
       BRAVE_SEARCH_API_KEY: braveSearchApiKey,
     },
