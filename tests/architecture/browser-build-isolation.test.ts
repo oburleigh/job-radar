@@ -59,10 +59,20 @@ describe("browser verification build isolation", () => {
     }
   });
 
+  it("keeps the repository gate away from the live build directory", () => {
+    const scripts = packageScripts();
+    const buildOwners = new Set(["build", "build:verification"]);
+    const offenders = Object.entries(scripts).filter(
+      ([name, command]) => !buildOwners.has(name) && /pnpm build(?![:\w])/.test(command),
+    );
+
+    expect(offenders).toEqual([]);
+    expect(scripts.verify).toContain("pnpm build:verification");
+    expect(scripts.verify).toContain("pnpm test:e2e");
+  });
+
   it("routes every test-owned production build away from the live build directory", () => {
-    const packageJson = JSON.parse(readFileSync("package.json", "utf8")) as {
-      scripts?: Record<string, string>;
-    };
+    const packageJson = { scripts: packageScripts() };
     const testBuildScripts = Object.entries(packageJson.scripts ?? {}).filter(
       ([name, command]) => name.startsWith("test:") && command.includes("pnpm build"),
     );
@@ -77,6 +87,13 @@ describe("browser verification build isolation", () => {
     }
   });
 });
+
+function packageScripts(): Record<string, string> {
+  const packageJson = JSON.parse(readFileSync("package.json", "utf8")) as {
+    scripts?: Record<string, string>;
+  };
+  return packageJson.scripts ?? {};
+}
 
 async function loadPlaywrightConfig(relativePath: string): Promise<PlaywrightTestConfig> {
   const configUrl = new URL(relativePath, import.meta.url);

@@ -40,6 +40,7 @@
     "format": "biome format --write .",
     "format:check": "biome format .",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test",
+    "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm test:e2e && pnpm build:verification",
     "packages:build": "pnpm --filter './packages/**' --if-present run build",
     "storybook": "pnpm --filter @job-radar/web-docs storybook",
     "storybook:build": "pnpm --filter @job-radar/web-docs build",
