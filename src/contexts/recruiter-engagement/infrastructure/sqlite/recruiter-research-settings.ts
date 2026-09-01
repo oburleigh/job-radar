@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { z } from "zod";
+import type { ExecutionSettingsCommand } from "@/contexts/recruiter-engagement/application/research-settings/save-execution-settings";
 import type { PublicSearchSettingsCommand } from "@/contexts/recruiter-engagement/application/research-settings/save-public-search-settings";
 import type { ResearchCriteriaOptionsCommand } from "@/contexts/recruiter-engagement/application/research-settings/save-research-criteria-options";
 import type { RecruiterResearchSettings } from "@/contexts/recruiter-engagement/application/research-settings/settings";
@@ -17,6 +18,14 @@ const settingsSchema = z
       .object({
         industries: briefItems.min(1),
         specialisms: briefItems.min(1),
+      })
+      .strict(),
+    execution: z
+      .object({
+        model: z.string().trim().min(1),
+        reasoningEffort: z.enum(["low", "medium", "high", "xhigh"]),
+        stageRequestLimit: positiveInteger,
+        stageTimeoutMs: z.number().int().safe().min(1_000),
       })
       .strict(),
     directoryMatchWeights: z
@@ -119,6 +128,19 @@ export function replaceDirectoryMatchWeights<TSchema extends Record<string, unkn
   database
     .update(recruiterResearchSettings)
     .set({ value: { ...settings, directoryMatchWeights: weights }, updatedAt: changedAt })
+    .where(eq(recruiterResearchSettings.key, "default"))
+    .run();
+}
+
+export function replaceExecutionSettings<TSchema extends Record<string, unknown>>(
+  database: Database<TSchema>,
+  execution: ExecutionSettingsCommand,
+  changedAt: Date,
+): void {
+  const settings = getRecruiterResearchSettings(database);
+  database
+    .update(recruiterResearchSettings)
+    .set({ value: { ...settings, execution }, updatedAt: changedAt })
     .where(eq(recruiterResearchSettings.key, "default"))
     .run();
 }

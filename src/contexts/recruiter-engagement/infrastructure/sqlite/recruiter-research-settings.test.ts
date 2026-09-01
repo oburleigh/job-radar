@@ -12,6 +12,7 @@ import {
 import {
   getRecruiterResearchSettings,
   replaceDirectoryMatchWeights,
+  replaceExecutionSettings,
   replacePublicSearchSettings,
   replaceResearchCriteriaOptions,
 } from "./recruiter-research-settings";
@@ -297,7 +298,137 @@ describe("recruiter research settings", () => {
       "Invalid recruiter research settings: defaultBrief.firmTarget must not exceed the recruiter target",
     );
   });
+  it("seeds Codex execution settings for a new workspace", () => {
+    const database = freshDatabase();
+    bootstrapRecruiterResearch(database);
+
+    expect(getRecruiterResearchSettings(database).execution).toEqual({
+      model: "gpt-5.6-sol",
+      reasoningEffort: "high",
+      stageRequestLimit: 2,
+      stageTimeoutMs: 600_000,
+    });
+  });
+
+  it("restores execution settings that an earlier migration removed", () => {
+    const database = freshDatabase();
+    bootstrapRecruiterResearch(database);
+    const stored = getRecruiterResearchSettings(database);
+    const { execution: _removed, ...withoutExecution } = stored;
+    database.update(recruiterResearchSettings).set({ value: withoutExecution }).run();
+
+    bootstrapRecruiterResearch(database, new Date("2026-09-01T12:00:00.000Z"));
+
+    expect(getRecruiterResearchSettings(database).execution).toEqual(
+      defaultRecruiterResearchSettings.execution,
+    );
+  });
+
+  it("persists configured execution settings", () => {
+    const database = freshDatabase();
+    bootstrapRecruiterResearch(database);
+
+    replaceExecutionSettings(
+      database,
+      {
+        model: "gpt-5.6-sol",
+        reasoningEffort: "low",
+        stageRequestLimit: 3,
+        stageTimeoutMs: 120_000,
+      },
+      new Date("2026-09-01T12:00:00.000Z"),
+    );
+
+    expect(getRecruiterResearchSettings(database).execution).toEqual({
+      model: "gpt-5.6-sol",
+      reasoningEffort: "low",
+      stageRequestLimit: 3,
+      stageTimeoutMs: 120_000,
+    });
+  });
+
+  it("rejects a reasoning effort the Codex binary does not accept", () => {
+    const database = freshDatabase();
+    bootstrapRecruiterResearch(database);
+    const stored = getRecruiterResearchSettings(database);
+    database
+      .update(recruiterResearchSettings)
+      .set({ value: { ...stored, execution: { ...stored.execution, reasoningEffort: "extreme" } } })
+      .run();
+
+    expect(() => getRecruiterResearchSettings(database)).toThrow(/reasoningEffort/);
+  });
+
+  it("seeds technology-qualified firm discovery phrases", () => {
+    const database = freshDatabase();
+    bootstrapRecruiterResearch(database);
+
+    expect(getRecruiterResearchSettings(database).publicSearch.firmDiscoveryPhrases).toEqual([
+      "technology recruitment agency",
+      "technology recruitment firm",
+      "IT recruitment agency",
+      "technology executive search",
+    ]);
+  });
+
+  it("restores technology-qualified phrases for a workspace holding the generic set", () => {
+    const database = freshDatabase();
+    bootstrapRecruiterResearch(database);
+    const stored = getRecruiterResearchSettings(database);
+    database
+      .update(recruiterResearchSettings)
+      .set({
+        value: {
+          ...stored,
+          publicSearch: {
+            ...stored.publicSearch,
+            firmDiscoveryPhrases: [
+              "recruitment agency",
+              "recruitment firm",
+              "executive search firm",
+              "staffing agency",
+              "recruiters",
+            ],
+          },
+        },
+      })
+      .run();
+
+    bootstrapRecruiterResearch(database, new Date("2026-09-01T12:00:00.000Z"));
+
+    expect(getRecruiterResearchSettings(database).publicSearch.firmDiscoveryPhrases).toEqual(
+      defaultRecruiterResearchSettings.publicSearch.firmDiscoveryPhrases,
+    );
+  });
+
+  it("leaves an operator's own firm discovery phrases alone", () => {
+    const database = freshDatabase();
+    bootstrapRecruiterResearch(database);
+    const stored = getRecruiterResearchSettings(database);
+    database
+      .update(recruiterResearchSettings)
+      .set({
+        value: {
+          ...stored,
+          publicSearch: { ...stored.publicSearch, firmDiscoveryPhrases: ["marine recruitment"] },
+        },
+      })
+      .run();
+
+    bootstrapRecruiterResearch(database, new Date("2026-09-01T12:00:00.000Z"));
+
+    expect(getRecruiterResearchSettings(database).publicSearch.firmDiscoveryPhrases).toEqual([
+      "marine recruitment",
+    ]);
+  });
 });
+
+function freshDatabase() {
+  const sqlite = new Database(":memory:");
+  const database = drizzle(sqlite);
+  migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+  return database;
+}
 
 function legacyCurrentDirectoryMatchWeights() {
   return {

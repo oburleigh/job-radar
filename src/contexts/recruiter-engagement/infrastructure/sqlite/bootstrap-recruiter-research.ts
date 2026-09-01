@@ -45,6 +45,12 @@ export const defaultRecruiterResearchSettings = {
       "Operations",
     ],
   },
+  execution: {
+    model: "gpt-5.6-sol",
+    reasoningEffort: "high",
+    stageRequestLimit: 2,
+    stageTimeoutMs: 600_000,
+  },
   directoryMatchWeights: {
     currentMandatesOrActivity: 15,
     evidenceFreshnessAndQuality: 10,
@@ -87,11 +93,10 @@ export const defaultRecruiterResearchSettings = {
       "techbehemoths.com",
     ],
     firmDiscoveryPhrases: [
-      "recruitment agency",
-      "recruitment firm",
-      "executive search firm",
-      "staffing agency",
-      "recruiters",
+      "technology recruitment agency",
+      "technology recruitment firm",
+      "IT recruitment agency",
+      "technology executive search",
     ],
     maxPagesPerQuery: 2,
     namedRecruiterOrTeamTerms: ["our team", "consultants", "recruiters", "leadership"],
@@ -103,6 +108,14 @@ export const defaultRecruiterResearchSettings = {
     stageRequestLimit: 40,
   },
 } as const satisfies RecruiterResearchSettings;
+
+const legacyGenericFirmDiscoveryPhrases = [
+  "recruitment agency",
+  "recruitment firm",
+  "executive search firm",
+  "staffing agency",
+  "recruiters",
+] as const;
 
 const legacyTechnologyPublicSearchSettings = {
   ...defaultRecruiterResearchSettings.publicSearch,
@@ -288,8 +301,22 @@ export function bootstrapRecruiterResearch<TSchema extends Record<string, unknow
     migrated.publicSearch = defaultRecruiterResearchSettings.publicSearch;
     changed = true;
   }
-  if ("execution" in migrated) {
-    delete migrated.execution;
+  if (!("execution" in migrated)) {
+    migrated.execution = defaultRecruiterResearchSettings.execution;
+    changed = true;
+  }
+  const publicSearch = migrated.publicSearch;
+  if (
+    publicSearch &&
+    typeof publicSearch === "object" &&
+    "firmDiscoveryPhrases" in publicSearch &&
+    JSON.stringify(publicSearch.firmDiscoveryPhrases) ===
+      JSON.stringify(legacyGenericFirmDiscoveryPhrases)
+  ) {
+    migrated.publicSearch = {
+      ...publicSearch,
+      firmDiscoveryPhrases: defaultRecruiterResearchSettings.publicSearch.firmDiscoveryPhrases,
+    };
     changed = true;
   }
   if (changed) {
