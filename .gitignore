@@ -64,3 +64,6 @@ yarn-error.log*
 /.impeccable/
 /skills-lock.json
 /plans/
+
+# local retrospectives
+/retrospectives/
