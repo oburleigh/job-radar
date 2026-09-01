@@ -64,6 +64,11 @@ export function testEvidence(sourceUrl: string): Evidence {
 
 export function testSearchBrief(
   overrides: {
+    readonly criteria?: {
+      readonly industries?: readonly string[];
+      readonly specialisms?: readonly string[];
+      readonly targetLocations?: readonly string[];
+    };
     readonly description?: string;
     readonly firmTarget?: number;
     readonly recruiterTarget?: number;
@@ -71,9 +76,9 @@ export function testSearchBrief(
 ) {
   return createSearchBrief({
     criteria: {
-      industries: ["Technology"],
-      specialisms: ["Software engineering"],
-      targetLocations: ["United Arab Emirates"],
+      industries: overrides.criteria?.industries ?? ["Technology"],
+      specialisms: overrides.criteria?.specialisms ?? ["Software engineering"],
+      targetLocations: overrides.criteria?.targetLocations ?? ["United Arab Emirates"],
     },
     description: overrides.description ?? "Technology recruitment",
     firmTarget: overrides.firmTarget ?? 1,
