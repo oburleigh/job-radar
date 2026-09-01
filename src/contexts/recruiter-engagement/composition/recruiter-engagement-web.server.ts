@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { tmpdir } from "node:os";
 import {
   createConfiguredWebSearchClient,
   getConfiguredWebSearchProviderOptions,
@@ -13,12 +14,19 @@ import { createResearchRunResumer } from "@/contexts/recruiter-engagement/applic
 import { createResearchRunRetrier } from "@/contexts/recruiter-engagement/application/research-runs/retry-research-run";
 import { createResearchRunStarter } from "@/contexts/recruiter-engagement/application/research-runs/start-research-run";
 import { createSaveDirectoryMatchWeights } from "@/contexts/recruiter-engagement/application/research-settings/save-directory-match-weights";
+import { createSaveExecutionSettings } from "@/contexts/recruiter-engagement/application/research-settings/save-execution-settings";
 import { createSavePublicSearchSettings } from "@/contexts/recruiter-engagement/application/research-settings/save-public-search-settings";
 import { createSaveResearchCriteriaOptions } from "@/contexts/recruiter-engagement/application/research-settings/save-research-criteria-options";
 import { createShortlistManagement } from "@/contexts/recruiter-engagement/application/shortlists/manage-shortlists";
 import { rankRecruiterDirectory } from "@/contexts/recruiter-engagement/domain/recruiter-directory";
 import type { ResearchRun } from "@/contexts/recruiter-engagement/domain/research-run";
 import { createAfterResponseResearchRunScheduler } from "@/contexts/recruiter-engagement/infrastructure/background/after-response-research-run-scheduler";
+import { createCodexCliClient } from "@/contexts/recruiter-engagement/infrastructure/codex/codex-cli-client";
+import {
+  createCodexAdapterPolicy,
+  createCodexSourcePlan,
+} from "@/contexts/recruiter-engagement/infrastructure/codex/codex-policy";
+import { createCodexResearchSource } from "@/contexts/recruiter-engagement/infrastructure/codex/codex-research-source";
 import { createDeterministicStagedResearchSource } from "@/contexts/recruiter-engagement/infrastructure/deterministic/deterministic-staged-research-source";
 import { resolveTargetLocationOptions } from "@/contexts/recruiter-engagement/infrastructure/markets/target-location-catalogue";
 import {
@@ -32,6 +40,7 @@ import { recruiterResearchDatabase } from "@/contexts/recruiter-engagement/infra
 import {
   getRecruiterResearchSettings,
   replaceDirectoryMatchWeights,
+  replaceExecutionSettings,
   replacePublicSearchSettings,
   replaceResearchCriteriaOptions,
 } from "@/contexts/recruiter-engagement/infrastructure/sqlite/recruiter-research-settings";
@@ -68,14 +77,30 @@ const publicSources = getConfiguredWebSearchProviderOptions().map((provider) =>
     providerName: provider.name,
   }),
 );
+const researchSourceKind = process.env.JOB_RADAR_RECRUITER_RESEARCH_SOURCE ?? "codex";
+const codexSource = createCodexResearchSource({
+  client: createCodexCliClient({
+    binaryPath: process.env.JOB_RADAR_CODEX_BINARY || "codex",
+    scratchDirectory: tmpdir(),
+  }),
+  execution: () => currentSettings().execution,
+  failures: sourceFailures,
+  now: () => new Date(),
+});
 const source = createResearchSourceSet({
   failures: sourceFailures,
   now: () => new Date(),
-  sources:
-    process.env.JOB_RADAR_RECRUITER_RESEARCH_SOURCE === "deterministic"
-      ? [createDeterministicStagedResearchSource({ pauseRecruiters: pauseDeterministicRecruiters })]
-      : publicSources,
+  sources: researchSources(),
 });
+
+function researchSources() {
+  if (researchSourceKind === "deterministic") {
+    return [
+      createDeterministicStagedResearchSource({ pauseRecruiters: pauseDeterministicRecruiters }),
+    ];
+  }
+  return researchSourceKind === "public-web" ? publicSources : [codexSource];
+}
 const execution = createResearchRunExecution({ directory, now: () => new Date(), runs, source });
 const scheduler = createAfterResponseResearchRunScheduler({
   afterResponse(callback) {
@@ -100,6 +125,13 @@ const saveResearchCriteriaOptions = createSaveResearchCriteriaOptions({
   settings: {
     replaceResearchCriteriaOptions: (options, changedAt) =>
       replaceResearchCriteriaOptions(recruiterResearchDatabase, options, changedAt),
+  },
+});
+const saveExecutionSettings = createSaveExecutionSettings({
+  now: () => new Date(),
+  settings: {
+    replaceExecution: (execution, changedAt) =>
+      replaceExecutionSettings(recruiterResearchDatabase, execution, changedAt),
   },
 });
 const saveDirectoryMatchWeights = createSaveDirectoryMatchWeights({
@@ -165,6 +197,8 @@ export const recruiterEngagementWeb = {
     return directory.resolveIdentity({ ...command, decidedAt: new Date() });
   },
   retryResearchRun: retrier.retryResearchRun,
+  getExecutionSettings: () => currentSettings().execution,
+  saveExecutionSettings,
   savePublicSearchSettings,
   saveResearchCriteriaOptions,
   saveDirectoryMatchWeights,
@@ -175,22 +209,32 @@ export const recruiterEngagementWeb = {
     },
   ) {
     const { providerName, ...startCommand } = command;
-    const provider = getConfiguredWebSearchProviderOptions().find(
-      (option) => option.name === providerName && option.configured,
-    );
-    if (!provider) throw new Error("Choose a configured search provider.");
     const current = currentSettings();
-    const settings = {
-      ...current,
-      publicSearch: { ...current.publicSearch, providerName },
-    };
+    if (researchSourceKind === "public-web") {
+      const provider = getConfiguredWebSearchProviderOptions().find(
+        (option) => option.name === providerName && option.configured,
+      );
+      if (!provider) throw new Error("Choose a configured search provider.");
+      const settings = {
+        ...current,
+        publicSearch: { ...current.publicSearch, providerName },
+      };
+      return createResearchRunStarter({
+        createId: randomUUID,
+        now: () => new Date(),
+        policy: createPublicWebAdapterPolicy(settings),
+        runs,
+        scheduler,
+        sourcePlan: createPublicWebSourcePlan(settings),
+      }).startResearchRun(startCommand);
+    }
     return createResearchRunStarter({
       createId: randomUUID,
       now: () => new Date(),
-      policy: createPublicWebAdapterPolicy(settings),
+      policy: createCodexAdapterPolicy(current),
       runs,
       scheduler,
-      sourcePlan: createPublicWebSourcePlan(settings),
+      sourcePlan: createCodexSourcePlan(current),
     }).startResearchRun(startCommand);
   },
 };
