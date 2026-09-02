@@ -65,6 +65,24 @@ function recruiterReply(count: number) {
   });
 }
 
+function recordingSource(
+  complete: (request: CodexRequest) => Promise<string>,
+  record: (failure: {
+    readonly adapterId: string;
+    readonly message: string;
+    readonly recordedAt: Date;
+    readonly runId: string;
+    readonly stage: "firms" | "recruiters";
+  }) => Promise<void>,
+) {
+  return createCodexResearchSource({
+    client: { complete },
+    execution: () => execution,
+    failures: { record },
+    now: () => observedAt,
+  });
+}
+
 function source(complete: (request: CodexRequest) => Promise<string>, failures?: never) {
   return createCodexResearchSource({
     client: { complete },
@@ -215,6 +233,76 @@ describe("codex research source", () => {
     expect(record).toHaveBeenCalledWith(
       expect.objectContaining({ adapterId: codexAdapterId, runId: run.id, stage: "firms" }),
     );
+  });
+
+  it("records a source failure when the Codex reply is not valid JSON", async () => {
+    const record = vi.fn(async () => {});
+    const firms = await recordingSource(async () => "not json at all", record).findFirms({
+      reserveRequest: async () => true,
+      run,
+    });
+
+    expect(firms).toEqual([]);
+    expect(record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        adapterId: codexAdapterId,
+        message: expect.stringContaining("valid JSON"),
+        runId: run.id,
+        stage: "firms",
+      }),
+    );
+  });
+
+  it("records a source failure when the reply carries no firms array", async () => {
+    const record = vi.fn(async () => {});
+    const firms = await recordingSource(
+      async () => JSON.stringify({ results: [] }),
+      record,
+    ).findFirms({ reserveRequest: async () => true, run });
+
+    expect(firms).toEqual([]);
+    expect(record).toHaveBeenCalledWith(
+      expect.objectContaining({ message: expect.stringContaining("firms"), stage: "firms" }),
+    );
+  });
+
+  it("retains the valid records and reports the rejected ones", async () => {
+    const record = vi.fn(async () => {});
+    const reply = JSON.parse(firmReply(1)) as { firms: unknown[] };
+    reply.firms.push({ companyName: "Broken" });
+
+    const firms = await recordingSource(async () => JSON.stringify(reply), record).findFirms({
+      reserveRequest: async () => true,
+      run,
+    });
+
+    expect(firms).toHaveLength(1);
+    expect(record).toHaveBeenCalledWith(
+      expect.objectContaining({ message: expect.stringContaining("1"), stage: "firms" }),
+    );
+  });
+
+  it("records nothing when the reply is a valid empty result", async () => {
+    const record = vi.fn(async () => {});
+    const firms = await recordingSource(
+      async () => JSON.stringify({ firms: [] }),
+      record,
+    ).findFirms({ reserveRequest: async () => true, run });
+
+    expect(firms).toEqual([]);
+    expect(record).not.toHaveBeenCalled();
+  });
+
+  it("records a source failure when the recruiter reply is malformed", async () => {
+    const record = vi.fn(async () => {});
+    const recruiters = await recordingSource(async () => "{", record).findRecruiters({
+      firms: observedFirms,
+      reserveRequest: async () => true,
+      run,
+    });
+
+    expect(recruiters).toEqual([]);
+    expect(record).toHaveBeenCalledWith(expect.objectContaining({ stage: "recruiters" }));
   });
 
   it("returns recruiter observations for the firms it is given", async () => {

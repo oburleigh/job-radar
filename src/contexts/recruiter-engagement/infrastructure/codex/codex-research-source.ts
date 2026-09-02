@@ -12,8 +12,10 @@ import {
   type CodexFirm,
   type CodexRecruiter,
   codexFirmJsonSchema,
+  codexFirmReplySchema,
   codexFirmSchema,
   codexRecruiterJsonSchema,
+  codexRecruiterReplySchema,
   codexRecruiterSchema,
 } from "./codex-research-schema";
 
@@ -62,6 +64,21 @@ export function createCodexResearchSource(options: CodexResearchSourceOptions): 
     }
   }
 
+  async function reportProblem(
+    problem: string | undefined,
+    run: ResearchRun,
+    stage: "firms" | "recruiters",
+  ): Promise<void> {
+    if (!problem) return;
+    await options.failures?.record({
+      adapterId: codexAdapterId,
+      message: problem,
+      recordedAt: options.now(),
+      runId: run.id,
+      stage,
+    });
+  }
+
   return {
     adapterId: codexAdapterId,
     assess(run) {
@@ -84,7 +101,9 @@ export function createCodexResearchSource(options: CodexResearchSourceOptions): 
         stage: "firms",
       });
       const observedAt = options.now();
-      return retained(reply, "firms", codexFirmSchema)
+      const result = retained<CodexFirm>(reply, "firms", codexFirmReplySchema, codexFirmSchema);
+      await reportProblem(result.problem, run, "firms");
+      return result.items
         .slice(0, run.brief.firmTarget)
         .map((firm) => toFirmObservation(firm, run, observedAt));
     },
@@ -99,7 +118,14 @@ export function createCodexResearchSource(options: CodexResearchSourceOptions): 
         stage: "recruiters",
       });
       const observedAt = options.now();
-      return retained(reply, "recruiters", codexRecruiterSchema)
+      const result = retained<CodexRecruiter>(
+        reply,
+        "recruiters",
+        codexRecruiterReplySchema,
+        codexRecruiterSchema,
+      );
+      await reportProblem(result.problem, run, "recruiters");
+      return result.items
         .slice(0, run.brief.recruiterTarget)
         .map((recruiter) => toRecruiterObservation(recruiter, run, observedAt));
     },
@@ -109,23 +135,37 @@ export function createCodexResearchSource(options: CodexResearchSourceOptions): 
 function retained<TItem>(
   reply: string,
   key: "firms" | "recruiters",
-  schema: { readonly safeParse: (value: unknown) => { success: boolean; data?: TItem } },
-): TItem[] {
+  replySchema: { readonly safeParse: (value: unknown) => { success: boolean; data?: unknown } },
+  itemSchema: { readonly safeParse: (value: unknown) => { success: boolean; data?: TItem } },
+): { readonly items: TItem[]; readonly problem?: string } {
   let parsed: unknown;
   try {
     parsed = JSON.parse(reply);
   } catch {
-    return [];
+    return { items: [], problem: "The Codex reply was not valid JSON." };
   }
-  if (!parsed || typeof parsed !== "object") return [];
+  const whole = replySchema.safeParse(parsed);
+  if (whole.success) {
+    return { items: ((whole.data as Record<string, TItem[]>)[key] ?? []) as TItem[] };
+  }
+  if (!parsed || typeof parsed !== "object") {
+    return { items: [], problem: "The Codex reply was not an object." };
+  }
   const items = (parsed as Record<string, unknown>)[key];
-  if (!Array.isArray(items)) return [];
-  const retainedItems: TItem[] = [];
-  for (const item of items) {
-    const result = schema.safeParse(item);
-    if (result.success && result.data !== undefined) retainedItems.push(result.data);
+  if (!Array.isArray(items)) {
+    return { items: [], problem: `The Codex reply carried no ${key} array.` };
   }
-  return retainedItems;
+  const retainedItems: TItem[] = [];
+  let rejected = 0;
+  for (const item of items) {
+    const result = itemSchema.safeParse(item);
+    if (result.success && result.data !== undefined) retainedItems.push(result.data);
+    else rejected += 1;
+  }
+  return {
+    items: retainedItems,
+    problem: `The Codex reply carried ${rejected} ${key} record${rejected === 1 ? "" : "s"} that did not match the contract.`,
+  };
 }
 
 function toFirmObservation(firm: CodexFirm, run: ResearchRun, observedAt: Date): FirmObservation {
