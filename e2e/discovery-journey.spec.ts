@@ -947,7 +947,7 @@ function completedNoticeFor(page: Page, runId: number): Locator {
   return page
     .getByRole("status")
     .filter({ hasText: "Discovery completed" })
-    .filter({ has: page.getByRole("link", { name: `View run #${runId}` }) });
+    .filter({ has: page.getByRole("link", { exact: true, name: `View run #${runId}` }) });
 }
 
 /**
