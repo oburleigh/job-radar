@@ -384,7 +384,7 @@ test("shows persisted board progress while matching waits for collection", async
     const { id: profileId, name: profileName } = await createProfile(page);
 
     await page.goto(`/?profile=${profileId}&provider=serpapi`);
-    const discoveryLayer = page.getByRole("complementary", { name: "Discovery status" });
+    const discoveryLayer = page.getByRole("region", { name: "Discovery status" });
     const startedResponse = page.waitForResponse(
       (response) =>
         response.request().method() === "POST" &&
