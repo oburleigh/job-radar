@@ -47,6 +47,7 @@ import {
 import { createSqliteRecruiterDirectoryStore } from "@/contexts/recruiter-engagement/infrastructure/sqlite/sqlite-recruiter-directory-store";
 import { createSqliteResearchRunStore } from "@/contexts/recruiter-engagement/infrastructure/sqlite/sqlite-research-run-store";
 import { createSqliteShortlistStore } from "@/contexts/recruiter-engagement/infrastructure/sqlite/sqlite-shortlist-store";
+import { researchSourceScope } from "./research-source-scope";
 
 const runs = createSqliteResearchRunStore(recruiterResearchDatabase);
 const directoryStore = createSqliteRecruiterDirectoryStore(recruiterResearchDatabase);
@@ -202,7 +203,7 @@ export const recruiterEngagementWeb = {
   saveResearchCriteriaOptions,
   saveDirectoryMatchWeights,
   shortlists,
-  providerSelectionApplies: researchSourceKind === "public-web",
+  ...researchSourceScope(researchSourceKind),
   startResearchRun(
     command: Parameters<ReturnType<typeof createResearchRunStarter>["startResearchRun"]>[0] & {
       readonly providerName?: string;

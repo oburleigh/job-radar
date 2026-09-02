@@ -11,6 +11,7 @@ describe("public search settings form", () => {
         path: "/",
         element: (
           <PublicSearchSettingsForm
+            governsRuns
             providers={[
               { configured: true, label: "Serper.dev", name: "serper" },
               { configured: false, label: "Brave Search", name: "brave" },
@@ -41,5 +42,37 @@ describe("public search settings form", () => {
     expect(html).toContain("<details");
     expect(html).toContain("Query and evidence terms");
     expect(html).not.toContain("Local Codex");
+  });
+
+  it("says a run started now does not use these values when it is not the source in force", () => {
+    const router = createMemoryRouter([
+      {
+        path: "/",
+        element: (
+          <PublicSearchSettingsForm
+            governsRuns={false}
+            providers={[{ configured: true, label: "Serper.dev", name: "serper" }]}
+            settings={{
+              currentActivityTerms: ["hiring"],
+              excludedHosts: [],
+              firmDiscoveryPhrases: ["technology recruitment firm"],
+              maxPagesPerQuery: 2,
+              namedRecruiterOrTeamTerms: ["team"],
+              profileSourceHosts: ["linkedin.com/in"],
+              providerName: "serper",
+              recruiterRoleTerms: ["recruiter"],
+              resultsPerQuery: 10,
+              scaleOrTrackRecordTerms: ["global"],
+              stageRequestLimit: 40,
+            }}
+          />
+        ),
+      },
+    ]);
+
+    const html = renderToStaticMarkup(<RouterProvider router={router} />);
+
+    expect(html).toContain("a run started now does not use them");
+    expect(html).toContain('name="providerName"');
   });
 });

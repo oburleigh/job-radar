@@ -18,10 +18,12 @@ type SettingsActionState = {
 
 export function PublicSearchSettingsForm({
   action = "/settings/recruiter-search",
+  governsRuns,
   providers,
   settings,
 }: {
   readonly action?: string;
+  readonly governsRuns: boolean;
   readonly providers: readonly ProviderOption[];
   readonly settings: RecruiterResearchSettings["publicSearch"];
 }) {
@@ -39,8 +41,9 @@ export function PublicSearchSettingsForm({
           <div>
             <h2>Public search</h2>
             <p>
-              Choose the configured web provider used to find recruitment firms and public recruiter
-              profiles. Each run freezes this choice and its request budget.
+              {governsRuns
+                ? "Choose the configured web provider used to find recruitment firms and public recruiter profiles. Each run freezes this choice and its request budget."
+                : "These values apply when Recruiter Search researches through a public web search provider. It is not the research source in force, so a run started now does not use them. Saving them here prepares the switch."}
             </p>
           </div>
         </div>

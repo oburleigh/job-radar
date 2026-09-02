@@ -9,6 +9,7 @@ import { assertLocalHost } from "@/platform/http/require-local-request";
 
 export function loader() {
   return {
+    governsRuns: recruiterResearchSettingsContract.publicSearchSettingsGovernRuns,
     providers: recruiterResearchSettingsContract.getPublicSearchProviderOptions(),
     publicSearch: recruiterResearchSettingsContract.getPublicSearchSettings(),
   };
@@ -33,10 +34,11 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function RecruiterPublicSearchSettingsPage() {
-  const { providers, publicSearch } = useLoaderData<typeof loader>();
+  const { governsRuns, providers, publicSearch } = useLoaderData<typeof loader>();
   return (
     <PublicSearchSettingsForm
       action="/settings/recruiter-search/public-search"
+      governsRuns={governsRuns}
       providers={providers}
       settings={publicSearch}
     />
