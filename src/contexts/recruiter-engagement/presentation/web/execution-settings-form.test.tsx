@@ -47,7 +47,11 @@ describe("execution settings form", () => {
 
   it("says a run started now does not use these values when it is not the source in force", () => {
     const html = render(false);
+    expect(html).toContain("It is not the research source in force");
     expect(html).toContain("a run started now does not use them");
+    for (const alias of ["active adapter", "current provider", "selected engine"]) {
+      expect(html.toLowerCase()).not.toContain(alias);
+    }
     expect(html).not.toContain("Codex CLI installed on this machine");
   });
 

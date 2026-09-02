@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { researchSourceScope } from "./research-source-scope";
+import {
+  parseResearchSourceKind,
+  researchSourceKinds,
+  researchSourceScope,
+} from "./research-source-scope";
 
 describe("research source scope", () => {
   it("gives the Codex Source its execution settings and no public search settings", () => {
@@ -25,12 +29,29 @@ describe("research source scope", () => {
       publicSearchSettingsGovernRuns: false,
     });
   });
+});
 
-  it("governs nothing for a source kind it does not recognise", () => {
-    expect(researchSourceScope("typo-in-the-environment")).toEqual({
-      executionSettingsGovernRuns: false,
-      providerSelectionApplies: false,
-      publicSearchSettingsGovernRuns: false,
-    });
+describe("reading the research source from the environment", () => {
+  it("defaults to the Codex Source when nothing is set", () => {
+    expect(parseResearchSourceKind(undefined)).toBe("codex");
+    expect(parseResearchSourceKind("")).toBe("codex");
+    expect(parseResearchSourceKind("   ")).toBe("codex");
+  });
+
+  it.each(researchSourceKinds)("accepts %s", (kind) => {
+    expect(parseResearchSourceKind(kind)).toBe(kind);
+  });
+
+  it.each(["Codex", "public_web", "typo-in-the-environment"])(
+    "refuses %s rather than silently running the Codex Source",
+    (value) => {
+      expect(() => parseResearchSourceKind(value)).toThrow(
+        /JOB_RADAR_RECRUITER_RESEARCH_SOURCE must be one of codex, deterministic, public-web/,
+      );
+    },
+  );
+
+  it("names the value it refused, so the typo is visible", () => {
+    expect(() => parseResearchSourceKind("public–web")).toThrow(/not "public–web"/);
   });
 });

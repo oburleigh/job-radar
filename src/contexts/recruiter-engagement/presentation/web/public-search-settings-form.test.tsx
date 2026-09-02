@@ -72,7 +72,11 @@ describe("public search settings form", () => {
 
     const html = renderToStaticMarkup(<RouterProvider router={router} />);
 
+    expect(html).toContain("It is not the research source in force");
     expect(html).toContain("a run started now does not use them");
+    for (const alias of ["active adapter", "current provider", "selected engine"]) {
+      expect(html.toLowerCase()).not.toContain(alias);
+    }
     expect(html).toContain('name="providerName"');
   });
 });
