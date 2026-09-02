@@ -56,6 +56,11 @@ export function createCodexSourcePlan(settings: RecruiterResearchSettings): Sour
         stage: "recruiters",
       },
     ],
+    execution: {
+      model: settings.execution.model,
+      reasoningEffort: settings.execution.reasoningEffort,
+      stageTimeoutMs: settings.execution.stageTimeoutMs,
+    },
     id: "codex-cli:v1",
     publicSearch: null,
     stageRequestAllowance: {

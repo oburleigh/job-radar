@@ -6,6 +6,7 @@ import type { PublicSearchSettingsCommand } from "@/contexts/recruiter-engagemen
 import type { ResearchCriteriaOptionsCommand } from "@/contexts/recruiter-engagement/application/research-settings/save-research-criteria-options";
 import type { RecruiterResearchSettings } from "@/contexts/recruiter-engagement/application/research-settings/settings";
 import type { DirectoryMatchWeights } from "@/contexts/recruiter-engagement/domain/recruiter-directory";
+import { researchReasoningEfforts } from "@/contexts/recruiter-engagement/domain/research-run";
 import { recruiterResearchSettings } from "./schema";
 
 type Database<TSchema extends Record<string, unknown>> = BetterSQLite3Database<TSchema>;
@@ -23,7 +24,7 @@ const settingsSchema = z
     execution: z
       .object({
         model: z.string().trim().min(1),
-        reasoningEffort: z.enum(["low", "medium", "high", "xhigh"]),
+        reasoningEffort: z.enum(researchReasoningEfforts),
         stageRequestLimit: positiveInteger,
         stageTimeoutMs: z.number().int().safe().min(1_000),
       })

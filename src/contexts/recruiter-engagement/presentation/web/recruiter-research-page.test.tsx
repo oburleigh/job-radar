@@ -368,6 +368,7 @@ const testSourcePlan: SourcePlanSnapshot = {
       stage: "firms",
     },
   ],
+  execution: null,
   id: "public-web-v1",
   publicSearch: null,
   stageRequestAllowance: { firms: 1, recruiters: 1 },

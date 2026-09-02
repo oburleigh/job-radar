@@ -2,9 +2,8 @@ import type { DirectoryMatchWeights } from "@/contexts/recruiter-engagement/doma
 import type {
   PublicResearchQueryPolicy,
   ResearchCriteria,
+  ResearchReasoningEffort,
 } from "@/contexts/recruiter-engagement/domain/research-run";
-
-export type ResearchReasoningEffort = "low" | "medium" | "high" | "xhigh";
 
 export type ResearchExecutionSettings = {
   readonly model: string;

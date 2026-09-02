@@ -35,6 +35,7 @@ export const testSourcePlan: SourcePlanSnapshot = {
       stage: "recruiters",
     },
   ],
+  execution: null,
   id: "public-web-test-v1",
   publicSearch: {
     currentActivityTerms: ["hiring", "jobs", "recruitment"],

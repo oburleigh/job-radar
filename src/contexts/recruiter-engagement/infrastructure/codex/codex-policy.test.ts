@@ -39,4 +39,25 @@ describe("codex source plan", () => {
   it("carries no public search policy, because it pages no search provider", () => {
     expect(createCodexSourcePlan(settings).publicSearch).toBeNull();
   });
+
+  it("freezes the model, reasoning effort and stage timeout the run will use", () => {
+    const chosen = {
+      ...settings,
+      execution: {
+        ...settings.execution,
+        model: "gpt-5.6-terra",
+        reasoningEffort: "low" as const,
+        stageTimeoutMs: 123_000,
+      },
+    };
+    expect(createCodexSourcePlan(chosen).execution).toEqual({
+      model: "gpt-5.6-terra",
+      reasoningEffort: "low",
+      stageTimeoutMs: 123_000,
+    });
+  });
+
+  it("does not repeat the stage request limit, which the allowance already freezes", () => {
+    expect(createCodexSourcePlan(settings).execution).not.toHaveProperty("stageRequestLimit");
+  });
 });

@@ -1,10 +1,12 @@
 import type { ResearchSource } from "@/contexts/recruiter-engagement/application/research-runs/port";
-import type { ResearchExecutionSettings } from "@/contexts/recruiter-engagement/application/research-settings/settings";
 import type {
   FirmObservation,
   RecruiterObservation,
 } from "@/contexts/recruiter-engagement/domain/observation";
-import type { ResearchRun } from "@/contexts/recruiter-engagement/domain/research-run";
+import type {
+  ResearchExecutionPolicy,
+  ResearchRun,
+} from "@/contexts/recruiter-engagement/domain/research-run";
 import { type CodexClient, CodexFailure } from "./codex-cli-client";
 import { codexAdapterId } from "./codex-policy";
 import { firmDiscoveryInstructions, recruiterDiscoveryInstructions } from "./codex-research-prompt";
@@ -21,7 +23,6 @@ import {
 
 type CodexResearchSourceOptions = {
   readonly client: CodexClient;
-  readonly execution: () => ResearchExecutionSettings;
   readonly failures?: {
     readonly record: (failure: {
       readonly adapterId: string;
@@ -36,6 +37,7 @@ type CodexResearchSourceOptions = {
 
 export function createCodexResearchSource(options: CodexResearchSourceOptions): ResearchSource {
   async function complete(request: {
+    readonly execution: ResearchExecutionPolicy;
     readonly instructions: string;
     readonly outputSchema: unknown;
     readonly run: ResearchRun;
@@ -44,7 +46,7 @@ export function createCodexResearchSource(options: CodexResearchSourceOptions): 
   }): Promise<string> {
     try {
       return await options.client.complete({
-        execution: options.execution(),
+        execution: request.execution,
         instructions: request.instructions,
         outputSchema: request.outputSchema,
         ...(request.signal ? { signal: request.signal } : {}),
@@ -89,11 +91,20 @@ export function createCodexResearchSource(options: CodexResearchSourceOptions): 
           message: "The frozen Adapter policy does not permit the local Codex Source.",
         };
       }
+      if (!run.sourcePlan.execution) {
+        return {
+          available: false,
+          message:
+            "This run froze no research execution settings, so the local Codex Source cannot reproduce it. Start a new run.",
+        };
+      }
       return { available: true };
     },
     async findFirms({ reserveRequest, run, signal }) {
+      const execution = frozenExecution(run);
       if (!(await reserveRequest())) return [];
       const reply = await complete({
+        execution,
         instructions: firmDiscoveryInstructions(run),
         outputSchema: codexFirmJsonSchema,
         run,
@@ -108,9 +119,11 @@ export function createCodexResearchSource(options: CodexResearchSourceOptions): 
         .map((firm) => toFirmObservation(firm, run, observedAt));
     },
     async findRecruiters({ firms, reserveRequest, run, signal }) {
+      const execution = frozenExecution(run);
       if (firms.length === 0) return [];
       if (!(await reserveRequest())) return [];
       const reply = await complete({
+        execution,
         instructions: recruiterDiscoveryInstructions(run, firms),
         outputSchema: codexRecruiterJsonSchema,
         run,
@@ -130,6 +143,17 @@ export function createCodexResearchSource(options: CodexResearchSourceOptions): 
         .map((recruiter) => toRecruiterObservation(recruiter, run, observedAt));
     },
   };
+}
+
+function frozenExecution(run: ResearchRun): ResearchExecutionPolicy {
+  const execution = run.sourcePlan.execution;
+  if (!execution) {
+    throw new CodexFailure({
+      code: "codex-execution-not-frozen",
+      message: "This run froze no research execution settings.",
+    });
+  }
+  return execution;
 }
 
 function retained<TItem>(

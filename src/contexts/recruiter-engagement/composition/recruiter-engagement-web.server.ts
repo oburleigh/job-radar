@@ -83,7 +83,6 @@ const codexSource = createCodexResearchSource({
     binaryPath: process.env.JOB_RADAR_CODEX_BINARY || "codex",
     scratchDirectory: tmpdir(),
   }),
-  execution: () => currentSettings().execution,
   failures: sourceFailures,
   now: () => new Date(),
 });

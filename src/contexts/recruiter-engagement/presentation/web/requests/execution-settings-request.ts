@@ -1,10 +1,11 @@
 import { z } from "zod";
 
 import type { ExecutionSettingsCommand } from "@/contexts/recruiter-engagement/application/research-settings/save-execution-settings";
+import { researchReasoningEfforts } from "@/contexts/recruiter-engagement/domain/research-run";
 
 const requestSchema = z.object({
   model: z.string().trim().min(1),
-  reasoningEffort: z.enum(["low", "medium", "high", "xhigh"]),
+  reasoningEffort: z.enum(researchReasoningEfforts),
   stageRequestLimit: z.coerce.number().int().safe().positive(),
   stageTimeoutMs: z.coerce.number().int().safe().min(1_000),
 });

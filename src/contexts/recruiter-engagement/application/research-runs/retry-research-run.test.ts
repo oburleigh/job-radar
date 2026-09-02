@@ -47,4 +47,34 @@ describe("research run retry", () => {
     });
     expect(scheduler.scheduledRunIds).toEqual(["run-2"]);
   });
+
+  it("carries the original run's frozen execution settings onto the retry", async () => {
+    const execution = {
+      model: "gpt-5.6-sol",
+      reasoningEffort: "high" as const,
+      stageTimeoutMs: 600_000,
+    };
+    const previous = {
+      ...createResearchRun({
+        id: "run-1",
+        brief: testSearchBrief(),
+        policy: testAdapterPolicy,
+        sourcePlan: { ...testSourcePlan, execution },
+        startedAt: new Date("2026-08-27T10:00:00.000Z"),
+      }),
+      status: "failed" as const,
+      finishedAt: new Date("2026-08-27T10:01:00.000Z"),
+    };
+    const runs = createFakeResearchRunStore([previous]);
+    const retrier = createResearchRunRetrier({
+      createId: () => "run-2",
+      now: () => new Date("2026-08-27T10:02:00.000Z"),
+      runs,
+      scheduler: createFakeResearchRunScheduler(),
+    });
+
+    await retrier.retryResearchRun("run-1");
+
+    expect((await runs.get("run-2"))?.sourcePlan.execution).toEqual(execution);
+  });
 });

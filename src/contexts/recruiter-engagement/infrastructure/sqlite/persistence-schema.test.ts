@@ -41,6 +41,56 @@ describe("persisted recruiter research run", () => {
       specialisms: run.brief.criteria.specialisms,
     });
   });
+
+  it("reads back the execution settings a run froze into its source plan", () => {
+    const execution = {
+      model: "gpt-5.6-sol",
+      reasoningEffort: "high" as const,
+      stageTimeoutMs: 600_000,
+    };
+    const run = createResearchRun({
+      id: "frozen-run",
+      brief: testSearchBrief(),
+      policy: testAdapterPolicy,
+      sourcePlan: { ...testSourcePlan, execution },
+      startedAt: new Date("2026-09-02T10:00:00.000Z"),
+    });
+
+    expect(parsePersistedResearchRun(run).sourcePlan.execution).toEqual(execution);
+  });
+
+  it("reads a run stored before execution settings were frozen as having none", () => {
+    const run = createResearchRun({
+      id: "pre-freeze-run",
+      brief: testSearchBrief(),
+      policy: testAdapterPolicy,
+      sourcePlan: testSourcePlan,
+      startedAt: new Date("2026-09-02T10:00:00.000Z"),
+    });
+    const { execution: _absent, ...sourcePlanWithoutExecution } = run.sourcePlan;
+
+    expect(
+      parsePersistedResearchRun({ ...run, sourcePlan: sourcePlanWithoutExecution }).sourcePlan
+        .execution,
+    ).toBeNull();
+  });
+
+  it("rejects a persisted source plan whose frozen execution is malformed", () => {
+    const run = createResearchRun({
+      id: "malformed-run",
+      brief: testSearchBrief(),
+      policy: testAdapterPolicy,
+      sourcePlan: testSourcePlan,
+      startedAt: new Date("2026-09-02T10:00:00.000Z"),
+    });
+
+    expect(() =>
+      parsePersistedResearchRun({
+        ...run,
+        sourcePlan: { ...run.sourcePlan, execution: { model: "", stageTimeoutMs: 0 } },
+      }),
+    ).toThrow();
+  });
 });
 
 describe("source-neutral recruiter profiles", () => {

@@ -2,21 +2,25 @@ import { describe, expect, it, vi } from "vitest";
 import type { ResearchExecutionSettings } from "@/contexts/recruiter-engagement/application/research-settings/settings";
 import type { FirmObservation } from "@/contexts/recruiter-engagement/domain/observation";
 import { createResearchRun } from "@/contexts/recruiter-engagement/domain/research-run";
+import { defaultRecruiterResearchSettings } from "@/contexts/recruiter-engagement/infrastructure/sqlite/bootstrap-recruiter-research";
 import {
   testAdapterPolicy,
   testSearchBrief,
   testSourcePlan,
 } from "@/contexts/recruiter-engagement/test-support/research-policy-fixtures";
 import { CodexFailure, type CodexRequest } from "./codex-cli-client";
-import { codexAdapterId } from "./codex-policy";
+import { codexAdapterId, createCodexSourcePlan } from "./codex-policy";
 import { createCodexResearchSource } from "./codex-research-source";
 
-const execution: ResearchExecutionSettings = {
+type MutableExecutionSettings = {
+  -readonly [Key in keyof ResearchExecutionSettings]: ResearchExecutionSettings[Key];
+};
+
+const frozenExecution = {
   model: "gpt-5.6-sol",
   reasoningEffort: "high",
-  stageRequestLimit: 2,
   stageTimeoutMs: 600_000,
-};
+} as const;
 
 const observedAt = new Date("2026-09-01T00:00:00.000Z");
 
@@ -25,12 +29,20 @@ function researchRun(firmTarget = 3, recruiterTarget = 6) {
     brief: testSearchBrief({ firmTarget, recruiterTarget }),
     id: "run-codex",
     policy: { ...testAdapterPolicy, id: codexAdapterId },
-    sourcePlan: { ...testSourcePlan, publicSearch: null },
+    sourcePlan: { ...testSourcePlan, execution: frozenExecution, publicSearch: null },
     startedAt: observedAt,
   });
 }
 
 const run = researchRun();
+
+const unfrozenRun = createResearchRun({
+  brief: testSearchBrief(),
+  id: "run-codex-legacy",
+  policy: { ...testAdapterPolicy, id: codexAdapterId },
+  sourcePlan: { ...testSourcePlan, execution: null, publicSearch: null },
+  startedAt: observedAt,
+});
 
 function firmReply(count: number) {
   return JSON.stringify({
@@ -77,7 +89,6 @@ function recordingSource(
 ) {
   return createCodexResearchSource({
     client: { complete },
-    execution: () => execution,
     failures: { record },
     now: () => observedAt,
   });
@@ -86,7 +97,6 @@ function recordingSource(
 function source(complete: (request: CodexRequest) => Promise<string>, failures?: never) {
   return createCodexResearchSource({
     client: { complete },
-    execution: () => execution,
     now: () => observedAt,
     ...(failures ? { failures } : {}),
   });
@@ -194,14 +204,87 @@ describe("codex research source", () => {
     expect(firms).toEqual([]);
   });
 
-  it("passes the configured model and reasoning effort to the client", async () => {
+  it("passes the run's frozen model, reasoning effort and stage timeout to the client", async () => {
     const complete = vi.fn(async () => firmReply(1));
-    await source(complete).findFirms({ reserveRequest: async () => true, run });
-    expect(complete).toHaveBeenCalledWith(
-      expect.objectContaining({
-        execution: expect.objectContaining({ model: "gpt-5.6-sol", reasoningEffort: "high" }),
-      }),
-    );
+    const frozen = researchRun();
+    await source(complete).findFirms({ reserveRequest: async () => true, run: frozen });
+    expect(complete).toHaveBeenCalledWith(expect.objectContaining({ execution: frozenExecution }));
+  });
+
+  it("sends each run its own frozen execution rather than a shared one", async () => {
+    const sent: unknown[] = [];
+    const complete = async (request: CodexRequest) => {
+      sent.push(request.execution);
+      return firmReply(1);
+    };
+    const other = createResearchRun({
+      brief: testSearchBrief(),
+      id: "run-codex-other",
+      policy: { ...testAdapterPolicy, id: codexAdapterId },
+      sourcePlan: {
+        ...testSourcePlan,
+        execution: { model: "gpt-5.6-terra", reasoningEffort: "low", stageTimeoutMs: 90_000 },
+        publicSearch: null,
+      },
+      startedAt: observedAt,
+    });
+    const codex = source(complete);
+    await codex.findFirms({ reserveRequest: async () => true, run });
+    await codex.findFirms({ reserveRequest: async () => true, run: other });
+    expect(sent).toEqual([
+      frozenExecution,
+      { model: "gpt-5.6-terra", reasoningEffort: "low", stageTimeoutMs: 90_000 },
+    ]);
+  });
+
+  it("keeps the run on its frozen execution when the settings change between stages", async () => {
+    const execution: MutableExecutionSettings = {
+      ...defaultRecruiterResearchSettings.execution,
+    };
+    const started = createResearchRun({
+      brief: testSearchBrief(),
+      id: "run-codex-frozen",
+      policy: { ...testAdapterPolicy, id: codexAdapterId },
+      sourcePlan: createCodexSourcePlan({ ...defaultRecruiterResearchSettings, execution }),
+      startedAt: observedAt,
+    });
+    const sent: unknown[] = [];
+    const codex = source(async (request: CodexRequest) => {
+      sent.push(request.execution);
+      return sent.length === 1 ? firmReply(1) : recruiterReply(1);
+    });
+
+    await codex.findFirms({ reserveRequest: async () => true, run: started });
+    execution.model = "changed-mid-run";
+    execution.reasoningEffort = "low";
+    execution.stageTimeoutMs = 1_000;
+    await codex.findRecruiters({
+      firms: observedFirms,
+      reserveRequest: async () => true,
+      run: started,
+    });
+
+    expect(sent).toHaveLength(2);
+    expect(sent[1]).toEqual(sent[0]);
+    expect(sent[1]).toEqual({
+      model: defaultRecruiterResearchSettings.execution.model,
+      reasoningEffort: defaultRecruiterResearchSettings.execution.reasoningEffort,
+      stageTimeoutMs: defaultRecruiterResearchSettings.execution.stageTimeoutMs,
+    });
+  });
+
+  it("fails the stage rather than guessing when a caller skips the assessment", async () => {
+    const complete = vi.fn(async () => firmReply(1));
+    await expect(
+      source(complete).findFirms({ reserveRequest: async () => true, run: unfrozenRun }),
+    ).rejects.toMatchObject({ code: "codex-execution-not-frozen" });
+    expect(complete).not.toHaveBeenCalled();
+  });
+
+  it("refuses a run whose source plan froze no execution settings", () => {
+    const assessment = source(async () => firmReply(1)).assess(unfrozenRun);
+    expect(assessment.available).toBe(false);
+    expect(assessment.available === false && assessment.message).toMatch(/execution/i);
   });
 
   it("asks for the run's own target in the instructions it sends", async () => {
@@ -222,7 +305,6 @@ describe("codex research source", () => {
           throw new CodexFailure({ code: "codex-invocation-failed", message: "codex exited 3" });
         },
       },
-      execution: () => execution,
       failures: { record },
       now: () => observedAt,
     });
