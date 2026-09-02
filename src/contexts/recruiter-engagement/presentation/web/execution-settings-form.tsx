@@ -3,17 +3,17 @@ import { Save } from "lucide-react";
 import { useFetcher } from "react-router";
 
 import type { RecruiterResearchSettings } from "@/contexts/recruiter-engagement/application/research-settings/settings";
-import type { ResearchReasoningEffort } from "@/contexts/recruiter-engagement/domain/research-run";
+import {
+  type ResearchReasoningEffort,
+  researchReasoningEfforts,
+} from "@/contexts/recruiter-engagement/domain/research-run";
 
-const reasoningEfforts: readonly {
-  readonly label: string;
-  readonly value: ResearchReasoningEffort;
-}[] = [
-  { label: "Low", value: "low" },
-  { label: "Medium", value: "medium" },
-  { label: "High", value: "high" },
-  { label: "Extra high", value: "xhigh" },
-];
+const reasoningEffortLabels: Readonly<Record<ResearchReasoningEffort, string>> = {
+  high: "High",
+  low: "Low",
+  medium: "Medium",
+  xhigh: "Extra high",
+};
 
 type ExecutionSettings = RecruiterResearchSettings["execution"];
 
@@ -71,9 +71,9 @@ export function ExecutionSettingsForm({
             name="reasoningEffort"
             required
           >
-            {reasoningEfforts.map((effort) => (
-              <option key={effort.value} value={effort.value}>
-                {effort.label}
+            {researchReasoningEfforts.map((effort) => (
+              <option key={effort} value={effort}>
+                {reasoningEffortLabels[effort]}
               </option>
             ))}
           </SelectField>
