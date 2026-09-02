@@ -266,10 +266,10 @@ describe("codex research source", () => {
     );
   });
 
-  it("retains the valid records and reports the rejected ones", async () => {
+  it("retains the valid records and reports how many were rejected", async () => {
     const record = vi.fn(async () => {});
     const reply = JSON.parse(firmReply(1)) as { firms: unknown[] };
-    reply.firms.push({ companyName: "Broken" });
+    reply.firms.push({ companyName: "Broken" }, { companyName: "Also broken" });
 
     const firms = await recordingSource(async () => JSON.stringify(reply), record).findFirms({
       reserveRequest: async () => true,
@@ -278,7 +278,26 @@ describe("codex research source", () => {
 
     expect(firms).toHaveLength(1);
     expect(record).toHaveBeenCalledWith(
-      expect.objectContaining({ message: expect.stringContaining("1"), stage: "firms" }),
+      expect.objectContaining({
+        message: "The Codex reply carried 2 firms records that did not match the contract.",
+        stage: "firms",
+      }),
+    );
+  });
+
+  it("records a source failure when the reply is null rather than an object", async () => {
+    const record = vi.fn(async () => {});
+    const firms = await recordingSource(async () => "null", record).findFirms({
+      reserveRequest: async () => true,
+      run,
+    });
+
+    expect(firms).toEqual([]);
+    expect(record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "The Codex reply was not an object.",
+        stage: "firms",
+      }),
     );
   });
 
