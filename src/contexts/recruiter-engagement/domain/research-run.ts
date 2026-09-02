@@ -49,8 +49,19 @@ export type PublicResearchQueryPolicy = {
   readonly scaleOrTrackRecordTerms: readonly string[];
 };
 
+export const researchReasoningEfforts = ["low", "medium", "high", "xhigh"] as const;
+
+export type ResearchReasoningEffort = (typeof researchReasoningEfforts)[number];
+
+export type ResearchExecutionPolicy = {
+  readonly model: string;
+  readonly reasoningEffort: ResearchReasoningEffort;
+  readonly stageTimeoutMs: number;
+};
+
 export type SourcePlanSnapshot = {
   readonly entries: readonly SourcePlanEntry[];
+  readonly execution: ResearchExecutionPolicy | null;
   readonly id: string;
   readonly publicSearch: PublicResearchQueryPolicy | null;
   readonly stageRequestAllowance: Readonly<Record<Exclude<ResearchStage, "completed">, number>>;

@@ -22,6 +22,10 @@ _Avoid_: Technology specialism
 **Research run**
 : One durable attempt to research firms first, then named recruiters, against a frozen policy and source plan.
 
+**Research execution settings**
+: The model, reasoning effort, stage timeout, and stage request limit the local Codex Source runs under. Settings holds the current values. A research run freezes the values it started with into its source plan and budget, and every stage of that run reads them from there rather than from Settings.
+_Avoid_: Codex settings, model settings
+
 **Retry lineage**
 : The prior run identity recorded on a new attempt. It proves that a retry reused the original brief, policy, source plan, and budget without treating the runs as the same directory record.
 

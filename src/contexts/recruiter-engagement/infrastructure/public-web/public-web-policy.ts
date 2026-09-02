@@ -61,6 +61,7 @@ export function createPublicWebSourcePlan(settings: RecruiterResearchSettings): 
         stage: "recruiters",
       },
     ],
+    execution: null,
     id: `public-web:${providerName}:v1`,
     publicSearch,
     stageRequestAllowance: {

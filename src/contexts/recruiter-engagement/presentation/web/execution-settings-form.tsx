@@ -3,13 +3,17 @@ import { Save } from "lucide-react";
 import { useFetcher } from "react-router";
 
 import type { RecruiterResearchSettings } from "@/contexts/recruiter-engagement/application/research-settings/settings";
+import type { ResearchReasoningEffort } from "@/contexts/recruiter-engagement/domain/research-run";
 
-const reasoningEfforts = [
+const reasoningEfforts: readonly {
+  readonly label: string;
+  readonly value: ResearchReasoningEffort;
+}[] = [
   { label: "Low", value: "low" },
   { label: "Medium", value: "medium" },
   { label: "High", value: "high" },
   { label: "Extra high", value: "xhigh" },
-] as const;
+];
 
 type ExecutionSettings = RecruiterResearchSettings["execution"];
 

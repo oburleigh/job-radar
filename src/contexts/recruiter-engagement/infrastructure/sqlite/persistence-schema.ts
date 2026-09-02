@@ -2,9 +2,10 @@ import { z } from "zod";
 
 import type { ResearchObservation } from "@/contexts/recruiter-engagement/domain/observation";
 import type { RecruiterDirectory } from "@/contexts/recruiter-engagement/domain/recruiter-directory";
-import type {
-  ResearchRun,
-  ResearchSourceFailure,
+import {
+  type ResearchRun,
+  type ResearchSourceFailure,
+  researchReasoningEfforts,
 } from "@/contexts/recruiter-engagement/domain/research-run";
 import type { Shortlist } from "@/contexts/recruiter-engagement/domain/shortlist";
 
@@ -95,6 +96,15 @@ const sourcePlan = z
           .strict(),
       )
       .min(1),
+    execution: z
+      .object({
+        model: z.string().min(1),
+        reasoningEffort: z.enum(researchReasoningEfforts),
+        stageTimeoutMs: positiveInteger,
+      })
+      .strict()
+      .nullable()
+      .default(null),
     id: z.string().min(1),
     publicSearch: z
       .object({

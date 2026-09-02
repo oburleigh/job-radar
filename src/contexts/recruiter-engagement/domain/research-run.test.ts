@@ -39,6 +39,7 @@ const testSourcePlan = {
       stage: "recruiters",
     },
   ],
+  execution: null,
   id: "public-web-test-v1",
   publicSearch: null,
   stageRequestAllowance: { firms: 1, recruiters: 1 },
