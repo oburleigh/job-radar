@@ -1,5 +1,10 @@
 import { expect, type Page, test } from "@playwright/test";
 
+import { missingRealWebSearchApiKeyReason, realWebSearchApiKey } from "./real-web-search-key";
+
+// biome-ignore lint/suspicious/noSkippedTests: the real provider key is optional, and a skip with a stated reason is honest where a throw reports nothing.
+test.skip(!realWebSearchApiKey(), missingRealWebSearchApiKeyReason);
+
 test("finds and qualifies UAE technology recruitment firms with the real configured provider", async ({
   browser,
   page,
@@ -51,23 +56,28 @@ test("finds and qualifies UAE technology recruitment firms with the real configu
   await expect(
     page.getByText("Qualified recruitment firm", { exact: false }).first(),
   ).toBeVisible();
-  await expect(
-    page
-      .locator(".recruiter-firm-observation")
-      .filter({ hasText: /Discovered/i })
-      .first(),
-  ).toBeVisible({ timeout: 15_000 });
-  for (const firm of ["Hays", "NADIA Global", "Tiger Recruitment"]) {
-    await expect(
-      page.locator(".recruiter-firm-observation").filter({ hasText: firm }).first(),
-    ).toBeVisible({ timeout: 15_000 });
-  }
+  const firms = page.locator(".recruiter-firm-observation");
+  await expect(firms.first()).toBeVisible({ timeout: 15_000 });
+  const firmNames = await firms.locator("header h3").allTextContents();
+  expect(firmNames.length).toBeGreaterThan(0);
+  expect(firmNames.every((name) => name.trim().length > 0)).toBe(true);
+
+  const firmWebsites = await firms
+    .getByRole("link", { name: "Firm website" })
+    .evaluateAll((links) => links.map((link) => link.getAttribute("href") ?? ""));
+  expect(firmWebsites).toHaveLength(firmNames.length);
+  expect(firmWebsites.every((href) => href.startsWith("https://"))).toBe(true);
+
+  const firmCitations = await firms
+    .locator(":scope > .recruiter-evidence-history > summary")
+    .allTextContents();
+  expect(firmCitations).toHaveLength(firmNames.length);
+  expect(firmCitations.every((citation) => /^[1-9]\d* retained public source/.test(citation))).toBe(
+    true,
+  );
+
   await page.locator(".recruiter-ranking-breakdown summary").first().click();
   await expect(page.getByText(/Target-market operating depth · \d+ points/).first()).toBeVisible();
-  await expect(page.getByRole("link", { name: "Firm website" }).first()).toHaveAttribute(
-    "href",
-    /^https:\/\//,
-  );
   await expect(page.getByRole("link", { name: "Public profile" }).first()).toHaveAttribute(
     "href",
     /^https:\/\//,
