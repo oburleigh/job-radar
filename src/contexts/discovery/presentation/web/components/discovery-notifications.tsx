@@ -18,6 +18,7 @@ import { presentDiscoveryRunOutcome } from "@/contexts/discovery/presentation/we
 
 const PENDING_RUNS_KEY = "job-radar.pending-discovery-runs";
 const DISCOVERY_TOASTER_ID = "discovery-notifications";
+export const DISCOVERY_NOTICE_REGION_LABEL = "Discovery status";
 const DISCOVERY_NOTICE_EXIT_DURATION_MS = 320;
 
 export interface DiscoveryRunStatus {
@@ -335,6 +336,7 @@ export function DiscoveryNotifications({
   return (
     <Toaster
       className="discovery-notification-layer"
+      containerAriaLabel={DISCOVERY_NOTICE_REGION_LABEL}
       duration={notificationDurationMs}
       expand
       gap={8}
