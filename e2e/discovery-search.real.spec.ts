@@ -1,5 +1,10 @@
 import { expect, type Page, test } from "@playwright/test";
 
+import { missingRealWebSearchApiKeyReason, realWebSearchApiKey } from "./real-web-search-key";
+
+// biome-ignore lint/suspicious/noSkippedTests: the real provider key is optional, and a skip with a stated reason is honest where a throw reports nothing.
+test.skip(!realWebSearchApiKey(), missingRealWebSearchApiKeyReason);
+
 const leadershipTitles = [
   "Head of Engineering",
   "VP Engineering",
