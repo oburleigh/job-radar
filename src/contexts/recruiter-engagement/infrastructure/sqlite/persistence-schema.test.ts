@@ -75,7 +75,13 @@ describe("persisted recruiter research run", () => {
     ).toBeNull();
   });
 
-  it("rejects a persisted source plan whose frozen execution is malformed", () => {
+  it.each([
+    ["an unknown reasoning effort", { reasoningEffort: "extreme" }],
+    ["an empty model", { model: "" }],
+    ["a zero stage timeout", { stageTimeoutMs: 0 }],
+    ["a negative stage timeout", { stageTimeoutMs: -1 }],
+    ["a fractional stage timeout", { stageTimeoutMs: 1.5 }],
+  ])("rejects a persisted frozen execution carrying %s", (_label, invalid) => {
     const run = createResearchRun({
       id: "malformed-run",
       brief: testSearchBrief(),
@@ -83,12 +89,15 @@ describe("persisted recruiter research run", () => {
       sourcePlan: testSourcePlan,
       startedAt: new Date("2026-09-02T10:00:00.000Z"),
     });
+    const execution = {
+      model: "gpt-5.6-sol",
+      reasoningEffort: "high",
+      stageTimeoutMs: 600_000,
+      ...invalid,
+    };
 
     expect(() =>
-      parsePersistedResearchRun({
-        ...run,
-        sourcePlan: { ...run.sourcePlan, execution: { model: "", stageTimeoutMs: 0 } },
-      }),
+      parsePersistedResearchRun({ ...run, sourcePlan: { ...run.sourcePlan, execution } }),
     ).toThrow();
   });
 });

@@ -42,6 +42,52 @@ describe("SQLite research run store", () => {
     await expect(store.listAll()).resolves.toEqual([newer, older]);
   });
 
+  it("stores and returns the execution settings a run froze into its source plan", async () => {
+    const sqlite = new Database(":memory:");
+    sqlite.pragma("foreign_keys = ON");
+    const database = drizzle(sqlite);
+    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    const store = createSqliteResearchRunStore(database);
+    const execution = {
+      model: "retired-model",
+      reasoningEffort: "low" as const,
+      stageTimeoutMs: 71_000,
+    };
+    const run = createResearchRun({
+      id: "run-frozen-execution",
+      brief: testSearchBrief(),
+      policy: testAdapterPolicy,
+      sourcePlan: { ...testSourcePlan, execution },
+      startedAt: new Date("2026-09-02T10:00:00.000Z"),
+    });
+
+    await store.create(run);
+
+    expect((await store.get("run-frozen-execution"))?.sourcePlan.execution).toEqual(execution);
+  });
+
+  it("returns no frozen execution for a run stored before runs froze one", async () => {
+    const sqlite = new Database(":memory:");
+    sqlite.pragma("foreign_keys = ON");
+    const database = drizzle(sqlite);
+    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    const store = createSqliteResearchRunStore(database);
+    const run = createResearchRun({
+      id: "run-pre-freeze",
+      brief: testSearchBrief(),
+      policy: testAdapterPolicy,
+      sourcePlan: testSourcePlan,
+      startedAt: new Date("2026-09-02T10:00:00.000Z"),
+    });
+    const { execution: _absent, ...sourcePlanWithoutExecution } = run.sourcePlan;
+    await store.create({
+      ...run,
+      sourcePlan: sourcePlanWithoutExecution as typeof run.sourcePlan,
+    });
+
+    expect((await store.get("run-pre-freeze"))?.sourcePlan.execution).toBeNull();
+  });
+
   it("records independent Source failures for the same run stage", async () => {
     const sqlite = new Database(":memory:");
     sqlite.pragma("foreign_keys = ON");

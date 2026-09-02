@@ -237,7 +237,7 @@ describe("codex research source", () => {
     ]);
   });
 
-  it("keeps the run on its frozen execution when the settings change between stages", async () => {
+  it("snapshots the settings by value, so a later change to them cannot reach a stage", async () => {
     const execution: MutableExecutionSettings = {
       ...defaultRecruiterResearchSettings.execution,
     };

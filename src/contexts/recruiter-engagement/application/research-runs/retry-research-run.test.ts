@@ -50,9 +50,9 @@ describe("research run retry", () => {
 
   it("carries the original run's frozen execution settings onto the retry", async () => {
     const execution = {
-      model: "gpt-5.6-sol",
-      reasoningEffort: "high" as const,
-      stageTimeoutMs: 600_000,
+      model: "retired-model",
+      reasoningEffort: "low" as const,
+      stageTimeoutMs: 71_000,
     };
     const previous = {
       ...createResearchRun({
