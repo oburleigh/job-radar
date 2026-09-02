@@ -53,6 +53,7 @@ export default defineConfig({
       DB_PATH: databasePath,
       HOST: "127.0.0.1",
       JOB_RADAR_BUILD_DIRECTORY: buildDirectory,
+      JOB_RADAR_RECRUITER_RESEARCH_SOURCE: "public-web",
       PORT: "3300",
       BRAVE_SEARCH_API_KEY: braveSearchApiKey,
     },
