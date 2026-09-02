@@ -65,6 +65,9 @@ for (const firm of firms) {
 if (reservations !== 1) {
   failures.push(`Expected the firms stage to reserve one request, not ${reservations}.`);
 }
+if (firms.length === 0) {
+  failures.push("Expected the firms stage to return at least one firm, got none.");
+}
 if (firms.length > firmTarget) {
   failures.push(`Expected at most ${firmTarget} firms, got ${firms.length}.`);
 }

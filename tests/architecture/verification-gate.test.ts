@@ -31,7 +31,7 @@ describe("verification gate environment", () => {
     expect(config.testMatch).toBe("**/*.real.spec.ts");
   });
 
-  it("serves the real web-search suite from its own build when the provider key is present", async () => {
+  it("passes the provider key to the real web-search server when it is present", async () => {
     vi.spyOn(process, "once").mockReturnValue(process);
     process.env.BRAVE_SEARCH_API_KEY = "verification-gate-test";
 
