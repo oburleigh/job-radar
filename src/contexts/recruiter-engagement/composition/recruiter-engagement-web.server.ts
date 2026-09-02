@@ -47,7 +47,7 @@ import {
 import { createSqliteRecruiterDirectoryStore } from "@/contexts/recruiter-engagement/infrastructure/sqlite/sqlite-recruiter-directory-store";
 import { createSqliteResearchRunStore } from "@/contexts/recruiter-engagement/infrastructure/sqlite/sqlite-research-run-store";
 import { createSqliteShortlistStore } from "@/contexts/recruiter-engagement/infrastructure/sqlite/sqlite-shortlist-store";
-import { researchSourceScope } from "./research-source-scope";
+import { parseResearchSourceKind, researchSourceScope } from "./research-source-scope";
 
 const runs = createSqliteResearchRunStore(recruiterResearchDatabase);
 const directoryStore = createSqliteRecruiterDirectoryStore(recruiterResearchDatabase);
@@ -78,7 +78,7 @@ const publicSources = getConfiguredWebSearchProviderOptions().map((provider) =>
     providerName: provider.name,
   }),
 );
-const researchSourceKind = process.env.JOB_RADAR_RECRUITER_RESEARCH_SOURCE ?? "codex";
+const researchSourceKind = parseResearchSourceKind(process.env.JOB_RADAR_RECRUITER_RESEARCH_SOURCE);
 const codexSource = createCodexResearchSource({
   client: createCodexCliClient({
     binaryPath: process.env.JOB_RADAR_CODEX_BINARY || "codex",
