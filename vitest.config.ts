@@ -22,8 +22,9 @@ export default defineConfig({
     ],
     coverage: {
       // Every context's pure layers, not a list of the contexts that existed when this was
-      // written. The discovery-only list measured 75 of 104 files once recruiter-engagement
-      // arrived on 2026-08-27, and nothing here announced the other 29.
+      // written. recruiter-engagement arrived on 2026-08-27 outside the list, and by
+      // 2026-09-02 the discovery-only patterns measured 75 of 104 files, announcing neither
+      // that number nor the 29 they left out.
       include: [
         "src/contexts/*/domain/**/*.ts",
         "src/contexts/*/application/**/*.ts",

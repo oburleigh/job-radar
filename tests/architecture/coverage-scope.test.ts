@@ -1,19 +1,22 @@
 import { globSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { describe, expect, it } from "vitest";
+import type { ViteUserConfig } from "vitest/config";
 
 /**
  * `coverage.include` is a whitelist, so a layer it does not name is absent from the report
  * rather than reported as uncovered. It once named `src/contexts/discovery` in every pattern.
- * recruiter-engagement arrived on 2026-08-27 and its files stayed outside the report, so the
- * badge measured 75 of 104 files and nothing announced the other 29.
+ * recruiter-engagement arrived on 2026-08-27 and its files stayed outside the report, so by
+ * the time the badge was added the report measured 75 of 104 files and announced neither the
+ * number nor the 29 it was not looking at.
  */
 
 const repositoryRoot = process.cwd();
 
 /**
- * Stated here rather than read out of `vitest.config.ts`, because a list derived from the
+ * Stated here rather than taken from `vitest.config.ts`, because a list derived from the
  * configuration under test agrees with it by construction and cannot contradict it.
  */
 const measuredLayers = [
@@ -24,25 +27,19 @@ const measuredLayers = [
 ] as const;
 
 /**
- * Read as text rather than imported, because `biome.jsonc` forbids a `../` import and the
- * repository's `@` alias only reaches `src`. The neighbouring architecture tests read root
- * configuration the same way.
+ * Evaluated rather than read as text. A parser still sees a pattern that a block comment has
+ * removed from the configuration Vitest runs, and sees none of the options that narrow the
+ * report without touching a pattern at all.
  */
-function coveragePatterns(key: "include" | "exclude"): readonly string[] {
-  const config = readFileSync(path.join(repositoryRoot, "vitest.config.ts"), "utf8");
-  const coverage = config.slice(config.indexOf("coverage: {")).replaceAll(/\/\/[^\n]*/g, "");
-  const block = new RegExp(`${key}:\\s*\\[(?<patterns>[^\\]]*)\\]`).exec(coverage)?.groups
-    ?.patterns;
-  if (!block) {
-    throw new Error(`vitest.config.ts declares no coverage.${key} to check.`);
+async function coverage() {
+  const module = (await import(
+    pathToFileURL(path.join(repositoryRoot, "vitest.config.ts")).href
+  )) as { readonly default: ViteUserConfig };
+  const declared = module.default.test?.coverage;
+  if (!declared || !("include" in declared) || !declared.include) {
+    throw new Error("vitest.config.ts declares no coverage.include to check.");
   }
-  const patterns = [...block.matchAll(/"(?<pattern>[^"]+)"/g)].map(
-    (match) => match.groups?.pattern ?? "",
-  );
-  if (patterns.length === 0) {
-    throw new Error(`vitest.config.ts declares an empty coverage.${key}.`);
-  }
-  return patterns;
+  return declared;
 }
 
 function contexts(): readonly string[] {
@@ -51,14 +48,9 @@ function contexts(): readonly string[] {
     .map((entry) => entry.name);
 }
 
-/** The report's real scope: what `include` selects, less what `exclude` takes back out. */
-function measuredFiles(): ReadonlySet<string> {
-  return new Set(
-    globSync(coveragePatterns("include"), {
-      cwd: repositoryRoot,
-      exclude: coveragePatterns("exclude"),
-    }),
-  );
+async function measuredFiles(): Promise<ReadonlySet<string>> {
+  const { exclude, include } = await coverage();
+  return new Set(globSync([...(include ?? [])], { cwd: repositoryRoot, exclude }));
 }
 
 function contextNamedBy(pattern: string): string | undefined {
@@ -67,8 +59,8 @@ function contextNamedBy(pattern: string): string | undefined {
 }
 
 describe("coverage scope", () => {
-  it("measures every bounded context, not the ones that existed when the list was written", () => {
-    const measured = measuredFiles();
+  it("measures every bounded context, not the ones that existed when the list was written", async () => {
+    const measured = await measuredFiles();
     const unmeasured = contexts().flatMap((context) =>
       measuredLayers.flatMap((layer) =>
         globSync(`src/contexts/${context}/${layer}/**/*.ts`, { cwd: repositoryRoot })
@@ -80,16 +72,26 @@ describe("coverage scope", () => {
     expect(unmeasured).toEqual([]);
   });
 
-  it("names no single context, so a context added later is measured without editing coverage", () => {
-    const named = [...coveragePatterns("include"), ...coveragePatterns("exclude")]
+  it("names no single context, so a context added later is measured without editing coverage", async () => {
+    const { exclude, include } = await coverage();
+    const named = [...(include ?? []), ...(exclude ?? [])]
       .map((pattern) => ({ context: contextNamedBy(pattern), pattern }))
       .filter((candidate) => candidate.context !== undefined);
 
     expect(named).toEqual([]);
   });
 
-  it("finds more than one context, so the checks above cannot pass by measuring nothing", () => {
+  it("reports the whole scope every run, rather than only what a commit touched", async () => {
+    expect((await coverage()).changed).toBeUndefined();
+    expect(
+      JSON.parse(readFileSync(path.join(repositoryRoot, "package.json"), "utf8")).scripts[
+        "test:coverage"
+      ],
+    ).not.toMatch(/--coverage\.(include|exclude|changed|all)/);
+  });
+
+  it("finds more than one context, so the checks above cannot pass by measuring nothing", async () => {
     expect(contexts().length).toBeGreaterThan(1);
-    expect(measuredFiles().size).toBeGreaterThan(50);
+    expect((await measuredFiles()).size).toBeGreaterThan(50);
   });
 });
