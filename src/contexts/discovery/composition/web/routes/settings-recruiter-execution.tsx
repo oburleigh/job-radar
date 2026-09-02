@@ -8,7 +8,10 @@ import {
 import { assertLocalHost } from "@/platform/http/require-local-request";
 
 export function loader() {
-  return { execution: recruiterResearchSettingsContract.getExecutionSettings() };
+  return {
+    execution: recruiterResearchSettingsContract.getExecutionSettings(),
+    governsRuns: recruiterResearchSettingsContract.executionSettingsGovernRuns,
+  };
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -20,8 +23,12 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function RecruiterExecutionSettingsPage() {
-  const { execution } = useLoaderData<typeof loader>();
+  const { execution, governsRuns } = useLoaderData<typeof loader>();
   return (
-    <ExecutionSettingsForm action="/settings/recruiter-search/execution" settings={execution} />
+    <ExecutionSettingsForm
+      action="/settings/recruiter-search/execution"
+      governsRuns={governsRuns}
+      settings={execution}
+    />
   );
 }

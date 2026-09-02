@@ -25,9 +25,11 @@ type SettingsActionState = {
 
 export function ExecutionSettingsForm({
   action = "/settings/recruiter-search/execution",
+  governsRuns,
   settings,
 }: {
   readonly action?: string;
+  readonly governsRuns: boolean;
   readonly settings: ExecutionSettings;
 }) {
   const fetcher = useFetcher<SettingsActionState>();
@@ -46,8 +48,9 @@ export function ExecutionSettingsForm({
           <div>
             <h2>Research execution</h2>
             <p>
-              Recruiter Search researches firms and recruiters through the Codex CLI installed on
-              this machine, signed in to your own plan. Each run freezes these values.
+              {governsRuns
+                ? "Recruiter Search researches firms and recruiters through the Codex CLI installed on this machine, signed in to your own plan. Each run freezes these values."
+                : "These values apply when Recruiter Search researches through the Codex CLI. It is not the research source in force, so a run started now does not use them. Saving them here prepares the switch."}
             </p>
           </div>
         </div>

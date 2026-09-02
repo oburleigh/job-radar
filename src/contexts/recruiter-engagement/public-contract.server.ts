@@ -9,6 +9,8 @@ import { isActiveResearchRunActivity, type ResearchRunActivity } from "./public-
 export const recruiterResearchSettingsContract = {
   getDirectoryMatchWeights: recruiterEngagementWeb.getDirectoryMatchWeights,
   getExecutionSettings: recruiterEngagementWeb.getExecutionSettings,
+  executionSettingsGovernRuns: recruiterEngagementWeb.executionSettingsGovernRuns,
+  publicSearchSettingsGovernRuns: recruiterEngagementWeb.publicSearchSettingsGovernRuns,
   getPublicSearchSettings: recruiterEngagementWeb.getPublicSearchSettings,
   getResearchCriteriaOptions: recruiterEngagementWeb.getResearchCriteriaOptions,
   getPublicSearchProviderOptions: recruiterEngagementWeb.getPublicSearchProviderOptions,
