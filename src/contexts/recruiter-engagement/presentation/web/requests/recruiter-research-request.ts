@@ -13,7 +13,7 @@ const requestSchema = z.object({
     .transform(Number)
     .pipe(z.number().int().safe()),
   industries: z.string().trim().min(1).transform(criteriaItems),
-  providerName: z.string().trim().min(1),
+  providerName: z.string().trim().min(1).optional(),
   recruiterTarget: z
     .string()
     .regex(/^[1-9]\d*$/)
@@ -34,7 +34,7 @@ export type RecruiterResearchStartRequest =
           readonly targetLocations: readonly string[];
         };
         readonly firmTarget: number;
-        readonly providerName: string;
+        readonly providerName?: string;
         readonly recruiterTarget: number;
       };
     }
@@ -61,7 +61,7 @@ export function parseRecruiterResearchStartRequest(
     brief: formData.get("brief"),
     firmTarget: formData.get("firmTarget"),
     industries: formData.get("industries"),
-    providerName: formData.get("providerName"),
+    providerName: formData.get("providerName") ?? undefined,
     recruiterTarget: formData.get("recruiterTarget"),
     specialisms: formData.get("specialisms"),
     targetLocations: formData
@@ -96,7 +96,7 @@ export function parseRecruiterResearchStartRequest(
         targetLocations: canonicalTargetLocations(result.data.targetLocations, options),
       },
       firmTarget: result.data.firmTarget,
-      providerName: result.data.providerName,
+      ...(result.data.providerName ? { providerName: result.data.providerName } : {}),
       recruiterTarget: result.data.recruiterTarget,
     },
   };

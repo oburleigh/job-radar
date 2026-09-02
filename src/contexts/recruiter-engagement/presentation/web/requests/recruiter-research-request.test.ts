@@ -40,6 +40,50 @@ describe("recruiter research request", () => {
     });
   });
 
+  it("accepts a start request that names no public search provider", () => {
+    const data = formData({
+      brief: "UAE fintech engineering",
+      firmTarget: "12",
+      industries: "Financial services",
+      recruiterTarget: "24",
+      specialisms: "Software engineering",
+      targetLocations: "United Arab Emirates",
+    });
+    data.delete("providerName");
+
+    expect(parseRecruiterResearchStartRequest(data, targetLocationOptions)).toEqual({
+      status: "valid",
+      command: {
+        brief: "UAE fintech engineering",
+        criteria: {
+          industries: ["Financial services"],
+          specialisms: ["Software engineering"],
+          targetLocations: ["United Arab Emirates"],
+        },
+        firmTarget: 12,
+        recruiterTarget: 24,
+      },
+    });
+  });
+
+  it("rejects a public search provider submitted as an empty value", () => {
+    const data = formData({
+      brief: "UAE fintech engineering",
+      firmTarget: "12",
+      industries: "Financial services",
+      recruiterTarget: "24",
+      specialisms: "Software engineering",
+      targetLocations: "United Arab Emirates",
+    });
+    data.set("providerName", "   ");
+
+    expect(parseRecruiterResearchStartRequest(data, targetLocationOptions)).toEqual({
+      status: "invalid",
+      field: "providerName",
+      message: "Choose a configured search provider.",
+    });
+  });
+
   it("canonicalizes case-insensitive configured target location labels before they are persisted", () => {
     expect(
       parseRecruiterResearchStartRequest(

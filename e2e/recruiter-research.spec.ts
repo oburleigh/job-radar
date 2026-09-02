@@ -104,16 +104,17 @@ test("identifies and focuses the exact field that prevents research from startin
   });
 });
 
-test("presents the recruiter provider with the same control contract as Opportunities", async ({
+test("offers no public search provider control when research does not use one", async ({
   page,
 }) => {
-  await page.goto("/");
-  const opportunitiesProvider = await controlPresentation(page.getByLabel("Web search provider"));
-
   await page.goto("/recruiter-search");
-  const recruiterProvider = await controlPresentation(page.getByLabel("Search provider"));
 
-  expect(recruiterProvider).toEqual(opportunitiesProvider);
+  await expect(page.getByLabel("Search provider")).toHaveCount(0);
+  await expect(page.getByText("Configure a search provider", { exact: false })).toHaveCount(0);
+  await expect(
+    page.getByText("Codex CLI installed on this machine", { exact: false }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Start research" })).toBeEnabled();
 });
 
 test("starts recruiter research from the browser and renders firms and recruiters", async ({
@@ -180,21 +181,6 @@ test("starts recruiter research from the browser and renders firms and recruiter
   await expect(page.getByRole("heading", { level: 1, name: "Discovery history" })).toHaveCount(0);
   await expect(page.getByRole("cell", { name: "Research Run", exact: true }).first()).toBeVisible();
 });
-
-async function controlPresentation(locator: import("@playwright/test").Locator) {
-  return locator.evaluate((element) => {
-    const styles = getComputedStyle(element);
-    const bounds = element.getBoundingClientRect();
-    return {
-      backgroundColor: styles.backgroundColor,
-      borderRadius: styles.borderRadius,
-      color: styles.color,
-      fontFamily: styles.fontFamily,
-      fontSize: styles.fontSize,
-      height: bounds.height,
-    };
-  });
-}
 
 test("shows each invalid structured criterion on its own control", async ({ page }) => {
   await page.goto("/recruiter-search");
@@ -460,7 +446,7 @@ test("uses the shared country catalogue in the location autocomplete and keeps c
 
   await expect(page.getByText("Local search brief", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Research settings" })).toHaveCount(0);
-  await expect(page.getByLabel("Search provider")).toHaveValue("serper");
+  await expect(page.getByLabel("Search provider")).toHaveCount(0);
   await expect(page.getByLabel("Codex model")).toHaveCount(0);
   const [pageTitle, briefHeading, optionalContext] = await Promise.all([
     page.getByRole("heading", { level: 1, name: "Recruiter Search" }).boundingBox(),

@@ -50,13 +50,15 @@ type RecruiterResearchPageProps = {
   };
   readonly defaultTargets: Pick<ResearchRun["brief"], "firmTarget" | "recruiterTarget">;
   readonly initialLocationOptions?: readonly LocationOption[];
-  readonly providers: readonly {
-    readonly configured: boolean;
-    readonly label: string;
-    readonly name: string;
-  }[];
+  readonly providerSelection?: {
+    readonly providers: readonly {
+      readonly configured: boolean;
+      readonly label: string;
+      readonly name: string;
+    }[];
+    readonly selectedProvider: string;
+  };
   readonly research?: RecruiterResearchRunView;
-  readonly selectedProvider: string;
 };
 
 const activeStatuses = new Set<ResearchRun["status"]>(["pending", "running", "interrupted"]);
@@ -75,10 +77,11 @@ export function RecruiterResearchPage({
   criteriaOptions,
   defaultTargets,
   initialLocationOptions,
-  providers,
+  providerSelection,
   research,
-  selectedProvider,
 }: RecruiterResearchPageProps) {
+  const providers = providerSelection?.providers ?? [];
+  const selectedProvider = providerSelection?.selectedProvider ?? "";
   const navigation = useNavigation();
   const revalidator = useRevalidator();
   const [startRequested, setStartRequested] = useState(false);
@@ -117,6 +120,7 @@ export function RecruiterResearchPage({
     criteriaValues(loadedSpecialisms),
   );
   const providerIsConfigured =
+    !providerSelection ||
     providers.find((provider) => provider.name === providerName)?.configured === true;
 
   useEffect(() => {
@@ -304,43 +308,52 @@ export function RecruiterResearchPage({
             <div className="recruiter-execution-copy">
               <h3 id="research-adapter-title">Active sources</h3>
               <p>
-                Public firm websites and public recruiter profile pages through the configured
-                public web search adapter. No account-linked source is connected.
+                Public firm websites and public recruiter profile pages{" "}
+                {providerSelection
+                  ? "through the configured public web search adapter"
+                  : "researched through the Codex CLI installed on this machine"}
+                . No account-linked source is connected.
               </p>
             </div>
-            <div className="recruiter-execution-fields">
-              <SelectField
-                disabled={isSubmitting || isActive}
-                {...(providerNameError ? { error: providerNameError } : {})}
-                hint="This provider supplies public firm and recruiter profile results for the run."
-                id="recruiter-search-provider"
-                label="Search provider"
-                name="providerName"
-                onChange={(event) => setProviderName(event.target.value)}
-                required
-                value={providerName}
-              >
-                {!providerIsConfigured ? (
-                  <option disabled value="">
-                    Configure a search provider first
-                  </option>
+            {providerSelection ? (
+              <div className="recruiter-execution-fields">
+                <SelectField
+                  disabled={isSubmitting || isActive}
+                  {...(providerNameError ? { error: providerNameError } : {})}
+                  hint="This provider supplies public firm and recruiter profile results for the run."
+                  id="recruiter-search-provider"
+                  label="Search provider"
+                  name="providerName"
+                  onChange={(event) => setProviderName(event.target.value)}
+                  required
+                  value={providerName}
+                >
+                  {!providerIsConfigured ? (
+                    <option disabled value="">
+                      Configure a search provider first
+                    </option>
+                  ) : null}
+                  {providers.map((provider) => (
+                    <option
+                      disabled={!provider.configured}
+                      key={provider.name}
+                      value={provider.name}
+                    >
+                      {provider.label}
+                      {provider.configured ? "" : " (not configured)"}
+                    </option>
+                  ))}
+                </SelectField>
+                {!providerIsConfigured && !isActive ? (
+                  <p className="recruiter-provider-configuration">
+                    <Link to="/settings/recruiter-search/public-search">
+                      Configure a search provider
+                    </Link>{" "}
+                    before starting Recruiter Search.
+                  </p>
                 ) : null}
-                {providers.map((provider) => (
-                  <option disabled={!provider.configured} key={provider.name} value={provider.name}>
-                    {provider.label}
-                    {provider.configured ? "" : " (not configured)"}
-                  </option>
-                ))}
-              </SelectField>
-              {!providerIsConfigured && !isActive ? (
-                <p className="recruiter-provider-configuration">
-                  <Link to="/settings/recruiter-search/public-search">
-                    Configure a search provider
-                  </Link>{" "}
-                  before starting Recruiter Search.
-                </p>
-              ) : null}
-            </div>
+              </div>
+            ) : null}
           </section>
           <div className="recruiter-brief-actions">
             <Button
@@ -403,7 +416,7 @@ function fieldError(
 }
 
 function availableProviderName(
-  providers: RecruiterResearchPageProps["providers"],
+  providers: NonNullable<RecruiterResearchPageProps["providerSelection"]>["providers"],
   selectedProvider: string,
   retainSelectedProvider: boolean,
 ): string {

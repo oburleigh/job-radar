@@ -30,8 +30,10 @@ describe("recruiter research page", () => {
           <RecruiterResearchPage
             criteriaOptions={testCriteriaOptions}
             defaultTargets={{ firmTarget: 10, recruiterTarget: 20 }}
-            providers={[{ configured: true, label: "Serper.dev", name: "serper" }]}
-            selectedProvider="serper"
+            providerSelection={{
+              providers: [{ configured: true, label: "Serper.dev", name: "serper" }],
+              selectedProvider: "serper",
+            }}
           />
         ),
       },
@@ -42,6 +44,48 @@ describe("recruiter research page", () => {
     expect(html).toContain("Public firm websites");
     expect(html).toContain("public recruiter profile pages");
     expect(html).toContain("No account-linked source is connected");
+    expect(html).toContain("Search provider");
+  });
+
+  it("omits provider selection when the wired source does not use a public search provider", () => {
+    const router = createMemoryRouter([
+      {
+        path: "/",
+        element: (
+          <RecruiterResearchPage
+            criteriaOptions={testCriteriaOptions}
+            defaultTargets={{ firmTarget: 10, recruiterTarget: 20 }}
+          />
+        ),
+      },
+    ]);
+
+    const html = renderToStaticMarkup(<RouterProvider router={router} />);
+
+    expect(html).toContain("Codex CLI installed on this machine");
+    expect(html).toContain("No account-linked source is connected");
+    expect(html).not.toContain("Search provider");
+    expect(html).not.toContain("Configure a search provider");
+    expect(html).not.toContain('name="providerName"');
+  });
+
+  it("keeps research startable when no public search provider is selectable", () => {
+    const router = createMemoryRouter([
+      {
+        path: "/",
+        element: (
+          <RecruiterResearchPage
+            criteriaOptions={testCriteriaOptions}
+            defaultTargets={{ firmTarget: 10, recruiterTarget: 20 }}
+          />
+        ),
+      },
+    ]);
+
+    const html = renderToStaticMarkup(<RouterProvider router={router} />);
+
+    expect(html).not.toContain('disabled=""');
+    expect(html).toContain("Start research");
   });
 
   it("directs the user to configuration instead of submitting an unavailable provider", () => {
@@ -52,8 +96,10 @@ describe("recruiter research page", () => {
           <RecruiterResearchPage
             criteriaOptions={testCriteriaOptions}
             defaultTargets={{ firmTarget: 10, recruiterTarget: 20 }}
-            providers={[{ configured: false, label: "Brave Search", name: "brave" }]}
-            selectedProvider="brave"
+            providerSelection={{
+              providers: [{ configured: false, label: "Brave Search", name: "brave" }],
+              selectedProvider: "brave",
+            }}
           />
         ),
       },
@@ -151,7 +197,10 @@ describe("recruiter research page", () => {
           <RecruiterResearchPage
             criteriaOptions={testCriteriaOptions}
             defaultTargets={{ firmTarget: 10, recruiterTarget: 20 }}
-            providers={[{ configured: true, label: "Serper.dev", name: "serper" }]}
+            providerSelection={{
+              providers: [{ configured: true, label: "Serper.dev", name: "serper" }],
+              selectedProvider: "serper",
+            }}
             research={{
               coverage: createResearchCoverage({ run, observations }),
               directory,
@@ -160,7 +209,6 @@ describe("recruiter research page", () => {
               run,
               shortlists,
             }}
-            selectedProvider="serper"
           />
         ),
       },
@@ -227,7 +275,10 @@ describe("recruiter research page", () => {
           <RecruiterResearchPage
             criteriaOptions={testCriteriaOptions}
             defaultTargets={{ firmTarget: 10, recruiterTarget: 20 }}
-            providers={[{ configured: true, label: "Serper.dev", name: "serper" }]}
+            providerSelection={{
+              providers: [{ configured: true, label: "Serper.dev", name: "serper" }],
+              selectedProvider: "serper",
+            }}
             research={{
               coverage: createResearchCoverage({ run: completedRun, observations: [] }),
               directory: rankRecruiterDirectory(createEmptyRecruiterDirectory(), {
@@ -248,7 +299,6 @@ describe("recruiter research page", () => {
               run: completedRun,
               shortlists: [],
             }}
-            selectedProvider="serper"
           />
         ),
       },

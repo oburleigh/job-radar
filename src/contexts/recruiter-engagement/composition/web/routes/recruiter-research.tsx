@@ -12,10 +12,14 @@ export async function loader({ request }: { readonly request: Request }) {
     research,
     criteriaOptions: recruiterEngagementWeb.getResearchCriteriaOptions(),
     defaultTargets: recruiterEngagementWeb.getDefaultSearchTargets(),
-    providers: recruiterEngagementWeb.getPublicSearchProviderOptions(),
-    selectedProvider: research
-      ? recruiterEngagementWeb.getProviderNameForRun(research.run)
-      : recruiterEngagementWeb.getPublicSearchSettings().providerName,
+    providerSelection: recruiterEngagementWeb.providerSelectionApplies
+      ? {
+          providers: recruiterEngagementWeb.getPublicSearchProviderOptions(),
+          selectedProvider: research
+            ? recruiterEngagementWeb.getProviderNameForRun(research.run)
+            : recruiterEngagementWeb.getPublicSearchSettings().providerName,
+        }
+      : undefined,
     initialLocationOptions: resolveLocations(research?.run.brief.criteria.targetLocations ?? []),
   };
 }
@@ -25,14 +29,8 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function RecruiterResearchRoute() {
-  const {
-    criteriaOptions,
-    defaultTargets,
-    initialLocationOptions,
-    providers,
-    research,
-    selectedProvider,
-  } = useLoaderData<typeof loader>();
+  const { criteriaOptions, defaultTargets, initialLocationOptions, providerSelection, research } =
+    useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   return (
     <RecruiterResearchPage
@@ -48,8 +46,7 @@ export default function RecruiterResearchRoute() {
       criteriaOptions={criteriaOptions}
       defaultTargets={defaultTargets}
       initialLocationOptions={initialLocationOptions}
-      providers={providers}
-      selectedProvider={selectedProvider}
+      {...(providerSelection ? { providerSelection } : {})}
     />
   );
 }

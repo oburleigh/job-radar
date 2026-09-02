@@ -203,9 +203,10 @@ export const recruiterEngagementWeb = {
   saveResearchCriteriaOptions,
   saveDirectoryMatchWeights,
   shortlists,
+  providerSelectionApplies: researchSourceKind === "public-web",
   startResearchRun(
     command: Parameters<ReturnType<typeof createResearchRunStarter>["startResearchRun"]>[0] & {
-      readonly providerName: string;
+      readonly providerName?: string;
     },
   ) {
     const { providerName, ...startCommand } = command;
@@ -217,7 +218,7 @@ export const recruiterEngagementWeb = {
       if (!provider) throw new Error("Choose a configured search provider.");
       const settings = {
         ...current,
-        publicSearch: { ...current.publicSearch, providerName },
+        publicSearch: { ...current.publicSearch, providerName: provider.name },
       };
       return createResearchRunStarter({
         createId: randomUUID,
