@@ -22,8 +22,8 @@ export default defineConfig({
     ],
     coverage: {
       // Every context's pure layers, not a list of the contexts that existed when this was
-      // written. recruiter-engagement was created a week after the original list and went
-      // uncounted for two months because nothing here announced what it was not looking at.
+      // written. The discovery-only list measured 75 of 104 files once recruiter-engagement
+      // arrived on 2026-08-27, and nothing here announced the other 29.
       include: [
         "src/contexts/*/domain/**/*.ts",
         "src/contexts/*/application/**/*.ts",
@@ -31,10 +31,10 @@ export default defineConfig({
       ],
       exclude: ["**/*.test.ts", "**/*.test.tsx", "**/test-support/**"],
       reporter: ["text", "html", "lcov"],
-      // A ratchet, set one point under the measurement on the widened scope rather than at
-      // the old slack. Coverage is deterministic, so there is no run-to-run noise to absorb:
-      // measured 2026-09-02 at 95.96 statements, 89.85 branches, 98.34 functions, 95.95 lines
-      // over 104 files.
+      // Ratchets, each the measurement on the widened scope rounded down to a whole percent
+      // rather than the old slack. Coverage is deterministic, so there is no run-to-run noise
+      // to absorb: measured 2026-09-02 at 95.96 statements, 89.85 branches, 98.34 functions,
+      // 95.95 lines over 104 files.
       thresholds: {
         statements: 95,
         branches: 89,
