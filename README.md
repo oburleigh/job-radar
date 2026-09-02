@@ -1,5 +1,13 @@
 # Job Radar
 
+<p>
+  <a href="https://github.com/oburleigh/job-radar/actions/workflows/ci.yml"><img alt="Verify" src="https://github.com/oburleigh/job-radar/actions/workflows/ci.yml/badge.svg?branch=main"></a>
+  <a href="https://github.com/oburleigh/job-radar/actions/workflows/mutation.yml"><img alt="Full mutation" src="https://github.com/oburleigh/job-radar/actions/workflows/mutation.yml/badge.svg?branch=main"></a>
+  <a href="https://codecov.io/github/oburleigh/job-radar"><img alt="Coverage" src="https://codecov.io/github/oburleigh/job-radar/graph/badge.svg?token=GNBPA2IJPN"></a>
+  <img alt="Node 24" src="https://img.shields.io/badge/node-24-brightgreen">
+  <img alt="pnpm" src="https://img.shields.io/badge/pnpm-11.1.3-orange">
+</p>
+
 Job Radar is a local job discovery and triage app. It searches targeted ATS
 domains through a web search provider, discovers company job boards, fetches
 structured listings where the ATS permits it, and scores each job against your

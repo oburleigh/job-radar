@@ -27,7 +27,7 @@ export default defineConfig({
         "src/contexts/discovery/presentation/web/{formatters,requests}/**/*.ts",
       ],
       exclude: ["**/*.test.ts", "**/*.test.tsx", "**/test-support/**"],
-      reporter: ["text", "html"],
+      reporter: ["text", "html", "lcov"],
       thresholds: {
         statements: 90,
         branches: 80,
