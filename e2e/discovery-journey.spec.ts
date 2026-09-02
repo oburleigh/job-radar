@@ -626,12 +626,10 @@ test("explains that a returned role was excluded by location", async ({ page }) 
   );
   await page.getByRole("button", { name: "Run discovery" }).click();
   const started = (await (await startedResponse).json()) as { runId: number };
-  await expect(page.getByRole("status").filter({ hasText: "Discovery completed" })).toBeVisible({
-    timeout: 30_000,
-  });
+  await expect(completedNoticeFor(page, started.runId)).toBeVisible({ timeout: 30_000 });
 
   await page.getByRole("link", { name: "Activity" }).click();
-  await page.getByRole("link", { name: new RegExp(`#${started.runId}`) }).click();
+  await runHistoryLinkFor(page, started.runId).click();
   await page
     .getByLabel("Public job URL")
     .fill("https://boards.greenhouse.io/acme-mismatch/jobs/67890");
@@ -936,10 +934,30 @@ async function runDiscovery(page: Page, profileId: number): Promise<number> {
   );
   await page.getByRole("button", { name: "Run discovery" }).click();
   const started = (await (await startedResponse).json()) as { runId: number };
-  await expect(page.getByRole("status").filter({ hasText: "Discovery completed" })).toBeVisible({
-    timeout: 30_000,
-  });
+  await expect(completedNoticeFor(page, started.runId)).toBeVisible({ timeout: 30_000 });
   return started.runId;
+}
+
+/**
+ * Scoped to one run, because a page adopts every run active on the server whoever started it
+ * (`discovery-notifications.tsx`, `adoptActiveRuns`). "Discovery completed" alone matched two
+ * notices in CI and the assertion failed on the ambiguity rather than on the product.
+ */
+function completedNoticeFor(page: Page, runId: number): Locator {
+  return page
+    .getByRole("status")
+    .filter({ hasText: "Discovery completed" })
+    .filter({ has: page.getByRole("link", { name: `View run #${runId}` }) });
+}
+
+/**
+ * Scoped to Run history, because a completion notice carries its own link to the same run and
+ * `#${runId}` matches both.
+ */
+function runHistoryLinkFor(page: Page, runId: number): Locator {
+  return page
+    .getByRole("region", { name: "Run history" })
+    .getByRole("link", { name: new RegExp(`#${runId}\\b`) });
 }
 
 async function verifyJobActionsVisualLayout(page: Page): Promise<void> {
