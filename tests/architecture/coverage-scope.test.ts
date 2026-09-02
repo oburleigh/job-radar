@@ -27,19 +27,25 @@ const measuredLayers = [
 ] as const;
 
 /**
- * Evaluated rather than read as text. A parser still sees a pattern that a block comment has
- * removed from the configuration Vitest runs, and sees none of the options that narrow the
- * report without touching a pattern at all.
+ * Evaluated rather than read as text. A parser cannot resolve a pattern held in a variable,
+ * and cannot see the options that narrow the report without touching a pattern at all.
  */
-async function coverage() {
+/** Vitest reads `changed` from the config file, though `TestUserConfig` does not declare it. */
+type DeclaredTest = NonNullable<ViteUserConfig["test"]> & { readonly changed?: string | boolean };
+
+async function declaredTest() {
   const module = (await import(
     pathToFileURL(path.join(repositoryRoot, "vitest.config.ts")).href
-  )) as { readonly default: ViteUserConfig };
-  const declared = module.default.test?.coverage;
-  if (!declared || !("include" in declared) || !declared.include) {
+  )) as { readonly default: { readonly test?: DeclaredTest } };
+  const declared = module.default.test;
+  if (!declared?.coverage || !("include" in declared.coverage) || !declared.coverage.include) {
     throw new Error("vitest.config.ts declares no coverage.include to check.");
   }
-  return declared;
+  return { ...declared, coverage: declared.coverage };
+}
+
+async function coverage() {
+  return (await declaredTest()).coverage;
 }
 
 function contexts(): readonly string[] {
@@ -82,12 +88,20 @@ describe("coverage scope", () => {
   });
 
   it("reports the whole scope every run, rather than only what a commit touched", async () => {
-    expect((await coverage()).changed).toBeUndefined();
+    const declared = await declaredTest();
+
+    expect(declared.coverage.changed).toBeUndefined();
+    /** `coverage.changed` takes its default from `test.changed`, so this narrows the report too. */
+    expect(declared.changed).toBeUndefined();
+    /**
+     * Stated as the whole command rather than as options to reject. A list of rejected options
+     * is a list of the ones thought of, and `--changed` was not one of them.
+     */
     expect(
       JSON.parse(readFileSync(path.join(repositoryRoot, "package.json"), "utf8")).scripts[
         "test:coverage"
       ],
-    ).not.toMatch(/--coverage\.(include|exclude|changed|all)/);
+    ).toBe("vitest run --coverage");
   });
 
   it("finds more than one context, so the checks above cannot pass by measuring nothing", async () => {
