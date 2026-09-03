@@ -139,7 +139,6 @@ export function getDashboardData(filters: JobFilters, database: Database): Dashb
       score: jobMatches.score,
       reasons: jobMatches.reasons,
       state: jobStates.status,
-      notes: jobStates.notes,
     })
     .from(jobMatches)
     .innerJoin(jobs, eq(jobs.id, jobMatches.jobId))

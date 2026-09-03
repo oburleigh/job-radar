@@ -6,11 +6,15 @@ import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createAnnualSalaryRange } from "@/contexts/discovery/domain/annual-salary";
+import type { JobListingEvidence } from "@/contexts/discovery/domain/job-listing-provenance";
+import type { JobListingState } from "@/contexts/discovery/domain/job-listing-state";
 import type { ExclusionReason } from "@/contexts/discovery/domain/job-match";
+import type { AtsType } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
 import * as schema from "@/contexts/discovery/infrastructure/sqlite/schema";
 import {
   companyBoards,
   jobMatches,
+  jobStates,
   jobs,
   searchProfiles,
 } from "@/contexts/discovery/infrastructure/sqlite/schema";
@@ -165,15 +169,89 @@ describe("dashboard opportunity payload", () => {
     ]);
   });
 
-  it("keeps the derived fields the removed columns fed", () => {
+  it("derives verification from the evidence the browser no longer receives", () => {
     const profileId = seedProfile(database);
-    seedMatchedJob(database, profileId, "matched-one");
+    seedMatchedJob(database, profileId, "structured-one", {
+      title: "Director of Engineering",
+      evidence: "structured",
+      score: 90,
+    });
+    seedMatchedJob(database, profileId, "lead-one", {
+      title: "Head of Platform",
+      evidence: "search-lead",
+      score: 80,
+    });
 
-    const [job] = getDashboardData({ profileId }, database).jobs;
+    const jobs = getDashboardData({ profileId }, database).jobs;
 
-    expect(job?.verified).toBe(true);
-    expect(job?.salary).toEqual(createAnnualSalaryRange("USD", 90_000, 120_000));
-    expect(job?.state).toBe("new");
+    expect(jobs.map((job) => [job.title, job.verified])).toEqual([
+      ["Director of Engineering", true],
+      ["Head of Platform", false],
+    ]);
+  });
+
+  it("composes the salary from the columns it stops returning", () => {
+    const profileId = seedProfile(database);
+    seedMatchedJob(database, profileId, "paid-one", {
+      title: "Director of Engineering",
+      score: 90,
+      salaryMin: 90_000,
+      salaryMax: 120_000,
+    });
+    seedMatchedJob(database, profileId, "unpaid-one", {
+      title: "Head of Platform",
+      score: 80,
+      salaryCurrency: "",
+      salaryMin: null,
+      salaryMax: null,
+    });
+
+    const jobs = getDashboardData({ profileId }, database).jobs;
+
+    expect(jobs.map((job) => job.salary)).toEqual([
+      createAnnualSalaryRange("USD", 90_000, 120_000),
+      null,
+    ]);
+  });
+
+  it("returns the recorded listing state and falls back to new", () => {
+    const profileId = seedProfile(database);
+    seedMatchedJob(database, profileId, "saved-one", {
+      title: "Director of Engineering",
+      score: 90,
+      state: "saved",
+    });
+    seedMatchedJob(database, profileId, "untouched-one", {
+      title: "Head of Platform",
+      score: 80,
+    });
+
+    const data = getDashboardData({ profileId }, database);
+
+    expect(data.jobs.map((job) => job.state)).toEqual(["saved", "new"]);
+    expect(data.counts).toEqual({ matched: 2, new: 1, saved: 1, applied: 0 });
+  });
+
+  it("keeps the structured listing when a search-lead duplicate outranks it", () => {
+    const profileId = seedProfile(database);
+    seedMatchedJob(database, profileId, "lead-duplicate", {
+      atsType: "linkedin",
+      evidence: "search-lead",
+      score: 95,
+    });
+    seedMatchedJob(database, profileId, "structured-duplicate", {
+      atsType: "greenhouse",
+      evidence: "structured",
+      score: 80,
+    });
+
+    const data = getDashboardData({ profileId }, database);
+
+    expect(data.jobs.map((job) => job.canonicalUrl)).toEqual([
+      "https://example.test/jobs/structured-duplicate",
+    ]);
+    expect(data.jobs[0]?.verified).toBe(true);
+    expect(data.counts.matched).toBe(1);
   });
 });
 
@@ -214,21 +292,33 @@ function seedProfile(database: ReturnType<typeof createDatabase>): number {
     .get().id;
 }
 
+interface MatchedJobFixture {
+  readonly atsType?: AtsType;
+  readonly evidence?: JobListingEvidence;
+  readonly title?: string;
+  readonly score?: number;
+  readonly salaryCurrency?: string;
+  readonly salaryMin?: number | null;
+  readonly salaryMax?: number | null;
+  readonly state?: JobListingState;
+}
+
 function seedMatchedJob(
   database: ReturnType<typeof createDatabase>,
   profileId: number,
   id: string,
+  fixture: MatchedJobFixture = {},
 ): void {
   const jobId = database
     .insert(jobs)
     .values({
-      atsType: "greenhouse",
+      atsType: fixture.atsType ?? "greenhouse",
       externalId: id,
       dedupeKey: id,
       canonicalUrl: `https://example.test/jobs/${id}`,
       applyUrl: `https://example.test/jobs/${id}/apply`,
       companyName: "Example Systems",
-      title: "Director of Engineering",
+      title: fixture.title ?? "Director of Engineering",
       locationText: "Dubai, United Arab Emirates",
       locations: ["United Arab Emirates"],
       description: "A long job description the opportunity interface never renders.",
@@ -236,10 +326,10 @@ function seedMatchedJob(
       employmentType: "Full-time",
       workplaceType: "Hybrid",
       publishedAt: recordedAt,
-      salaryCurrency: "USD",
-      salaryMin: 90_000,
-      salaryMax: 120_000,
-      evidence: "structured",
+      salaryCurrency: fixture.salaryCurrency ?? "USD",
+      salaryMin: fixture.salaryMin === undefined ? 90_000 : fixture.salaryMin,
+      salaryMax: fixture.salaryMax === undefined ? 120_000 : fixture.salaryMax,
+      evidence: fixture.evidence ?? "structured",
       firstSeenAt: recordedAt,
       lastSeenAt: recordedAt,
       isActive: true,
@@ -253,13 +343,19 @@ function seedMatchedJob(
       profileId,
       jobId,
       status: "matched",
-      score: 88,
+      score: fixture.score ?? 88,
       reasons: [],
       exclusionReasons: [],
       ...screeningCountColumns([]),
       updatedAt: recordedAt,
     })
     .run();
+  if (fixture.state) {
+    database
+      .insert(jobStates)
+      .values({ profileId, jobId, status: fixture.state, notes: "", updatedAt: recordedAt })
+      .run();
+  }
 }
 
 function seedExcludedJob(
