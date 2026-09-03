@@ -1,11 +1,13 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import type { AnnualSalaryRange } from "@/contexts/discovery/domain/annual-salary";
 import { createAnnualSalaryRange } from "@/contexts/discovery/domain/annual-salary";
 import {
   isVerifiedJobListing,
   shouldPreferListingCandidate,
 } from "@/contexts/discovery/domain/job-listing-provenance";
 import type { JobListingState } from "@/contexts/discovery/domain/job-listing-state";
+import type { MatchReason } from "@/contexts/discovery/domain/job-match";
 import type { AtsType } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
 import type * as schema from "@/contexts/discovery/infrastructure/sqlite/schema";
 import {
@@ -28,7 +30,66 @@ export interface JobFilters {
   query?: string;
 }
 
-export function getDashboardData(filters: JobFilters, database: Database) {
+export interface DashboardJob {
+  readonly id: number;
+  readonly title: string;
+  readonly companyName: string;
+  readonly locationText: string;
+  readonly atsType: AtsType;
+  readonly canonicalUrl: string;
+  readonly applyUrl: string;
+  readonly department: string;
+  readonly employmentType: string;
+  readonly workplaceType: string;
+  readonly publishedAt: Date | null;
+  readonly firstSeenAt: Date;
+  readonly salary: AnnualSalaryRange | null;
+  readonly verified: boolean;
+  readonly score: number;
+  readonly reasons: readonly MatchReason[];
+  readonly state: JobListingState;
+}
+
+export interface DashboardCounts {
+  readonly matched: number;
+  readonly new: number;
+  readonly saved: number;
+  readonly applied: number;
+}
+
+export interface DashboardScreeningSummary {
+  readonly total: number;
+  readonly title: number;
+  readonly location: number;
+  readonly stale: number;
+  readonly unverified: number;
+  readonly context: number;
+  readonly salary: number;
+}
+
+export interface DashboardLastRun {
+  readonly id: number;
+  readonly provider: string;
+  readonly status: "running" | "completed" | "failed" | "cancelled";
+  readonly hitCount: number;
+  readonly jobsUpserted: number;
+  readonly startedAt: Date;
+}
+
+type DashboardProfiles = ReturnType<typeof getProfiles>;
+
+export interface DashboardData {
+  readonly profiles: DashboardProfiles;
+  readonly profile: DashboardProfiles[number] | null;
+  readonly jobs: readonly DashboardJob[];
+  readonly counts: DashboardCounts;
+  readonly screened: DashboardScreeningSummary;
+  readonly activeSources: number;
+  readonly activeBoards: number;
+  readonly lastRun: DashboardLastRun | null;
+}
+
+export function getDashboardData(filters: JobFilters, database: Database): DashboardData {
   const profiles = getProfiles(database);
   const profile =
     profiles.find((item) => item.id === filters.profileId) ??
@@ -69,18 +130,15 @@ export function getDashboardData(filters: JobFilters, database: Database) {
       department: jobs.department,
       employmentType: jobs.employmentType,
       workplaceType: jobs.workplaceType,
-      description: jobs.description,
       publishedAt: jobs.publishedAt,
       firstSeenAt: jobs.firstSeenAt,
       salaryCurrency: jobs.salaryCurrency,
       salaryMin: jobs.salaryMin,
       salaryMax: jobs.salaryMax,
       evidence: jobs.evidence,
-      rawPayload: jobs.rawPayload,
       score: jobMatches.score,
       reasons: jobMatches.reasons,
       state: jobStates.status,
-      notes: jobStates.notes,
     })
     .from(jobMatches)
     .innerJoin(jobs, eq(jobs.id, jobMatches.jobId))
@@ -124,7 +182,28 @@ export function getDashboardData(filters: JobFilters, database: Database) {
         !query ||
         `${row.title} ${row.companyName} ${row.locationText}`.toLowerCase().includes(query),
     )
-    .slice(0, 250);
+    .slice(0, 250)
+    .map(
+      (row): DashboardJob => ({
+        id: row.id,
+        title: row.title,
+        companyName: row.companyName,
+        locationText: row.locationText,
+        atsType: row.atsType,
+        canonicalUrl: row.canonicalUrl,
+        applyUrl: row.applyUrl,
+        department: row.department,
+        employmentType: row.employmentType,
+        workplaceType: row.workplaceType,
+        publishedAt: row.publishedAt,
+        firstSeenAt: row.firstSeenAt,
+        salary: row.salary,
+        verified: row.verified,
+        score: row.score,
+        reasons: row.reasons,
+        state: row.state,
+      }),
+    );
 
   const activeSources = database
     .select({ id: sourceDomains.id })
@@ -164,16 +243,8 @@ export function getDashboardData(filters: JobFilters, database: Database) {
   };
 }
 
-function readScreeningSummary(profileId: number, database: Database) {
-  return database.get<{
-    total: number;
-    title: number;
-    location: number;
-    stale: number;
-    unverified: number;
-    context: number;
-    salary: number;
-  }>(sql`
+function readScreeningSummary(profileId: number, database: Database): DashboardScreeningSummary {
+  return database.get<DashboardScreeningSummary>(sql`
     SELECT
       count(*) AS total,
       coalesce(sum(${jobMatches.excludedTitleReasonCount}), 0) AS title,
