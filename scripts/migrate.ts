@@ -5,6 +5,7 @@ import path from "node:path";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 
 import { bootstrapJobRadar } from "@/contexts/discovery/infrastructure/configuration/bootstrap-job-radar";
+import { backfillJobMatchListingActivity } from "@/contexts/discovery/infrastructure/sqlite/backfill-listing-activity";
 import { db } from "@/contexts/discovery/infrastructure/sqlite/database";
 import {
   backfillScreeningCountColumns,
@@ -27,6 +28,7 @@ async function main() {
 
   const migratedExclusionReasons = migrateLegacyExclusionReasons(db);
   const backfilledScreeningCounts = backfillScreeningCountColumns(db);
+  const backfilledListingActivity = backfillJobMatchListingActivity(db);
   const repairedJobs = repairLegacyJobEvidence(db);
   const recoveringStaleMatches = repairedJobs === 0 && hasStaleUnverifiedJobMatches(db);
   if (repairedJobs > 0 || recoveringStaleMatches) {
@@ -46,8 +48,8 @@ async function main() {
 
   console.log(
     repairedJobs > 0
-      ? `Database schema and product defaults are ready. Migrated ${migratedExclusionReasons} legacy match records, backfilled ${backfilledScreeningCounts} screening summaries, repaired ${repairedJobs} legacy structured jobs, and re-evaluated saved profiles.`
-      : `Database schema and product defaults are ready. Migrated ${migratedExclusionReasons} legacy match records and backfilled ${backfilledScreeningCounts} screening summaries.`,
+      ? `Database schema and product defaults are ready. Migrated ${migratedExclusionReasons} legacy match records, backfilled ${backfilledScreeningCounts} screening summaries and ${backfilledListingActivity} listing activity flags, repaired ${repairedJobs} legacy structured jobs, and re-evaluated saved profiles.`
+      : `Database schema and product defaults are ready. Migrated ${migratedExclusionReasons} legacy match records, backfilled ${backfilledScreeningCounts} screening summaries, and brought ${backfilledListingActivity} listing activity flags into step.`,
   );
 }
 
