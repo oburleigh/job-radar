@@ -62,24 +62,25 @@ export async function evaluateAndStore(
   options: EvaluationOptions = {},
   database: Database = db,
 ): Promise<EvaluationSummary> {
-  // Paging by id over `jobs_active_id_idx` holds peak memory to one batch instead of the table,
-  // and the highest active id read up front is what keeps it a pass over one set of listings: a
-  // row inserted or reactivated above the ceiling while this pass yields belongs to the next pass,
-  // not this one, and without the ceiling a neighbouring run inserting rows could page this loop
-  // forward indefinitely. A listing that closes before its batch is read is also left to the pass
-  // that follows; the `job_matches_follow_listing_activation` trigger keeps the stored flag on any
-  // match it already has in step meanwhile.
+  const now = new Date();
+  const config = getJobRadarConfig(database);
+  const yieldEvery = options.yieldEvery ?? config.discovery.workYieldBatchSize;
+  // Paging by id over `jobs_active_id_idx` holds peak memory to one batch instead of the table, and
+  // the highest active id read up front bounds the pass to a finite id range rather than to a set
+  // of listings: activity stays live inside that range, so a row below the ceiling that reopens
+  // ahead of the cursor still joins this pass, while anything inserted or reopened above the
+  // ceiling belongs to the next one. Without the ceiling a neighbouring run inserting rows could
+  // page this loop forward indefinitely. A listing that closes before its batch is read is left to
+  // the pass that follows; the `job_matches_follow_listing_activation` trigger keeps the stored flag
+  // on any match it already has in step meanwhile.
   const ceiling = database
     .select({ highestId: max(jobs.id) })
     .from(jobs)
     .where(eq(jobs.isActive, true))
     .get()?.highestId;
-  if (ceiling === undefined || ceiling === null) {
+  if (ceiling === null || ceiling === undefined) {
     return { evaluated: 0, matched: 0, excluded: 0 };
   }
-  const now = new Date();
-  const config = getJobRadarConfig(database);
-  const yieldEvery = options.yieldEvery ?? config.discovery.workYieldBatchSize;
   const readListings = database
     .select(evaluatedListingColumns)
     .from(jobs)

@@ -1,6 +1,6 @@
 import path from "node:path";
 import Database from "better-sqlite3";
-import { eq, type Logger } from "drizzle-orm";
+import { eq, inArray, type Logger } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -151,12 +151,31 @@ describe("the listings an evaluation reads", () => {
     ]);
   });
 
-  it("leaves a listing that arrives after the pass began to the pass that follows", async () => {
+  // The empty path returns before the loop, so the configuration read is the only thing proving it
+  // still validates settings rather than reporting a quiet success on a database with nothing in it.
+  it("reads its configuration even when no listing is active", async () => {
     const profileId = seedProfile(database);
-    const firstJobId = seedListing(database, "present-at-the-start");
-    const secondJobId = seedListing(database, "also-present-at-the-start");
+    seedListing(database, "the-only-listing-and-it-is-closed", { isActive: false });
+    recorded.length = 0;
+
+    const summary = await evaluateAndStore(loadProfile(database, profileId), {}, database);
+
+    expect(summary).toEqual({ evaluated: 0, matched: 0, excluded: 0 });
+    expect(recorded.filter((query) => query.includes('from "app_settings"'))).toHaveLength(1);
+    expect(listingReadStatements(recorded)).toHaveLength(0);
+  });
+
+  it("evaluates the listings active when the pass began and leaves the rest to the next pass", async () => {
+    const profileId = seedProfile(database);
+    const closedBelowJobId = seedListing(database, "closed-below-the-active-pair", {
+      isActive: false,
+    });
+    const firstJobId = seedListing(database, "active-at-the-start");
+    const secondJobId = seedListing(database, "also-active-at-the-start");
+    const closedAboveJobId = seedListing(database, "closed-above-the-active-pair", {
+      isActive: false,
+    });
     let batches = 0;
-    let arrivedLateJobId: number | undefined;
 
     const summary = await evaluateAndStore(
       loadProfile(database, profileId),
@@ -165,14 +184,20 @@ describe("the listings an evaluation reads", () => {
         onBatch: () => {
           batches += 1;
           if (batches === 1) {
-            arrivedLateJobId = seedListing(database, "inserted-while-the-pass-yielded");
+            database
+              .update(jobs)
+              .set({ isActive: true })
+              .where(inArray(jobs.id, [closedBelowJobId, closedAboveJobId]))
+              .run();
+            seedListing(database, "inserted-while-the-pass-yielded");
           }
         },
       },
       database,
     );
 
-    expect(arrivedLateJobId).toBeGreaterThan(secondJobId);
+    expect(closedBelowJobId).toBeLessThan(firstJobId);
+    expect(closedAboveJobId).toBeGreaterThan(secondJobId);
     expect(summary.evaluated).toBe(2);
     expect(matchesOf(database, profileId).map((match) => match.jobId)).toEqual([
       firstJobId,
@@ -261,7 +286,11 @@ function seedProfile(
     .get().id;
 }
 
-function seedListing(database: ReturnType<typeof createDatabase>, id: string): number {
+function seedListing(
+  database: ReturnType<typeof createDatabase>,
+  id: string,
+  activity: { readonly isActive: boolean } = { isActive: true },
+): number {
   return database
     .insert(jobs)
     .values({
@@ -274,7 +303,7 @@ function seedListing(database: ReturnType<typeof createDatabase>, id: string): n
       evidence: "structured",
       firstSeenAt: recordedAt,
       lastSeenAt: recordedAt,
-      isActive: true,
+      isActive: activity.isActive,
       rawPayload: { description: "a payload the evaluation never reads" },
     })
     .returning({ id: jobs.id })
