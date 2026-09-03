@@ -1,0 +1,1 @@
+CREATE INDEX `jobs_canonical_url_idx` ON `jobs` (`canonical_url`);
