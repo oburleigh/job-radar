@@ -33,6 +33,8 @@ interface EvaluationOptions {
 // The snapshot of active listings is taken once and the loop yields between batches, so a listing
 // can close while this run still has it in hand. Reading the flag inside the write keeps the copy
 // on the match true at the moment the row lands, rather than restoring what was true at the start.
+// The conflict branch reuses `excluded`, which already holds this row's value, rather than seeking
+// the listing a second time.
 function listingActivityOf(jobId: number): SQL<boolean> {
   return sql`(SELECT ${jobs.isActive} FROM ${jobs} WHERE ${jobs.id} = ${jobId})`;
 }
@@ -94,7 +96,7 @@ export async function evaluateAndStore(
           reasons: result.reasons,
           exclusionReasons: result.exclusionReasons,
           ...screeningCounts,
-          listingIsActive: listingActivityOf(job.id),
+          listingIsActive: sql`excluded.${sql.raw(jobMatches.listingIsActive.name)}`,
           updatedAt: now,
         },
       })

@@ -490,6 +490,29 @@ test("shows persisted board progress while matching waits for collection", async
     };
     page.on("request", recordPoll);
     await expect.poll(() => polls.length, { timeout: 30_000 }).toBeGreaterThan(0);
+
+    // A poll waits for the one before it to settle. Holding a response for three cadences and
+    // finding one request outstanding is the difference between rescheduling on settle and firing
+    // on a fixed interval, which the 3s seeded cadence would otherwise hide behind fast responses.
+    let releaseHeldPoll = () => {};
+    const heldPoll = new Promise<void>((resolve) => {
+      releaseHeldPoll = resolve;
+    });
+    await page.route(
+      (url) => url.pathname.endsWith(".data"),
+      async (route) => {
+        await heldPoll;
+        await route.continue();
+      },
+      { times: 1 },
+    );
+    polls.length = 0;
+    await expect.poll(() => polls.length, { timeout: 30_000 }).toBe(1);
+    await page.waitForTimeout(9_000);
+    expect(polls).toHaveLength(1);
+    releaseHeldPoll();
+    await expect.poll(() => polls.length, { timeout: 30_000 }).toBeGreaterThan(1);
+
     await setDocumentVisibility(page, "hidden");
     const polledBeforeHiding = polls.length;
     await page.waitForTimeout(12_000);

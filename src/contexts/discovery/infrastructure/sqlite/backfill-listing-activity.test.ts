@@ -101,6 +101,41 @@ describe("listing activity denormalised onto job matches", () => {
     ]);
   });
 
+  it("records a listing that closes while a re-evaluation still has it in hand", async () => {
+    bootstrapJobRadar(database);
+    const profileId = seedProfile(database);
+    const closingJobId = seedListing(database, "closing-on-reevaluation");
+    const stayingJobId = seedListing(database, "staying-open-on-reevaluation");
+    await evaluateAndStore(loadProfile(database, profileId), {}, database);
+    expect(listingActivityFlags(database)).toEqual([true, true]);
+    let batches = 0;
+
+    await evaluateAndStore(
+      loadProfile(database, profileId),
+      {
+        yieldEvery: 1,
+        beforeBatch: () => {
+          batches += 1;
+          if (batches === 1) {
+            setListingActivity(database, closingJobId, false);
+          }
+        },
+      },
+      database,
+    );
+
+    expect(
+      database
+        .select({ jobId: jobMatches.jobId, listingIsActive: jobMatches.listingIsActive })
+        .from(jobMatches)
+        .orderBy(jobMatches.jobId)
+        .all(),
+    ).toEqual([
+      { jobId: closingJobId, listingIsActive: false },
+      { jobId: stayingJobId, listingIsActive: true },
+    ]);
+  });
+
   it("brings a stale flag back into step when it re-evaluates a listing", async () => {
     bootstrapJobRadar(database);
     const profileId = seedProfile(database);
