@@ -42,8 +42,9 @@ _Avoid_: Scan, search job
 
 **Stale run**:
 A discovery run whose recorded status is still running but which has not reported progress within
-the configured stale run timeout. The polled status endpoint, the run page, Activity history and the
-active-run count all report it as failed. Only starting another run writes that conclusion down.
+the configured stale run timeout. A watcher polling it by id, the run page and Activity history
+report it as failed; an active-runs query and the active-run count leave it out. Only starting
+another run writes that conclusion down.
 _Avoid_: Stalled run, abandoned run, dead run, and Stale listing, which excludes a listing on age
 rather than describing a run
 

@@ -71,10 +71,10 @@ export function createSqliteDiscoveryRunStatusReader(
           errorSummary: progress.error.split("\n", 1)[0]?.trim().slice(0, 500) ?? "",
         };
       });
-      // A run asked for by id reports its effective failure, which is how a watcher learns the
-      // outcome. The active list must not, or every reload readopts a run nobody will reap until
-      // the next one starts and shows its terminal notice again.
-      const reported = query.ids.length > 0 ? runs : runs.filter((run) => run.status === "running");
+      // A run polled by id reports its effective failure, which is how a watcher learns the
+      // outcome. A caller asking for active runs must not receive one, or every reload readopts a
+      // run nobody will reap until the next reservation and shows its terminal notice again.
+      const reported = query.activeOnly ? runs.filter((run) => run.status === "running") : runs;
       const foundIds = new Set(reported.map((run) => run.id));
       return {
         runs: reported,

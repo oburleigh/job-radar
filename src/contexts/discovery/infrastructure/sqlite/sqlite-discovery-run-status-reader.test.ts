@@ -218,35 +218,31 @@ describe("SQLite discovery run status reader", () => {
     ]);
   });
 
-  it("leaves a run that stopped reporting out of the active list, so a reload stops readopting it", () => {
+  it("keeps every live run in the active list and leaves the one that stopped reporting out", () => {
     const profileId = insertProfile(database);
-    database
-      .insert(schema.discoveryRuns)
-      .values({
-        profileId,
-        provider: "serper",
-        status: "running",
-        startedAt: new Date(now.getTime() - 900_000),
-        heartbeatAt: new Date(now.getTime() - staleAfterMs - 1),
-      })
-      .run();
-    database
-      .insert(schema.discoveryRuns)
-      .values({
-        profileId,
-        provider: "serper",
-        status: "running",
-        startedAt: new Date(now.getTime() - 900_000),
-        heartbeatAt: new Date(now.getTime() - 1_000),
-      })
-      .run();
+    const stale = insertRun(database, { heartbeatAgoMs: staleAfterMs + 1, profileId });
+    const older = insertRun(database, { heartbeatAgoMs: 2_000, profileId, startedAgoMs: 800_000 });
+    const newer = insertRun(database, { heartbeatAgoMs: 1_000, profileId, startedAgoMs: 400_000 });
 
-    expect(createReader(database).read({ ids: [], activeOnly: true }).runs).toEqual([
-      expect.objectContaining({ id: 2, status: "running" }),
+    const active = createReader(database).read({ ids: [], activeOnly: true }).runs;
+
+    expect(active.map((run) => run.id)).toEqual([newer, older]);
+    expect(active.every((run) => run.status === "running")).toBe(true);
+    expect(active.map((run) => run.id)).not.toContain(stale);
+  });
+
+  it("reports a stale run to a watcher polling it by id and withholds it from an active query", () => {
+    const profileId = insertProfile(database);
+    const stale = insertRun(database, { heartbeatAgoMs: staleAfterMs + 1, profileId });
+    const reader = createReader(database);
+
+    expect(reader.read({ ids: [stale], activeOnly: false }).runs).toEqual([
+      expect.objectContaining({ id: stale, status: "failed" }),
     ]);
-    expect(createReader(database).read({ ids: [1], activeOnly: false }).runs).toEqual([
-      expect.objectContaining({ id: 1, status: "failed" }),
-    ]);
+    expect(reader.read({ ids: [stale], activeOnly: true })).toEqual({
+      runs: [],
+      missingIds: [stale],
+    });
   });
 
   it("reports a run that is still sending progress as running", () => {
@@ -268,6 +264,27 @@ describe("SQLite discovery run status reader", () => {
     ]);
   });
 });
+
+function insertRun(
+  database: ReturnType<typeof createDatabase>,
+  input: {
+    readonly heartbeatAgoMs: number;
+    readonly profileId: number;
+    readonly startedAgoMs?: number;
+  },
+): number {
+  return database
+    .insert(schema.discoveryRuns)
+    .values({
+      profileId: input.profileId,
+      provider: "serper",
+      status: "running",
+      startedAt: new Date(now.getTime() - (input.startedAgoMs ?? 900_000)),
+      heartbeatAt: new Date(now.getTime() - input.heartbeatAgoMs),
+    })
+    .returning({ id: schema.discoveryRuns.id })
+    .get().id;
+}
 
 function insertProfile(database: ReturnType<typeof createDatabase>): number {
   return database
