@@ -18,9 +18,10 @@ describe("database migrations", () => {
   it("reports a record statement however it is dressed up", () => {
     expect(recordStatementsIn("UPDATE `jobs` SET `is_active` = 0;")).toEqual(["UPDATE"]);
     expect(recordStatementsIn("  delete from `jobs`;")).toEqual(["DELETE"]);
+    expect(recordStatementsIn("REPLACE INTO `jobs` VALUES (1);")).toEqual(["REPLACE"]);
     expect(
-      recordStatementsIn(`${trigger}\n--> statement-breakpoint\nINSERT INTO \`jobs\` VALUES (1);`),
-    ).toEqual(["INSERT"]);
+      recordStatementsIn("WITH chosen(id) AS (VALUES (1)) UPDATE `jobs` SET `is_active` = 0;"),
+    ).toEqual(["WITH"]);
     expect(
       recordStatementsIn(
         "-- CREATE TRIGGER data follows\nUPDATE `jobs` SET `is_active` = 0;\n-- END;",
@@ -30,38 +31,67 @@ describe("database migrations", () => {
       "DELETE",
     ]);
     expect(
-      recordStatementsIn("CREATE INDEX `a` ON `jobs` (`id`); UPDATE `jobs` SET `is_active` = 0;"),
-    ).toEqual(["UPDATE"]);
+      recordStatementsIn(
+        "BEGIN TRANSACTION;\n--> statement-breakpoint\nUPDATE `jobs` SET `is_active` = 0;",
+      ),
+    ).toEqual(["BEGIN", "UPDATE"]);
     expect(
-      recordStatementsIn("BEGIN TRANSACTION;\nUPDATE `jobs` SET `is_active` = 0;\nEND;"),
+      recordStatementsIn(`${trigger}\n--> statement-breakpoint\nINSERT INTO \`jobs\` VALUES (1);`),
+    ).toEqual(["INSERT"]);
+    expect(
+      recordStatementsIn("CREATE INDEX `a` ON `jobs` (`id`); UPDATE `jobs` SET `is_active` = 0;"),
     ).toEqual(["UPDATE"]);
   });
 
-  it("permits the record statements a trigger body is made of", () => {
+  it("permits the schema statements a migration is made of", () => {
     expect(recordStatementsIn(trigger)).toEqual([]);
     expect(recordStatementsIn(triggerWithCase)).toEqual([]);
     expect(recordStatementsIn(`-- keeps the copy in step\n${trigger}`)).toEqual([]);
+    expect(
+      recordStatementsIn(
+        "CREATE INDEX `a` ON `jobs` (`id`);--> statement-breakpoint\nDROP INDEX `a`;",
+      ),
+    ).toEqual([]);
+    expect(
+      recordStatementsIn(
+        "ALTER TABLE `jobs` ADD `x` integer REFERENCES `b`(`id`) ON DELETE cascade;",
+      ),
+    ).toEqual([]);
   });
 });
 
-// A trigger is a schema object whose body is written in the same verbs a data migration would use.
-// Comments come out first, because a commented `CREATE TRIGGER` would otherwise hide the statement
-// under it, and a body is only skipped when the statement it belongs to genuinely opens one.
+// An allowlist rather than a denylist. A migration statement opens with a schema verb, so a record
+// statement is anything that does not, and the guard cannot be walked past by a form nobody thought
+// of: `WITH ... UPDATE`, `REPLACE INTO` and a bare `INSERT` all fail the same way. A trigger needs no
+// special case, because `CREATE TRIGGER` opens with `CREATE` and its body is never the statement's
+// first word. Comments come off first so a documented statement is read by its verb.
+const schemaVerbs = /^(?:CREATE|ALTER|DROP|PRAGMA|ANALYZE|REINDEX|VACUUM)\b/i;
+
 function recordStatementsIn(sql: string): readonly string[] {
-  return sql.split("--> statement-breakpoint").map(withoutComments).flatMap(recordVerbsIn);
+  return sql
+    .split("--> statement-breakpoint")
+    .map(withoutComments)
+    .flatMap(statementsIn)
+    .map((statement) => statement.trim())
+    .filter((statement) => statement !== "")
+    .filter((statement) => !schemaVerbs.test(statement))
+    .map(openingWordOf);
+}
+
+// A trigger body holds semicolons of its own, so it is read whole. Everything else is split, because
+// a statement chained after a schema statement in one segment would otherwise inherit its verb.
+function statementsIn(segment: string): readonly string[] {
+  return /^\s*CREATE\s+(?:TEMP\s+|TEMPORARY\s+)?TRIGGER\b/i.test(segment)
+    ? [segment]
+    : segment.split(";");
 }
 
 function withoutComments(sql: string): string {
   return sql.replace(/--[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
 }
 
-function recordVerbsIn(statement: string): readonly string[] {
-  const body = /^\s*CREATE\s+(?:TEMP\s+|TEMPORARY\s+)?TRIGGER\b/i.test(statement)
-    ? statement.replace(/\bBEGIN\b[\s\S]*\bEND\b/i, "")
-    : statement;
-  return [...body.matchAll(/(?:^|;)\s*(INSERT|UPDATE|DELETE)\b/gim)]
-    .map((match) => match[1]?.toUpperCase())
-    .filter((verb): verb is string => verb !== undefined);
+function openingWordOf(statement: string): string {
+  return statement.split(/[\s(;]/, 1)[0]?.toUpperCase() ?? "";
 }
 
 const trigger = `CREATE TRIGGER \`job_matches_follow_listing_activation\`
