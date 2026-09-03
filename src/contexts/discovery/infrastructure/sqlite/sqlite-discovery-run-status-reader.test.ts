@@ -197,6 +197,58 @@ describe("SQLite discovery run status reader", () => {
     ).toEqual({ status: "running", error: "" });
   });
 
+  it("answers from the configured timeout rather than a fixed one", () => {
+    const profileId = insertProfile(database);
+    database
+      .insert(schema.discoveryRuns)
+      .values({
+        profileId,
+        provider: "serper",
+        status: "running",
+        startedAt: new Date(now.getTime() - 600_000),
+        heartbeatAt: new Date(now.getTime() - 240_000),
+      })
+      .run();
+
+    expect(createReader(database, 900_000).read({ ids: [1], activeOnly: false }).runs).toEqual([
+      expect.objectContaining({ id: 1, status: "running" }),
+    ]);
+    expect(createReader(database, 60_000).read({ ids: [1], activeOnly: false }).runs).toEqual([
+      expect.objectContaining({ id: 1, status: "failed" }),
+    ]);
+  });
+
+  it("leaves a run that stopped reporting out of the active list, so a reload stops readopting it", () => {
+    const profileId = insertProfile(database);
+    database
+      .insert(schema.discoveryRuns)
+      .values({
+        profileId,
+        provider: "serper",
+        status: "running",
+        startedAt: new Date(now.getTime() - 900_000),
+        heartbeatAt: new Date(now.getTime() - staleAfterMs - 1),
+      })
+      .run();
+    database
+      .insert(schema.discoveryRuns)
+      .values({
+        profileId,
+        provider: "serper",
+        status: "running",
+        startedAt: new Date(now.getTime() - 900_000),
+        heartbeatAt: new Date(now.getTime() - 1_000),
+      })
+      .run();
+
+    expect(createReader(database).read({ ids: [], activeOnly: true }).runs).toEqual([
+      expect.objectContaining({ id: 2, status: "running" }),
+    ]);
+    expect(createReader(database).read({ ids: [1], activeOnly: false }).runs).toEqual([
+      expect.objectContaining({ id: 1, status: "failed" }),
+    ]);
+  });
+
   it("reports a run that is still sending progress as running", () => {
     const profileId = insertProfile(database);
     database
@@ -233,10 +285,14 @@ function insertProfile(database: ReturnType<typeof createDatabase>): number {
     .get().id;
 }
 
-function createReader(database: ReturnType<typeof createDatabase>, readAt: Date = now) {
+function createReader(
+  database: ReturnType<typeof createDatabase>,
+  timeout: number = staleAfterMs,
+  readAt: Date = now,
+) {
   return createSqliteDiscoveryRunStatusReader(database, {
     now: () => readAt,
-    staleAfterMs: () => staleAfterMs,
+    staleAfterMs: () => timeout,
   });
 }
 

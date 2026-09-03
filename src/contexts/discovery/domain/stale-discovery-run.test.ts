@@ -112,6 +112,22 @@ describe("resolveDiscoveryRunProgress", () => {
     },
   );
 
+  it("reads the timeout from the policy rather than assuming one", () => {
+    const stoppedFourMinutesAgo = {
+      status: "running",
+      error: "",
+      startedAt: at(600_000),
+      heartbeatAt: at(240_000),
+    } as const;
+
+    expect(
+      resolveDiscoveryRunProgress(stoppedFourMinutesAgo, { now, staleAfterMs: 900_000 }).status,
+    ).toBe("running");
+    expect(
+      resolveDiscoveryRunProgress(stoppedFourMinutesAgo, { now, staleAfterMs: 60_000 }).status,
+    ).toBe("failed");
+  });
+
   it("keeps a failed run's own error rather than relabelling it stale", () => {
     expect(
       resolveDiscoveryRunProgress(

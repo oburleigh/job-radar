@@ -13,7 +13,11 @@ import {
   type DiscoveryRunStartEventDetail,
 } from "@/contexts/discovery/presentation/web/client-events";
 import { describeDiscoveryProgress } from "@/contexts/discovery/presentation/web/components/active-discovery-run";
-import { formatDiscoveryFailure } from "@/contexts/discovery/presentation/web/formatters/discovery-failure";
+import {
+  formatDiscoveryFailure,
+  formatRunFailureDetail,
+  isStaleRunSummary,
+} from "@/contexts/discovery/presentation/web/formatters/discovery-failure";
 import { presentDiscoveryRunOutcome } from "@/contexts/discovery/presentation/web/run-outcome-presentation";
 
 const PENDING_RUNS_KEY = "job-radar.pending-discovery-runs";
@@ -459,7 +463,7 @@ export function describeDiscoveryNotice(run: DiscoveryRunStatus): {
       message:
         run.provider || !run.errorSummary.trim()
           ? formatDiscoveryFailure(run)
-          : run.errorSummary.trim(),
+          : formatRunFailureDetail(run.errorSummary.trim()),
     };
   }
   if (run.outcome === "cancelled") {
@@ -471,7 +475,7 @@ export function describeDiscoveryNotice(run: DiscoveryRunStatus): {
   }
   if (run.outcome === "partial") {
     const partialFailure =
-      run.errorSummary.trim() && run.provider
+      run.errorSummary.trim() && (run.provider || isStaleRunSummary(run.errorSummary))
         ? formatDiscoveryFailure(run)
         : `${run.profileName} completed with ${[
             run.queryErrorCount > 0
