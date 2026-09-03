@@ -47,6 +47,7 @@ describe("the listings an evaluation reads", () => {
     const profileId = seedProfile(database);
     seedListing(database, "projected-one");
 
+    recorded.length = 0;
     await evaluateAndStore(loadProfile(database, profileId), {}, database);
 
     expect(listingReadColumns(recorded)).toEqual([columnsTheEvaluationReads]);
@@ -59,6 +60,7 @@ describe("the listings an evaluation reads", () => {
     const profileId = seedProfile(database);
     seedListing(database, "ordered-one");
 
+    recorded.length = 0;
     await evaluateAndStore(loadProfile(database, profileId), {}, database);
 
     expect(listingReadStatements(recorded)).not.toHaveLength(0);
@@ -80,6 +82,7 @@ describe("the listings an evaluation reads", () => {
       seedListing(database, id);
     }
 
+    recorded.length = 0;
     await evaluateAndStore(loadProfile(database, profileId), { yieldEvery: 2 }, database);
 
     expect(listingReadColumns(recorded)).toHaveLength(3);
@@ -91,6 +94,7 @@ describe("the listings an evaluation reads", () => {
       seedListing(database, id);
     }
 
+    recorded.length = 0;
     await evaluateAndStore(loadProfile(database, profileId), { yieldEvery: 2 }, database);
 
     expect(listingReadColumns(recorded)).toHaveLength(2);
@@ -146,6 +150,35 @@ describe("the listings an evaluation reads", () => {
       secondJobId,
     ]);
   });
+
+  it("leaves a listing that arrives after the pass began to the pass that follows", async () => {
+    const profileId = seedProfile(database);
+    const firstJobId = seedListing(database, "present-at-the-start");
+    const secondJobId = seedListing(database, "also-present-at-the-start");
+    let batches = 0;
+    let arrivedLateJobId: number | undefined;
+
+    const summary = await evaluateAndStore(
+      loadProfile(database, profileId),
+      {
+        yieldEvery: 1,
+        onBatch: () => {
+          batches += 1;
+          if (batches === 1) {
+            arrivedLateJobId = seedListing(database, "inserted-while-the-pass-yielded");
+          }
+        },
+      },
+      database,
+    );
+
+    expect(arrivedLateJobId).toBeGreaterThan(secondJobId);
+    expect(summary.evaluated).toBe(2);
+    expect(matchesOf(database, profileId).map((match) => match.jobId)).toEqual([
+      firstJobId,
+      secondJobId,
+    ]);
+  });
 });
 
 function createDatabase(sqlite: Database.Database, recorded: string[]) {
@@ -160,19 +193,18 @@ function createDatabase(sqlite: Database.Database, recorded: string[]) {
 // The projection is the point of the assertion, so the recorded SQL is read rather than the row
 // shape: a row shape cannot tell a named column list from `select()` over the whole table.
 function listingReadColumns(recorded: readonly string[]): string[][] {
-  return recorded
-    .map((query) => /^select (?<columns>.+?) from "jobs"/.exec(query)?.groups?.columns)
-    .filter((columns): columns is string => columns !== undefined)
-    .map((columns) =>
-      columns
-        .split(", ")
-        .map((column) => column.replace(/^"jobs"\./, "").replaceAll('"', ""))
-        .sort(),
-    );
+  return listingReadStatements(recorded).map((query) =>
+    (/^select (?<columns>.+?) from "jobs"/.exec(query)?.groups?.columns ?? "")
+      .split(", ")
+      .map((column) => column.replace(/^"jobs"\./, "").replaceAll('"', ""))
+      .sort(),
+  );
 }
 
+// The ceiling read is `select max("id") from "jobs"`, and setup queries may add others, so the
+// listing read is identified by a column only its projection asks for rather than by its table.
 function listingReadStatements(recorded: readonly string[]): string[] {
-  return recorded.filter((query) => /^select .+? from "jobs"/.test(query));
+  return recorded.filter((query) => /^select .*"title".* from "jobs"/.test(query));
 }
 
 function matchesOf(database: ReturnType<typeof createDatabase>, profileId: number) {

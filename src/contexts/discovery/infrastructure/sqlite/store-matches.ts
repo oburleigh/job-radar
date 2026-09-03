@@ -1,5 +1,5 @@
 import { setImmediate as yieldToEventLoop } from "node:timers/promises";
-import { and, eq, gt, type SQL, sql } from "drizzle-orm";
+import { and, eq, gt, lte, max, type SQL, sql } from "drizzle-orm";
 import { createAnnualSalaryRange } from "@/contexts/discovery/domain/annual-salary";
 import { currencyFrom } from "@/contexts/discovery/domain/currency";
 import { evaluateJob } from "@/contexts/discovery/domain/evaluate-job";
@@ -62,16 +62,34 @@ export async function evaluateAndStore(
   options: EvaluationOptions = {},
   database: Database = db,
 ): Promise<EvaluationSummary> {
+  // Paging by id over `jobs_active_id_idx` holds peak memory to one batch instead of the table,
+  // and the highest active id read up front is what keeps it a pass over one set of listings: a
+  // row inserted or reactivated above the ceiling while this pass yields belongs to the next pass,
+  // not this one, and without the ceiling a neighbouring run inserting rows could page this loop
+  // forward indefinitely. A listing that closes before its batch is read is also left to the pass
+  // that follows; the `job_matches_follow_listing_activation` trigger keeps the stored flag on any
+  // match it already has in step meanwhile.
+  const ceiling = database
+    .select({ highestId: max(jobs.id) })
+    .from(jobs)
+    .where(eq(jobs.isActive, true))
+    .get()?.highestId;
+  if (ceiling === undefined || ceiling === null) {
+    return { evaluated: 0, matched: 0, excluded: 0 };
+  }
   const now = new Date();
   const config = getJobRadarConfig(database);
   const yieldEvery = options.yieldEvery ?? config.discovery.workYieldBatchSize;
-  // Paging by id over `jobs_active_id_idx` holds peak memory to one batch instead of the table. A
-  // listing that closes before its batch is read is left to the pass that follows; the
-  // `job_matches_follow_listing_activation` trigger keeps its stored flag in step meanwhile.
   const readListings = database
     .select(evaluatedListingColumns)
     .from(jobs)
-    .where(and(eq(jobs.isActive, true), gt(jobs.id, sql.placeholder("afterId"))))
+    .where(
+      and(
+        eq(jobs.isActive, true),
+        gt(jobs.id, sql.placeholder("afterId")),
+        lte(jobs.id, sql.placeholder("ceiling")),
+      ),
+    )
     .orderBy(jobs.id)
     .limit(sql.placeholder("batchSize"))
     .prepare();
@@ -81,7 +99,7 @@ export async function evaluateAndStore(
   let afterId = 0;
 
   for (;;) {
-    const batch = readListings.all({ afterId, batchSize: yieldEvery });
+    const batch = readListings.all({ afterId, batchSize: yieldEvery, ceiling });
     if (batch.length === 0) {
       break;
     }
