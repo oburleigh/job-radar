@@ -63,16 +63,42 @@ describe("listing activity denormalised onto job matches", () => {
     bootstrapJobRadar(database);
     const profileId = seedProfile(database);
     seedListing(database, "evaluated-one");
-    const profile = database
-      .select()
-      .from(searchProfiles)
-      .where(eq(searchProfiles.id, profileId))
-      .get();
-    if (!profile) throw new Error("The profile fixture must exist.");
-
-    await evaluateAndStore(profile, {}, database);
+    await evaluateAndStore(loadProfile(database, profileId), {}, database);
 
     expect(listingActivityFlags(database)).toEqual([true]);
+  });
+
+  it("records a listing that closes while the evaluation still has it in hand", async () => {
+    bootstrapJobRadar(database);
+    const profileId = seedProfile(database);
+    const closingJobId = seedListing(database, "closing-mid-run");
+    const stayingJobId = seedListing(database, "staying-open");
+    let batches = 0;
+
+    await evaluateAndStore(
+      loadProfile(database, profileId),
+      {
+        yieldEvery: 1,
+        beforeBatch: () => {
+          batches += 1;
+          if (batches === 1) {
+            setListingActivity(database, closingJobId, false);
+          }
+        },
+      },
+      database,
+    );
+
+    expect(
+      database
+        .select({ jobId: jobMatches.jobId, listingIsActive: jobMatches.listingIsActive })
+        .from(jobMatches)
+        .orderBy(jobMatches.jobId)
+        .all(),
+    ).toEqual([
+      { jobId: closingJobId, listingIsActive: false },
+      { jobId: stayingJobId, listingIsActive: true },
+    ]);
   });
 
   it("brings a stale flag back into step when it re-evaluates a listing", async () => {
@@ -80,14 +106,7 @@ describe("listing activity denormalised onto job matches", () => {
     const profileId = seedProfile(database);
     const jobId = seedExcludedMatch(database, profileId, "stale-one");
     writeWithoutTrigger(database, jobId, { listingIsActive: false, jobIsActive: true });
-    const profile = database
-      .select()
-      .from(searchProfiles)
-      .where(eq(searchProfiles.id, profileId))
-      .get();
-    if (!profile) throw new Error("The profile fixture must exist.");
-
-    await evaluateAndStore(profile, {}, database);
+    await evaluateAndStore(loadProfile(database, profileId), {}, database);
 
     expect(listingActivityFlags(database)).toEqual([true]);
   });
@@ -120,6 +139,18 @@ function listingActivityFlags(database: ReturnType<typeof createDatabase>): read
     .orderBy(jobMatches.id)
     .all()
     .map((row) => row.listingIsActive);
+}
+
+function loadProfile(database: ReturnType<typeof createDatabase>, profileId: number) {
+  const profile = database
+    .select()
+    .from(searchProfiles)
+    .where(eq(searchProfiles.id, profileId))
+    .get();
+  if (!profile) {
+    throw new Error("The profile fixture must exist.");
+  }
+  return profile;
 }
 
 function totalChanges(sqlite: Database.Database): number {

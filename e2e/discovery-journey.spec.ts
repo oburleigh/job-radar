@@ -1,4 +1,14 @@
-import { expect, type Locator, type Page, test } from "@playwright/test";
+import { expect, type Locator, type Page, type Request, test } from "@playwright/test";
+
+async function setDocumentVisibility(page: Page, state: "hidden" | "visible"): Promise<void> {
+  await page.evaluate((visibilityState) => {
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => visibilityState,
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+  }, state);
+}
 
 const fixtureUrl = "http://127.0.0.1:3200";
 
@@ -467,6 +477,26 @@ test("shows persisted board progress while matching waits for collection", async
       timeout: 30_000,
     });
     await expect(restoredProgress).toContainText(runningTotals);
+
+    // The poll holds while the tab is hidden. Headless Chromium reports every page as visible and
+    // `bringToFront` does not change that, so the property is overridden and the real
+    // `visibilitychange` event dispatched; the effect, its listener and its cleanup are the browser's
+    // own. The seeded interval is 3s, so a 12s silence is four missed polls rather than a near miss.
+    const polls: string[] = [];
+    const recordPoll = (request: Request) => {
+      if (new URL(request.url()).pathname.endsWith(".data")) {
+        polls.push(request.url());
+      }
+    };
+    page.on("request", recordPoll);
+    await expect.poll(() => polls.length, { timeout: 30_000 }).toBeGreaterThan(0);
+    await setDocumentVisibility(page, "hidden");
+    const polledBeforeHiding = polls.length;
+    await page.waitForTimeout(12_000);
+    expect(polls.length).toBe(polledBeforeHiding);
+    await setDocumentVisibility(page, "visible");
+    await expect.poll(() => polls.length, { timeout: 30_000 }).toBeGreaterThan(polledBeforeHiding);
+    page.off("request", recordPoll);
 
     expect((await request.post(`${fixtureUrl}/control/release-board-progress`)).ok()).toBe(true);
     const completedNotice = discoveryLayer.getByRole("status").filter({

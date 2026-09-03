@@ -8,7 +8,7 @@ import {
 } from "@job-radar/design-ui";
 import { CheckCircle2, CircleAlert, CircleX, LoaderCircle, RotateCcw, Square } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Form, Link, useNavigation, useRevalidator } from "react-router";
+import { Form, Link, useNavigation } from "react-router";
 import type { ShortlistResult } from "@/contexts/recruiter-engagement/application/shortlists/manage-shortlists";
 import type { ResearchObservation } from "@/contexts/recruiter-engagement/domain/observation";
 import type {
@@ -31,8 +31,8 @@ import { AddToShortlist, ShortlistWorkspace } from "./shortlist-workspace";
 
 import "./styles.css";
 
-// Carried over from the interval this poll replaced. It is cadence policy and belongs in the
-// recruiter research settings; ADM-331 moves it there once its placement is decided.
+// Carried over from the interval this poll replaced. Cadence belongs in the recruiter research
+// settings beside the rest of the run policy, and moves there once its placement is decided.
 const RESEARCH_PROGRESS_POLL_INTERVAL_MS = 400;
 
 export type RecruiterResearchRunView = {
@@ -88,7 +88,6 @@ export function RecruiterResearchPage({
   const providers = providerSelection?.providers ?? [];
   const selectedProvider = providerSelection?.selectedProvider ?? "";
   const navigation = useNavigation();
-  const _revalidator = useRevalidator();
   const [startRequested, setStartRequested] = useState(false);
   const startNavigationObserved = useRef(false);
   const isSubmitting = navigation.state === "submitting";
