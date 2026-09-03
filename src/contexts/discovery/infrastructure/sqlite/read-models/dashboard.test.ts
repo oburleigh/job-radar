@@ -124,6 +124,59 @@ describe("dashboard screening summary", () => {
   });
 });
 
+describe("dashboard opportunity payload", () => {
+  let sqlite: Database.Database;
+  let database: ReturnType<typeof createDatabase>;
+
+  beforeEach(() => {
+    sqlite = new Database(":memory:");
+    sqlite.pragma("foreign_keys = ON");
+    database = createDatabase(sqlite);
+    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+  });
+
+  afterEach(() => sqlite.close());
+
+  it("returns only the fields the opportunity interface renders", () => {
+    const profileId = seedProfile(database);
+    seedMatchedJob(database, profileId, "matched-one");
+
+    const [job] = getDashboardData({ profileId }, database).jobs;
+
+    expect(job).toBeDefined();
+    expect(Object.keys(job as object).sort()).toEqual([
+      "applyUrl",
+      "atsType",
+      "canonicalUrl",
+      "companyName",
+      "department",
+      "employmentType",
+      "firstSeenAt",
+      "id",
+      "locationText",
+      "publishedAt",
+      "reasons",
+      "salary",
+      "score",
+      "state",
+      "title",
+      "verified",
+      "workplaceType",
+    ]);
+  });
+
+  it("keeps the derived fields the removed columns fed", () => {
+    const profileId = seedProfile(database);
+    seedMatchedJob(database, profileId, "matched-one");
+
+    const [job] = getDashboardData({ profileId }, database).jobs;
+
+    expect(job?.verified).toBe(true);
+    expect(job?.salary).toEqual(createAnnualSalaryRange("USD", 90_000, 120_000));
+    expect(job?.state).toBe("new");
+  });
+});
+
 function createDatabase(sqlite: Database.Database) {
   return drizzle(sqlite, { schema });
 }
@@ -134,6 +187,79 @@ function salaryRange(min: number | null, max: number | null) {
     throw new Error("The salary fixture must be a valid annual range.");
   }
   return range;
+}
+
+function seedProfile(database: ReturnType<typeof createDatabase>): number {
+  return database
+    .insert(searchProfiles)
+    .values({
+      name: "Dashboard fixture",
+      titleTerms: ["Engineering"],
+      locationTerms: ["United Arab Emirates"],
+      requiredJobTerms: [],
+      excludedTitleTerms: [],
+      excludedLocationTerms: [],
+      excludedDescriptionTerms: [],
+      includeRemote: false,
+      includeUnverified: false,
+      salaryCurrency: "",
+      salaryMin: null,
+      salaryMax: null,
+      maxAgeDays: 30,
+      minScore: 70,
+      createdAt: recordedAt,
+      updatedAt: recordedAt,
+    })
+    .returning({ id: searchProfiles.id })
+    .get().id;
+}
+
+function seedMatchedJob(
+  database: ReturnType<typeof createDatabase>,
+  profileId: number,
+  id: string,
+): void {
+  const jobId = database
+    .insert(jobs)
+    .values({
+      atsType: "greenhouse",
+      externalId: id,
+      dedupeKey: id,
+      canonicalUrl: `https://example.test/jobs/${id}`,
+      applyUrl: `https://example.test/jobs/${id}/apply`,
+      companyName: "Example Systems",
+      title: "Director of Engineering",
+      locationText: "Dubai, United Arab Emirates",
+      locations: ["United Arab Emirates"],
+      description: "A long job description the opportunity interface never renders.",
+      department: "Engineering",
+      employmentType: "Full-time",
+      workplaceType: "Hybrid",
+      publishedAt: recordedAt,
+      salaryCurrency: "USD",
+      salaryMin: 90_000,
+      salaryMax: 120_000,
+      evidence: "structured",
+      firstSeenAt: recordedAt,
+      lastSeenAt: recordedAt,
+      isActive: true,
+      rawPayload: { provider: "greenhouse", body: "The provider payload the browser never reads." },
+    })
+    .returning({ id: jobs.id })
+    .get().id;
+  database
+    .insert(jobMatches)
+    .values({
+      profileId,
+      jobId,
+      status: "matched",
+      score: 88,
+      reasons: [],
+      exclusionReasons: [],
+      ...screeningCountColumns([]),
+      updatedAt: recordedAt,
+    })
+    .run();
 }
 
 function seedExcludedJob(

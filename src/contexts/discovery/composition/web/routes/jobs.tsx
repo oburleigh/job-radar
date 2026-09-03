@@ -57,6 +57,7 @@ export default function JobsPage() {
     searchProviders,
     selectedProvider,
   } = useLoaderData<typeof loader>();
+  const profile = data.profile;
 
   return (
     <div className="page">
@@ -64,11 +65,11 @@ export default function JobsPage() {
         title="Opportunities"
         description="Review jobs matched to the selected search profile."
       />
-      {data.profile ? (
+      {profile ? (
         <>
           <div className="opportunity-toolbar">
             <RunControls
-              profileId={data.profile.id}
+              profileId={profile.id}
               profiles={data.profiles}
               provider={selectedProvider}
               providers={searchProviders}
@@ -96,9 +97,9 @@ export default function JobsPage() {
               {data.jobs.map((job) => (
                 <JobCard
                   key={job.id}
-                  profileId={data.profile.id}
+                  profileId={profile.id}
                   atsLabel={atsLabels[job.atsType] ?? job.atsType}
-                  job={{ ...job, state: job.state as JobListingState }}
+                  job={job}
                 />
               ))}
             </section>
@@ -113,7 +114,7 @@ export default function JobsPage() {
                 explicitly allow them in the profile.
               </p>
               <div className="empty-actions">
-                <Link {...buttonAttributes()} to={`/profiles?profile=${data.profile.id}`}>
+                <Link {...buttonAttributes()} to={`/profiles?profile=${profile.id}`}>
                   Review profile
                 </Link>
                 <Link {...buttonAttributes()} to="/settings/adapters/source-coverage">
