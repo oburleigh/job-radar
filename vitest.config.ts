@@ -2,8 +2,6 @@ import { fileURLToPath } from "node:url";
 
 import { defineConfig } from "vitest/config";
 
-const isCi = process.env.CI !== undefined;
-
 export default defineConfig({
   resolve: {
     alias: {
@@ -13,11 +11,14 @@ export default defineConfig({
   test: {
     environment: "node",
     /**
-     * A summary, not a line per file. The roll call of 150 files says nothing a failure does
-     * not say better, and it buries the failure when there is one. `github-actions` is in the
-     * default set when GITHUB_ACTIONS is true, so naming reporters has to keep it.
+     * A summary, not a line per file. The roll call says nothing a failure does not say
+     * better, and it buries the failure when there is one.
+     *
+     * `github-actions` is in the default set when GITHUB_ACTIONS is true and naming reporters
+     * drops it, so it is named back. Keyed on that variable rather than on `CI`, because the
+     * reporter emits GitHub workflow commands that any other runner would print raw.
      */
-    reporters: isCi ? ["dot", "github-actions"] : ["dot"],
+    reporters: process.env.GITHUB_ACTIONS === "true" ? ["dot", "github-actions"] : ["dot"],
     globalSetup: ["./tests/support/setup-vitest-database.ts"],
     include: [
       "scripts/**/*.test.ts",
