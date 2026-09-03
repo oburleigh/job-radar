@@ -1,5 +1,5 @@
 import { setImmediate as yieldToEventLoop } from "node:timers/promises";
-import { eq } from "drizzle-orm";
+import { eq, type SQL, sql } from "drizzle-orm";
 import { createAnnualSalaryRange } from "@/contexts/discovery/domain/annual-salary";
 import { currencyFrom } from "@/contexts/discovery/domain/currency";
 import { evaluateJob } from "@/contexts/discovery/domain/evaluate-job";
@@ -28,6 +28,13 @@ interface EvaluationOptions {
   onBatch?: () => void;
   beforeBatch?: () => void;
   yieldEvery?: number;
+}
+
+// The snapshot of active listings is taken once and the loop yields between batches, so a listing
+// can close while this run still has it in hand. Reading the flag inside the write keeps the copy
+// on the match true at the moment the row lands, rather than restoring what was true at the start.
+function listingActivityOf(jobId: number): SQL<boolean> {
+  return sql`(SELECT ${jobs.isActive} FROM ${jobs} WHERE ${jobs.id} = ${jobId})`;
 }
 
 export async function evaluateAndStore(
@@ -76,6 +83,7 @@ export async function evaluateAndStore(
         reasons: result.reasons,
         exclusionReasons: result.exclusionReasons,
         ...screeningCounts,
+        listingIsActive: listingActivityOf(job.id),
         updatedAt: now,
       })
       .onConflictDoUpdate({
@@ -86,7 +94,7 @@ export async function evaluateAndStore(
           reasons: result.reasons,
           exclusionReasons: result.exclusionReasons,
           ...screeningCounts,
-          listingIsActive: true,
+          listingIsActive: listingActivityOf(job.id),
           updatedAt: now,
         },
       })

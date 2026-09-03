@@ -13,6 +13,7 @@ import {
 } from "@/contexts/discovery/infrastructure/sqlite/migrate-legacy-exclusion-reasons";
 import * as schema from "@/contexts/discovery/infrastructure/sqlite/schema";
 import {
+  atsIntegrations,
   discoveryHits,
   discoveryQueries,
   discoveryRuns,
@@ -137,6 +138,15 @@ describe("completed discovery run funnel", () => {
       otherExclusions: 2,
       finalMatches: 1,
     });
+  });
+
+  it("reads its integrations from the database it is given, not the module singleton", () => {
+    const { runId } = seedRun(database, { hitCount: 1, matchesFound: 0 });
+    database.delete(atsIntegrations).where(eq(atsIntegrations.atsType, "ashby")).run();
+
+    expect(() => readRunDetail(database, runId)).toThrow(
+      "Missing ashby integration configuration in SQLite",
+    );
   });
 
   it("finds the funnel's candidate listings through an index rather than a table scan", () => {
