@@ -234,8 +234,7 @@ describe("discovery notification polling reconciliation", () => {
   it("tells a known-boards run with no provider why it stopped, rather than showing the marker", () => {
     expect(
       describeDiscoveryNotice(
-        completedRun({
-          provider: "",
+        knownBoardsRun({
           status: "failed",
           outcome: "failed",
           errorSummary: STALE_DISCOVERY_RUN_CODE,
@@ -246,27 +245,63 @@ describe("discovery notification polling reconciliation", () => {
     );
   });
 
+  it("keeps a known-boards run's own recorded failure when it is not the stale marker", () => {
+    expect(
+      describeDiscoveryNotice(
+        knownBoardsRun({
+          status: "failed",
+          outcome: "failed",
+          errorSummary: "Beta Systems: board feed returned HTTP 500",
+        }),
+      ).message,
+    ).toBe("Beta Systems: board feed returned HTTP 500");
+  });
+
   it("tells a partly finished known-boards run why it stopped instead of naming no reason at all", () => {
     expect(
       describeDiscoveryNotice(
-        completedRun({
-          provider: "",
+        knownBoardsRun({
           status: "failed",
           outcome: "partial",
-          knownBoardCount: 2,
           knownBoardCompletedCount: 1,
           knownBoardSuccessCount: 1,
           errorSummary: STALE_DISCOVERY_RUN_CODE,
-          queryErrorCount: 0,
-          syncErrorCount: 0,
         }),
       ).message,
     ).toBe(
       "The local app stopped receiving progress from this discovery. Start a new run to retry. " +
-        "Final totals: 1 board completed, 4 jobs changed, web coverage completed, and 2 current profile matches.",
+        "Final totals: 1 board completed, 4 jobs changed, web coverage skipped, and 2 current profile matches.",
+    );
+  });
+
+  it("keeps the synchronization fallback for a partly finished known-boards run with no marker", () => {
+    expect(
+      describeDiscoveryNotice(
+        knownBoardsRun({
+          status: "completed",
+          outcome: "partial",
+          knownBoardCompletedCount: 2,
+          knownBoardSuccessCount: 1,
+          errorSummary: "",
+          syncErrorCount: 1,
+        }),
+      ).message,
+    ).toBe(
+      "Asia leadership completed with 1 board synchronization error. " +
+        "Final totals: 2 boards completed, 4 jobs changed, web coverage skipped, and 2 current profile matches.",
     );
   });
 });
+
+function knownBoardsRun(overrides: Partial<DiscoveryRunStatus> = {}): DiscoveryRunStatus {
+  return completedRun({
+    provider: "",
+    phase: "known-boards",
+    knownBoardCount: 2,
+    webCoverageStatus: "skipped",
+    ...overrides,
+  });
+}
 
 function completedRun(overrides: Partial<DiscoveryRunStatus> = {}): DiscoveryRunStatus {
   return {
