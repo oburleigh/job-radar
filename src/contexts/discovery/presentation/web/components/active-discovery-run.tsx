@@ -1,8 +1,9 @@
 import { Button, buttonAttributes } from "@job-radar/design-ui";
 import { LoaderCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useRevalidator } from "react-router";
 import type { DiscoveryRunPhase } from "@/contexts/discovery/application/discovery-runs/ports/discovery-run-journal";
+import { useRevalidationPoll } from "@/platform/http/use-revalidation-poll";
 
 export interface ActiveDiscoveryRunState {
   readonly id: number;
@@ -108,17 +109,7 @@ export function ActiveDiscoveryRunPolling({
   readonly enabled: boolean;
   readonly pollIntervalMs: number;
 }) {
-  const revalidator = useRevalidator();
-
-  useEffect(() => {
-    if (!enabled || revalidator.state !== "idle") {
-      return;
-    }
-    const timeout = window.setTimeout(() => {
-      void revalidator.revalidate();
-    }, pollIntervalMs);
-    return () => window.clearTimeout(timeout);
-  }, [enabled, pollIntervalMs, revalidator]);
+  useRevalidationPoll(enabled, pollIntervalMs);
 
   return null;
 }
