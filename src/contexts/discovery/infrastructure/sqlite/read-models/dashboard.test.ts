@@ -192,15 +192,23 @@ describe("dashboard opportunity payload", () => {
 
   it("composes the salary from the columns it stops returning", () => {
     const profileId = seedProfile(database);
-    seedMatchedJob(database, profileId, "paid-one", {
+    seedMatchedJob(database, profileId, "sterling-one", {
       title: "Director of Engineering",
       score: 90,
-      salaryMin: 90_000,
-      salaryMax: 120_000,
+      salaryCurrency: "GBP",
+      salaryMin: 70_000,
+      salaryMax: 95_000,
     });
-    seedMatchedJob(database, profileId, "unpaid-one", {
+    seedMatchedJob(database, profileId, "dollar-one", {
       title: "Head of Platform",
       score: 80,
+      salaryCurrency: "USD",
+      salaryMin: 120_000,
+      salaryMax: 150_000,
+    });
+    seedMatchedJob(database, profileId, "unpaid-one", {
+      title: "Principal Engineer",
+      score: 70,
       salaryCurrency: "",
       salaryMin: null,
       salaryMax: null,
@@ -209,37 +217,85 @@ describe("dashboard opportunity payload", () => {
     const jobs = getDashboardData({ profileId }, database).jobs;
 
     expect(jobs.map((job) => job.salary)).toEqual([
-      createAnnualSalaryRange("USD", 90_000, 120_000),
+      { currency: "GBP", min: 70_000, max: 95_000 },
+      { currency: "USD", min: 120_000, max: 150_000 },
       null,
     ]);
   });
 
-  it("returns the recorded listing state and falls back to new", () => {
+  it("returns each recorded listing state and falls back to new", () => {
     const profileId = seedProfile(database);
     seedMatchedJob(database, profileId, "saved-one", {
       title: "Director of Engineering",
       score: 90,
       state: "saved",
     });
-    seedMatchedJob(database, profileId, "untouched-one", {
+    seedMatchedJob(database, profileId, "applied-one", {
       title: "Head of Platform",
+      score: 80,
+      state: "applied",
+    });
+    seedMatchedJob(database, profileId, "untouched-one", {
+      title: "Principal Engineer",
+      score: 70,
+    });
+
+    const data = getDashboardData({ profileId }, database);
+
+    expect(data.jobs.map((job) => job.state)).toEqual(["saved", "applied", "new"]);
+    expect(data.counts).toEqual({ matched: 3, new: 1, saved: 1, applied: 1 });
+  });
+
+  it("withholds a hidden listing until the hidden filter asks for it", () => {
+    const profileId = seedProfile(database);
+    seedMatchedJob(database, profileId, "hidden-one", {
+      title: "Director of Engineering",
+      score: 90,
+      state: "hidden",
+    });
+    seedMatchedJob(database, profileId, "visible-one", {
+      title: "Head of Platform",
+      score: 80,
+    });
+
+    const visible = getDashboardData({ profileId }, database);
+    const hidden = getDashboardData({ profileId, state: "hidden" }, database);
+
+    expect(visible.jobs.map((job) => job.title)).toEqual(["Head of Platform"]);
+    expect(visible.counts).toEqual({ matched: 1, new: 1, saved: 0, applied: 0 });
+    expect(hidden.jobs.map((job) => job.title)).toEqual(["Director of Engineering"]);
+  });
+
+  it("prefers structured evidence over a duplicate from the more authoritative source", () => {
+    const profileId = seedProfile(database);
+    seedMatchedJob(database, profileId, "primary-lead", {
+      atsType: "greenhouse",
+      evidence: "search-lead",
+      score: 95,
+    });
+    seedMatchedJob(database, profileId, "secondary-structured", {
+      atsType: "linkedin",
+      evidence: "structured",
       score: 80,
     });
 
     const data = getDashboardData({ profileId }, database);
 
-    expect(data.jobs.map((job) => job.state)).toEqual(["saved", "new"]);
-    expect(data.counts).toEqual({ matched: 2, new: 1, saved: 1, applied: 0 });
+    expect(data.jobs.map((job) => job.canonicalUrl)).toEqual([
+      "https://example.test/jobs/secondary-structured",
+    ]);
+    expect(data.jobs[0]?.verified).toBe(true);
+    expect(data.counts.matched).toBe(1);
   });
 
-  it("keeps the structured listing when a search-lead duplicate outranks it", () => {
+  it("prefers the more authoritative source when duplicates carry the same evidence", () => {
     const profileId = seedProfile(database);
-    seedMatchedJob(database, profileId, "lead-duplicate", {
+    seedMatchedJob(database, profileId, "secondary-first", {
       atsType: "linkedin",
-      evidence: "search-lead",
+      evidence: "structured",
       score: 95,
     });
-    seedMatchedJob(database, profileId, "structured-duplicate", {
+    seedMatchedJob(database, profileId, "primary-second", {
       atsType: "greenhouse",
       evidence: "structured",
       score: 80,
@@ -248,9 +304,8 @@ describe("dashboard opportunity payload", () => {
     const data = getDashboardData({ profileId }, database);
 
     expect(data.jobs.map((job) => job.canonicalUrl)).toEqual([
-      "https://example.test/jobs/structured-duplicate",
+      "https://example.test/jobs/primary-second",
     ]);
-    expect(data.jobs[0]?.verified).toBe(true);
     expect(data.counts.matched).toBe(1);
   });
 });
