@@ -4,6 +4,7 @@ import type {
   DiscoveryRunRegistry,
   DiscoveryRunReservation,
 } from "@/contexts/discovery/application/discovery-runs/ports/discovery-run-registry";
+import { STALE_DISCOVERY_RUN_CODE } from "@/contexts/discovery/domain/stale-discovery-run";
 import type { db } from "@/contexts/discovery/infrastructure/sqlite/database";
 import {
   discoveryQueries,
@@ -33,8 +34,7 @@ export function createSqliteDiscoveryRunRegistry(
       .update(discoveryRuns)
       .set({
         status: "failed",
-        error:
-          "The local app stopped receiving progress from this discovery. Start a new run to retry.",
+        error: STALE_DISCOVERY_RUN_CODE,
         finishedAt: timestamp,
       })
       .where(

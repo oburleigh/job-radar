@@ -1,7 +1,11 @@
-import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 
 import { deriveDiscoveryRunOutcome } from "@/contexts/discovery/application/discovery-runs/outcome/derive-discovery-run-outcome";
 import type { ExclusionReason } from "@/contexts/discovery/domain/job-match";
+import {
+  resolveDiscoveryRunProgress,
+  type StaleDiscoveryRunPolicy,
+} from "@/contexts/discovery/domain/stale-discovery-run";
 import { getJobRadarConfig } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
 import { classifyUrlWithConfig } from "@/contexts/discovery/infrastructure/job-sources/url-classification";
 import { canonicalizeUrl } from "@/contexts/discovery/infrastructure/job-sources/urls";
@@ -18,19 +22,33 @@ import {
 
 type Database = typeof db;
 
-export function countActiveDiscoveryRuns(database: Database = db): number {
-  return (
-    database
-      .select({ value: count() })
-      .from(discoveryRuns)
-      .where(eq(discoveryRuns.status, "running"))
-      .get()?.value ?? 0
-  );
+function currentStalePolicy(): StaleDiscoveryRunPolicy {
+  return { now: new Date(), staleAfterMs: getJobRadarConfig().ui.discoveryStaleAfterMs };
 }
 
-export function getRunsData() {
+export function countActiveDiscoveryRuns(
+  database: Database = db,
+  policy: StaleDiscoveryRunPolicy = currentStalePolicy(),
+): number {
+  return database
+    .select({
+      status: discoveryRuns.status,
+      error: discoveryRuns.error,
+      startedAt: discoveryRuns.startedAt,
+      heartbeatAt: discoveryRuns.heartbeatAt,
+    })
+    .from(discoveryRuns)
+    .where(eq(discoveryRuns.status, "running"))
+    .all()
+    .filter((run) => resolveDiscoveryRunProgress(run, policy).status === "running").length;
+}
+
+export function getRunsData(
+  database: Database = db,
+  policy: StaleDiscoveryRunPolicy = currentStalePolicy(),
+) {
   const { runHistoryLimit } = getJobRadarConfig().discovery;
-  return db
+  return database
     .select({
       id: discoveryRuns.id,
       profileName: searchProfiles.name,
@@ -51,6 +69,7 @@ export function getRunsData() {
       syncErrorCount: discoveryRuns.syncErrorCount,
       error: discoveryRuns.error,
       startedAt: discoveryRuns.startedAt,
+      heartbeatAt: discoveryRuns.heartbeatAt,
       finishedAt: discoveryRuns.finishedAt,
     })
     .from(discoveryRuns)
@@ -58,14 +77,18 @@ export function getRunsData() {
     .orderBy(desc(discoveryRuns.startedAt))
     .limit(runHistoryLimit)
     .all()
-    .map(withOutcome);
+    .map((run) => withProgress(run, policy));
 }
 
 export function getRunDetail(runId: number) {
   return readRunDetail(db, runId);
 }
 
-export function readRunDetail(database: Database, runId: number) {
+export function readRunDetail(
+  database: Database,
+  runId: number,
+  policy: StaleDiscoveryRunPolicy = currentStalePolicy(),
+) {
   const run = database
     .select({
       id: discoveryRuns.id,
@@ -88,6 +111,7 @@ export function readRunDetail(database: Database, runId: number) {
       syncErrorCount: discoveryRuns.syncErrorCount,
       error: discoveryRuns.error,
       startedAt: discoveryRuns.startedAt,
+      heartbeatAt: discoveryRuns.heartbeatAt,
       finishedAt: discoveryRuns.finishedAt,
     })
     .from(discoveryRuns)
@@ -170,26 +194,35 @@ export function readRunDetail(database: Database, runId: number) {
   );
 
   return {
-    run: withOutcome(run),
+    run: withProgress(run, policy),
     queries,
     requestSummary,
     funnel: readRunFunnel(database, run.id, run.profileId),
   };
 }
 
-function withOutcome<
+function withProgress<
   Run extends {
     readonly status: "running" | "completed" | "failed" | "cancelled";
+    readonly error: string;
+    readonly startedAt: Date;
+    readonly heartbeatAt: Date | null;
     readonly queryCount: number;
     readonly queryErrorCount: number;
     readonly syncErrorCount: number;
     readonly knownBoardCount: number | null;
     readonly knownBoardSuccessCount: number | null;
   },
->(run: Run): Run & { readonly outcome: ReturnType<typeof deriveDiscoveryRunOutcome> } {
+>(
+  run: Run,
+  policy: StaleDiscoveryRunPolicy,
+): Omit<Run, "heartbeatAt"> & { readonly outcome: ReturnType<typeof deriveDiscoveryRunOutcome> } {
+  const { heartbeatAt: _heartbeatAt, ...presented } = run;
+  const progress = resolveDiscoveryRunProgress(run, policy);
   return {
-    ...run,
-    outcome: deriveDiscoveryRunOutcome(run),
+    ...presented,
+    ...progress,
+    outcome: deriveDiscoveryRunOutcome({ ...run, status: progress.status }),
   };
 }
 

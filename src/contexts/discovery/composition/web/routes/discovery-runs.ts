@@ -29,7 +29,6 @@ const idsSchema = z
 
 export async function loader({ request }: LoaderFunctionArgs) {
   assertLocalHost(request.headers.get("host") ?? "");
-  discoveryRunsWeb.failStale();
   const url = new URL(request.url);
   const idsParam = url.searchParams.get("ids");
   const activeOnly = url.searchParams.get("active") === "1";

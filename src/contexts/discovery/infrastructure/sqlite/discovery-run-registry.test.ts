@@ -4,9 +4,8 @@ import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-
+import { STALE_DISCOVERY_RUN_CODE } from "@/contexts/discovery/domain/stale-discovery-run";
 import * as schema from "@/contexts/discovery/infrastructure/sqlite/schema";
-
 import { createSqliteDiscoveryRunRegistry } from "./discovery-run-registry";
 
 const now = new Date("2026-08-20T09:00:00.000Z");
@@ -88,9 +87,31 @@ describe("SQLite discovery run registry", () => {
       sqlite.prepare("select status, error, finished_at from discovery_runs where id = 1").get(),
     ).toEqual({
       status: "failed",
-      error:
-        "The local app stopped receiving progress from this discovery. Start a new run to retry.",
+      error: STALE_DISCOVERY_RUN_CODE,
       finished_at: now.getTime(),
+    });
+  });
+
+  it("leaves a run whose last heartbeat sits exactly on the cutoff running", () => {
+    const profileId = insertProfile(database);
+    database
+      .insert(schema.discoveryRuns)
+      .values({
+        profileId,
+        provider: "serper",
+        status: "running",
+        startedAt: new Date(now.getTime() - 300_000),
+        heartbeatAt: new Date(now.getTime() - 300_000),
+      })
+      .run();
+    const registry = createSqliteDiscoveryRunRegistry(database, {
+      now: () => now,
+      staleAfterMs: () => 300_000,
+    });
+
+    expect(registry.failStale()).toBe(0);
+    expect(sqlite.prepare("select status from discovery_runs where id = 1").get()).toEqual({
+      status: "running",
     });
   });
 
