@@ -277,6 +277,7 @@ export const jobMatches = sqliteTable(
     unverifiedReasonCount: integer("unverified_reason_count"),
     contextReasonCount: integer("context_reason_count"),
     salaryReasonCount: integer("salary_reason_count"),
+    listingIsActive: integer("listing_is_active", { mode: "boolean" }).notNull().default(true),
     updatedAt: timestamp("updated_at").notNull(),
   },
   (table) => [
@@ -285,7 +286,7 @@ export const jobMatches = sqliteTable(
     index("job_matches_screening_summary_idx").on(
       table.profileId,
       table.status,
-      table.jobId,
+      table.listingIsActive,
       table.excludedTitleReasonCount,
       table.excludedLocationReasonCount,
       table.staleReasonCount,

@@ -86,6 +86,7 @@ export async function evaluateAndStore(
           reasons: result.reasons,
           exclusionReasons: result.exclusionReasons,
           ...screeningCounts,
+          listingIsActive: true,
           updatedAt: now,
         },
       })

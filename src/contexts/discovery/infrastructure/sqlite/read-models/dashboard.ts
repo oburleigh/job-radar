@@ -256,11 +256,7 @@ function readScreeningSummary(profileId: number, database: Database): DashboardS
     FROM ${jobMatches} INDEXED BY job_matches_screening_summary_idx
     WHERE ${jobMatches.profileId} = ${profileId}
       AND ${jobMatches.status} = 'excluded'
-      AND ${jobMatches.jobId} IN (
-        SELECT ${jobs.id}
-        FROM ${jobs} INDEXED BY jobs_active_id_idx
-        WHERE ${jobs.isActive} = 1
-      )
+      AND ${jobMatches.listingIsActive} = 1
   `);
 }
 

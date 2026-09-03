@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import Database from "better-sqlite3";
+import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -432,7 +433,7 @@ function seedExcludedJob(
       evidence: "structured",
       firstSeenAt: recordedAt,
       lastSeenAt: recordedAt,
-      isActive,
+      isActive: true,
       rawPayload: {},
     })
     .returning({ id: jobs.id })
@@ -447,7 +448,17 @@ function seedExcludedJob(
       reasons: [],
       exclusionReasons,
       ...screeningCountColumns(exclusionReasons),
+      listingIsActive: true,
       updatedAt: recordedAt,
     })
     .run();
+  if (!isActive) {
+    closeListing(database, jobId);
+  }
+}
+
+// A listing is always matched while it is live and closed afterwards, so a fixture that inserts an
+// inactive row skips the update the summary depends on.
+function closeListing(database: ReturnType<typeof createDatabase>, jobId: number): void {
+  database.update(jobs).set({ isActive: false }).where(eq(jobs.id, jobId)).run();
 }
