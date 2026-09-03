@@ -24,11 +24,16 @@ import type {
 } from "@/contexts/recruiter-engagement/domain/research-run";
 import type { RecruiterResearchStartField } from "@/contexts/recruiter-engagement/presentation/web/requests/recruiter-research-request";
 import type { LocationOption } from "@/platform/http/location-option";
+import { useRevalidationPoll } from "@/platform/http/use-revalidation-poll";
 import { RecruiterEvidenceHistory } from "./recruiter-evidence-history";
 import { RecruiterLocationCombobox } from "./recruiter-location-combobox";
 import { AddToShortlist, ShortlistWorkspace } from "./shortlist-workspace";
 
 import "./styles.css";
+
+// Carried over from the interval this poll replaced. It is cadence policy and belongs in the
+// recruiter research settings; ADM-331 moves it there once its placement is decided.
+const RESEARCH_PROGRESS_POLL_INTERVAL_MS = 400;
 
 export type RecruiterResearchRunView = {
   readonly coverage: ResearchCoverage;
@@ -83,7 +88,7 @@ export function RecruiterResearchPage({
   const providers = providerSelection?.providers ?? [];
   const selectedProvider = providerSelection?.selectedProvider ?? "";
   const navigation = useNavigation();
-  const revalidator = useRevalidator();
+  const _revalidator = useRevalidator();
   const [startRequested, setStartRequested] = useState(false);
   const startNavigationObserved = useRef(false);
   const isSubmitting = navigation.state === "submitting";
@@ -134,13 +139,7 @@ export function RecruiterResearchPage({
     }
   }, [navigation.state, navigationIsStarting]);
 
-  useEffect(() => {
-    if (!isActive) {
-      return undefined;
-    }
-    const timer = window.setInterval(() => revalidator.revalidate(), 400);
-    return () => window.clearInterval(timer);
-  }, [isActive, revalidator]);
+  useRevalidationPoll(isActive, RESEARCH_PROGRESS_POLL_INTERVAL_MS);
 
   useEffect(() => {
     if (previousLoadedBriefKey.current === loadedBriefKey) {
