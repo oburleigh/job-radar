@@ -1,10 +1,11 @@
 import path from "node:path";
 
 import Database from "better-sqlite3";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { bootstrapJobRadar } from "@/contexts/discovery/infrastructure/configuration/bootstrap-job-radar";
 import {
   backfillScreeningCountColumns,
   migrateLegacyExclusionReasons,
@@ -32,6 +33,7 @@ describe("completed discovery run funnel", () => {
     sqlite.pragma("foreign_keys = ON");
     database = createDatabase(sqlite);
     migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    bootstrapJobRadar(database);
   });
 
   afterEach(() => {
@@ -135,6 +137,22 @@ describe("completed discovery run funnel", () => {
       otherExclusions: 2,
       finalMatches: 1,
     });
+  });
+
+  it("finds the funnel's candidate listings through an index rather than a table scan", () => {
+    const lookup = database
+      .select({ id: jobs.id, canonicalUrl: jobs.canonicalUrl, evidence: jobs.evidence })
+      .from(jobs)
+      .where(inArray(jobs.canonicalUrl, ["https://example.test/a", "https://example.test/b"]))
+      .toSQL();
+
+    const plan = sqlite.prepare(`EXPLAIN QUERY PLAN ${lookup.sql}`).all(lookup.params) as readonly {
+      readonly detail: string;
+    }[];
+    const detail = plan.map((step) => step.detail).join(" | ");
+
+    expect(detail).toContain("jobs_canonical_url_idx");
+    expect(detail).not.toMatch(/\bSCAN jobs\b/);
   });
 
   it("groups request evidence by market, locale, lane, strategy, source, and page", () => {

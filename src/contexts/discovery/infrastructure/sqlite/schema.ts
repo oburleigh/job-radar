@@ -252,6 +252,7 @@ export const jobs = sqliteTable(
     index("jobs_ats_external_idx").on(table.atsType, table.externalId),
     index("jobs_active_published_idx").on(table.isActive, table.publishedAt),
     index("jobs_active_id_idx").on(table.isActive, table.id),
+    index("jobs_canonical_url_idx").on(table.canonicalUrl),
   ],
 );
 

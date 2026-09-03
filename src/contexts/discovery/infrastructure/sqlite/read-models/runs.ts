@@ -3,7 +3,8 @@ import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 import { deriveDiscoveryRunOutcome } from "@/contexts/discovery/application/discovery-runs/outcome/derive-discovery-run-outcome";
 import type { ExclusionReason } from "@/contexts/discovery/domain/job-match";
 import { getJobRadarConfig } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
-import { canonicalizeUrl, classifyUrl } from "@/contexts/discovery/infrastructure/job-sources/urls";
+import { classifyUrlWithConfig } from "@/contexts/discovery/infrastructure/job-sources/url-classification";
+import { canonicalizeUrl } from "@/contexts/discovery/infrastructure/job-sources/urls";
 import { db } from "@/contexts/discovery/infrastructure/sqlite/database";
 import { normalizePersistedExclusionReasons } from "@/contexts/discovery/infrastructure/sqlite/migrate-legacy-exclusion-reasons";
 import {
@@ -207,19 +208,26 @@ function readRunFunnel(database: Database, runId: number, profileId: number) {
     .orderBy(discoveryHits.id)
     .all();
   const classifiedHits = hits.filter((hit) => hit.atsType !== null);
-  const candidateCanonicalUrls = [
-    ...new Set(
-      classifiedHits.flatMap((hit) => {
-        const classification = classifyUrl(hit.url);
-        return [classification?.canonicalUrl, hit.verificationUrl, hit.url].flatMap((url) => {
-          const canonicalUrl = url ? safeCanonicalUrl(url) : null;
-          return canonicalUrl ? [canonicalUrl] : [];
-        });
-      }),
-    ),
-  ];
+  // `classifyUrl` reloads and revalidates the whole configuration per call, and this runs on a
+  // three-second poll, so the integrations are read once and each hit is classified once.
+  const integrations = getJobRadarConfig(database).ats;
+  const hitCandidates = classifiedHits.map((hit) =>
+    [
+      classifyUrlWithConfig(hit.url, integrations)?.canonicalUrl,
+      hit.verificationUrl,
+      hit.url,
+    ].flatMap((url) => {
+      const canonicalUrl = url ? safeCanonicalUrl(url) : null;
+      return canonicalUrl ? [canonicalUrl] : [];
+    }),
+  );
+  const candidateCanonicalUrls = [...new Set(hitCandidates.flat())];
   const storedJobs = candidateCanonicalUrls.length
-    ? database.select().from(jobs).where(inArray(jobs.canonicalUrl, candidateCanonicalUrls)).all()
+    ? database
+        .select({ id: jobs.id, canonicalUrl: jobs.canonicalUrl, evidence: jobs.evidence })
+        .from(jobs)
+        .where(inArray(jobs.canonicalUrl, candidateCanonicalUrls))
+        .all()
     : [];
   const jobsByCanonicalUrl = new Map<string, (typeof storedJobs)[number]>();
   for (const job of storedJobs) {
@@ -229,14 +237,7 @@ function readRunFunnel(database: Database, runId: number, profileId: number) {
     }
   }
   const candidateJobs = new Map<number, (typeof storedJobs)[number]>();
-  for (const hit of classifiedHits) {
-    const classification = classifyUrl(hit.url);
-    const canonicalUrls = [classification?.canonicalUrl, hit.verificationUrl, hit.url].flatMap(
-      (url) => {
-        const canonicalUrl = url ? safeCanonicalUrl(url) : null;
-        return canonicalUrl ? [canonicalUrl] : [];
-      },
-    );
+  for (const canonicalUrls of hitCandidates) {
     const candidate = canonicalUrls
       .map((canonicalUrl) => jobsByCanonicalUrl.get(canonicalUrl))
       .find((job) => job !== undefined);
