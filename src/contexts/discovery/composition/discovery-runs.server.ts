@@ -57,11 +57,13 @@ const canceller = createDiscoveryRunCanceller({
   scheduler,
   now: () => new Date(),
 });
-const statuses = createSqliteDiscoveryRunStatusReader(db);
+const statuses = createSqliteDiscoveryRunStatusReader(db, {
+  now: () => new Date(),
+  staleAfterMs: () => getJobRadarConfig().ui.discoveryStaleAfterMs,
+});
 
 export const discoveryRunsWeb = {
   assertProviderReady: createSearchProvider,
-  failStale: () => registry.failStale(),
   isProviderKnown: (name: string) => Boolean(getJobRadarConfig().searchProviders[name]),
   isProviderConfigured: (name: string) => {
     const provider = getJobRadarConfig().searchProviders[name];

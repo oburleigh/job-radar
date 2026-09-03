@@ -21,9 +21,15 @@ import {
   jobs,
   searchProfiles,
 } from "@/contexts/discovery/infrastructure/sqlite/schema";
-import { countActiveDiscoveryRuns, readRunDetail } from "./runs";
+import { countActiveDiscoveryRuns, getRunsData, readRunDetail } from "./runs";
 
 const recordedAt = new Date("2026-08-25T12:00:00.000Z");
+const staleAfterMs = 300_000;
+const reportingPolicy = { now: new Date(recordedAt.getTime() + 1_000), staleAfterMs } as const;
+const laterPolicy = {
+  now: new Date(recordedAt.getTime() + staleAfterMs + 1),
+  staleAfterMs,
+} as const;
 
 describe("completed discovery run funnel", () => {
   let sqlite: Database.Database;
@@ -56,7 +62,67 @@ describe("completed discovery run funnel", () => {
       .where(eq(discoveryRuns.id, second.runId))
       .run();
 
-    expect(countActiveDiscoveryRuns(database)).toBe(2);
+    expect(countActiveDiscoveryRuns(database, reportingPolicy)).toBe(2);
+  });
+
+  it("stops counting a run that has not reported progress since the stale timeout", () => {
+    const { runId } = seedRun(database, { hitCount: 1, matchesFound: 0 });
+    database
+      .update(discoveryRuns)
+      .set({ status: "running", finishedAt: null, heartbeatAt: recordedAt })
+      .where(eq(discoveryRuns.id, runId))
+      .run();
+
+    expect(countActiveDiscoveryRuns(database, reportingPolicy)).toBe(1);
+    expect(countActiveDiscoveryRuns(database, laterPolicy)).toBe(0);
+  });
+
+  it("reports a run that stopped sending progress as failed on the run page", () => {
+    const { runId } = seedRun(database, { hitCount: 1, matchesFound: 0 });
+    database
+      .update(discoveryRuns)
+      .set({ status: "running", finishedAt: null, heartbeatAt: recordedAt })
+      .where(eq(discoveryRuns.id, runId))
+      .run();
+
+    expect(readRunDetail(database, runId, laterPolicy)?.run).toMatchObject({
+      status: "failed",
+      outcome: "failed",
+      error: "stale-run",
+    });
+    expect(readRunDetail(database, runId, reportingPolicy)?.run).toMatchObject({
+      status: "running",
+      outcome: "running",
+      error: "",
+    });
+    expect(
+      database
+        .select({ status: discoveryRuns.status })
+        .from(discoveryRuns)
+        .where(eq(discoveryRuns.id, runId))
+        .get(),
+    ).toEqual({ status: "running" });
+  });
+
+  it("reports a run that stopped sending progress as failed in activity history", () => {
+    const { runId } = seedRun(database, { hitCount: 1, matchesFound: 0 });
+    database
+      .update(discoveryRuns)
+      .set({ status: "running", finishedAt: null, heartbeatAt: recordedAt })
+      .where(eq(discoveryRuns.id, runId))
+      .run();
+
+    expect(getRunsData(database, laterPolicy)).toEqual([
+      expect.objectContaining({
+        id: runId,
+        status: "failed",
+        outcome: "failed",
+        error: "stale-run",
+      }),
+    ]);
+    expect(getRunsData(database, reportingPolicy)).toEqual([
+      expect.objectContaining({ id: runId, status: "running", outcome: "running", error: "" }),
+    ]);
   });
 
   it("counts direct candidates across typed and legacy exclusion reasons", () => {

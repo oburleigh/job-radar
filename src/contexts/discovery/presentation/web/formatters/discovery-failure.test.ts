@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { STALE_DISCOVERY_RUN_CODE } from "@/contexts/discovery/domain/stale-discovery-run";
 import { formatDiscoveryFailure } from "./discovery-failure";
 
 describe("discovery failure messages", () => {
@@ -145,6 +146,28 @@ describe("discovery failure messages", () => {
     ).toBe(
       "SerpAPI rejected its API key. Check the credential in .env or choose another provider.",
     );
+  });
+
+  it("turns the stale-run marker into the message the operator can act on", () => {
+    expect(
+      formatDiscoveryFailure({
+        profileName: "Platform leadership",
+        provider: "brave",
+        errorSummary: STALE_DISCOVERY_RUN_CODE,
+      }),
+    ).toBe(
+      "The local app stopped receiving progress from this discovery. Start a new run to retry.",
+    );
+  });
+
+  it("does not treat provider prose that merely mentions stale data as a stale run", () => {
+    expect(
+      formatDiscoveryFailure({
+        profileName: "Platform leadership",
+        provider: "brave",
+        errorSummary: "Brave Search returned HTTP 500: stale index shard",
+      }),
+    ).toBe("Brave Search: stale index shard. Try again or review run history for details.");
   });
 
   it("retains a useful fallback when no failure detail was recorded", () => {

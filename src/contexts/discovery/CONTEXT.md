@@ -40,6 +40,13 @@ _Avoid_: Connector
 One execution of a search profile across its enabled sources and company boards.
 _Avoid_: Scan, search job
 
+**Stale run**:
+A discovery run whose recorded status is still running but which has not reported progress within
+the configured stale run timeout. Every read reports it as failed. Only starting another run writes
+that conclusion down.
+_Avoid_: Stalled run, abandoned run, dead run, and Stale listing, which excludes a listing on age
+rather than describing a run
+
 **Search result**:
 A page returned by a search provider before Job Radar has confirmed that it is a current job listing.
 _Avoid_: Match, job listing

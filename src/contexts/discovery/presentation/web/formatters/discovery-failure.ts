@@ -1,3 +1,5 @@
+import { STALE_DISCOVERY_RUN_CODE } from "@/contexts/discovery/domain/stale-discovery-run";
+
 interface DiscoveryFailure {
   readonly profileName: string;
   readonly provider: string;
@@ -12,6 +14,10 @@ export function formatDiscoveryFailure({
   const summary = errorSummary.trim();
   if (!summary) {
     return `${profileName} did not finish. Review run history for details.`;
+  }
+
+  if (summary === STALE_DISCOVERY_RUN_CODE) {
+    return "The local app stopped receiving progress from this discovery. Start a new run to retry.";
   }
 
   const providerName = formatProviderName(provider);

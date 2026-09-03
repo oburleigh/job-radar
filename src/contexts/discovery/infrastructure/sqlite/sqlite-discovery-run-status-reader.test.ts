@@ -10,6 +10,7 @@ import * as schema from "@/contexts/discovery/infrastructure/sqlite/schema";
 import { createSqliteDiscoveryRunStatusReader } from "./sqlite-discovery-run-status-reader";
 
 const now = new Date("2026-08-24T14:18:51.000Z");
+const staleAfterMs = 300_000;
 
 describe("SQLite discovery run status reader", () => {
   let sqlite: Database.Database;
@@ -56,7 +57,7 @@ describe("SQLite discovery run status reader", () => {
         finishedAt: now,
       })
       .run();
-    const reader = createSqliteDiscoveryRunStatusReader(database);
+    const reader = createReader(database);
 
     const result = reader.read({ ids: [1], activeOnly: false });
 
@@ -99,7 +100,7 @@ describe("SQLite discovery run status reader", () => {
         finishedAt: now,
       })
       .run();
-    const reader = createSqliteDiscoveryRunStatusReader(database);
+    const reader = createReader(database);
 
     const result = reader.read({ ids: [1], activeOnly: false });
 
@@ -148,7 +149,7 @@ describe("SQLite discovery run status reader", () => {
         finishedAt: now,
       })
       .run();
-    const reader = createSqliteDiscoveryRunStatusReader(database);
+    const reader = createReader(database);
 
     expect(reader.read({ ids: [1], activeOnly: false }).runs).toEqual([
       expect.objectContaining({
@@ -163,7 +164,81 @@ describe("SQLite discovery run status reader", () => {
       }),
     ]);
   });
+
+  it("reports a run that stopped sending progress as failed without writing to it", () => {
+    const profileId = insertProfile(database);
+    database
+      .insert(schema.discoveryRuns)
+      .values({
+        profileId,
+        provider: "serper",
+        status: "running",
+        queryCount: 4,
+        startedAt: new Date(now.getTime() - 900_000),
+        heartbeatAt: new Date(now.getTime() - staleAfterMs - 1),
+      })
+      .run();
+
+    const result = createReader(database).read({ ids: [1], activeOnly: false });
+
+    expect(result.runs).toEqual([
+      expect.objectContaining({
+        id: 1,
+        status: "failed",
+        outcome: "failed",
+        errorSummary: "stale-run",
+      }),
+    ]);
+    expect(
+      database
+        .select({ status: schema.discoveryRuns.status, error: schema.discoveryRuns.error })
+        .from(schema.discoveryRuns)
+        .get(),
+    ).toEqual({ status: "running", error: "" });
+  });
+
+  it("reports a run that is still sending progress as running", () => {
+    const profileId = insertProfile(database);
+    database
+      .insert(schema.discoveryRuns)
+      .values({
+        profileId,
+        provider: "serper",
+        status: "running",
+        queryCount: 4,
+        startedAt: new Date(now.getTime() - 900_000),
+        heartbeatAt: new Date(now.getTime() - 1_000),
+      })
+      .run();
+
+    expect(createReader(database).read({ ids: [], activeOnly: true }).runs).toEqual([
+      expect.objectContaining({ id: 1, status: "running", outcome: "running", errorSummary: "" }),
+    ]);
+  });
 });
+
+function insertProfile(database: ReturnType<typeof createDatabase>): number {
+  return database
+    .insert(schema.searchProfiles)
+    .values({
+      name: "Platform leadership",
+      titleTerms: ["Staff Engineer"],
+      locationTerms: ["Remote"],
+      excludedTitleTerms: [],
+      excludedDescriptionTerms: [],
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning({ id: schema.searchProfiles.id })
+    .get().id;
+}
+
+function createReader(database: ReturnType<typeof createDatabase>, readAt: Date = now) {
+  return createSqliteDiscoveryRunStatusReader(database, {
+    now: () => readAt,
+    staleAfterMs: () => staleAfterMs,
+  });
+}
 
 function createDatabase(sqlite: Database.Database) {
   return drizzle(sqlite, { schema });
