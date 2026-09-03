@@ -2,6 +2,8 @@ import { fileURLToPath } from "node:url";
 
 import { defineConfig } from "vitest/config";
 
+const isCi = process.env.CI !== undefined;
+
 export default defineConfig({
   resolve: {
     alias: {
@@ -10,6 +12,12 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    /**
+     * A summary, not a line per file. The roll call of 150 files says nothing a failure does
+     * not say better, and it buries the failure when there is one. `github-actions` is in the
+     * default set when GITHUB_ACTIONS is true, so naming reporters has to keep it.
+     */
+    reporters: isCi ? ["dot", "github-actions"] : ["dot"],
     globalSetup: ["./tests/support/setup-vitest-database.ts"],
     include: [
       "scripts/**/*.test.ts",
@@ -31,7 +39,12 @@ export default defineConfig({
         "src/contexts/*/presentation/web/{formatters,requests}/**/*.ts",
       ],
       exclude: ["**/*.test.ts", "**/*.test.tsx", "**/test-support/**"],
-      reporter: ["text", "html", "lcov"],
+      /**
+       * Four totals rather than a row per file. The detail is still written, to `coverage/`
+       * for a person and `lcov.info` for Codecov, and `--coverage.reporter=text` prints the
+       * table on demand.
+       */
+      reporter: ["text-summary", "html", "lcov"],
       // Ratchets, each the measurement on the widened scope rounded down to a whole percent
       // rather than the old slack. Coverage is deterministic, so there is no run-to-run noise
       // to absorb: measured 2026-09-02 at 95.96 statements, 89.85 branches, 98.34 functions,
