@@ -8,6 +8,7 @@ import {
 } from "@/contexts/discovery/presentation/web/components/active-discovery-run";
 import { DiscoveryFunnel } from "@/contexts/discovery/presentation/web/components/discovery-funnel";
 import { KnownRoleDiagnostic } from "@/contexts/discovery/presentation/web/components/known-role-diagnostic";
+import { formatRunFailureDetail } from "@/contexts/discovery/presentation/web/formatters/discovery-failure";
 import { parseKnownRoleDiagnosticRequest } from "@/contexts/discovery/presentation/web/requests/known-role-diagnostic-request";
 import { presentDiscoveryRunOutcome } from "@/contexts/discovery/presentation/web/run-outcome-presentation";
 
@@ -72,7 +73,7 @@ export default function RunDetailPage() {
           </div>
           <p className="run-outcome-detail">
             {boardEvidence} · {webEvidence}
-            {run.error ? ` · ${run.error}` : ""}
+            {run.error ? ` · ${formatRunFailureDetail(run.error)}` : ""}
           </p>
         </section>
       ) : null}

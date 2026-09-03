@@ -1,5 +1,17 @@
 import { STALE_DISCOVERY_RUN_CODE } from "@/contexts/discovery/domain/stale-discovery-run";
 
+const STALE_RUN_MESSAGE =
+  "The local app stopped receiving progress from this discovery. Start a new run to retry.";
+
+export function isStaleRunSummary(errorSummary: string): boolean {
+  return errorSummary.trim() === STALE_DISCOVERY_RUN_CODE;
+}
+
+// A surface that shows a recorded failure verbatim would otherwise show the marker itself.
+export function formatRunFailureDetail(errorSummary: string): string {
+  return isStaleRunSummary(errorSummary) ? STALE_RUN_MESSAGE : errorSummary;
+}
+
 interface DiscoveryFailure {
   readonly profileName: string;
   readonly provider: string;
@@ -16,8 +28,8 @@ export function formatDiscoveryFailure({
     return `${profileName} did not finish. Review run history for details.`;
   }
 
-  if (summary === STALE_DISCOVERY_RUN_CODE) {
-    return "The local app stopped receiving progress from this discovery. Start a new run to retry.";
+  if (isStaleRunSummary(summary)) {
+    return STALE_RUN_MESSAGE;
   }
 
   const providerName = formatProviderName(provider);

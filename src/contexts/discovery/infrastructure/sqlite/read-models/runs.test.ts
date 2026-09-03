@@ -77,6 +77,19 @@ describe("completed discovery run funnel", () => {
     expect(countActiveDiscoveryRuns(database, laterPolicy)).toBe(0);
   });
 
+  it("counts from the configured timeout rather than a fixed one", () => {
+    const { runId } = seedRun(database, { hitCount: 1, matchesFound: 0 });
+    database
+      .update(discoveryRuns)
+      .set({ status: "running", finishedAt: null, heartbeatAt: recordedAt })
+      .where(eq(discoveryRuns.id, runId))
+      .run();
+    const readAt = new Date(recordedAt.getTime() + 240_000);
+
+    expect(countActiveDiscoveryRuns(database, { now: readAt, staleAfterMs: 900_000 })).toBe(1);
+    expect(countActiveDiscoveryRuns(database, { now: readAt, staleAfterMs: 60_000 })).toBe(0);
+  });
+
   it("reports a run that stopped sending progress as failed on the run page", () => {
     const { runId } = seedRun(database, { hitCount: 1, matchesFound: 0 });
     database

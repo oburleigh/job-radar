@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { STALE_DISCOVERY_RUN_CODE } from "@/contexts/discovery/domain/stale-discovery-run";
+
 import {
   type DiscoveryRunStatus,
   describeDiscoveryNotice,
@@ -227,6 +229,42 @@ describe("discovery notification polling reconciliation", () => {
       message:
         "Asia leadership: 2 boards completed, 1 job changed, web coverage completed, and 2 current profile matches.",
     });
+  });
+
+  it("tells a known-boards run with no provider why it stopped, rather than showing the marker", () => {
+    expect(
+      describeDiscoveryNotice(
+        completedRun({
+          provider: "",
+          status: "failed",
+          outcome: "failed",
+          errorSummary: STALE_DISCOVERY_RUN_CODE,
+        }),
+      ).message,
+    ).toBe(
+      "The local app stopped receiving progress from this discovery. Start a new run to retry.",
+    );
+  });
+
+  it("tells a partly finished known-boards run why it stopped instead of naming no reason at all", () => {
+    expect(
+      describeDiscoveryNotice(
+        completedRun({
+          provider: "",
+          status: "failed",
+          outcome: "partial",
+          knownBoardCount: 2,
+          knownBoardCompletedCount: 1,
+          knownBoardSuccessCount: 1,
+          errorSummary: STALE_DISCOVERY_RUN_CODE,
+          queryErrorCount: 0,
+          syncErrorCount: 0,
+        }),
+      ).message,
+    ).toBe(
+      "The local app stopped receiving progress from this discovery. Start a new run to retry. " +
+        "Final totals: 1 board completed, 4 jobs changed, web coverage completed, and 2 current profile matches.",
+    );
   });
 });
 
