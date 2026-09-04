@@ -40,6 +40,13 @@ export function createFakeResearchRunStore(
     async create(run) {
       runs.set(run.id, run);
     },
+    async createContinuation(run, continuedFromRunId) {
+      runs.set(run.id, run);
+      const carried = getObservations(run.id);
+      for (const [identity, observation] of getObservations(continuedFromRunId)) {
+        carried.set(identity, observation);
+      }
+    },
     get: async (runId) => runs.get(runId),
     async listAll() {
       return [...runs.values()].toSorted(

@@ -8,6 +8,7 @@ describe("recruiter research route action", () => {
     const action = createRecruiterResearchAction({
       assertLocalHost: vi.fn(),
       cancelResearchRun: vi.fn(),
+      continueResearchRun: vi.fn(),
       correctDirectoryFact: vi.fn(),
       resolveTargetLocations: vi.fn(() => [
         { key: "city:ae:dubai", label: "Dubai, United Arab Emirates" },
@@ -29,6 +30,7 @@ describe("recruiter research route action", () => {
     const action = createRecruiterResearchAction({
       assertLocalHost: vi.fn(),
       cancelResearchRun: vi.fn(),
+      continueResearchRun: vi.fn(),
       correctDirectoryFact: vi.fn(),
       resolveTargetLocations: vi.fn(() => []),
       retryResearchRun: vi.fn(async () => {
@@ -44,11 +46,57 @@ describe("recruiter research route action", () => {
     });
   });
 
+  it("continues a cancelled run and follows the continuation, not the run it continued", async () => {
+    const continueResearchRun = vi.fn(async () => ({
+      status: "started" as const,
+      runId: "run-2",
+    }));
+    const retryResearchRun = vi.fn();
+    const action = createRecruiterResearchAction({
+      assertLocalHost: vi.fn(),
+      cancelResearchRun: vi.fn(),
+      continueResearchRun,
+      correctDirectoryFact: vi.fn(),
+      resolveTargetLocations: vi.fn(() => []),
+      retryResearchRun,
+      resolveDirectoryIdentity: vi.fn(),
+      shortlists: shortlistActions(),
+      startResearchRun: vi.fn(),
+    });
+
+    const response = await action(continueRequest("run-1"));
+
+    expect(continueResearchRun).toHaveBeenCalledWith("run-1");
+    expect(retryResearchRun).not.toHaveBeenCalled();
+    expect((response as Response).headers.get("location")).toBe("/recruiter-search?run=run-2");
+  });
+
+  it("returns its normal error data when a continuation races a state change", async () => {
+    const action = createRecruiterResearchAction({
+      assertLocalHost: vi.fn(),
+      cancelResearchRun: vi.fn(),
+      continueResearchRun: vi.fn(async () => {
+        throw new Error("This run completed both stages, so it has nothing left to continue.");
+      }),
+      correctDirectoryFact: vi.fn(),
+      resolveTargetLocations: vi.fn(() => []),
+      retryResearchRun: vi.fn(),
+      resolveDirectoryIdentity: vi.fn(),
+      shortlists: shortlistActions(),
+      startResearchRun: vi.fn(),
+    });
+
+    await expect(action(continueRequest("run-1"))).resolves.toEqual({
+      error: "This run completed both stages, so it has nothing left to continue.",
+    });
+  });
+
   it("resolves a pending directory identity from the current run", async () => {
     const resolveDirectoryIdentity = vi.fn();
     const action = createRecruiterResearchAction({
       assertLocalHost: vi.fn(),
       cancelResearchRun: vi.fn(),
+      continueResearchRun: vi.fn(),
       correctDirectoryFact: vi.fn(),
       resolveTargetLocations: vi.fn(() => []),
       retryResearchRun: vi.fn(),
@@ -72,6 +120,7 @@ describe("recruiter research route action", () => {
     const action = createRecruiterResearchAction({
       assertLocalHost: vi.fn(),
       cancelResearchRun: vi.fn(),
+      continueResearchRun: vi.fn(),
       correctDirectoryFact: vi.fn(),
       resolveTargetLocations: vi.fn(() => []),
       retryResearchRun: vi.fn(),
@@ -107,6 +156,17 @@ function directoryRequest(): Request {
   form.set("runId", "run-1");
   form.set("reviewId", "review-1");
   form.set("decision", "merge");
+  return new Request("http://localhost/recruiter-research", {
+    method: "POST",
+    headers: { host: "localhost" },
+    body: form,
+  });
+}
+
+function continueRequest(runId: string): Request {
+  const form = new FormData();
+  form.set("intent", "continue");
+  form.set("runId", runId);
   return new Request("http://localhost/recruiter-research", {
     method: "POST",
     headers: { host: "localhost" },

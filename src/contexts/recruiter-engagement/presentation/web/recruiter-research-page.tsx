@@ -6,7 +6,15 @@ import {
   TokenAutocomplete,
   type TokenAutocompleteOption,
 } from "@job-radar/design-ui";
-import { CheckCircle2, CircleAlert, CircleX, LoaderCircle, RotateCcw, Square } from "lucide-react";
+import {
+  CheckCircle2,
+  CircleAlert,
+  CircleX,
+  LoaderCircle,
+  RotateCcw,
+  Square,
+  StepForward,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Form, Link, useNavigation } from "react-router";
 import type { ShortlistResult } from "@/contexts/recruiter-engagement/application/shortlists/manage-shortlists";
@@ -479,6 +487,7 @@ function ResearchRunResult({
   const { coverage, directory, failures, observations, run, shortlists } = research;
   const isActive = activeStatuses.has(run.status);
   const canRetry = ["cancelled", "failed", "partial"].includes(run.status);
+  const canContinue = canRetry && run.checkpoint === "recruiters";
 
   return (
     <section className="recruiter-run-section" aria-labelledby="recruiter-results-title">
@@ -517,6 +526,7 @@ function ResearchRunResult({
         </div>
         <div className="recruiter-run-provenance">
           {run.retryOfRunId ? <span>Retry of {run.retryOfRunId}</span> : null}
+          {run.continuedFromRunId ? <span>Continued from {run.continuedFromRunId}</span> : null}
           <span>
             Policy {run.policy.id} v{run.policy.version}
           </span>
@@ -547,6 +557,16 @@ function ResearchRunResult({
               <Button disabled={isSubmitting} type="submit" variant="danger">
                 <Square aria-hidden="true" size={15} />
                 Cancel research
+              </Button>
+            </Form>
+          ) : null}
+          {canContinue ? (
+            <Form method="post">
+              <input name="intent" type="hidden" value="continue" />
+              <input name="runId" type="hidden" value={run.id} />
+              <Button disabled={isSubmitting} type="submit" variant="primary">
+                <StepForward aria-hidden="true" size={15} />
+                Continue with the {coverage.observedFirmCount} firms already found
               </Button>
             </Form>
           ) : null}

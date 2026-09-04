@@ -11,6 +11,7 @@ import { assertLocalHost } from "@/platform/http/require-local-request";
 type RecruiterResearchActionDependencies = {
   readonly assertLocalHost: typeof assertLocalHost;
   readonly cancelResearchRun: typeof recruiterEngagementWeb.cancelResearchRun;
+  readonly continueResearchRun: typeof recruiterEngagementWeb.continueResearchRun;
   readonly correctDirectoryFact: typeof recruiterEngagementWeb.correctDirectoryFact;
   readonly resolveTargetLocations: typeof recruiterEngagementWeb.resolveTargetLocations;
   readonly retryResearchRun: typeof recruiterEngagementWeb.retryResearchRun;
@@ -35,6 +36,7 @@ const directoryIntents = new Set([
 export const recruiterResearchAction = createRecruiterResearchAction({
   assertLocalHost,
   cancelResearchRun: recruiterEngagementWeb.cancelResearchRun,
+  continueResearchRun: recruiterEngagementWeb.continueResearchRun,
   correctDirectoryFact: recruiterEngagementWeb.correctDirectoryFact,
   resolveTargetLocations: recruiterEngagementWeb.resolveTargetLocations,
   retryResearchRun: recruiterEngagementWeb.retryResearchRun,
@@ -46,6 +48,7 @@ export const recruiterResearchAction = createRecruiterResearchAction({
 export function createRecruiterResearchAction({
   assertLocalHost,
   cancelResearchRun,
+  continueResearchRun,
   correctDirectoryFact,
   resolveTargetLocations,
   retryResearchRun,
@@ -138,6 +141,14 @@ export function createRecruiterResearchAction({
     if (intent === "retry") {
       try {
         const started = await retryResearchRun(runId);
+        return redirect(`/recruiter-search?run=${encodeURIComponent(started.runId)}`);
+      } catch (error) {
+        return { error: error instanceof Error ? error.message : String(error) };
+      }
+    }
+    if (intent === "continue") {
+      try {
+        const started = await continueResearchRun(runId);
         return redirect(`/recruiter-search?run=${encodeURIComponent(started.runId)}`);
       } catch (error) {
         return { error: error instanceof Error ? error.message : String(error) };

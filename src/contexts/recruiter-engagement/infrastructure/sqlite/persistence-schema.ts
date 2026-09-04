@@ -200,6 +200,7 @@ const researchRun = z
     id: z.string().min(1),
     policy: adapterPolicy,
     retryOfRunId: z.string().min(1).nullable(),
+    continuedFromRunId: z.string().min(1).nullable().default(null),
     sourcePlan,
     startedAt: date,
     status: z.enum([

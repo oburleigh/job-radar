@@ -6,6 +6,7 @@ import {
 } from "@/contexts/discovery/public-web-search.server";
 import { createRecruiterDirectoryMaintenance } from "@/contexts/recruiter-engagement/application/directory/maintain-recruiter-directory";
 import { createResearchRunCanceller } from "@/contexts/recruiter-engagement/application/research-runs/cancel-research-run";
+import { createResearchRunContinuer } from "@/contexts/recruiter-engagement/application/research-runs/continue-research-run";
 import { createResearchRunExecution } from "@/contexts/recruiter-engagement/application/research-runs/execute-research-run";
 import { createResearchRunGetter } from "@/contexts/recruiter-engagement/application/research-runs/get-research-run";
 import { createResearchRunActivityReader } from "@/contexts/recruiter-engagement/application/research-runs/list-research-runs";
@@ -148,6 +149,12 @@ const retrier = createResearchRunRetrier({
   runs,
   scheduler,
 });
+const continuer = createResearchRunContinuer({
+  createId: randomUUID,
+  now: () => new Date(),
+  runs,
+  scheduler,
+});
 const resumer = createResearchRunResumer({ runs, scheduler });
 const getter = createResearchRunGetter({ runs });
 const activity = createResearchRunActivityReader({ runs });
@@ -156,6 +163,7 @@ void resumer.resumeResearchRuns();
 
 export const recruiterEngagementWeb = {
   cancelResearchRun: canceller.cancelResearchRun,
+  continueResearchRun: continuer.continueResearchRun,
   correctDirectoryFact(command: Omit<Parameters<typeof directory.correctFact>[0], "correctedAt">) {
     return directory.correctFact({ ...command, correctedAt: new Date() });
   },
