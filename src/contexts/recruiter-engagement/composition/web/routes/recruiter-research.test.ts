@@ -10,6 +10,8 @@ describe("recruiter research route action", () => {
       cancelResearchRun: vi.fn(),
       continueResearchRun: vi.fn(),
       correctDirectoryFact: vi.fn(),
+      removeDirectoryRecord: vi.fn(),
+      restoreDirectoryRecord: vi.fn(),
       resolveTargetLocations: vi.fn(() => [
         { key: "city:ae:dubai", label: "Dubai, United Arab Emirates" },
       ]),
@@ -32,6 +34,8 @@ describe("recruiter research route action", () => {
       cancelResearchRun: vi.fn(),
       continueResearchRun: vi.fn(),
       correctDirectoryFact: vi.fn(),
+      removeDirectoryRecord: vi.fn(),
+      restoreDirectoryRecord: vi.fn(),
       resolveTargetLocations: vi.fn(() => []),
       retryResearchRun: vi.fn(async () => {
         throw new Error("Only a finished recruiter research run can be retried.");
@@ -57,6 +61,8 @@ describe("recruiter research route action", () => {
       cancelResearchRun: vi.fn(),
       continueResearchRun,
       correctDirectoryFact: vi.fn(),
+      removeDirectoryRecord: vi.fn(),
+      restoreDirectoryRecord: vi.fn(),
       resolveTargetLocations: vi.fn(() => []),
       retryResearchRun,
       resolveDirectoryIdentity: vi.fn(),
@@ -79,6 +85,8 @@ describe("recruiter research route action", () => {
         throw new Error("This run completed both stages, so it has nothing left to continue.");
       }),
       correctDirectoryFact: vi.fn(),
+      removeDirectoryRecord: vi.fn(),
+      restoreDirectoryRecord: vi.fn(),
       resolveTargetLocations: vi.fn(() => []),
       retryResearchRun: vi.fn(),
       resolveDirectoryIdentity: vi.fn(),
@@ -91,6 +99,164 @@ describe("recruiter research route action", () => {
     });
   });
 
+  it("removes a firm with its recruiters and returns to the filtered registry", async () => {
+    const removeDirectoryRecord = vi.fn();
+    const action = createRecruiterResearchAction({
+      assertLocalHost: vi.fn(),
+      cancelResearchRun: vi.fn(),
+      continueResearchRun: vi.fn(),
+      correctDirectoryFact: vi.fn(),
+      removeDirectoryRecord,
+      restoreDirectoryRecord: vi.fn(),
+      resolveTargetLocations: vi.fn(() => []),
+      retryResearchRun: vi.fn(),
+      resolveDirectoryIdentity: vi.fn(),
+      shortlists: shortlistActions(),
+      startResearchRun: vi.fn(),
+    });
+
+    const response = await action(
+      registryRequest({
+        cascadeRecruiters: "with-recruiters",
+        intent: "remove-directory-record",
+        kind: "firm",
+        recordId: "firm-1",
+        showRemoved: "on",
+        specialism: "Software engineering",
+      }),
+    );
+
+    expect(removeDirectoryRecord).toHaveBeenCalledWith({
+      cascadeRecruiters: true,
+      kind: "firm",
+      recordId: "firm-1",
+    });
+    expect((response as Response).headers.get("location")).toBe(
+      "/recruiter-search?view=registry&specialism=Software+engineering&showRemoved=on",
+    );
+  });
+
+  it("keeps a firm's recruiters when the removal says firm only", async () => {
+    const removeDirectoryRecord = vi.fn();
+    const action = createRecruiterResearchAction({
+      assertLocalHost: vi.fn(),
+      cancelResearchRun: vi.fn(),
+      continueResearchRun: vi.fn(),
+      correctDirectoryFact: vi.fn(),
+      removeDirectoryRecord,
+      restoreDirectoryRecord: vi.fn(),
+      resolveTargetLocations: vi.fn(() => []),
+      retryResearchRun: vi.fn(),
+      resolveDirectoryIdentity: vi.fn(),
+      shortlists: shortlistActions(),
+      startResearchRun: vi.fn(),
+    });
+
+    await action(
+      registryRequest({
+        cascadeRecruiters: "firm-only",
+        intent: "remove-directory-record",
+        kind: "firm",
+        recordId: "firm-1",
+      }),
+    );
+
+    expect(removeDirectoryRecord).toHaveBeenCalledWith({
+      cascadeRecruiters: false,
+      kind: "firm",
+      recordId: "firm-1",
+    });
+  });
+
+  it("refuses a firm removal that does not say what happens to its recruiters", async () => {
+    const removeDirectoryRecord = vi.fn();
+    const action = createRecruiterResearchAction({
+      assertLocalHost: vi.fn(),
+      cancelResearchRun: vi.fn(),
+      continueResearchRun: vi.fn(),
+      correctDirectoryFact: vi.fn(),
+      removeDirectoryRecord,
+      restoreDirectoryRecord: vi.fn(),
+      resolveTargetLocations: vi.fn(() => []),
+      retryResearchRun: vi.fn(),
+      resolveDirectoryIdentity: vi.fn(),
+      shortlists: shortlistActions(),
+      startResearchRun: vi.fn(),
+    });
+
+    await expect(
+      action(
+        registryRequest({
+          intent: "remove-directory-record",
+          kind: "firm",
+          recordId: "firm-1",
+        }),
+      ),
+    ).resolves.toEqual({ error: "Choose what happens to the recruiters at this firm." });
+    expect(removeDirectoryRecord).not.toHaveBeenCalled();
+  });
+
+  it("removes one recruiter without asking about a cascade", async () => {
+    const removeDirectoryRecord = vi.fn();
+    const action = createRecruiterResearchAction({
+      assertLocalHost: vi.fn(),
+      cancelResearchRun: vi.fn(),
+      continueResearchRun: vi.fn(),
+      correctDirectoryFact: vi.fn(),
+      removeDirectoryRecord,
+      restoreDirectoryRecord: vi.fn(),
+      resolveTargetLocations: vi.fn(() => []),
+      retryResearchRun: vi.fn(),
+      resolveDirectoryIdentity: vi.fn(),
+      shortlists: shortlistActions(),
+      startResearchRun: vi.fn(),
+    });
+
+    const response = await action(
+      registryRequest({
+        intent: "remove-directory-record",
+        kind: "recruiter",
+        recordId: "recruiter-1",
+      }),
+    );
+
+    expect(removeDirectoryRecord).toHaveBeenCalledWith({
+      cascadeRecruiters: false,
+      kind: "recruiter",
+      recordId: "recruiter-1",
+    });
+    expect((response as Response).headers.get("location")).toBe("/recruiter-search?view=registry");
+  });
+
+  it("restores a removed record", async () => {
+    const restoreDirectoryRecord = vi.fn();
+    const removeDirectoryRecord = vi.fn();
+    const action = createRecruiterResearchAction({
+      assertLocalHost: vi.fn(),
+      cancelResearchRun: vi.fn(),
+      continueResearchRun: vi.fn(),
+      correctDirectoryFact: vi.fn(),
+      removeDirectoryRecord,
+      restoreDirectoryRecord,
+      resolveTargetLocations: vi.fn(() => []),
+      retryResearchRun: vi.fn(),
+      resolveDirectoryIdentity: vi.fn(),
+      shortlists: shortlistActions(),
+      startResearchRun: vi.fn(),
+    });
+
+    await action(
+      registryRequest({
+        intent: "restore-directory-record",
+        kind: "firm",
+        recordId: "firm-1",
+      }),
+    );
+
+    expect(restoreDirectoryRecord).toHaveBeenCalledWith({ kind: "firm", recordId: "firm-1" });
+    expect(removeDirectoryRecord).not.toHaveBeenCalled();
+  });
+
   it("resolves a pending directory identity from the current run", async () => {
     const resolveDirectoryIdentity = vi.fn();
     const action = createRecruiterResearchAction({
@@ -98,6 +264,8 @@ describe("recruiter research route action", () => {
       cancelResearchRun: vi.fn(),
       continueResearchRun: vi.fn(),
       correctDirectoryFact: vi.fn(),
+      removeDirectoryRecord: vi.fn(),
+      restoreDirectoryRecord: vi.fn(),
       resolveTargetLocations: vi.fn(() => []),
       retryResearchRun: vi.fn(),
       resolveDirectoryIdentity,
@@ -122,6 +290,8 @@ describe("recruiter research route action", () => {
       cancelResearchRun: vi.fn(),
       continueResearchRun: vi.fn(),
       correctDirectoryFact: vi.fn(),
+      removeDirectoryRecord: vi.fn(),
+      restoreDirectoryRecord: vi.fn(),
       resolveTargetLocations: vi.fn(() => []),
       retryResearchRun: vi.fn(),
       resolveDirectoryIdentity: vi.fn(),
@@ -156,6 +326,18 @@ function directoryRequest(): Request {
   form.set("runId", "run-1");
   form.set("reviewId", "review-1");
   form.set("decision", "merge");
+  return new Request("http://localhost/recruiter-research", {
+    method: "POST",
+    headers: { host: "localhost" },
+    body: form,
+  });
+}
+
+function registryRequest(fields: Record<string, string>): Request {
+  const form = new FormData();
+  for (const [name, value] of Object.entries(fields)) {
+    form.set(name, value);
+  }
   return new Request("http://localhost/recruiter-research", {
     method: "POST",
     headers: { host: "localhost" },

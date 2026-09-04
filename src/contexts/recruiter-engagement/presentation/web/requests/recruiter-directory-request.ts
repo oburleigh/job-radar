@@ -19,6 +19,17 @@ const correctionRequest = z
     }
   });
 const createShortlistRequest = z.object({ name: z.string().trim().min(1) });
+const directoryRecordRequest = z.object({
+  kind: z.enum(["firm", "recruiter"], { error: "Choose a firm or a recruiter to remove." }),
+  recordId: z.string().trim().min(1),
+});
+const removalRequest = directoryRecordRequest.extend({
+  cascadeRecruiters: z
+    .enum(["with-recruiters", "firm-only"], {
+      error: "Choose what happens to the recruiters at this firm.",
+    })
+    .optional(),
+});
 const prospectRequest = z.object({
   recruiterId: z.string().trim().min(1),
   shortlistId: z.string().trim().min(1),
@@ -55,7 +66,18 @@ type RecruiterDirectoryCommand =
       readonly recruiterId: string;
       readonly shortlistId: string;
     }
-  | { readonly intent: "delete-shortlist"; readonly shortlistId: string };
+  | { readonly intent: "delete-shortlist"; readonly shortlistId: string }
+  | {
+      readonly cascadeRecruiters: boolean;
+      readonly intent: "remove-directory-record";
+      readonly kind: "firm" | "recruiter";
+      readonly recordId: string;
+    }
+  | {
+      readonly intent: "restore-directory-record";
+      readonly kind: "firm" | "recruiter";
+      readonly recordId: string;
+    };
 
 export type RecruiterDirectoryRequestResult =
   | {
@@ -108,6 +130,37 @@ export function parseRecruiterDirectoryRequest(
       contactExclusion: formData.get("contactExclusion"),
       recruiterId: formData.get("recruiterId"),
       shortlistId: formData.get("shortlistId"),
+    });
+    return parsed.success
+      ? { ok: true, command: { intent, ...parsed.data } }
+      : invalidRequest(parsed.error.issues[0]?.message);
+  }
+  if (intent === "remove-directory-record") {
+    const parsed = removalRequest.safeParse({
+      cascadeRecruiters: formData.get("cascadeRecruiters") ?? undefined,
+      kind: formData.get("kind"),
+      recordId: formData.get("recordId"),
+    });
+    if (!parsed.success) {
+      return invalidRequest(parsed.error.issues[0]?.message);
+    }
+    if (parsed.data.kind === "firm" && parsed.data.cascadeRecruiters === undefined) {
+      return invalidRequest("Choose what happens to the recruiters at this firm.");
+    }
+    return {
+      ok: true,
+      command: {
+        cascadeRecruiters: parsed.data.cascadeRecruiters === "with-recruiters",
+        intent,
+        kind: parsed.data.kind,
+        recordId: parsed.data.recordId,
+      },
+    };
+  }
+  if (intent === "restore-directory-record") {
+    const parsed = directoryRecordRequest.safeParse({
+      kind: formData.get("kind"),
+      recordId: formData.get("recordId"),
     });
     return parsed.success
       ? { ok: true, command: { intent, ...parsed.data } }

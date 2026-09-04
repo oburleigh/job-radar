@@ -6,9 +6,18 @@ import { resolveLocations } from "@/platform/locations/location-search.server";
 import { recruiterResearchAction } from "./recruiter-research-action.server";
 
 export async function loader({ request }: { readonly request: Request }) {
-  const runId = new URL(request.url).searchParams.get("run");
+  const parameters = new URL(request.url).searchParams;
+  const runId = parameters.get("run");
   const research = runId ? await recruiterEngagementWeb.getResearchRun(runId) : undefined;
+  const specialism = parameters.get("specialism");
+  const showRemoved = parameters.get("showRemoved") === "on";
   return {
+    registry: await recruiterEngagementWeb.getRecruiterRegistry({
+      ...(showRemoved ? { includeRemoved: true } : {}),
+      ...(specialism ? { specialism } : {}),
+    }),
+    registryFilters: { showRemoved, specialism: specialism ?? null },
+    view: parameters.get("view") === "registry" ? ("registry" as const) : ("run" as const),
     research,
     criteriaOptions: recruiterEngagementWeb.getResearchCriteriaOptions(),
     defaultTargets: recruiterEngagementWeb.getDefaultSearchTargets(),
@@ -29,8 +38,16 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function RecruiterResearchRoute() {
-  const { criteriaOptions, defaultTargets, initialLocationOptions, providerSelection, research } =
-    useLoaderData<typeof loader>();
+  const {
+    criteriaOptions,
+    defaultTargets,
+    initialLocationOptions,
+    providerSelection,
+    registry,
+    registryFilters,
+    research,
+    view,
+  } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   return (
     <RecruiterResearchPage
@@ -46,6 +63,9 @@ export default function RecruiterResearchRoute() {
       criteriaOptions={criteriaOptions}
       defaultTargets={defaultTargets}
       initialLocationOptions={initialLocationOptions}
+      registry={registry}
+      registryFilters={registryFilters}
+      view={view}
       {...(providerSelection ? { providerSelection } : {})}
     />
   );

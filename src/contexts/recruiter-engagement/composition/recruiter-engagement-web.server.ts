@@ -20,6 +20,7 @@ import { createSavePublicSearchSettings } from "@/contexts/recruiter-engagement/
 import { createSaveResearchCriteriaOptions } from "@/contexts/recruiter-engagement/application/research-settings/save-research-criteria-options";
 import { createShortlistManagement } from "@/contexts/recruiter-engagement/application/shortlists/manage-shortlists";
 import { rankRecruiterDirectory } from "@/contexts/recruiter-engagement/domain/recruiter-directory";
+import { listRecruiterRegistry } from "@/contexts/recruiter-engagement/domain/recruiter-registry";
 import type { ResearchRun } from "@/contexts/recruiter-engagement/domain/research-run";
 import { createAfterResponseResearchRunScheduler } from "@/contexts/recruiter-engagement/infrastructure/background/after-response-research-run-scheduler";
 import { createCodexCliClient } from "@/contexts/recruiter-engagement/infrastructure/codex/codex-cli-client";
@@ -183,6 +184,28 @@ export const recruiterEngagementWeb = {
     };
   },
   listResearchRuns: activity.listResearchRuns,
+  async getRecruiterRegistry(filters: {
+    readonly includeRemoved?: boolean;
+    readonly specialism?: string;
+  }) {
+    return listRecruiterRegistry(await directory.getDirectory(), {
+      profileHosts: currentSettings().publicSearch.profileSourceHosts,
+      ...filters,
+    });
+  },
+  removeDirectoryRecord(command: {
+    readonly cascadeRecruiters?: boolean;
+    readonly kind: "firm" | "recruiter";
+    readonly recordId: string;
+  }) {
+    return directory.removeRecord({ ...command, removedAt: new Date() });
+  },
+  restoreDirectoryRecord(command: {
+    readonly kind: "firm" | "recruiter";
+    readonly recordId: string;
+  }) {
+    return directory.restoreRecord(command);
+  },
   getResearchCriteriaOptions: () => currentSettings().criteriaOptions,
   getDefaultSearchTargets: () => ({
     firmTarget: currentSettings().defaultBrief.firmTarget,

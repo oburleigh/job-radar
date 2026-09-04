@@ -60,6 +60,10 @@ _Avoid_: Resume, Retry
 **Identity review**
 : A possible duplicate that remains separate until the user chooses to merge it or keep it separate.
 
+**Removal**
+: A reversible exclusion of a recruitment firm or Recruiter from the Directory. The record and its Evidence are retained and a later Observation of the same record does not reverse it. Removing a firm may take its Recruiters with it, and restoring that firm restores only the Recruiters its own removal took.
+_Avoid_: Delete, Archive, Suppression, which is a Prospect's Campaign preparation exclusion rather than a Directory one
+
 **Canonical correction**
 : A user-selected value for a recruitment firm or recruiter. The correction is recorded without deleting the observations that led to it.
 

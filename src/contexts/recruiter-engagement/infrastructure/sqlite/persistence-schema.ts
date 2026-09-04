@@ -287,6 +287,14 @@ const directoryCorrection = z
     value: z.string().min(1),
   })
   .strict();
+const directoryRemoval = z
+  .object({
+    kind: z.enum(["firm", "recruiter"]),
+    recordId: z.string().min(1),
+    removedAt: z.coerce.date(),
+    removedWithFirmId: z.string().min(1).nullable().default(null),
+  })
+  .strict();
 const recruiterDirectory = z
   .object({
     corrections: z.array(directoryCorrection),
@@ -294,6 +302,7 @@ const recruiterDirectory = z
     firms: z.array(directoryFirm),
     identityReviews: z.array(directoryIdentityReview),
     recruiters: z.array(directoryRecruiter),
+    removals: z.array(directoryRemoval).default([]),
   })
   .strict();
 const shortlist = z

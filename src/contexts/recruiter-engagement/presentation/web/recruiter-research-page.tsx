@@ -2,6 +2,7 @@ import {
   Button,
   PageHeader,
   SelectField,
+  TabNavigation,
   TextField,
   TokenAutocomplete,
   type TokenAutocompleteOption,
@@ -25,6 +26,7 @@ import type {
   RankedRecruiter,
   RankedRecruiterDirectory,
 } from "@/contexts/recruiter-engagement/domain/recruiter-directory";
+import type { RecruiterRegistry } from "@/contexts/recruiter-engagement/domain/recruiter-registry";
 import type {
   ResearchCoverage,
   ResearchRun,
@@ -35,6 +37,7 @@ import type { LocationOption } from "@/platform/http/location-option";
 import { useRevalidationPoll } from "@/platform/http/use-revalidation-poll";
 import { RecruiterEvidenceHistory } from "./recruiter-evidence-history";
 import { RecruiterLocationCombobox } from "./recruiter-location-combobox";
+import { type RecruiterRegistryFilters, RecruiterRegistryPanel } from "./recruiter-registry-panel";
 import { AddToShortlist, ShortlistWorkspace } from "./shortlist-workspace";
 
 import "./styles.css";
@@ -71,7 +74,10 @@ type RecruiterResearchPageProps = {
     }[];
     readonly selectedProvider: string;
   };
+  readonly registry?: RecruiterRegistry;
+  readonly registryFilters?: RecruiterRegistryFilters;
   readonly research?: RecruiterResearchRunView;
+  readonly view?: "registry" | "run";
 };
 
 const activeStatuses = new Set<ResearchRun["status"]>(["pending", "running", "interrupted"]);
@@ -91,7 +97,10 @@ export function RecruiterResearchPage({
   defaultTargets,
   initialLocationOptions,
   providerSelection,
+  registry,
+  registryFilters,
   research,
+  view = "run",
 }: RecruiterResearchPageProps) {
   const providers = providerSelection?.providers ?? [];
   const selectedProvider = providerSelection?.selectedProvider ?? "";
@@ -191,224 +200,254 @@ export function RecruiterResearchPage({
         description="Run a local, public-source scan of recruitment firms and their named recruiters. Counts describe this run, not the whole market."
       />
 
-      <section className="panel recruiter-brief-panel" aria-labelledby="recruiter-brief-title">
-        <div className="recruiter-panel-heading">
-          <div>
-            <h2 id="recruiter-brief-title">Set the market focus</h2>
-          </div>
-          <div className="recruiter-panel-heading-actions">
-            <span>Public web only</span>
-          </div>
-        </div>
-        <Form
-          key={run?.id ?? "new-research"}
-          method="post"
-          className="recruiter-brief-form"
-          noValidate
-          onSubmit={() => setStartRequested(true)}
+      <TabNavigation label="Recruiter Search sections">
+        <Link aria-current={view === "run" ? "page" : undefined} to="/recruiter-search">
+          Research
+        </Link>
+        <Link
+          aria-current={view === "registry" ? "page" : undefined}
+          to="/recruiter-search?view=registry"
         >
-          <input name="intent" type="hidden" value="start" />
-          <RecruiterLocationCombobox
-            disabled={isSubmitting || isActive}
-            {...(targetLocationsError ? { error: targetLocationsError } : {})}
-            {...(initialLocationOptions ? { initialOptions: initialLocationOptions } : {})}
-            name="targetLocations"
-            onChange={setTargetLocations}
-            values={targetLocations}
-          />
-          <div className="recruiter-target-fields">
-            <TextField
-              defaultValue={String(run?.brief.firmTarget ?? defaultTargets.firmTarget)}
-              disabled={isSubmitting || isActive}
-              {...(firmTargetError ? { error: firmTargetError } : {})}
-              hint="Cannot exceed the recruiter target."
-              id="firm-target"
-              inputMode="numeric"
-              label="Firms to find (required)"
-              min="1"
-              name="firmTarget"
-              required
-              type="number"
-            />
-            <TextField
-              defaultValue={String(run?.brief.recruiterTarget ?? defaultTargets.recruiterTarget)}
-              disabled={isSubmitting || isActive}
-              {...(recruiterTargetError ? { error: recruiterTargetError } : {})}
-              hint="Positive whole numbers with no fixed maximum."
-              id="recruiter-target"
-              inputMode="numeric"
-              label="Recruiters to find (required)"
-              min="1"
-              name="recruiterTarget"
-              required
-              type="number"
-            />
-          </div>
-          <TokenAutocomplete
-            disabled={isSubmitting || isActive}
-            {...(specialismsError ? { error: specialismsError } : {})}
-            hint={criterionHint(
-              "Choose the professional disciplines recruiters should cover.",
-              criteriaOptions.specialisms,
-            )}
-            id="recruiter-specialisms"
-            invalidSelectionMessage="Choose a Specialism from the suggestions."
-            label="Specialisms (required)"
-            name="specialisms"
-            onChange={setSpecialisms}
-            options={criterionOptions([...criteriaOptions.specialisms, ...specialisms])}
-            placeholder="Choose a Specialism"
-            required
-            secondaryPlaceholder="Add another Specialism"
-            values={specialisms}
-          />
-          <TokenAutocomplete
-            disabled={isSubmitting || isActive}
-            {...(industriesError ? { error: industriesError } : {})}
-            hint={criterionHint(
-              "Choose the industries where recruiters should have hiring experience.",
-              criteriaOptions.industries,
-            )}
-            id="recruiter-industries"
-            invalidSelectionMessage="Choose a Target industry from the suggestions."
-            label="Target industries (required)"
-            name="industries"
-            onChange={setIndustries}
-            options={criterionOptions([...criteriaOptions.industries, ...industries])}
-            placeholder="Choose a Target industry"
-            required
-            secondaryPlaceholder="Add another Target industry"
-            values={industries}
-          />
-          <details
-            className="recruiter-optional-context"
-            onToggle={(event) => setOptionalContextOpen(event.currentTarget.open)}
-            open={optionalContextOpen}
-          >
-            <summary>Add optional search context</summary>
-            <label className="recruiter-textarea-label" htmlFor="recruiter-brief">
-              <span>Search brief (optional)</span>
-              <textarea
-                value={briefDescription}
-                disabled={isSubmitting || isActive}
-                {...textareaAccessibility("recruiter-brief", briefError, true)}
-                id="recruiter-brief"
-                maxLength={1000}
-                name="brief"
-                onChange={(event) => setBriefDescription(event.target.value)}
-                placeholder="e.g. Director-level roles at product-led companies"
-                rows={3}
-              />
-              <small id="recruiter-brief-hint">
-                Use this only for details the selections above cannot express, such as seniority or
-                employer type.
-              </small>
-              {briefError ? (
-                <small className="jr-field-error" id="recruiter-brief-error">
-                  {briefError}
-                </small>
-              ) : null}
-            </label>
-          </details>
-          <section className="recruiter-execution" aria-labelledby="research-adapter-title">
-            <div className="recruiter-execution-copy">
-              <h3 id="research-adapter-title">Active sources</h3>
-              <p>
-                Public firm websites and public recruiter profile pages{" "}
-                {providerSelection
-                  ? "through the configured public web search adapter"
-                  : "researched through the Codex CLI installed on this machine"}
-                . No account-linked source is connected.
-              </p>
-            </div>
-            {providerSelection ? (
-              <div className="recruiter-execution-fields">
-                <SelectField
-                  disabled={isSubmitting || isActive}
-                  {...(providerNameError ? { error: providerNameError } : {})}
-                  hint="This provider supplies public firm and recruiter profile results for the run."
-                  id="recruiter-search-provider"
-                  label="Search provider"
-                  name="providerName"
-                  onChange={(event) => setProviderName(event.target.value)}
-                  required
-                  value={providerName}
-                >
-                  {!providerIsConfigured ? (
-                    <option disabled value="">
-                      Configure a search provider first
-                    </option>
-                  ) : null}
-                  {providers.map((provider) => (
-                    <option
-                      disabled={!provider.configured}
-                      key={provider.name}
-                      value={provider.name}
-                    >
-                      {provider.label}
-                      {provider.configured ? "" : " (not configured)"}
-                    </option>
-                  ))}
-                </SelectField>
-                {!providerIsConfigured && !isActive ? (
-                  <p className="recruiter-provider-configuration">
-                    <Link to="/settings/recruiter-search/public-search">
-                      Configure a search provider
-                    </Link>{" "}
-                    before starting Recruiter Search.
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
-          </section>
-          <div className="recruiter-brief-actions">
-            <Button
-              busy={isStarting}
-              disabled={isStarting || isActive || !providerIsConfigured}
-              type="submit"
-              variant="primary"
-            >
-              {isStarting ? (
-                <LoaderCircle aria-hidden="true" className="recruiter-progress-spinner" size={16} />
-              ) : null}
-              {isStarting
-                ? "Starting Recruiter Search"
-                : isActive
-                  ? "Research in progress"
-                  : "Start research"}
-            </Button>
-            {isStarting || isActive ? (
-              <div className="recruiter-start-status" role="status" aria-live="polite">
-                <strong>
-                  {isStarting ? "Starting Recruiter Search" : researchStageLabel(run?.checkpoint)}
-                </strong>
-                <span>
-                  {isStarting
-                    ? "Saving your criteria and starting firm research."
-                    : "The run continues in the background."}{" "}
-                  You can leave this page and follow it in <Link to="/activity">Activity</Link>.
-                </span>
-              </div>
-            ) : (
-              <p>
-                Uses the selected configured search provider. It does not use a logged-in account
-                session or collect private contact data.
-              </p>
-            )}
-          </div>
-        </Form>
-      </section>
+          Registry
+        </Link>
+      </TabNavigation>
 
-      {actionError ? (
-        <p className="recruiter-action-error" role="alert">
-          Could not start research. {actionError.message}
-        </p>
-      ) : null}
-
-      {research ? (
-        <ResearchRunResult research={research} isSubmitting={isSubmitting} />
+      {view === "registry" && registry && registryFilters ? (
+        <RecruiterRegistryPanel
+          filters={registryFilters}
+          isSubmitting={isSubmitting}
+          registry={registry}
+        />
       ) : (
-        <EmptyResearchState />
+        <>
+          <section className="panel recruiter-brief-panel" aria-labelledby="recruiter-brief-title">
+            <div className="recruiter-panel-heading">
+              <div>
+                <h2 id="recruiter-brief-title">Set the market focus</h2>
+              </div>
+              <div className="recruiter-panel-heading-actions">
+                <span>Public web only</span>
+              </div>
+            </div>
+            <Form
+              key={run?.id ?? "new-research"}
+              method="post"
+              className="recruiter-brief-form"
+              noValidate
+              onSubmit={() => setStartRequested(true)}
+            >
+              <input name="intent" type="hidden" value="start" />
+              <RecruiterLocationCombobox
+                disabled={isSubmitting || isActive}
+                {...(targetLocationsError ? { error: targetLocationsError } : {})}
+                {...(initialLocationOptions ? { initialOptions: initialLocationOptions } : {})}
+                name="targetLocations"
+                onChange={setTargetLocations}
+                values={targetLocations}
+              />
+              <div className="recruiter-target-fields">
+                <TextField
+                  defaultValue={String(run?.brief.firmTarget ?? defaultTargets.firmTarget)}
+                  disabled={isSubmitting || isActive}
+                  {...(firmTargetError ? { error: firmTargetError } : {})}
+                  hint="Cannot exceed the recruiter target."
+                  id="firm-target"
+                  inputMode="numeric"
+                  label="Firms to find (required)"
+                  min="1"
+                  name="firmTarget"
+                  required
+                  type="number"
+                />
+                <TextField
+                  defaultValue={String(
+                    run?.brief.recruiterTarget ?? defaultTargets.recruiterTarget,
+                  )}
+                  disabled={isSubmitting || isActive}
+                  {...(recruiterTargetError ? { error: recruiterTargetError } : {})}
+                  hint="Positive whole numbers with no fixed maximum."
+                  id="recruiter-target"
+                  inputMode="numeric"
+                  label="Recruiters to find (required)"
+                  min="1"
+                  name="recruiterTarget"
+                  required
+                  type="number"
+                />
+              </div>
+              <TokenAutocomplete
+                disabled={isSubmitting || isActive}
+                {...(specialismsError ? { error: specialismsError } : {})}
+                hint={criterionHint(
+                  "Choose the professional disciplines recruiters should cover.",
+                  criteriaOptions.specialisms,
+                )}
+                id="recruiter-specialisms"
+                invalidSelectionMessage="Choose a Specialism from the suggestions."
+                label="Specialisms (required)"
+                name="specialisms"
+                onChange={setSpecialisms}
+                options={criterionOptions([...criteriaOptions.specialisms, ...specialisms])}
+                placeholder="Choose a Specialism"
+                required
+                secondaryPlaceholder="Add another Specialism"
+                values={specialisms}
+              />
+              <TokenAutocomplete
+                disabled={isSubmitting || isActive}
+                {...(industriesError ? { error: industriesError } : {})}
+                hint={criterionHint(
+                  "Choose the industries where recruiters should have hiring experience.",
+                  criteriaOptions.industries,
+                )}
+                id="recruiter-industries"
+                invalidSelectionMessage="Choose a Target industry from the suggestions."
+                label="Target industries (required)"
+                name="industries"
+                onChange={setIndustries}
+                options={criterionOptions([...criteriaOptions.industries, ...industries])}
+                placeholder="Choose a Target industry"
+                required
+                secondaryPlaceholder="Add another Target industry"
+                values={industries}
+              />
+              <details
+                className="recruiter-optional-context"
+                onToggle={(event) => setOptionalContextOpen(event.currentTarget.open)}
+                open={optionalContextOpen}
+              >
+                <summary>Add optional search context</summary>
+                <label className="recruiter-textarea-label" htmlFor="recruiter-brief">
+                  <span>Search brief (optional)</span>
+                  <textarea
+                    value={briefDescription}
+                    disabled={isSubmitting || isActive}
+                    {...textareaAccessibility("recruiter-brief", briefError, true)}
+                    id="recruiter-brief"
+                    maxLength={1000}
+                    name="brief"
+                    onChange={(event) => setBriefDescription(event.target.value)}
+                    placeholder="e.g. Director-level roles at product-led companies"
+                    rows={3}
+                  />
+                  <small id="recruiter-brief-hint">
+                    Use this only for details the selections above cannot express, such as seniority
+                    or employer type.
+                  </small>
+                  {briefError ? (
+                    <small className="jr-field-error" id="recruiter-brief-error">
+                      {briefError}
+                    </small>
+                  ) : null}
+                </label>
+              </details>
+              <section className="recruiter-execution" aria-labelledby="research-adapter-title">
+                <div className="recruiter-execution-copy">
+                  <h3 id="research-adapter-title">Active sources</h3>
+                  <p>
+                    Public firm websites and public recruiter profile pages{" "}
+                    {providerSelection
+                      ? "through the configured public web search adapter"
+                      : "researched through the Codex CLI installed on this machine"}
+                    . No account-linked source is connected.
+                  </p>
+                </div>
+                {providerSelection ? (
+                  <div className="recruiter-execution-fields">
+                    <SelectField
+                      disabled={isSubmitting || isActive}
+                      {...(providerNameError ? { error: providerNameError } : {})}
+                      hint="This provider supplies public firm and recruiter profile results for the run."
+                      id="recruiter-search-provider"
+                      label="Search provider"
+                      name="providerName"
+                      onChange={(event) => setProviderName(event.target.value)}
+                      required
+                      value={providerName}
+                    >
+                      {!providerIsConfigured ? (
+                        <option disabled value="">
+                          Configure a search provider first
+                        </option>
+                      ) : null}
+                      {providers.map((provider) => (
+                        <option
+                          disabled={!provider.configured}
+                          key={provider.name}
+                          value={provider.name}
+                        >
+                          {provider.label}
+                          {provider.configured ? "" : " (not configured)"}
+                        </option>
+                      ))}
+                    </SelectField>
+                    {!providerIsConfigured && !isActive ? (
+                      <p className="recruiter-provider-configuration">
+                        <Link to="/settings/recruiter-search/public-search">
+                          Configure a search provider
+                        </Link>{" "}
+                        before starting Recruiter Search.
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </section>
+              <div className="recruiter-brief-actions">
+                <Button
+                  busy={isStarting}
+                  disabled={isStarting || isActive || !providerIsConfigured}
+                  type="submit"
+                  variant="primary"
+                >
+                  {isStarting ? (
+                    <LoaderCircle
+                      aria-hidden="true"
+                      className="recruiter-progress-spinner"
+                      size={16}
+                    />
+                  ) : null}
+                  {isStarting
+                    ? "Starting Recruiter Search"
+                    : isActive
+                      ? "Research in progress"
+                      : "Start research"}
+                </Button>
+                {isStarting || isActive ? (
+                  <div className="recruiter-start-status" role="status" aria-live="polite">
+                    <strong>
+                      {isStarting
+                        ? "Starting Recruiter Search"
+                        : researchStageLabel(run?.checkpoint)}
+                    </strong>
+                    <span>
+                      {isStarting
+                        ? "Saving your criteria and starting firm research."
+                        : "The run continues in the background."}{" "}
+                      You can leave this page and follow it in <Link to="/activity">Activity</Link>.
+                    </span>
+                  </div>
+                ) : (
+                  <p>
+                    Uses the selected configured search provider. It does not use a logged-in
+                    account session or collect private contact data.
+                  </p>
+                )}
+              </div>
+            </Form>
+          </section>
+
+          {actionError ? (
+            <p className="recruiter-action-error" role="alert">
+              Could not start research. {actionError.message}
+            </p>
+          ) : null}
+
+          {research ? (
+            <ResearchRunResult research={research} isSubmitting={isSubmitting} />
+          ) : (
+            <EmptyResearchState />
+          )}
+        </>
       )}
     </div>
   );

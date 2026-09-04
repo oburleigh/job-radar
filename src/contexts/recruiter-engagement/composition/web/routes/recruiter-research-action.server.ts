@@ -13,6 +13,8 @@ type RecruiterResearchActionDependencies = {
   readonly cancelResearchRun: typeof recruiterEngagementWeb.cancelResearchRun;
   readonly continueResearchRun: typeof recruiterEngagementWeb.continueResearchRun;
   readonly correctDirectoryFact: typeof recruiterEngagementWeb.correctDirectoryFact;
+  readonly removeDirectoryRecord: typeof recruiterEngagementWeb.removeDirectoryRecord;
+  readonly restoreDirectoryRecord: typeof recruiterEngagementWeb.restoreDirectoryRecord;
   readonly resolveTargetLocations: typeof recruiterEngagementWeb.resolveTargetLocations;
   readonly retryResearchRun: typeof recruiterEngagementWeb.retryResearchRun;
   readonly resolveDirectoryIdentity: typeof recruiterEngagementWeb.resolveDirectoryIdentity;
@@ -38,6 +40,8 @@ export const recruiterResearchAction = createRecruiterResearchAction({
   cancelResearchRun: recruiterEngagementWeb.cancelResearchRun,
   continueResearchRun: recruiterEngagementWeb.continueResearchRun,
   correctDirectoryFact: recruiterEngagementWeb.correctDirectoryFact,
+  removeDirectoryRecord: recruiterEngagementWeb.removeDirectoryRecord,
+  restoreDirectoryRecord: recruiterEngagementWeb.restoreDirectoryRecord,
   resolveTargetLocations: recruiterEngagementWeb.resolveTargetLocations,
   retryResearchRun: recruiterEngagementWeb.retryResearchRun,
   resolveDirectoryIdentity: recruiterEngagementWeb.resolveDirectoryIdentity,
@@ -50,6 +54,8 @@ export function createRecruiterResearchAction({
   cancelResearchRun,
   continueResearchRun,
   correctDirectoryFact,
+  removeDirectoryRecord,
+  restoreDirectoryRecord,
   resolveTargetLocations,
   retryResearchRun,
   resolveDirectoryIdentity,
@@ -77,6 +83,29 @@ export function createRecruiterResearchAction({
           error: error instanceof Error ? error.message : String(error),
           field: "providerName" as const,
         };
+      }
+    }
+    if (intent === "remove-directory-record" || intent === "restore-directory-record") {
+      const parsed = parseRecruiterDirectoryRequest(intent, formData);
+      if (!parsed.ok) {
+        return { error: parsed.message };
+      }
+      try {
+        if (parsed.command.intent === "remove-directory-record") {
+          await removeDirectoryRecord({
+            cascadeRecruiters: parsed.command.cascadeRecruiters,
+            kind: parsed.command.kind,
+            recordId: parsed.command.recordId,
+          });
+        } else if (parsed.command.intent === "restore-directory-record") {
+          await restoreDirectoryRecord({
+            kind: parsed.command.kind,
+            recordId: parsed.command.recordId,
+          });
+        }
+        return redirect(registryDestination(formData));
+      } catch (error) {
+        return { error: error instanceof Error ? error.message : String(error) };
       }
     }
     const runId = formData.get("runId");
@@ -156,4 +185,16 @@ export function createRecruiterResearchAction({
     }
     return { error: "Unknown recruiter research action." };
   };
+}
+
+function registryDestination(formData: FormData): string {
+  const parameters = new URLSearchParams({ view: "registry" });
+  const specialism = formData.get("specialism");
+  if (typeof specialism === "string" && specialism.length > 0) {
+    parameters.set("specialism", specialism);
+  }
+  if (formData.get("showRemoved") === "on") {
+    parameters.set("showRemoved", "on");
+  }
+  return `/recruiter-search?${parameters.toString()}`;
 }
