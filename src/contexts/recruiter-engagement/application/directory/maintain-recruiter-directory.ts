@@ -4,7 +4,9 @@ import {
   type DirectoryCorrection,
   type RecruiterDirectory,
   reconcileRecruiterDirectory,
+  removeDirectoryRecord,
   resolveIdentityReview,
+  restoreDirectoryRecord,
 } from "@/contexts/recruiter-engagement/domain/recruiter-directory";
 import type { RecruiterDirectoryStore } from "./port";
 
@@ -22,10 +24,20 @@ export interface ForMaintainingRecruiterDirectory {
     readonly recordedAt: Date;
     readonly runId: string;
   }) => Promise<RecruiterDirectory>;
+  readonly removeRecord: (command: {
+    readonly cascadeRecruiters?: boolean;
+    readonly kind: "firm" | "recruiter";
+    readonly recordId: string;
+    readonly removedAt: Date;
+  }) => Promise<RecruiterDirectory>;
   readonly resolveIdentity: (command: {
     readonly decision: "merge" | "keep-separate";
     readonly decidedAt: Date;
     readonly reviewId: string;
+  }) => Promise<RecruiterDirectory>;
+  readonly restoreRecord: (command: {
+    readonly kind: "firm" | "recruiter";
+    readonly recordId: string;
   }) => Promise<RecruiterDirectory>;
 }
 
@@ -43,6 +55,8 @@ export function createRecruiterDirectoryMaintenance({
     correctFact: async (command) => save(correctDirectoryFact(await store.load(), command)),
     getDirectory: store.load,
     reconcile: async (command) => save(reconcileRecruiterDirectory(await store.load(), command)),
+    removeRecord: async (command) => save(removeDirectoryRecord(await store.load(), command)),
     resolveIdentity: async (command) => save(resolveIdentityReview(await store.load(), command)),
+    restoreRecord: async (command) => save(restoreDirectoryRecord(await store.load(), command)),
   };
 }

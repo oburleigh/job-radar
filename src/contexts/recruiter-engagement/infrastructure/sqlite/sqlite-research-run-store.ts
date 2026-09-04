@@ -27,27 +27,30 @@ export function createSqliteResearchRunStore<TSchema extends Record<string, unkn
 ): ResearchRunStore {
   return {
     async create(run) {
-      database
-        .insert(recruiterResearchRuns)
-        .values({
-          id: run.id,
-          retryOfRunId: run.retryOfRunId,
-          brief: run.brief.description,
-          criteria: run.brief.criteria,
-          recruiterTarget: run.brief.recruiterTarget,
-          policy: run.policy,
-          sourcePlan: run.sourcePlan,
-          budget: run.budget,
-          budgetUsage: run.budgetUsage,
-          budgetExhaustion: run.budgetExhaustion,
-          status: run.status,
-          checkpoint: run.checkpoint,
-          completionReason: run.completionReason,
-          startedAt: run.startedAt,
-          updatedAt: run.updatedAt,
-          finishedAt: run.finishedAt,
-        })
-        .run();
+      database.insert(recruiterResearchRuns).values(toRunRow(run)).run();
+    },
+    async createContinuation(run, continuedFromRunId) {
+      database.transaction((transaction) => {
+        transaction.insert(recruiterResearchRuns).values(toRunRow(run)).run();
+        const carried = transaction
+          .select({
+            identity: recruiterResearchObservations.identity,
+            kind: recruiterResearchObservations.kind,
+            payload: recruiterResearchObservations.payload,
+            recordedAt: recruiterResearchObservations.recordedAt,
+          })
+          .from(recruiterResearchObservations)
+          .where(eq(recruiterResearchObservations.runId, continuedFromRunId))
+          .orderBy(recruiterResearchObservations.id)
+          .all();
+        for (const observation of carried) {
+          transaction
+            .insert(recruiterResearchObservations)
+            .values({ ...observation, runId: run.id })
+            .onConflictDoNothing()
+            .run();
+        }
+      });
     },
     async get(runId) {
       const row = database
@@ -325,10 +328,33 @@ export function createSqliteResearchRunStore<TSchema extends Record<string, unkn
   };
 }
 
+function toRunRow(run: ResearchRun): typeof recruiterResearchRuns.$inferInsert {
+  return {
+    id: run.id,
+    retryOfRunId: run.retryOfRunId,
+    continuedFromRunId: run.continuedFromRunId,
+    brief: run.brief.description,
+    criteria: run.brief.criteria,
+    recruiterTarget: run.brief.recruiterTarget,
+    policy: run.policy,
+    sourcePlan: run.sourcePlan,
+    budget: run.budget,
+    budgetUsage: run.budgetUsage,
+    budgetExhaustion: run.budgetExhaustion,
+    status: run.status,
+    checkpoint: run.checkpoint,
+    completionReason: run.completionReason,
+    startedAt: run.startedAt,
+    updatedAt: run.updatedAt,
+    finishedAt: run.finishedAt,
+  };
+}
+
 function toResearchRun(row: typeof recruiterResearchRuns.$inferSelect): ResearchRun {
   return parsePersistedResearchRun({
     id: row.id,
     retryOfRunId: row.retryOfRunId,
+    continuedFromRunId: row.continuedFromRunId,
     brief: {
       criteria: row.criteria,
       description: row.brief,

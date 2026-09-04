@@ -1,0 +1,1 @@
+ALTER TABLE `recruiter_research_runs` ADD `continued_from_run_id` text;

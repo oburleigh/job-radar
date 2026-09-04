@@ -6,6 +6,7 @@ import {
 } from "@/contexts/discovery/public-web-search.server";
 import { createRecruiterDirectoryMaintenance } from "@/contexts/recruiter-engagement/application/directory/maintain-recruiter-directory";
 import { createResearchRunCanceller } from "@/contexts/recruiter-engagement/application/research-runs/cancel-research-run";
+import { createResearchRunContinuer } from "@/contexts/recruiter-engagement/application/research-runs/continue-research-run";
 import { createResearchRunExecution } from "@/contexts/recruiter-engagement/application/research-runs/execute-research-run";
 import { createResearchRunGetter } from "@/contexts/recruiter-engagement/application/research-runs/get-research-run";
 import { createResearchRunActivityReader } from "@/contexts/recruiter-engagement/application/research-runs/list-research-runs";
@@ -19,6 +20,7 @@ import { createSavePublicSearchSettings } from "@/contexts/recruiter-engagement/
 import { createSaveResearchCriteriaOptions } from "@/contexts/recruiter-engagement/application/research-settings/save-research-criteria-options";
 import { createShortlistManagement } from "@/contexts/recruiter-engagement/application/shortlists/manage-shortlists";
 import { rankRecruiterDirectory } from "@/contexts/recruiter-engagement/domain/recruiter-directory";
+import { listRecruiterRegistry } from "@/contexts/recruiter-engagement/domain/recruiter-registry";
 import type { ResearchRun } from "@/contexts/recruiter-engagement/domain/research-run";
 import { createAfterResponseResearchRunScheduler } from "@/contexts/recruiter-engagement/infrastructure/background/after-response-research-run-scheduler";
 import { createCodexCliClient } from "@/contexts/recruiter-engagement/infrastructure/codex/codex-cli-client";
@@ -148,6 +150,12 @@ const retrier = createResearchRunRetrier({
   runs,
   scheduler,
 });
+const continuer = createResearchRunContinuer({
+  createId: randomUUID,
+  now: () => new Date(),
+  runs,
+  scheduler,
+});
 const resumer = createResearchRunResumer({ runs, scheduler });
 const getter = createResearchRunGetter({ runs });
 const activity = createResearchRunActivityReader({ runs });
@@ -156,6 +164,7 @@ void resumer.resumeResearchRuns();
 
 export const recruiterEngagementWeb = {
   cancelResearchRun: canceller.cancelResearchRun,
+  continueResearchRun: continuer.continueResearchRun,
   correctDirectoryFact(command: Omit<Parameters<typeof directory.correctFact>[0], "correctedAt">) {
     return directory.correctFact({ ...command, correctedAt: new Date() });
   },
@@ -175,6 +184,28 @@ export const recruiterEngagementWeb = {
     };
   },
   listResearchRuns: activity.listResearchRuns,
+  async getRecruiterRegistry(filters: {
+    readonly includeRemoved?: boolean;
+    readonly specialism?: string;
+  }) {
+    return listRecruiterRegistry(await directory.getDirectory(), {
+      profileHosts: currentSettings().publicSearch.profileSourceHosts,
+      ...filters,
+    });
+  },
+  removeDirectoryRecord(command: {
+    readonly cascadeRecruiters?: boolean;
+    readonly kind: "firm" | "recruiter";
+    readonly recordId: string;
+  }) {
+    return directory.removeRecord({ ...command, removedAt: new Date() });
+  },
+  restoreDirectoryRecord(command: {
+    readonly kind: "firm" | "recruiter";
+    readonly recordId: string;
+  }) {
+    return directory.restoreRecord(command);
+  },
   getResearchCriteriaOptions: () => currentSettings().criteriaOptions,
   getDefaultSearchTargets: () => ({
     firmTarget: currentSettings().defaultBrief.firmTarget,

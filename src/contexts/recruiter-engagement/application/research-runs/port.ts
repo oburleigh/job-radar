@@ -11,6 +11,8 @@ import type {
 
 export interface ResearchRunStore {
   readonly create: (run: ResearchRun) => Promise<void>;
+  /** Creates a continuation and carries the continued run's observations onto it atomically. */
+  readonly createContinuation: (run: ResearchRun, continuedFromRunId: string) => Promise<void>;
   readonly get: (runId: string) => Promise<ResearchRun | undefined>;
   readonly listAll: () => Promise<readonly ResearchRun[]>;
   readonly listResumable: () => Promise<readonly ResearchRun[]>;

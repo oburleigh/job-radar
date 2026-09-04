@@ -309,7 +309,153 @@ describe("recruiter research page", () => {
     expect(html).toContain("0 observations saved.");
     expect(html).not.toContain("This stage did not start because the run completed.");
   });
+
+  it("offers a continuation over the firms a run already found, distinct from a retry", () => {
+    const html = renderCancelledRun("recruiters", [firmObservation(), secondFirmObservation()]);
+
+    expect(html).toContain("Continue with the 2 firms already found");
+    expect(html).toContain('value="continue"');
+    expect(html).toContain("Retry with the same plan");
+  });
+
+  it("offers only a retry when the run never got past the firms stage", () => {
+    const html = renderCancelledRun("firms", []);
+
+    expect(html).toContain("Retry with the same plan");
+    expect(html).not.toContain("Continue with the");
+    expect(html).not.toContain('value="continue"');
+  });
+
+  it("names the run a continuation came from", () => {
+    const html = renderCancelledRun("recruiters", [firmObservation()], "run-original");
+
+    expect(html).toContain("Continued from run-original");
+  });
+  it("shows the registry instead of the research form when the registry tab is open", () => {
+    const html = renderRegistryView();
+
+    expect(html).toContain('id="recruiter-registry-title"');
+    expect(html).toContain("Acme Search");
+    expect(html).not.toContain('id="recruiter-brief-title"');
+    expect(html).toContain('href="/recruiter-search?view=registry"');
+  });
+
+  it("keeps the research form and the registry link on the research tab", () => {
+    const html = renderRegistryView("run");
+
+    expect(html).toContain('id="recruiter-brief-title"');
+    expect(html).not.toContain('id="recruiter-registry-title"');
+    expect(html).toContain('href="/recruiter-search?view=registry"');
+  });
 });
+
+function renderRegistryView(view: "registry" | "run" = "registry"): string {
+  const router = createMemoryRouter([
+    {
+      path: "/",
+      element: (
+        <RecruiterResearchPage
+          criteriaOptions={testCriteriaOptions}
+          defaultTargets={{ firmTarget: 10, recruiterTarget: 20 }}
+          providerSelection={{
+            providers: [{ configured: true, label: "Serper.dev", name: "serper" }],
+            selectedProvider: "serper",
+          }}
+          registry={{
+            availableSpecialisms: ["Software engineering"],
+            firmCount: 1,
+            firms: [
+              {
+                id: "firm-acme",
+                name: "Acme Search",
+                recruiters: [],
+                removed: false,
+                specialisms: ["Software engineering"],
+                websiteUrl: "https://acme-search.ae",
+              },
+            ],
+            recruiterCount: 0,
+            removedCount: 0,
+            unassociatedRecruiters: [],
+          }}
+          registryFilters={{ showRemoved: false, specialism: null }}
+          view={view}
+        />
+      ),
+    },
+  ]);
+  return renderToStaticMarkup(<RouterProvider router={router} />);
+}
+
+function renderCancelledRun(
+  checkpoint: "firms" | "recruiters",
+  observations: readonly ReturnType<typeof firmObservation>[],
+  continuedFromRunId: string | null = null,
+): string {
+  const brief = testSearchBrief({
+    description: "Software engineering",
+    firmTarget: 1,
+    recruiterTarget: 1,
+  });
+  const run = {
+    ...createResearchRun({
+      brief,
+      id: "run-cancelled",
+      policy: testAdapterPolicy,
+      sourcePlan: testSourcePlan,
+      startedAt: new Date("2026-08-28T10:00:00.000Z"),
+    }),
+    checkpoint,
+    completionReason: "Cancelled by the user before the next source result was accepted.",
+    continuedFromRunId,
+    finishedAt: new Date("2026-08-28T10:05:00.000Z"),
+    status: "cancelled" as const,
+  };
+  const router = createMemoryRouter([
+    {
+      path: "/",
+      element: (
+        <RecruiterResearchPage
+          criteriaOptions={testCriteriaOptions}
+          defaultTargets={{ firmTarget: 10, recruiterTarget: 20 }}
+          providerSelection={{
+            providers: [{ configured: true, label: "Serper.dev", name: "serper" }],
+            selectedProvider: "serper",
+          }}
+          research={{
+            coverage: createResearchCoverage({ run, observations }),
+            directory: rankRecruiterDirectory(createEmptyRecruiterDirectory(), {
+              asOf: new Date("2026-08-28T12:00:00.000Z"),
+              brief,
+              weights: {
+                currentMandatesOrActivity: 15,
+                evidenceFreshnessAndQuality: 10,
+                namedRecruiterOrTeamEvidence: 10,
+                recruiterRoleAndSeniority: 15,
+                scaleOrTrackRecord: 10,
+                specialism: 20,
+                targetMarketOperatingDepth: 20,
+              },
+            }),
+            failures: [],
+            observations,
+            run,
+            shortlists: [],
+          }}
+        />
+      ),
+    },
+  ]);
+  return renderToStaticMarkup(<RouterProvider router={router} />);
+}
+
+function secondFirmObservation() {
+  return {
+    ...firmObservation(),
+    companyName: "Beacon Talent",
+    websiteUrl: "https://beacon-talent.example",
+  };
+}
 
 function firmObservation() {
   return {

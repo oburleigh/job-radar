@@ -93,6 +93,7 @@ export type ResearchBudgetExhaustion = {
 export type ResearchRun = {
   readonly id: string;
   readonly retryOfRunId: string | null;
+  readonly continuedFromRunId: string | null;
   readonly brief: SearchBrief;
   readonly policy: AdapterPolicySnapshot;
   readonly sourcePlan: SourcePlanSnapshot;
@@ -154,6 +155,7 @@ export function createSearchBrief(input: {
 export function createResearchRun(input: {
   readonly id: string;
   readonly brief: SearchBrief;
+  readonly continuedFromRunId?: string;
   readonly policy: AdapterPolicySnapshot;
   readonly retryOfRunId?: string;
   readonly sourcePlan: SourcePlanSnapshot;
@@ -162,6 +164,7 @@ export function createResearchRun(input: {
   return {
     id: input.id,
     retryOfRunId: input.retryOfRunId ?? null,
+    continuedFromRunId: input.continuedFromRunId ?? null,
     brief: input.brief,
     policy: input.policy,
     sourcePlan: input.sourcePlan,
@@ -178,6 +181,30 @@ export function createResearchRun(input: {
     updatedAt: input.startedAt,
     finishedAt: null,
     completionReason: null,
+  };
+}
+
+export function continueResearchRun(input: {
+  readonly id: string;
+  readonly previous: ResearchRun;
+  readonly startedAt: Date;
+}): ResearchRun {
+  if (!isTerminalResearchRun(input.previous)) {
+    throw new Error("Only a finished recruiter research run can be continued.");
+  }
+  if (input.previous.checkpoint === "completed") {
+    throw new Error("This run completed both stages, so it has nothing left to continue.");
+  }
+  return {
+    ...createResearchRun({
+      id: input.id,
+      brief: input.previous.brief,
+      continuedFromRunId: input.previous.id,
+      policy: input.previous.policy,
+      sourcePlan: input.previous.sourcePlan,
+      startedAt: input.startedAt,
+    }),
+    checkpoint: input.previous.checkpoint,
   };
 }
 

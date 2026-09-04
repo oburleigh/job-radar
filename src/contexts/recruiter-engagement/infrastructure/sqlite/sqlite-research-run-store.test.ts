@@ -5,7 +5,11 @@ import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { describe, expect, it } from "vitest";
-import { createResearchRun } from "@/contexts/recruiter-engagement/domain/research-run";
+import {
+  continueResearchRun,
+  createResearchRun,
+  type ResearchRun,
+} from "@/contexts/recruiter-engagement/domain/research-run";
 import {
   testAdapterPolicy,
   testEvidence,
@@ -334,6 +338,69 @@ describe("SQLite research run store", () => {
     } finally {
       rmSync(legacyMigrationsFolder, { recursive: true, force: true });
     }
+  });
+
+  it("carries only the continued run's observations onto a continuation", async () => {
+    const sqlite = new Database(":memory:");
+    sqlite.pragma("foreign_keys = ON");
+    const database = drizzle(sqlite);
+    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    const store = createSqliteResearchRunStore(database);
+    const seed = async (id: string, firmNames: readonly string[]) => {
+      const run = createResearchRun({
+        id,
+        brief: testSearchBrief({ description: "UAE technology", recruiterTarget: 4 }),
+        policy: testAdapterPolicy,
+        sourcePlan: testSourcePlan,
+        startedAt: new Date("2026-08-27T10:00:00.000Z"),
+      });
+      await store.create(run);
+      await store.begin(id, new Date("2026-08-27T10:01:00.000Z"));
+      await store.acceptStage(
+        id,
+        "firms",
+        firmNames.map((companyName) => ({
+          kind: "firm" as const,
+          companyName,
+          websiteUrl: `https://${companyName.toLowerCase().replaceAll(" ", "-")}.example`,
+          evidence: testEvidence("https://firm.example/evidence"),
+          reason: "Technology recruitment",
+          industries: ["Technology"],
+          rankingSignals: {
+            currentMandatesOrActivity: true,
+            namedRecruiterOrTeamEvidence: true,
+            scaleOrTrackRecord: true,
+            targetMarkets: ["United Arab Emirates"],
+          },
+          specialisms: ["Software engineering"],
+        })),
+        new Date("2026-08-27T10:02:00.000Z"),
+      );
+      await store.cancel(id, new Date("2026-08-27T10:03:00.000Z"));
+    };
+    await seed("run-continued", ["Firm One", "Firm Two", "Firm Three"]);
+    await seed("run-unrelated", ["Other Firm"]);
+
+    const continuation = continueResearchRun({
+      id: "run-continuation",
+      previous: (await store.get("run-continued")) as ResearchRun,
+      startedAt: new Date("2026-08-27T10:04:00.000Z"),
+    });
+    await store.createContinuation(continuation, "run-continued");
+
+    expect(await store.get("run-continuation")).toMatchObject({
+      checkpoint: "recruiters",
+      continuedFromRunId: "run-continued",
+      retryOfRunId: null,
+      status: "pending",
+    });
+    expect(
+      (await store.observationsFor("run-continuation"))
+        .map((observation) => (observation.kind === "firm" ? observation.companyName : "?"))
+        .toSorted(),
+    ).toEqual(["Firm One", "Firm Three", "Firm Two"]);
+    expect(await store.observationsFor("run-continued")).toHaveLength(3);
+    expect(await store.observationsFor("run-unrelated")).toHaveLength(1);
   });
 });
 

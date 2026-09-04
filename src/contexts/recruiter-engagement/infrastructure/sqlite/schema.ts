@@ -5,6 +5,7 @@ const timestamp = (name: string) => integer(name, { mode: "timestamp_ms" }).$typ
 export const recruiterResearchRuns = sqliteTable("recruiter_research_runs", {
   id: text("id").primaryKey(),
   retryOfRunId: text("retry_of_run_id"),
+  continuedFromRunId: text("continued_from_run_id"),
   brief: text("brief").notNull(),
   criteria: text("criteria", { mode: "json" }).$type<unknown>().notNull(),
   recruiterTarget: integer("recruiter_target").notNull(),

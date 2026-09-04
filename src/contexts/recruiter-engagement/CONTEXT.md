@@ -29,6 +29,10 @@ _Avoid_: Codex settings, model settings
 **Retry lineage**
 : The prior run identity recorded on a new attempt. It proves that a retry reused the original brief, policy, source plan, and budget without treating the runs as the same directory record.
 
+**Continuation**
+: A new research run that starts at the checkpoint a finished run stopped at, carrying that run's observations onto it so the remaining stages work over the same firms. It takes a fresh request allowance and does not reopen the run it continues.
+_Avoid_: Resume, Retry
+
 **Observation**
 : A sourced fact retained for one research run. Firm observations and recruiter observations have distinct run-local identities.
 
@@ -55,6 +59,10 @@ _Avoid_: Codex settings, model settings
 
 **Identity review**
 : A possible duplicate that remains separate until the user chooses to merge it or keep it separate.
+
+**Removal**
+: A reversible exclusion of a recruitment firm or Recruiter from the Directory. The record and its Evidence are retained and a later Observation of the same record does not reverse it. Removing a firm may take its Recruiters with it, and restoring that firm restores only the Recruiters its own removal took.
+_Avoid_: Delete, Archive, Suppression, which is a Prospect's Campaign preparation exclusion rather than a Directory one
 
 **Canonical correction**
 : A user-selected value for a recruitment firm or recruiter. The correction is recorded without deleting the observations that led to it.
@@ -114,7 +122,7 @@ _Avoid_: Active adapter, current provider, selected engine
 
 ## Current boundary
 
-The domain owns the vocabulary, terminal-state rules, canonical identity rules, evidence reconciliation, identity decisions, corrections, Shortlists, contact exclusions, Campaign preparation eligibility, and deterministic directory ranking. The application owns starting, resuming, cancelling, retrying, target-location validation, recording a run, maintaining the Directory, and managing Shortlists. It depends on run, Directory, and Shortlist stores, a staged research source, a scheduler, and values supplied by composition.
+The domain owns the vocabulary, terminal-state rules, canonical identity rules, evidence reconciliation, identity decisions, corrections, Shortlists, contact exclusions, Campaign preparation eligibility, and deterministic directory ranking. The application owns starting, resuming, cancelling, retrying, continuing, target-location validation, recording a run, maintaining the Directory, and managing Shortlists. It depends on run, Directory, and Shortlist stores, a staged research source, a scheduler, and values supplied by composition.
 
 Infrastructure maps configured ISO market entries to selectable target locations, stores runs, the Directory, Shortlists, and recruiter research settings in SQLite, and provides Codex, deterministic, and public-web Sources. Seed data owns the initial brief, target counts, Directory ranking weights, provider selection, query phrases, evidence terms, page limits, and stage request limit. Each Research run freezes the applicable public search policy. Legacy single-location criteria and earlier adapter policy records remain readable. The public-web Source uses the shared server-side web-search transport, accepts partial results, records per-query failures, and maps public firm pages and indexed Public profiles into Observations. The Codex Source researches firms and recruiters through the Codex CLI installed on the machine, one invocation per stage, and consumes no public search provider. The deterministic Source supports local tests.
 

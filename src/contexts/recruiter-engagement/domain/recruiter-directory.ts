@@ -50,12 +50,21 @@ export type DirectoryCorrection = {
   readonly value: string;
 };
 
+export type DirectoryRemoval = {
+  readonly kind: "firm" | "recruiter";
+  readonly recordId: string;
+  readonly removedAt: Date;
+  /** The firm whose removal took this recruiter with it, so restoring that firm restores it too. */
+  readonly removedWithFirmId: string | null;
+};
+
 export type RecruiterDirectory = {
   readonly corrections: readonly DirectoryCorrection[];
   readonly evidence: readonly DirectoryEvidence[];
   readonly firms: readonly RecruitmentFirm[];
   readonly identityReviews: readonly DirectoryIdentityReview[];
   readonly recruiters: readonly Recruiter[];
+  readonly removals: readonly DirectoryRemoval[];
 };
 
 export type DirectoryMatchWeights = {
@@ -92,6 +101,7 @@ export type RankedRecruiter = Recruiter & {
   readonly evidence: readonly DirectoryEvidence[];
   readonly matchReasons: readonly string[];
   readonly rankingContributions: readonly RankingContribution[];
+  readonly removed: boolean;
   readonly score: number;
   readonly unavailableFactors: readonly string[];
 };
@@ -103,6 +113,7 @@ export type RankedFirm = RecruitmentFirm & {
   readonly qualification: FirmQualification;
   readonly rankingContributions: readonly RankingContribution[];
   readonly recruiters: readonly RankedRecruiter[];
+  readonly removed: boolean;
   readonly score: number;
   readonly unavailableFactors: readonly string[];
 };
@@ -114,7 +125,83 @@ export type RankedRecruiterDirectory = {
 };
 
 export function createEmptyRecruiterDirectory(): RecruiterDirectory {
-  return { corrections: [], evidence: [], firms: [], identityReviews: [], recruiters: [] };
+  return {
+    corrections: [],
+    evidence: [],
+    firms: [],
+    identityReviews: [],
+    recruiters: [],
+    removals: [],
+  };
+}
+
+export function removeDirectoryRecord(
+  directory: RecruiterDirectory,
+  command: {
+    readonly cascadeRecruiters?: boolean;
+    readonly kind: "firm" | "recruiter";
+    readonly recordId: string;
+    readonly removedAt: Date;
+  },
+): RecruiterDirectory {
+  if (isDirectoryRecordRemoved(directory, command.kind, command.recordId)) {
+    return directory;
+  }
+  const removals: DirectoryRemoval[] = [
+    {
+      kind: command.kind,
+      recordId: command.recordId,
+      removedAt: command.removedAt,
+      removedWithFirmId: null,
+    },
+  ];
+  if (command.kind === "firm" && command.cascadeRecruiters) {
+    for (const recruiter of recruitersAtFirm(directory, command.recordId)) {
+      if (isDirectoryRecordRemoved(directory, "recruiter", recruiter.id)) {
+        continue;
+      }
+      removals.push({
+        kind: "recruiter",
+        recordId: recruiter.id,
+        removedAt: command.removedAt,
+        removedWithFirmId: command.recordId,
+      });
+    }
+  }
+  return { ...directory, removals: [...directory.removals, ...removals] };
+}
+
+export function restoreDirectoryRecord(
+  directory: RecruiterDirectory,
+  command: { readonly kind: "firm" | "recruiter"; readonly recordId: string },
+): RecruiterDirectory {
+  return {
+    ...directory,
+    removals: directory.removals.filter(
+      (removal) =>
+        !(removal.kind === command.kind && removal.recordId === command.recordId) &&
+        !(command.kind === "firm" && removal.removedWithFirmId === command.recordId),
+    ),
+  };
+}
+
+export function isDirectoryRecordRemoved(
+  directory: RecruiterDirectory,
+  kind: "firm" | "recruiter",
+  recordId: string,
+): boolean {
+  return directory.removals.some(
+    (removal) => removal.kind === kind && removal.recordId === recordId,
+  );
+}
+
+function recruitersAtFirm(directory: RecruiterDirectory, firmId: string): readonly Recruiter[] {
+  return directory.recruiters.filter(
+    (recruiter) =>
+      recruiter.mergedInto === null &&
+      recruiter.firmId !== null &&
+      resolveFirmId(directory, recruiter.firmId) === firmId,
+  );
 }
 
 export function reconcileRecruiterDirectory(
@@ -241,11 +328,14 @@ export function rankRecruiterDirectory(
   command: {
     readonly asOf: Date;
     readonly brief: SearchBrief;
+    readonly includeRemoved?: boolean;
     readonly weights: DirectoryMatchWeights;
   },
 ): RankedRecruiterDirectory {
+  const keep = (kind: "firm" | "recruiter", recordId: string) =>
+    command.includeRemoved === true || !isDirectoryRecordRemoved(directory, kind, recordId);
   const firms = directory.firms
-    .filter((firm) => firm.mergedInto === null)
+    .filter((firm) => firm.mergedInto === null && keep("firm", firm.id))
     .map((firm): RankedFirm => {
       const evidence = evidenceForRecord(directory, firm.id, "firm");
       const specialism = matchingSpecialism(evidence, command.brief);
@@ -274,7 +364,8 @@ export function rankRecruiterDirectory(
           (recruiter) =>
             recruiter.mergedInto === null &&
             recruiter.firmId !== null &&
-            resolveFirmId(directory, recruiter.firmId) === firm.id,
+            resolveFirmId(directory, recruiter.firmId) === firm.id &&
+            keep("recruiter", recruiter.id),
         )
         .map((recruiter) => rankRecruiter(directory, recruiter, command, specialism))
         .sort(compareRankedRecords);
@@ -287,6 +378,7 @@ export function rankRecruiterDirectory(
         qualification,
         rankingContributions,
         recruiters,
+        removed: isDirectoryRecordRemoved(directory, "firm", firm.id),
         score,
         unavailableFactors: [
           ...rankingContributions
@@ -304,6 +396,7 @@ export function rankRecruiterDirectory(
     .filter(
       (recruiter) =>
         recruiter.mergedInto === null &&
+        keep("recruiter", recruiter.id) &&
         (recruiter.firmId === null ||
           !activeFirmIds.has(resolveFirmId(directory, recruiter.firmId))),
     )
@@ -514,6 +607,7 @@ function rankRecruiter(
   inheritedSpecialism: string | null,
 ): RankedRecruiter {
   const evidence = evidenceForRecord(directory, recruiter.id, "recruiter");
+  const removed = isDirectoryRecordRemoved(directory, "recruiter", recruiter.id);
   const titleSpecialism = command.brief.criteria.specialisms.find((specialism) =>
     normaliseName(recruiter.title).includes(normaliseName(specialism)),
   );
@@ -558,6 +652,7 @@ function rankRecruiter(
     evidence,
     matchReasons,
     rankingContributions,
+    removed,
     score: totalContributions(rankingContributions),
     unavailableFactors: [
       "Geographic relevance is unavailable from the retained evidence.",
