@@ -36,8 +36,8 @@ export function RecruiterRegistryPanel({
           </p>
         </div>
         <span>
-          {registry.firmCount} firms · {registry.recruiterCount} recruiters ·{" "}
-          {registry.removedCount} removed
+          {registry.firmCount} firms · {registry.recruiterCount} recruiters shown ·{" "}
+          {registry.removedCount} removed across the whole registry
         </span>
       </div>
 

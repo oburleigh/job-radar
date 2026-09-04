@@ -8,7 +8,7 @@ describe("recruiter registry panel", () => {
   it("shows what the registry holds and offers a profile action only where one exists", () => {
     const html = render(registry());
 
-    expect(html).toContain("2 firms · 3 recruiters · 0 removed");
+    expect(html).toContain("2 firms · 3 recruiters shown · 0 removed across the whole registry");
     expect(html).toContain("Open Amina Khan on LinkedIn");
     expect(html).toContain("https://www.linkedin.com/in/amina-khan");
     expect(html).not.toContain("Open Rafael Costa on LinkedIn");
@@ -53,6 +53,15 @@ describe("recruiter registry panel", () => {
 
     expect(html).toContain('type="hidden" name="specialism" value="Software engineering"');
     expect(html).toContain('type="hidden" name="showRemoved" value="on"');
+  });
+
+  it("does not present a directory-wide removed count as if the filter applied to it", () => {
+    const html = render(registry({ firmCount: 1, recruiterCount: 1, removedCount: 14 }), {
+      showRemoved: false,
+      specialism: "Hospitality",
+    });
+
+    expect(html).toContain("1 firms · 1 recruiters shown · 14 removed across the whole registry");
   });
 
   it("says why a filtered registry is empty rather than showing nothing", () => {

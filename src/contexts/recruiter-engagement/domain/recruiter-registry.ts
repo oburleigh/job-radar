@@ -29,6 +29,7 @@ export type RecruiterRegistry = {
   readonly firmCount: number;
   readonly firms: readonly RegistryFirm[];
   readonly recruiterCount: number;
+  /** Every removal in the directory, not only those matching the active filter. */
   readonly removedCount: number;
   readonly unassociatedRecruiters: readonly RegistryRecruiter[];
 };
