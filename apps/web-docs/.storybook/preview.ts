@@ -1,5 +1,6 @@
 import type { Preview } from "@storybook/react-vite";
 
+import "@fontsource-variable/inter/opsz.css";
 import "@job-radar/design-tokens/theme.css";
 import "@job-radar/design-ui/styles.css";
 

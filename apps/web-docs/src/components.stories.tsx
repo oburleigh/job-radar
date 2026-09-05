@@ -2,11 +2,16 @@ import {
   Button,
   IconButton,
   Modal,
+  NotificationBadge,
   PageHeader,
+  SectionHeader,
+  SelectField,
   Skeleton,
   Switch,
+  TabNavigation,
   TextField,
   TokenAutocomplete,
+  Tooltip,
 } from "@job-radar/design-ui";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
@@ -75,5 +80,78 @@ export const Dialog: Story = {
     <Modal open title="Confirm action" actions={<Button variant="primary">Confirm</Button>}>
       <p>This state stays visible in Storybook without application data.</p>
     </Modal>
+  ),
+};
+
+export const Sections: Story = {
+  render: () => (
+    <div style={{ display: "grid", gap: "var(--jr-space-6)" }}>
+      <SectionHeader
+        actions={<Button>Export</Button>}
+        description="Every record the last run touched, with the evidence it found."
+        eyebrow="Section eyebrow"
+        meta="67 records"
+        title="Section title"
+      />
+      <SectionHeader title="Contained variant" variant="contained" />
+    </div>
+  ),
+};
+
+export const Tabs: Story = {
+  render: () => (
+    <div style={{ display: "grid", gap: "var(--jr-space-5)" }}>
+      <TabNavigation label="Example views">
+        <a aria-current="page" href="#first">
+          Selected
+        </a>
+        <a href="#second">Second</a>
+        <a href="#third">Third</a>
+      </TabNavigation>
+      <TabNavigation label="Settings sections" level="secondary">
+        <a aria-current="page" href="#criteria">
+          Research criteria
+        </a>
+        <a href="#execution">Execution</a>
+      </TabNavigation>
+    </div>
+  ),
+};
+
+export const Selection: Story = {
+  render: () => (
+    <div style={{ display: "grid", gap: "var(--jr-space-4)", width: "22rem" }}>
+      <SelectField
+        defaultValue="weekly"
+        hint="How often the schedule runs unattended."
+        id="cadence"
+        label="Cadence"
+      >
+        <option value="daily">Daily</option>
+        <option value="weekly">Weekly</option>
+      </SelectField>
+      <SelectField error="Choose a market before saving." id="market" label="Market" required>
+        <option value="">Select a market</option>
+        <option value="uae">United Arab Emirates</option>
+      </SelectField>
+    </div>
+  ),
+};
+
+export const Annotations: Story = {
+  render: () => (
+    <div style={{ display: "flex", alignItems: "center", gap: "var(--jr-space-5)" }}>
+      <Tooltip label="Activity">
+        <Button>Hover or focus me</Button>
+      </Tooltip>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--jr-space-2)" }}>
+        Unread
+        <NotificationBadge count={4} />
+      </span>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--jr-space-2)" }}>
+        None, which renders nothing
+        <NotificationBadge count={0} />
+      </span>
+    </div>
   ),
 };

@@ -90,10 +90,18 @@ against the real application in light and dark modes.
 
 ## Motion
 
-Motion must explain state or preserve spatial context. Durations and easing come from tokens. Under
-`prefers-reduced-motion: reduce`, duration tokens resolve to zero and decorative looping animations
-stop. Do not apply a global `0.01ms !important` reset because it breaks useful interaction feedback
-and component-owned motion decisions.
+Motion must explain state or preserve spatial context. Durations and easing come from tokens.
+
+Movement is timed separately from colour and opacity. `--jr-motion-duration-*` covers colour and
+opacity; `--jr-motion-transform-*` and `--jr-motion-transform-distance` cover anything that moves.
+Under `prefers-reduced-motion: reduce` the transform tokens resolve to zero and the duration tokens
+keep their values, so a state change still fades where it no longer travels, and decorative looping
+animations stop. Reduced motion asks for less movement, not for no animation, and removing the
+fades takes away the cue that makes a state change legible.
+
+Do not apply a global `0.01ms !important` reset because it breaks useful interaction feedback and
+component-owned motion decisions. Note that `sonner` sets `animation: none !important` on its own
+toasts under reduced motion, so toast fades are outside this contract until that is overridden.
 
 ## Verification
 
