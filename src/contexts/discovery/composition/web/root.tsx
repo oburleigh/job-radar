@@ -1,5 +1,4 @@
-import "@fontsource/barlow-condensed/latin-700.css";
-import "@fontsource/barlow-condensed/latin-800.css";
+import "@fontsource-variable/inter/opsz.css";
 import "@/contexts/discovery/presentation/web/styles.css";
 
 import { Links, Meta, Outlet, Scripts, ScrollRestoration, useLoaderData } from "react-router";
