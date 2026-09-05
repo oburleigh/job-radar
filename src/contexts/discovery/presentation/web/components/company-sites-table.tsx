@@ -160,9 +160,9 @@ function SortableHeader({ label, sortKey, sort, onSort }: SortableHeaderProps) {
   return (
     <th aria-sort={direction}>
       <Button
-        className="sortable-header-button"
         aria-label={`Sort by ${label}${direction ? `, currently ${direction}` : ""}`}
         onClick={() => onSort(getNextCompanySitesSort(sort, sortKey))}
+        variant="quiet"
       >
         <span>{label}</span>
         <span className="sort-direction" aria-hidden="true">
