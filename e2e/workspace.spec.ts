@@ -118,7 +118,19 @@ test("loads the opportunity workspace with its visible page header and without d
   if (!mobileMatches) {
     throw new Error("The mobile result heading must be measurable.");
   }
-  expect(mobileMatches.y).toBeLessThan(776);
+  /*
+   * Measured against the navigation rather than the viewport. `776` was a bare number calibrated
+   * to a denser layout, and the viewport height is not the contract either: the fixed bar covers
+   * the last bar-height of it, so a heading sitting entirely behind the bar is inside the
+   * viewport and still unreadable.
+   */
+  const mobileNavigation = await page
+    .getByRole("navigation", { name: "Primary navigation" })
+    .boundingBox();
+  if (!mobileNavigation) {
+    throw new Error("The fixed mobile navigation must be measurable.");
+  }
+  expect(mobileMatches.y + mobileMatches.height).toBeLessThanOrEqual(mobileNavigation.y);
   await page.screenshot({ path: "test-results/opportunities-mobile.png", fullPage: true });
 });
 
@@ -373,21 +385,51 @@ test("resolves semantic colour tokens in light and dark themes", async ({ page }
   expect(dark.text).not.toBe(light.text);
 });
 
-for (const theme of ["light", "dark"] as const) {
-  test(`has no automated accessibility violations in ${theme} mode`, async ({ page }) => {
-    await page.addInitScript((selectedTheme) => {
-      window.localStorage.setItem("job-radar-theme", selectedTheme);
-    }, theme);
-    await page.goto("/");
+/**
+ * Every primary route, not three of them. A hand-written contrast table measures the pairs its
+ * author thought of; axe measures what the page actually painted, and it is what found
+ * `accent-strong` on `accent-subtle` failing across 67 elements after the token table reported
+ * green.
+ *
+ * One navigation per distinct surface, with both themes analysed in place. `/settings/recruiter-search`
+ * is absent because its index redirects to the research-criteria route already listed, so
+ * scanning both scanned one rendered page twice. The final URL is asserted so a future redirect
+ * cannot quietly reintroduce that.
+ */
+const primaryRoutes = [
+  "/",
+  "/profiles",
+  "/activity",
+  "/recruiter-search",
+  "/settings/opportunities",
+  "/settings/recruiter-search/research-criteria",
+  "/settings/recruiter-search/public-search",
+  "/settings/recruiter-search/directory-ranking",
+  "/settings/recruiter-search/execution",
+  "/settings/adapters/source-coverage",
+  "/settings/adapters/ats-registry",
+] as const;
 
-    const workspaceResults = await new AxeBuilder({ page }).analyze();
-    expect(workspaceResults.violations).toEqual([]);
+test("has no automated accessibility violations on any route in either theme", async ({ page }) => {
+  const offenders: string[] = [];
 
-    await page.goto("/settings/recruiter-search");
-    const recruiterSettingsResults = await new AxeBuilder({ page }).analyze();
-    expect(recruiterSettingsResults.violations).toEqual([]);
-  });
-}
+  for (const route of primaryRoutes) {
+    await page.goto(route);
+    expect(new URL(page.url()).pathname, `${route} must not redirect`).toBe(route);
+
+    for (const theme of ["light", "dark"] as const) {
+      await page.evaluate((selected) => {
+        document.documentElement.dataset.theme = selected;
+      }, theme);
+      const { violations } = await new AxeBuilder({ page }).analyze();
+      for (const violation of violations) {
+        offenders.push(`${route} ${theme}: ${violation.id} (${violation.nodes.length} nodes)`);
+      }
+    }
+  }
+
+  expect(offenders).toEqual([]);
+});
 
 async function resolvedThemeColours(page: import("@playwright/test").Page) {
   return page.evaluate(() => {

@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { expect, type Locator, type Page, type Request, test } from "@playwright/test";
 
 async function setDocumentVisibility(page: Page, state: "hidden" | "visible"): Promise<void> {
@@ -166,7 +167,7 @@ test("completes discovery and triage while profile editing remains responsive", 
   await expect(runningNotice).toContainText(profileName);
   const runningToast = page.locator("[data-sonner-toast]").filter({ has: runningNotice });
   await expect(runningToast).toHaveCSS("animation-delay", "3s");
-  await expect(runningToast).toHaveCSS("animation-duration", "0.32s");
+  await expect(runningToast).toHaveCSS("animation-duration", "0.3s");
   await expect(runningToast).toHaveCSS("animation-name", "discovery-notice-exit");
   const activeActivity = page.getByRole("link", { name: "Activity, 1 active run" });
   await expect(activeActivity).toBeVisible();
@@ -330,6 +331,22 @@ test("completes discovery and triage while profile editing remains responsive", 
   const allFailedStart = (await (await allFailedResponse).json()) as { runId: number };
   const failedNotice = page.getByRole("alert").filter({ hasText: "Discovery failed" });
   await expect(failedNotice).toContainText("ATS request returned HTTP 404", { timeout: 30_000 });
+
+  for (const theme of ["light", "dark"] as const) {
+    await page.evaluate((selected) => {
+      document.documentElement.dataset.theme = selected;
+    }, theme);
+    const { violations } = await new AxeBuilder({ page })
+      .include("[data-sonner-toast].discovery-notice")
+      .analyze();
+    expect(
+      violations.map((violation) => `${theme}: ${violation.id}`),
+      "the failed notice is the one surface the route scans never reach",
+    ).toEqual([]);
+  }
+  await page.evaluate(() => {
+    delete document.documentElement.dataset.theme;
+  });
   await failedNotice.getByRole("link", { name: `View run #${allFailedStart.runId}` }).click();
   const failedOutcome = page.getByRole("region", { name: "Discovery failed" });
   await expect(failedOutcome).toBeVisible();
