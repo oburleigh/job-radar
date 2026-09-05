@@ -122,7 +122,7 @@ export function DiscoveryNotifications({
           toasterId: DISCOVERY_TOASTER_ID,
           unstyled: true,
           style: {
-            "--jr-discovery-notice-hold-duration": `${notificationDurationMs}ms`,
+            "--discovery-notice-hold-duration": `${notificationDurationMs}ms`,
           } as CSSProperties,
         },
       );
@@ -189,7 +189,7 @@ export function DiscoveryNotifications({
           toasterId: DISCOVERY_TOASTER_ID,
           unstyled: true,
           style: {
-            "--jr-discovery-notice-hold-duration": `${notificationDurationMs}ms`,
+            "--discovery-notice-hold-duration": `${notificationDurationMs}ms`,
           } as CSSProperties,
         },
       );
