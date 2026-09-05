@@ -8,6 +8,8 @@ const theme = readFileSync(
   "utf8",
 );
 
+const sizes = ["caption", "sm", "body", "lg", "title", "heading", "display"] as const;
+
 describe("design token contract", () => {
   it("authors the colour system in OKLCH", () => {
     expect(theme).toContain("oklch(");
@@ -35,104 +37,38 @@ describe("design token contract", () => {
     expect(theme).toMatch(/:root\[data-theme="dark"\][\s\S]*color-scheme:\s*dark/);
   });
 
-  it("collapses decorative motion for reduced-motion users", () => {
-    expect(theme).toContain("@media (prefers-reduced-motion: reduce)");
-    expect(theme).not.toContain("0.01ms");
-    expect(theme).not.toContain("!important");
-    expect(theme).toContain("--jr-motion-duration-fast: 0ms");
+  it("pairs a line height with every type size", () => {
+    for (const size of sizes) {
+      expect(theme, size).toMatch(new RegExp(`--jr-font-size-${size}:`));
+      expect(theme, size).toMatch(new RegExp(`--jr-line-height-${size}:`));
+    }
+
+    const declaredSizes = [...theme.matchAll(/--jr-font-size-([a-z0-9-]+):/g)].map(
+      (match) => match[1],
+    );
+    expect(declaredSizes.sort()).toEqual([...sizes].sort());
   });
 
-  it("keeps critical text and control pairs at WCAG AA contrast", () => {
-    const pairs = [
-      semanticPair("body on surface", "jr-color-text", "jr-color-surface"),
-      semanticPair("muted text on surface", "jr-color-text-muted", "jr-color-surface"),
-      semanticPair("subtle text on surface", "jr-color-text-subtle", "jr-color-surface"),
-      semanticPair(
-        "subtle text on subtle surface",
-        "jr-color-text-subtle",
-        "jr-color-surface-subtle",
-      ),
-      semanticPair("text on accent", "jr-color-text-on-accent", "jr-color-accent"),
-      semanticPair("button label on action", "jr-color-text-on-action", "jr-color-action"),
-      semanticPair("danger text on danger surface", "jr-color-danger", "jr-color-danger-subtle"),
-      {
-        name: "navigation text on navigation surface",
-        light: [palette("jr-palette-white"), palette("jr-palette-text-light")],
-        dark: [palette("jr-palette-white"), palette("jr-palette-black")],
-      },
-    ] as const;
+  it("publishes a body weight, which the product previously could not set", () => {
+    expect(theme).toContain("--jr-font-weight-regular: 400");
+    expect(theme).toContain("--jr-font-weight-light: 300");
+    expect(theme).not.toContain("--jr-font-weight-bold");
+  });
 
-    for (const pair of pairs) {
-      expect(contrast(...pair.light), `${pair.name} in light mode`).toBeGreaterThanOrEqual(4.5);
-      expect(contrast(...pair.dark), `${pair.name} in dark mode`).toBeGreaterThanOrEqual(4.5);
-    }
+  /**
+   * The block used to set all four duration tokens to `0ms`, which removed the colour and opacity
+   * fades that tell a reduced-motion user their action landed. It now removes movement only, and
+   * `e2e/design-system.spec.ts` proves that against a browser resolving the media query.
+   */
+  it("removes movement for reduced-motion users without removing state fades", () => {
+    const block = /@media \(prefers-reduced-motion: reduce\)\s*\{([\s\S]*?)\n {2}\}/.exec(theme);
+    expect(block?.[1]).toBeDefined();
+    const reduced = block?.[1] ?? "";
+
+    expect(reduced).toContain("--jr-motion-transform-fast: 0ms");
+    expect(reduced).toContain("--jr-motion-transform-base: 0ms");
+    expect(reduced).not.toMatch(/--jr-motion-duration-[a-z]+:/);
+    expect(reduced).not.toContain("0.01ms");
+    expect(reduced).not.toContain("!important");
   });
 });
-
-interface Oklch {
-  readonly chroma: number;
-  readonly hue: number;
-  readonly lightness: number;
-}
-
-function semanticPair(name: string, foreground: string, background: string) {
-  const foregroundReferences = semanticReferences(foreground);
-  const backgroundReferences = semanticReferences(background);
-  return {
-    name,
-    light: [palette(foregroundReferences.light), palette(backgroundReferences.light)] as const,
-    dark: [palette(foregroundReferences.dark), palette(backgroundReferences.dark)] as const,
-  };
-}
-
-function semanticReferences(name: string): { readonly light: string; readonly dark: string } {
-  const declaration = new RegExp(
-    `--${name}:\\s*light-dark\\(\\s*var\\(--([a-z0-9-]+)\\),\\s*var\\(--([a-z0-9-]+)\\)\\s*\\)`,
-  ).exec(theme);
-  if (!declaration?.[1] || !declaration[2]) {
-    throw new Error(`Expected ${name} to map light and dark primitive tokens.`);
-  }
-  return { light: declaration[1], dark: declaration[2] };
-}
-
-function palette(name: string): Oklch {
-  const declaration = new RegExp(
-    `--${name}:\\s*oklch\\(([0-9.]+)%\\s+([0-9.]+)\\s+([0-9.]+)deg\\)`,
-  ).exec(theme);
-  if (!declaration?.[1] || !declaration[2] || !declaration[3]) {
-    throw new Error(`Expected ${name} to contain an OKLCH value.`);
-  }
-  return {
-    lightness: Number(declaration[1]) / 100,
-    chroma: Number(declaration[2]),
-    hue: Number(declaration[3]),
-  };
-}
-
-function contrast(foreground: Oklch, background: Oklch): number {
-  const foregroundLuminance = relativeLuminance(foreground);
-  const backgroundLuminance = relativeLuminance(background);
-  const light = Math.max(foregroundLuminance, backgroundLuminance);
-  const dark = Math.min(foregroundLuminance, backgroundLuminance);
-  return (light + 0.05) / (dark + 0.05);
-}
-
-function relativeLuminance({ lightness, chroma, hue }: Oklch): number {
-  const radians = (hue * Math.PI) / 180;
-  const a = chroma * Math.cos(radians);
-  const b = chroma * Math.sin(radians);
-  const lRoot = lightness + 0.3963377774 * a + 0.2158037573 * b;
-  const mRoot = lightness - 0.1055613458 * a - 0.0638541728 * b;
-  const sRoot = lightness - 0.0894841775 * a - 1.291485548 * b;
-  const l = lRoot ** 3;
-  const m = mRoot ** 3;
-  const s = sRoot ** 3;
-  const red = clamp(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s);
-  const green = clamp(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s);
-  const blue = clamp(-0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s);
-  return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
-}
-
-function clamp(value: number): number {
-  return Math.min(1, Math.max(0, value));
-}

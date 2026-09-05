@@ -301,7 +301,7 @@ test("creates a named Shortlist and makes Prospect contact exclusions explicit",
     .first();
   await expect(recruiterResult.locator(".recruiter-add-to-shortlist label > span")).toHaveCSS(
     "text-transform",
-    "uppercase",
+    "none",
   );
   await recruiterResult.locator(".recruiter-add-to-shortlist").screenshot({
     path: "test-results/recruiter-add-to-shortlist-desktop-crop.png",
@@ -502,7 +502,7 @@ test("uses the shared country catalogue in the location autocomplete and keeps c
       "Target industries",
       "Firms to find",
       "Recruiters to find",
-    ].map(async (label) => page.getByLabel(label).boundingBox()),
+    ].map(async (label) => controlSurface(page, label)),
   );
   const [locations, specialisms, industries, firmTarget, recruiterTarget] = requiredBoxes(controls);
   if (!locations || !specialisms || !industries || !firmTarget || !recruiterTarget) {
@@ -532,7 +532,7 @@ test("contains recruiter controls equally on mobile and clears the fixed navigat
       "Target industries",
       "Firms to find",
       "Recruiters to find",
-    ].map(async (label) => page.getByLabel(label).boundingBox()),
+    ].map(async (label) => controlSurface(page, label)),
   );
   const [first, ...remaining] = requiredBoxes(controls);
   if (!first) {
@@ -695,4 +695,19 @@ async function clearRecruiterLocations(page: Page) {
   while (await removers.count()) {
     await removers.first().click();
   }
+}
+
+/**
+ * The control surface, not the labelled element. A combobox's labelled element is the text input
+ * nested inside its chip container, four pixels and a border in from the surface a reader sees,
+ * while a text field's labelled element is that surface. Measured on this page the surfaces align
+ * at the same pixel and the nested inputs differ by five, so comparing labelled elements compares
+ * two different structural levels.
+ */
+async function controlSurface(page: Page, label: string) {
+  return page.getByLabel(label).evaluate((element) => {
+    const surface = element.closest(".jr-token-autocomplete-input") ?? element;
+    const { height, width, x, y } = surface.getBoundingClientRect();
+    return { height, width, x, y };
+  });
 }
