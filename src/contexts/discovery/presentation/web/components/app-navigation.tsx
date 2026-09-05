@@ -46,13 +46,11 @@ const primaryNavigation = [
   {
     href: "/",
     label: "Opportunities",
-    shortLabel: "Jobs",
     icon: BriefcaseBusiness,
   },
   {
     href: "/recruiter-search",
     label: "Recruiter Search",
-    shortLabel: "Recruiters",
     icon: UsersRound,
   },
 ] as const;
@@ -156,7 +154,6 @@ export function AppNavigation({ activeRunCount }: { readonly activeRunCount: num
             >
               <Icon className="nav-icon" size={17} aria-hidden="true" />
               <span className="nav-label">{item.label}</span>
-              <span className="nav-label-short">{item.shortLabel}</span>
             </Link>
           );
         })}
@@ -176,6 +173,7 @@ export function AppNavigation({ activeRunCount }: { readonly activeRunCount: num
               className={`utility-control${profileActive ? " utility-control-active" : ""}`}
               id="search-profiles-trigger"
               onClick={() => setProfileMenuOpen((open) => !open)}
+              variant="quiet"
             >
               <CircleUserRound size={19} aria-hidden="true" />
               <span className="sr-only">Search profiles</span>
@@ -225,8 +223,8 @@ export function AppNavigation({ activeRunCount }: { readonly activeRunCount: num
           </Link>
         </Tooltip>
         <Tooltip label={themeLabel}>
-          <Button className="theme-toggle utility-control" onClick={cycleTheme}>
-            <ThemeIcon size={16} aria-hidden="true" />
+          <Button className="theme-toggle utility-control" onClick={cycleTheme} variant="quiet">
+            <ThemeIcon size={19} aria-hidden="true" />
             <span>{theme}</span>
           </Button>
         </Tooltip>

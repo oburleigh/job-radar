@@ -211,7 +211,6 @@
   white-space: nowrap;
 }
 
-.nav-label-short,
 .nav-icon {
   display: none;
 }
@@ -1961,18 +1960,6 @@ td a {
     padding-inline: var(--jr-space-3);
   }
 
-  .nav-label {
-    display: none;
-  }
-
-  .nav-label-short {
-    display: inline;
-    font-family: var(--jr-font-family-display);
-    font-size: var(--jr-font-size-body);
-    line-height: var(--jr-line-height-body);
-    font-weight: var(--jr-font-weight-medium);
-  }
-
   .job-card {
     grid-template-columns:
       minmax(230px, 1.15fr) minmax(210px, 1fr) 112px minmax(190px, 0.85fr)
@@ -2125,12 +2112,11 @@ td a {
     padding: var(--jr-space-1);
   }
 
-  .nav-icon,
-  .nav-label-short {
+  .nav-icon {
     display: block;
   }
 
-  .nav-label-short {
+  .nav-label {
     font-family: var(--jr-font-family-ui);
     font-size: var(--jr-font-size-caption);
     line-height: var(--jr-line-height-caption);
