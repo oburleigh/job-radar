@@ -227,6 +227,26 @@ describe("design system boundaries", () => {
     }
   });
 
+  /**
+   * Colour and type size were gated; spacing, corner radius and stacking were not. That is where
+   * every alignment defect lived: 200 raw pixel values across the two product stylesheets, whose
+   * most common value was 18px, which the nine-step scale does not contain. A page carried four to
+   * six left edges as a result.
+   */
+  it("keeps spacing, radius and stacking in the token layer", () => {
+    for (const stylesheet of tokenConsumers.filter((file) => file.endsWith(".css"))) {
+      const source = readConsumer(stylesheet);
+
+      expect(source, `${stylesheet} sets spacing in raw pixels`).not.toMatch(
+        /(?:padding|margin|gap)[a-z-]*:[^;]*\b\d+px/,
+      );
+      expect(source, `${stylesheet} sets a corner radius in raw pixels`).not.toMatch(
+        /border-radius:[^;]*\b\d+px/,
+      );
+      expect(source, `${stylesheet} sets a raw stacking order`).not.toMatch(/z-index:\s*\d/);
+    }
+  });
+
   it("keeps type weight in the token layer", () => {
     for (const stylesheet of tokenConsumers) {
       const source = readFileSync(path.join(repositoryRoot, stylesheet), "utf8");
@@ -338,8 +358,6 @@ const publishedWithoutConsumer: Record<string, string> = {
   "--jr-line-height-lg": "paired with the lead size",
   "--jr-font-weight-light": "display sizes only, and no route sets a display title yet",
   "--jr-radius-xs": "chips and inline marks",
-  "--jr-z-header": "the masthead still carries a literal z-index",
-  "--jr-z-toast": "the toast container still carries a literal z-index",
 };
 
 /** Set by the product at runtime rather than declared by the token layer. */
