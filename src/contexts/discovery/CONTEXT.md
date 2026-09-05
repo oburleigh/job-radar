@@ -4,6 +4,16 @@ Discovery finds job listings and evaluates them against a person's search criter
 
 ## Language
 
+**Opportunities**:
+The workspace destination that lists the job listings matched to the selected search profile. The
+destination is named Opportunities at every width and in every surface; the records it lists are
+Job listings.
+_Avoid_: Jobs, Matches as a destination name
+
+**Recruiter Search**:
+The workspace destination for researching recruitment firms and their named recruiters.
+_Avoid_: Recruiters, Research as a destination name
+
 **Activity**:
 The feature-agnostic workspace view that presents Discovery Runs and Research Runs together while keeping each run's canonical type and destination.
 _Avoid_: Discovery history, Run as a generic domain type

@@ -443,3 +443,31 @@ async function resolvedThemeColours(page: import("@playwright/test").Page) {
     return colours;
   });
 }
+
+test("names each destination the same at every width", async ({ page }) => {
+  await page.goto("/");
+
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+
+    await expect(
+      page.getByRole("link", { name: "Opportunities", exact: true }),
+      `Opportunities is not named at ${width}px`,
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Recruiter Search", exact: true }),
+      `Recruiter Search is not named at ${width}px`,
+    ).toBeVisible();
+
+    // The narrow layout used to carry its own shorter names, so a reader who learned the product
+    // on a desktop met two different words for the same two destinations on a phone.
+    await expect(
+      page.getByRole("link", { name: "Jobs", exact: true }),
+      `the rejected alias "Jobs" is still shown at ${width}px`,
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("link", { name: "Recruiters", exact: true }),
+      `the rejected alias "Recruiters" is still shown at ${width}px`,
+    ).toHaveCount(0);
+  }
+});
