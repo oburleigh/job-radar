@@ -3,10 +3,12 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import process from "node:process";
+
 import { seedPerformanceDatabase } from "./seed-performance-database";
 
 const hostname = "127.0.0.1";
-const port = 3300;
+const port = Number(process.env.JOB_RADAR_FIXTURE_PORT ?? 3300);
 
 export interface ProductionPerformanceServer {
   readonly databasePath: string;

@@ -76,7 +76,7 @@
     width: 1px;
     height: 1px;
     padding: 0;
-    margin: -1px;
+    margin: calc(-1 * var(--jr-border-width));
     overflow: hidden;
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
@@ -88,7 +88,7 @@
   top: 8px;
   left: 8px;
   z-index: 100;
-  padding: 10px 14px;
+  padding: var(--jr-space-3) var(--jr-space-4);
   color: var(--jr-color-text-on-accent);
   background: var(--jr-color-accent-strong);
   border: var(--jr-focus-width) solid var(--jr-color-text);
@@ -120,8 +120,8 @@
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 12px;
-  padding: 12px 20px;
+  gap: var(--jr-space-3);
+  padding: var(--jr-space-3) var(--jr-space-5);
 }
 
 .brand-mark {
@@ -150,7 +150,7 @@
 }
 
 .brand-kicker {
-  margin-top: 4px;
+  margin-top: var(--jr-space-1);
   overflow: hidden;
   color: var(--jr-color-text-muted);
   font-size: var(--jr-font-size-caption);
@@ -268,7 +268,7 @@
   top: calc(100% + 8px);
   right: 8px;
   min-width: 190px;
-  padding: 6px;
+  padding: var(--jr-space-2);
   background: var(--jr-color-surface);
   box-shadow: var(--jr-shadow-overlay);
 }
@@ -277,8 +277,8 @@
   display: flex;
   min-height: 44px;
   align-items: center;
-  gap: 10px;
-  padding: 0 12px;
+  gap: var(--jr-space-3);
+  padding: 0 var(--jr-space-3);
   color: var(--jr-color-text);
   font-family: var(--jr-font-family-display);
   font-size: var(--jr-font-size-body);
@@ -305,8 +305,8 @@
 .index-label {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 0 0 14px;
+  gap: var(--jr-space-2);
+  margin: 0 0 var(--jr-space-4);
   color: var(--jr-color-text-muted);
   font-size: var(--jr-font-size-caption);
   line-height: var(--jr-line-height-caption);
@@ -344,7 +344,7 @@
   grid-column: 1 / -1;
   flex-wrap: wrap;
   justify-content: space-between;
-  gap: 6px 18px;
+  gap: var(--jr-space-2) var(--jr-space-4);
   color: var(--jr-color-text-muted);
   font-size: var(--jr-font-size-caption);
   line-height: var(--jr-line-height-caption);
@@ -363,7 +363,7 @@
 
 table td small {
   display: block;
-  margin-top: 4px;
+  margin-top: var(--jr-space-1);
   color: var(--jr-color-text-subtle);
   font-family: var(--jr-font-family-mono);
   font-size: var(--jr-font-size-caption);
@@ -395,7 +395,7 @@ table td a:hover {
 .form-grid .jr-field-label,
 .add-board-form label > span {
   display: block;
-  margin: 0 0 5px;
+  margin: 0 0 var(--jr-space-1);
   color: var(--jr-color-text-muted);
   font-size: var(--jr-font-size-caption);
   line-height: var(--jr-line-height-caption);
@@ -414,7 +414,7 @@ table td a:hover {
 }
 
 .filter-field select {
-  padding: 0 30px 0 10px;
+  padding: 0 var(--jr-space-6) 0 var(--jr-space-3);
   font-size: var(--jr-font-size-sm);
   line-height: var(--jr-line-height-sm);
 }
@@ -422,8 +422,8 @@ table td a:hover {
 .search-field > div {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 11px;
+  gap: var(--jr-space-2);
+  padding: 0 var(--jr-space-3);
   color: var(--jr-color-text-subtle);
 }
 
@@ -456,9 +456,9 @@ table td a:hover {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 18px;
-  margin: 26px 0 0;
-  padding: 0 0 10px;
+  gap: var(--jr-space-4);
+  margin: var(--jr-space-5) 0 0;
+  padding: 0 0 var(--jr-space-3);
 }
 
 .section-heading h2,
@@ -477,13 +477,13 @@ table td a:hover {
 .section-heading-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--jr-space-3);
 }
 
 .catalogue-count {
   display: flex;
   align-items: baseline;
-  gap: 7px;
+  gap: var(--jr-space-2);
   color: var(--jr-color-text-muted);
 }
 
@@ -515,8 +515,8 @@ table td a:hover {
 .screening-summary > div {
   display: grid;
   align-content: center;
-  gap: 3px;
-  padding: 12px 16px;
+  gap: var(--jr-space-1);
+  padding: var(--jr-space-3) var(--jr-space-4);
 }
 
 .screening-index {
@@ -541,7 +541,7 @@ table td a:hover {
   display: grid;
   min-width: 76px;
   place-items: center;
-  padding: 10px 13px;
+  padding: var(--jr-space-3) var(--jr-space-3);
 }
 
 .screening-summary dt {
@@ -551,7 +551,7 @@ table td a:hover {
 }
 
 .screening-summary dd {
-  margin: 2px 0 0;
+  margin: var(--jr-space-1) 0 0;
   font-family: var(--jr-font-family-display);
   font-size: var(--jr-font-size-title);
   line-height: var(--jr-line-height-title);
@@ -592,8 +592,8 @@ table td a:hover {
 .record-stamps {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
-  margin-bottom: 8px;
+  gap: var(--jr-space-1);
+  margin-bottom: var(--jr-space-2);
 }
 
 .verified-tag,
@@ -604,7 +604,7 @@ table td a:hover {
   width: fit-content;
   min-height: 19px;
   align-items: center;
-  padding: 2px 6px;
+  padding: var(--jr-space-1) var(--jr-space-2);
   font-size: var(--jr-font-size-caption);
   font-weight: var(--jr-font-weight-medium);
   letter-spacing: 0.03em;
@@ -646,14 +646,14 @@ table td a:hover {
 
 .job-card-heading h2 svg {
   flex: 0 0 auto;
-  margin-top: 1px;
+  margin-top: var(--jr-space-0);
 }
 
 .job-card-heading > p {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin: 7px 0 0;
+  gap: var(--jr-space-2);
+  margin: var(--jr-space-2) 0 0;
   color: var(--jr-color-text-muted);
   font-size: var(--jr-font-size-caption);
   line-height: var(--jr-line-height-caption);
@@ -662,14 +662,14 @@ table td a:hover {
 .job-metadata {
   display: grid;
   align-content: center;
-  gap: 8px;
+  gap: var(--jr-space-2);
   margin: 0;
 }
 
 .job-metadata > div {
   display: grid;
   grid-template-columns: 75px minmax(0, 1fr);
-  gap: 7px;
+  gap: var(--jr-space-2);
 }
 
 .job-metadata dt {
@@ -700,7 +700,7 @@ table td a:hover {
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
-  gap: 5px;
+  gap: var(--jr-space-1);
 }
 
 .job-tags > li {
@@ -716,7 +716,7 @@ table td a:hover {
   display: grid;
   grid-template-columns: 42px 1fr;
   align-content: center;
-  gap: 10px;
+  gap: var(--jr-space-3);
 }
 
 .score-ring {
@@ -741,7 +741,7 @@ table td a:hover {
 }
 
 .match-footer p {
-  margin: 4px 0 0;
+  margin: var(--jr-space-1) 0 0;
   color: var(--jr-color-text);
   font-size: var(--jr-font-size-caption);
   line-height: var(--jr-line-height-caption);
@@ -795,7 +795,7 @@ table td a:hover {
 
 .empty-state p {
   max-width: 540px;
-  margin: 0 0 8px;
+  margin: 0 0 var(--jr-space-2);
   color: var(--jr-color-text-muted);
 }
 
@@ -813,30 +813,30 @@ table td a:hover {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 8px;
+  gap: var(--jr-space-2);
 }
 
 .profile-layout {
   display: grid;
   grid-template-columns: 250px minmax(0, 1fr);
-  margin-top: 24px;
+  margin-top: var(--jr-space-5);
 }
 
 .profile-list {
   align-self: stretch;
-  padding: 18px 14px;
+  padding: var(--jr-space-4) var(--jr-space-4);
   background: var(--jr-color-surface);
 }
 
 .profile-list .index-label {
-  margin-inline: 4px;
+  margin-inline: var(--jr-space-1);
 }
 
 .profile-tile {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   min-height: 58px;
-  margin-bottom: 4px;
+  margin-bottom: var(--jr-space-1);
   background: var(--jr-color-surface);
   transition:
     background-color var(--jr-motion-duration-instant) var(--jr-ease-out),
@@ -852,7 +852,7 @@ table td a:hover {
   display: grid;
   min-width: 0;
   align-content: center;
-  padding: 10px 12px;
+  padding: var(--jr-space-3) var(--jr-space-3);
   color: var(--jr-color-text-subtle);
   transition:
     color var(--jr-motion-duration-instant) var(--jr-ease-out),
@@ -875,7 +875,7 @@ table td a:hover {
   display: flex;
   align-items: center;
   flex-direction: column;
-  padding: 6px;
+  padding: var(--jr-space-2);
 }
 
 .profile-tile-actions .jr-icon-button {
@@ -929,9 +929,9 @@ table td a:hover {
   min-height: 44px;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  margin-top: 4px;
-  padding: 8px 12px;
+  gap: var(--jr-space-2);
+  margin-top: var(--jr-space-1);
+  padding: var(--jr-space-2) var(--jr-space-3);
   color: var(--jr-color-text);
   font-weight: var(--jr-font-weight-medium);
   text-decoration: none;
@@ -971,8 +971,8 @@ table td a:hover {
 .form-section {
   display: grid;
   grid-template-columns: 230px minmax(0, 1fr);
-  gap: 26px;
-  padding: 26px 28px;
+  gap: var(--jr-space-5);
+  padding: var(--jr-space-5) var(--jr-space-6);
 }
 
 .form-section-copy {
@@ -989,7 +989,7 @@ table td a:hover {
 }
 
 .form-section-copy p {
-  margin: 7px 0 0;
+  margin: var(--jr-space-2) 0 0;
   color: var(--jr-color-text-muted);
   font-size: var(--jr-font-size-caption);
   line-height: var(--jr-line-height-caption);
@@ -1000,7 +1000,7 @@ table td a:hover {
   min-width: 0;
   grid-column: 2;
   grid-template-columns: minmax(0, 1fr);
-  gap: 15px;
+  gap: var(--jr-space-4);
 }
 
 .form-grid-two {
@@ -1031,8 +1031,8 @@ table td a:hover {
 .provider-settings {
   display: grid;
   align-content: start;
-  gap: 13px;
-  padding: 15px;
+  gap: var(--jr-space-3);
+  padding: var(--jr-space-4);
   background: var(--jr-color-surface-subtle);
 }
 
@@ -1074,12 +1074,12 @@ table td a:hover {
 .form-grid select,
 .add-board-form input {
   height: 44px;
-  padding: 0 11px;
+  padding: 0 var(--jr-space-3);
 }
 
 .form-grid textarea {
   min-height: 122px;
-  padding: 10px 11px;
+  padding: var(--jr-space-3) var(--jr-space-3);
   resize: vertical;
   line-height: 1.5;
 }
@@ -1112,7 +1112,7 @@ table td a:hover {
 
 .form-field > label > span {
   display: block;
-  margin: 0 0 5px;
+  margin: 0 0 var(--jr-space-1);
   color: var(--jr-color-text-muted);
   font-size: var(--jr-font-size-caption);
   line-height: var(--jr-line-height-caption);
@@ -1192,7 +1192,7 @@ table td a:hover {
 }
 
 .field-error {
-  margin: 5px 0 0;
+  margin: var(--jr-space-1) 0 0;
   color: var(--jr-color-danger);
   font-size: var(--jr-font-size-caption);
   line-height: var(--jr-line-height-caption);
@@ -1201,7 +1201,7 @@ table td a:hover {
 .field-help,
 .board-form-help {
   display: block;
-  margin: 5px 0 0;
+  margin: var(--jr-space-1) 0 0;
   color: var(--jr-color-text-subtle);
   font-size: var(--jr-font-size-caption);
   line-height: var(--jr-line-height-caption);
@@ -1226,7 +1226,7 @@ table td a:hover {
 
 .input-suffix > span {
   min-width: max-content;
-  padding-right: 11px;
+  padding-right: var(--jr-space-3);
   color: var(--jr-color-text-muted);
   font-size: var(--jr-font-size-caption);
   line-height: var(--jr-line-height-caption);
@@ -1238,8 +1238,8 @@ table td a:hover {
   grid-column: 2;
   grid-template-columns: 20px minmax(0, 1fr);
   align-items: start;
-  gap: 10px;
-  padding: 12px 14px;
+  gap: var(--jr-space-3);
+  padding: var(--jr-space-3) var(--jr-space-4);
   background: var(--jr-color-info-subtle);
   border: 1px solid var(--jr-color-info-border);
 }
@@ -1247,13 +1247,13 @@ table td a:hover {
 .checkbox-row input {
   width: 18px;
   height: 18px;
-  margin: 2px 0 0;
+  margin: var(--jr-space-1) 0 0;
   accent-color: var(--jr-color-accent);
 }
 
 .checkbox-row strong {
   display: block;
-  margin-bottom: 3px;
+  margin-bottom: var(--jr-space-1);
 }
 
 .checkbox-row span {
@@ -1270,8 +1270,8 @@ table td a:hover {
   min-height: 72px;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 13px 28px;
+  gap: var(--jr-space-4);
+  padding: var(--jr-space-3) var(--jr-space-6);
   background: var(--jr-color-overlay-surface);
 }
 
@@ -1300,7 +1300,7 @@ table td a:hover {
   z-index: 4;
   width: max-content;
   max-width: 320px;
-  padding: 8px 10px;
+  padding: var(--jr-space-2) var(--jr-space-3);
   color: var(--jr-color-danger);
   font-size: var(--jr-font-size-caption);
   line-height: var(--jr-line-height-caption);
@@ -1320,7 +1320,7 @@ table td a:hover {
 
 .source-section,
 .settings-section {
-  margin-top: 30px;
+  margin-top: var(--jr-space-6);
 }
 
 .source-grid {
@@ -1393,8 +1393,8 @@ table td a:hover {
 .source-card-copy {
   display: grid;
   min-width: 0;
-  gap: 3px;
-  padding: 11px 15px;
+  gap: var(--jr-space-1);
+  padding: var(--jr-space-3) var(--jr-space-4);
 }
 
 .source-card-copy strong {
@@ -1415,7 +1415,7 @@ table td a:hover {
   align-self: stretch;
   display: grid;
   place-items: center start;
-  padding: 0 15px;
+  padding: 0 var(--jr-space-4);
   color: var(--jr-color-text-muted);
   font-size: var(--jr-font-size-caption);
   line-height: var(--jr-line-height-caption);
@@ -1437,8 +1437,8 @@ table td a:hover {
   display: grid;
   grid-template-columns: minmax(180px, 0.6fr) minmax(300px, 1.4fr) auto;
   align-items: end;
-  gap: 12px;
-  padding: 18px;
+  gap: var(--jr-space-3);
+  padding: var(--jr-space-4);
   background: var(--jr-color-info-subtle);
 }
 
@@ -1465,7 +1465,7 @@ table {
 
 th,
 td {
-  padding: 11px 13px;
+  padding: var(--jr-space-3) var(--jr-space-3);
   text-align: left;
   vertical-align: top;
 }
@@ -1485,8 +1485,8 @@ thead th {
   min-width: var(--jr-control-height-md);
   min-height: var(--jr-control-height-md);
   align-items: center;
-  gap: 7px;
-  padding: 2px;
+  gap: var(--jr-space-2);
+  padding: var(--jr-space-1);
   color: inherit;
   font: inherit;
   text-transform: inherit;
@@ -1514,7 +1514,7 @@ td a {
 }
 
 .run-panel {
-  margin-top: 24px;
+  margin-top: var(--jr-space-5);
 }
 
 .active-discovery-runs {
@@ -1525,14 +1525,14 @@ td a {
 
 .active-discovery-runs > .section-heading {
   margin: 0;
-  padding: 17px 18px 11px;
+  padding: var(--jr-space-4) var(--jr-space-4) var(--jr-space-3);
 }
 
 .active-discovery-run-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
-  gap: 12px;
-  padding: 0 18px 18px;
+  gap: var(--jr-space-3);
+  padding: 0 var(--jr-space-4) var(--jr-space-4);
 }
 
 .active-discovery-run-card {
@@ -1545,8 +1545,8 @@ td a {
 .active-discovery-run {
   display: grid;
   min-width: 0;
-  gap: 14px;
-  padding: 16px;
+  gap: var(--jr-space-4);
+  padding: var(--jr-space-4);
 }
 
 .active-discovery-run-heading {
@@ -1554,7 +1554,7 @@ td a {
   min-width: 0;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 14px;
+  gap: var(--jr-space-4);
 }
 
 .active-discovery-run-heading > div {
@@ -1570,7 +1570,7 @@ td a {
 }
 
 .active-discovery-run-heading p {
-  margin: 5px 0 0;
+  margin: var(--jr-space-1) 0 0;
   color: var(--jr-color-text-muted);
   font-size: var(--jr-font-size-sm);
   line-height: var(--jr-line-height-sm);
@@ -1581,7 +1581,7 @@ td a {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--jr-space-2);
 }
 
 .active-discovery-run-error {
@@ -1593,12 +1593,12 @@ td a {
 }
 
 .active-discovery-run-detail .active-discovery-run {
-  padding: 18px;
+  padding: var(--jr-space-4);
 }
 
 .run-panel .section-heading {
   margin: 0;
-  padding: 17px 18px 11px;
+  padding: var(--jr-space-4) var(--jr-space-4) var(--jr-space-3);
 }
 
 .discovery-funnel {
@@ -1609,7 +1609,7 @@ td a {
 
 .discovery-funnel > div {
   min-width: 0;
-  padding: 16px 14px;
+  padding: var(--jr-space-4) var(--jr-space-4);
 }
 
 .discovery-funnel dt {
@@ -1622,7 +1622,7 @@ td a {
 }
 
 .discovery-funnel dd {
-  margin: 6px 0 0;
+  margin: var(--jr-space-2) 0 0;
   color: var(--jr-color-text);
   font-family: var(--jr-font-family-display);
   font-size: var(--jr-font-size-heading);
@@ -1638,8 +1638,8 @@ td a {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
-  padding: 14px 18px;
+  gap: var(--jr-space-4);
+  padding: var(--jr-space-4) var(--jr-space-4);
   background: var(--jr-color-warning-subtle);
 }
 
@@ -1648,7 +1648,7 @@ td a {
 }
 
 .zero-match-explanation p {
-  margin: 3px 0 0;
+  margin: var(--jr-space-1) 0 0;
   color: var(--jr-color-text-muted);
   font-size: var(--jr-font-size-caption);
   line-height: var(--jr-line-height-caption);
@@ -1676,7 +1676,7 @@ td a {
 
 .run-outcome-detail {
   margin: 0;
-  padding: 0 18px 18px;
+  padding: 0 var(--jr-space-4) var(--jr-space-4);
   color: var(--jr-color-text);
   white-space: pre-wrap;
 }
@@ -1685,13 +1685,13 @@ td a {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
-  gap: 12px;
-  padding: 18px;
+  gap: var(--jr-space-3);
+  padding: var(--jr-space-4);
 }
 
 .known-role-form label {
   display: grid;
-  gap: 7px;
+  gap: var(--jr-space-2);
   color: var(--jr-color-text-muted);
   font-size: var(--jr-font-size-caption);
   line-height: var(--jr-line-height-caption);
@@ -1701,7 +1701,7 @@ td a {
 .known-role-form input {
   width: 100%;
   height: 44px;
-  padding: 0 11px;
+  padding: 0 var(--jr-space-3);
   color: var(--jr-color-text);
   background: var(--jr-color-surface-subtle);
   border: 1px solid var(--jr-color-border);
@@ -1719,8 +1719,8 @@ td a {
 
 .diagnostic-heading {
   display: grid;
-  gap: 5px;
-  padding: 18px;
+  gap: var(--jr-space-1);
+  padding: var(--jr-space-4);
   background: var(--jr-color-info-subtle);
 }
 
@@ -1749,7 +1749,7 @@ td a {
 }
 
 .diagnostic-stages > li > strong {
-  padding: 15px 18px;
+  padding: var(--jr-space-4) var(--jr-space-4);
   color: var(--jr-color-text-muted);
   font-size: var(--jr-font-size-caption);
   line-height: var(--jr-line-height-caption);
@@ -1760,8 +1760,8 @@ td a {
   display: grid;
   align-content: center;
   justify-items: start;
-  gap: 7px;
-  padding: 15px 18px;
+  gap: var(--jr-space-2);
+  padding: var(--jr-space-4) var(--jr-space-4);
 }
 
 .diagnostic-stages p,
@@ -1779,8 +1779,8 @@ td a {
   display: inline-flex;
   min-height: 24px;
   align-items: center;
-  gap: 6px;
-  padding: 3px 7px;
+  gap: var(--jr-space-2);
+  padding: var(--jr-space-1) var(--jr-space-2);
   font-size: var(--jr-font-size-caption);
   line-height: var(--jr-line-height-caption);
   font-weight: var(--jr-font-weight-medium);
@@ -1811,7 +1811,7 @@ td a {
 .health-detail {
   display: block;
   max-width: 34rem;
-  margin-top: 6px;
+  margin-top: var(--jr-space-2);
   color: var(--jr-color-text-muted);
   overflow-wrap: anywhere;
 }
@@ -1846,7 +1846,7 @@ td a {
 .settings-empty,
 .table-empty {
   margin: 0;
-  padding: 28px;
+  padding: var(--jr-space-6);
   font-size: var(--jr-font-size-sm);
   line-height: var(--jr-line-height-sm);
   text-align: center;
@@ -1864,8 +1864,8 @@ td a {
 .discovery-notice-content {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 11px;
-  padding: 14px;
+  gap: var(--jr-space-3);
+  padding: var(--jr-space-4);
 }
 
 [data-sonner-toast].discovery-notice {
@@ -1895,7 +1895,7 @@ td a {
 }
 
 .discovery-notice p {
-  margin: 3px 0 0;
+  margin: var(--jr-space-1) 0 0;
   color: var(--jr-color-text-muted);
   font-size: var(--jr-font-size-caption);
   line-height: var(--jr-line-height-caption);
@@ -1938,8 +1938,8 @@ td a {
 
 .discovery-notice-links {
   display: flex;
-  gap: 12px;
-  margin-top: 9px;
+  gap: var(--jr-space-3);
+  margin-top: var(--jr-space-2);
 }
 
 .discovery-notice-links a {
@@ -1967,7 +1967,7 @@ td a {
   }
 
   .brand {
-    padding-inline: 15px;
+    padding-inline: var(--jr-space-4);
   }
 
   .brand-kicker,
@@ -1976,7 +1976,7 @@ td a {
   }
 
   .nav-link {
-    padding-inline: 11px;
+    padding-inline: var(--jr-space-3);
   }
 
   .nav-label {
@@ -2084,11 +2084,11 @@ td a {
   }
 
   .diagnostic-stages > li > strong {
-    padding-bottom: 8px;
+    padding-bottom: var(--jr-space-2);
   }
 
   .diagnostic-stages > li > div {
-    padding-top: 8px;
+    padding-top: var(--jr-space-2);
   }
 
   .masthead {
@@ -2139,8 +2139,8 @@ td a {
     min-height: 65px;
     flex-direction: column;
     justify-content: center;
-    gap: 3px;
-    padding: 5px;
+    gap: var(--jr-space-1);
+    padding: var(--jr-space-1);
   }
 
   .nav-icon,
@@ -2227,7 +2227,7 @@ td a {
 
   .profile-list {
     display: flex;
-    gap: 5px;
+    gap: var(--jr-space-1);
     overflow-x: auto;
   }
 
@@ -2271,7 +2271,7 @@ td a {
   .source-mode {
     grid-column: 2;
     min-height: 36px;
-    padding: 8px 12px;
+    padding: var(--jr-space-2) var(--jr-space-3);
   }
 
   .source-card .source-toggle {
@@ -2294,7 +2294,7 @@ td a {
    */
   .form-submit-row {
     bottom: calc(var(--jr-bar-height) + var(--jr-space-2));
-    padding-inline: 18px;
+    padding-inline: var(--jr-space-4);
   }
 }
 
@@ -2364,7 +2364,7 @@ td a {
 
   .form-section,
   .editor-heading {
-    padding-inline: 16px;
+    padding-inline: var(--jr-space-4);
   }
 
   .inline-action,
@@ -2404,7 +2404,7 @@ td a {
   .profile-list {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 5px;
+    gap: var(--jr-space-1);
     overflow: visible;
   }
 

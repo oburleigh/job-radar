@@ -37,6 +37,8 @@
     "test:browser": "playwright test --config playwright.config.ts",
     "test:smoke:codex": "tsx scripts/smoke-codex-research.ts",
     "test:e2e": "pnpm test:browser && pnpm test:e2e:web-search-real",
+    "capture:ui": "playwright test --config playwright.capture.config.ts",
+    "audit:ui": "playwright test --config playwright.audit.config.ts",
     "test:e2e:web-search-real": "cross-env NODE_OPTIONS=--import=dotenv/config playwright test --config playwright.web-search-real.config.ts",
     "format": "biome format --write .",
     "format:check": "biome format .",

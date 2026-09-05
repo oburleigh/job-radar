@@ -555,7 +555,7 @@
     flex-direction: column;
     align-items: flex-start;
     justify-content: center;
-    padding: var(--jr-space-5) var(--jr-space-6);
+    padding: var(--jr-space-5) var(--jr-space-0);
   }
 
   .jr-page-header h1 {

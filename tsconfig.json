@@ -9,6 +9,7 @@
     "incremental": true,
     "paths": {
       "@/*": ["./src/*"],
+      "#tests/*": ["./tests/*"],
       "~/*": ["./*"]
     }
   },
