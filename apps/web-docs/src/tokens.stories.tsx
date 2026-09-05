@@ -136,12 +136,15 @@ const metrics = [
 ] as const;
 
 const layers = [
+  ["--jr-z-raised", "An element that must clear the content it sits on"],
+  ["--jr-z-sticky", "Page furniture that stays put while content scrolls"],
   ["--jr-z-header", "Masthead"],
   ["--jr-z-dropdown", "Menus"],
   ["--jr-z-popover", "Popovers and tooltips"],
   ["--jr-z-modal-overlay", "Modal scrim"],
   ["--jr-z-modal", "Modal panel"],
   ["--jr-z-toast", "Toasts, above everything"],
+  ["--jr-z-skip-link", "The skip link, which must clear even a toast"],
 ] as const;
 
 const meta = {

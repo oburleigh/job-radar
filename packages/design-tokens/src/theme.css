@@ -222,12 +222,15 @@
     --jr-bar-height: 4.25rem;
     --jr-masthead-height: 4.5rem;
     --jr-content-width: 98.75rem;
+    --jr-z-raised: 10;
+    --jr-z-sticky: 20;
     --jr-z-header: 100;
     --jr-z-dropdown: 200;
     --jr-z-popover: 300;
     --jr-z-modal-overlay: 600;
     --jr-z-modal: 650;
     --jr-z-toast: 700;
+    --jr-z-skip-link: 800;
   }
 
   :root[data-theme="light"] {
