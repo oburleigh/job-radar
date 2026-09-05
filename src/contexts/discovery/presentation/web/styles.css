@@ -373,6 +373,11 @@ table td a:hover {
   text-decoration: underline;
 }
 
+/* Only the narrow layout collapses its filters, so the control does not exist above it. */
+.filter-disclosure {
+  display: none;
+}
+
 .filter-bar {
   display: grid;
   grid-template-columns: minmax(160px, 0.8fr) minmax(160px, 0.8fr) minmax(260px, 1.5fr) 44px;
@@ -2299,16 +2304,29 @@ td a {
     flex-direction: column;
   }
 
-  .filter-bar {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px;
+  .filter-disclosure {
+    display: inline-flex;
+    gap: var(--jr-space-2);
+    align-self: start;
+    margin: var(--jr-space-4) 0 var(--jr-space-0);
   }
 
+  .filter-bar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .filter-bar:not([data-expanded]) {
+    display: none;
+  }
+
+  .filter-field,
   .search-field {
-    grid-column: 1 / 3;
+    grid-column: 1;
   }
 
   .filter-reset {
-    grid-column: 3;
+    grid-column: 1;
+    justify-self: end;
   }
 
   .section-heading,

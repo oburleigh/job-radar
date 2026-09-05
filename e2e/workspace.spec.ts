@@ -471,3 +471,40 @@ test("names each destination the same at every width", async ({ page }) => {
     ).toHaveCount(0);
   }
 });
+
+test("keeps the narrow first screen on results and still reaches every filter", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+
+  const filters = page.getByRole("region", { name: "Filter opportunity catalogue" });
+  const disclosure = page.getByRole("button", { name: /^Filters/ });
+
+  await expect(disclosure).toBeVisible();
+  await expect(filters).toBeHidden();
+
+  const matches = await page.getByRole("heading", { level: 2, name: "Matches" }).boundingBox();
+  const navigation = await page
+    .getByRole("navigation", { name: "Primary navigation" })
+    .boundingBox();
+  if (!matches || !navigation) {
+    throw new Error("The results heading and the fixed navigation must be measurable.");
+  }
+  expect(
+    matches.y + matches.height,
+    "the results heading sits behind the fixed navigation on first load",
+  ).toBeLessThanOrEqual(navigation.y);
+
+  await disclosure.click();
+  await expect(filters).toBeVisible();
+  await expect(disclosure).toHaveAttribute("aria-expanded", "true");
+
+  // Every filter value has to be readable, which is why they stack rather than share a row.
+  for (const label of ["Source", "Status"]) {
+    const select = filters.getByLabel(label);
+    await expect(select).toBeVisible();
+    const box = await select.boundingBox();
+    expect(box?.width ?? 0, `${label} is too narrow to show its value`).toBeGreaterThan(280);
+  }
+});
