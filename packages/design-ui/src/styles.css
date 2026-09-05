@@ -37,6 +37,25 @@
     cursor: progress;
   }
 
+  /**
+   * A control inside a dense surface such as a table header, where a border and a horizontal
+   * inset would push its label off the column its cells align to.
+   */
+  .jr-button[data-variant="quiet"] {
+    padding-inline: var(--jr-space-0);
+    color: inherit;
+    font: inherit;
+    text-transform: inherit;
+    background: transparent;
+    border-width: var(--jr-space-0);
+    border-radius: var(--jr-radius-none);
+  }
+
+  .jr-button[data-variant="quiet"]:hover:not(:disabled) {
+    color: var(--jr-color-text);
+    background: transparent;
+  }
+
   .jr-button[data-variant="primary"] {
     color: var(--jr-color-text-on-action);
     background: var(--jr-color-action);

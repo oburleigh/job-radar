@@ -88,6 +88,7 @@ const spaceSteps = [
 ] as const;
 
 const radii = [
+  ["--jr-radius-none", "Controls inside a dense surface, where a corner would break the column"],
   ["--jr-radius-xs", "Chips and inline marks"],
   ["--jr-radius-sm", "Nested elements"],
   ["--jr-radius-md", "Controls"],
