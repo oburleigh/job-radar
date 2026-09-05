@@ -11,34 +11,7 @@
   overflow: visible;
 }
 
-.recruiter-panel-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--jr-space-5);
-  padding: var(--jr-space-6) var(--jr-space-6) 0;
-}
-
-.recruiter-panel-heading h2 {
-  margin: 3px 0 0;
-  font-family: var(--jr-font-family-display);
-  font-size: var(--jr-font-size-heading);
-  line-height: var(--jr-line-height-heading);
-  font-weight: var(--jr-font-weight-semibold);
-}
-
-.recruiter-panel-heading > span,
 .recruiter-record-label {
-  color: var(--jr-color-text-muted);
-  font-size: var(--jr-font-size-caption);
-  line-height: var(--jr-line-height-caption);
-  letter-spacing: 0.04em;
-}
-
-.recruiter-panel-heading-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--jr-space-3);
   color: var(--jr-color-text-muted);
   font-size: var(--jr-font-size-caption);
   line-height: var(--jr-line-height-caption);
@@ -49,18 +22,18 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--jr-space-5);
-  padding: var(--jr-space-5) var(--jr-space-6) var(--jr-space-6);
+  padding: var(--jr-space-5) var(--jr-space-0) var(--jr-space-6);
 }
 
 .recruiter-textarea-label {
   display: grid;
-  gap: 7px;
+  gap: var(--jr-space-2);
 }
 
 .recruiter-target-fields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--jr-space-3);
   align-items: start;
 }
 
@@ -75,7 +48,7 @@
 .recruiter-textarea-label textarea {
   width: 100%;
   resize: vertical;
-  padding: 12px;
+  padding: var(--jr-space-3);
   color: var(--jr-color-text);
   background: var(--jr-color-surface);
   border: 1px solid var(--jr-color-border-strong);
@@ -176,8 +149,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
-  padding-top: 4px;
+  gap: var(--jr-space-4);
+  padding-top: var(--jr-space-1);
 }
 
 .recruiter-brief-actions .jr-button,
@@ -216,7 +189,7 @@
 
 .recruiter-action-error {
   margin: 0;
-  padding: 12px 16px;
+  padding: var(--jr-space-3) var(--jr-space-4);
   color: var(--jr-color-danger);
   background: var(--jr-color-danger-subtle);
 }
@@ -234,15 +207,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
-  padding: 16px 18px;
+  gap: var(--jr-space-4);
+  padding: var(--jr-space-4) var(--jr-space-4);
   background: var(--jr-color-surface-subtle);
 }
 
 .recruiter-run-status {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--jr-space-2);
   color: var(--jr-color-text);
   font-family: var(--jr-font-family-display);
   font-size: var(--jr-font-size-heading);
@@ -268,13 +241,13 @@
 
 .recruiter-run-summary dl {
   display: flex;
-  gap: 18px;
+  gap: var(--jr-space-4);
   margin: 0;
 }
 
 .recruiter-run-summary dl > div {
   display: grid;
-  gap: 2px;
+  gap: var(--jr-space-1);
 }
 
 .recruiter-run-summary dt {
@@ -294,8 +267,8 @@
 .recruiter-run-provenance {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 16px;
-  padding: 12px 18px;
+  gap: var(--jr-space-2) var(--jr-space-4);
+  padding: var(--jr-space-3) var(--jr-space-4);
   background: var(--jr-color-surface-subtle);
 }
 
@@ -304,7 +277,7 @@
 }
 
 .recruiter-source-plan {
-  padding: 14px 18px;
+  padding: var(--jr-space-4) var(--jr-space-4);
   background: var(--jr-color-surface-subtle);
 }
 
@@ -329,13 +302,13 @@
 }
 
 .recruiter-source-plan > p {
-  margin-top: 4px;
+  margin-top: var(--jr-space-1);
 }
 
 .recruiter-source-plan ul {
   display: grid;
-  gap: 8px;
-  margin: 12px 0 0;
+  gap: var(--jr-space-2);
+  margin: var(--jr-space-3) 0 0;
   padding: 0;
   list-style: none;
 }
@@ -343,14 +316,14 @@
 .recruiter-source-plan li {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(170px, 0.45fr);
-  gap: 8px 18px;
-  padding-top: 10px;
+  gap: var(--jr-space-2) var(--jr-space-4);
+  padding-top: var(--jr-space-3);
 }
 
 .recruiter-source-plan li > div,
 .recruiter-source-plan-outcome {
   display: grid;
-  gap: 2px;
+  gap: var(--jr-space-1);
 }
 
 .recruiter-source-plan li > div > span,
@@ -383,12 +356,12 @@
 .recruiter-run-controls {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  padding: 12px 18px;
+  gap: var(--jr-space-3);
+  padding: var(--jr-space-3) var(--jr-space-4);
 }
 
 .recruiter-failure-list {
-  padding: 14px 18px;
+  padding: var(--jr-space-4) var(--jr-space-4);
   color: var(--jr-color-danger);
   background: var(--jr-color-danger-subtle);
 }
@@ -399,7 +372,7 @@
 }
 
 .recruiter-failure-list p + p {
-  margin-top: 4px;
+  margin-top: var(--jr-space-1);
 }
 
 .recruiter-identity-reviews {
@@ -730,20 +703,20 @@
 
 .recruiter-firm-observation {
   display: grid;
-  gap: 14px;
-  padding: 18px;
+  gap: var(--jr-space-4);
+  padding: var(--jr-space-4);
 }
 
 .recruiter-firm-observation > header {
   display: flex;
   align-items: start;
   justify-content: space-between;
-  gap: 18px;
+  gap: var(--jr-space-4);
 }
 
 .recruiter-firm-observation h3,
 .recruiter-nested-list h4 {
-  margin: 2px 0 0;
+  margin: var(--jr-space-1) 0 0;
   font-family: var(--jr-font-family-display);
   font-weight: var(--jr-font-weight-semibold);
 }
@@ -786,13 +759,13 @@
 .recruiter-evidence > div {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--jr-space-2);
   align-items: center;
 }
 
 .recruiter-tag {
   display: inline-flex;
-  padding: 2px 6px;
+  padding: var(--jr-space-1) var(--jr-space-2);
   color: var(--jr-color-accent);
   background: var(--jr-color-info-subtle);
   border-radius: var(--jr-radius-md);
@@ -805,9 +778,9 @@
 
 .recruiter-nested-list {
   display: grid;
-  gap: 10px;
-  margin-top: 2px;
-  padding: 14px;
+  gap: var(--jr-space-3);
+  margin-top: var(--jr-space-1);
+  padding: var(--jr-space-4);
   background: var(--jr-color-surface-subtle);
 }
 
@@ -818,7 +791,7 @@
 
 .recruiter-nested-list ul {
   display: grid;
-  gap: 8px;
+  gap: var(--jr-space-2);
   padding: 0;
   margin: 0;
   list-style: none;
@@ -827,13 +800,13 @@
 .recruiter-nested-list li {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 4px 18px;
-  padding: 10px 0;
+  gap: var(--jr-space-1) var(--jr-space-4);
+  padding: var(--jr-space-3) 0;
 }
 
 .recruiter-nested-list li > div {
   display: grid;
-  gap: 2px;
+  gap: var(--jr-space-1);
 }
 
 .recruiter-nested-list li > div span {
@@ -871,9 +844,9 @@
 .recruiter-empty-results {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--jr-space-3);
   min-height: 150px;
-  padding: 18px;
+  padding: var(--jr-space-4);
   color: var(--jr-color-text-muted);
 }
 

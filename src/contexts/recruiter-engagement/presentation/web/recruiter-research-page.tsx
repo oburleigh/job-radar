@@ -1,6 +1,7 @@
 import {
   Button,
   PageHeader,
+  SectionHeader,
   SelectField,
   TabNavigation,
   TextField,
@@ -220,15 +221,12 @@ export function RecruiterResearchPage({
         />
       ) : (
         <>
+          <SectionHeader
+            id="recruiter-brief-title"
+            meta="Public web only"
+            title="Set the market focus"
+          />
           <section className="panel recruiter-brief-panel" aria-labelledby="recruiter-brief-title">
-            <div className="recruiter-panel-heading">
-              <div>
-                <h2 id="recruiter-brief-title">Set the market focus</h2>
-              </div>
-              <div className="recruiter-panel-heading-actions">
-                <span>Public web only</span>
-              </div>
-            </div>
             <Form
               key={run?.id ?? "new-research"}
               method="post"
