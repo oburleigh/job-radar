@@ -51,11 +51,38 @@ export function evaluateJob(
   }
 
   const locationText = normalize([job.locationText, ...job.locations].join(" "));
-  const excludedLocation = firstContained(locationText, profile.excludedLocationTerms);
+  const geographicLocations = job.geographicLocations ?? [];
+  const excludedLocation =
+    firstContained(locationText, profile.excludedLocationTerms) ||
+    geographicLocations
+      .filter((location) => !location.uncertain)
+      .flatMap((location) =>
+        location.terms.filter((term) =>
+          profile.excludedLocationTerms.some((excluded) => normalize(term) === normalize(excluded)),
+        ),
+      )[0] ||
+    "";
   if (excludedLocation) {
     exclusionReasons.push({ code: "excluded-location", term: excludedLocation });
   }
-  const locationTerm = firstContained(locationText, profile.locationTerms);
+  const geographicMatch =
+    geographicLocations.find(
+      (location) =>
+        !location.uncertain &&
+        location.terms.some((term) =>
+          profile.locationTerms.some((target) => normalize(term) === normalize(target)),
+        ),
+    ) ??
+    geographicLocations.find((location) =>
+      location.terms.some((term) =>
+        profile.locationTerms.some((target) => normalize(term) === normalize(target)),
+      ),
+    );
+  const locationTerm = geographicMatch
+    ? (profile.locationTerms.find((target) =>
+        geographicMatch.terms.some((term) => normalize(term) === normalize(target)),
+      ) ?? "")
+    : firstContained(locationText, profile.locationTerms);
   const remoteText = normalize(`${job.locationText} ${job.workplaceType}`);
   const isRemote = policy.remoteTerms.some((term) => remoteText.includes(normalize(term)));
   const unrestrictedRemoteText = normalize(`${job.title} ${job.description} ${job.workplaceType}`);
@@ -114,7 +141,11 @@ export function evaluateJob(
 
   if (locationTerm) {
     score += policy.locationScore;
-    reasons.push({ code: "location-match", term: locationTerm });
+    if (geographicMatch?.uncertain) {
+      reasons.splice(1, 0, { code: "location-uncertain", term: locationTerm });
+    } else {
+      reasons.push({ code: "location-match", term: locationTerm });
+    }
   } else {
     score += policy.remoteScore;
     reasons.push({ code: "remote-allowed" });

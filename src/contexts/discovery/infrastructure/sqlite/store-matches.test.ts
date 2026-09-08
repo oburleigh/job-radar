@@ -43,6 +43,43 @@ describe("the listings an evaluation reads", () => {
     bootstrapJobRadar(database);
   });
 
+  it.each([
+    ["United Arab Emirates", "Dubai", "matched", false],
+    ["United Kingdom", "London", "matched", true],
+    ["United Kingdom", "London, Ontario", "excluded", false],
+    ["Canada", "London, Ontario", "matched", false],
+    ["Germany", "Berlin", "matched", true],
+    ["Japan", "Yokohama", "matched", false],
+    ["Australia", "Brisbane", "matched", true],
+    ["United Kingdom", "Dubai", "excluded", false],
+    ["Dubai, United Arab Emirates", "Abu Dhabi", "excluded", false],
+    ["London, England, United Kingdom", "London, Ontario", "excluded", false],
+  ])(
+    "matches %s against %s using geographic membership",
+    async (target, location, status, uncertain) => {
+      const profileId = seedProfile(database);
+      database
+        .update(searchProfiles)
+        .set({ locationTerms: [target] })
+        .where(eq(searchProfiles.id, profileId))
+        .run();
+      const jobId = seedListing(database, "geographic-listing");
+      database
+        .update(jobs)
+        .set({ locationText: location, locations: [location] })
+        .where(eq(jobs.id, jobId))
+        .run();
+
+      await evaluateAndStore(loadProfile(database, profileId), {}, database);
+
+      const match = database.select().from(jobMatches).where(eq(jobMatches.jobId, jobId)).get();
+      expect(match?.status).toBe(status);
+      expect(match?.reasons.some((reason) => reason.code === "location-uncertain")).toBe(uncertain);
+      if (status === "excluded")
+        expect(match?.exclusionReasons).toContainEqual({ code: "location-mismatch" });
+    },
+  );
+
   it("reads only the columns it evaluates, so the raw payload never enters the heap", async () => {
     const profileId = seedProfile(database);
     seedListing(database, "projected-one");
@@ -51,6 +88,52 @@ describe("the listings an evaluation reads", () => {
     await evaluateAndStore(loadProfile(database, profileId), {}, database);
 
     expect(listingReadColumns(recorded)).toEqual([columnsTheEvaluationReads]);
+  });
+
+  it("keeps a selected city narrow when discovery supplies its search aliases", async () => {
+    const profileId = seedProfile(database);
+    database
+      .update(searchProfiles)
+      .set({ locationTerms: ["London, England, United Kingdom"] })
+      .where(eq(searchProfiles.id, profileId))
+      .run();
+    const jobId = seedListing(database, "city-alias-listing");
+    database
+      .update(jobs)
+      .set({ locationText: "London, Ontario", locations: ["London"] })
+      .where(eq(jobs.id, jobId))
+      .run();
+
+    await evaluateAndStore(
+      loadProfile(database, profileId),
+      { locationTerms: ["London", "London, England, United Kingdom"] },
+      database,
+    );
+
+    expect(matchesOf(database, profileId)[0]?.exclusionReasons).toContainEqual({
+      code: "location-mismatch",
+    });
+  });
+
+  it("uses an explicit listing country to disambiguate its bare city label", async () => {
+    const profileId = seedProfile(database);
+    database
+      .update(searchProfiles)
+      .set({ locationTerms: ["United Kingdom"] })
+      .where(eq(searchProfiles.id, profileId))
+      .run();
+    const jobId = seedListing(database, "explicit-country-listing");
+    database
+      .update(jobs)
+      .set({ locationText: "London, Ontario", locations: ["London"] })
+      .where(eq(jobs.id, jobId))
+      .run();
+
+    await evaluateAndStore(loadProfile(database, profileId), {}, database);
+
+    expect(matchesOf(database, profileId)[0]?.exclusionReasons).toContainEqual({
+      code: "location-mismatch",
+    });
   });
 
   // Keyset paging is only safe if every batch reads in the same order and stops at the batch size.

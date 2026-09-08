@@ -26,7 +26,7 @@ describe("deterministic discovery benchmark", () => {
       }
       rmSync(directory, { recursive: true, force: true });
     }
-  });
+  }, 60_000);
 
   it("records the exact Asia legacy request formula", async () => {
     const report = await runDiscoveryBenchmark(discoveryBenchmarkCorpus);

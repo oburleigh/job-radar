@@ -11,6 +11,8 @@ export function formatMatchReason(reason: MatchReason): string {
       return `Salary ${formatAnnualSalary(reason.salary)} overlaps the profile preference`;
     case "location-match":
       return `Location matches ${reason.term}`;
+    case "location-uncertain":
+      return `Location uncertain: check eligibility for ${reason.term}`;
     case "remote-allowed":
       return "Remote role allowed by profile";
     case "posted-age":

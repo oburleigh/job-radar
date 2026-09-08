@@ -23,6 +23,11 @@ const countryAliases = new Map(
 );
 const resolvedLocations = new Map<string, LocationOption | null>();
 
+export function resolveCountry(value: string): LocationOption | null {
+  const country = countryAliases.get(normalise(value));
+  return country ? countryOption(country) : null;
+}
+
 export function searchLocations(query: string, requestedLimit = 50): readonly LocationOption[] {
   const exactCountry = countryAliases.get(normalise(query));
   if (exactCountry) {

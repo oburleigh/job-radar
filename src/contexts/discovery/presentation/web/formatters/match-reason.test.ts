@@ -29,6 +29,10 @@ describe("match reason formatting", () => {
     const cases: readonly [MatchReason, string][] = [
       [{ code: "job-context-match", term: "platform" }, "Job context matches platform"],
       [{ code: "location-match", term: "Dubai" }, "Location matches Dubai"],
+      [
+        { code: "location-uncertain", term: "Canada" },
+        "Location uncertain: check eligibility for Canada",
+      ],
       [{ code: "remote-allowed" }, "Remote role allowed by profile"],
       [{ code: "posted-age", days: 1 }, "Posted 1 day ago"],
       [{ code: "posted-age", days: 4 }, "Posted 4 days ago"],
