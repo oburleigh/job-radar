@@ -1,0 +1,34 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # One pull request per toolchain rather than one per package, so a weekly batch stays
+      # reviewable against the gate.
+      react-router:
+        patterns:
+          - "react-router*"
+          - "@react-router/*"
+      dev-tooling:
+        patterns:
+          - "@biomejs/*"
+          - "vitest"
+          - "@vitest/*"
+          - "typescript"
+          - "lefthook"
+          - "@commitlint/*"
+      playwright:
+        patterns:
+          - "@playwright/*"
+          - "playwright*"
+          - "@axe-core/*"
+    ignore:
+      # Pinned by Corepack in package.json; bumping it here would disagree with that pin.
+      - dependency-name: pnpm
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

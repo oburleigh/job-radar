@@ -1,0 +1,46 @@
+# Coverage is measured over the pure layers only, matching vitest.config.ts. Targets are the
+# committed thresholds there rather than "auto", so a drop is a failure with a stated number
+# instead of a comparison against whatever the base branch happened to reach.
+coverage:
+  precision: 2
+  round: down
+  range: "89...100"
+  status:
+    project:
+      default:
+        target: 95%
+        threshold: 0.5%
+        flags:
+          - unit
+    patch:
+      default:
+        target: 90%
+        threshold: 0%
+
+flags:
+  unit:
+    paths:
+      - src/contexts/
+    carryforward: false
+
+comment:
+  layout: "condensed_header, diff, flags, components"
+  require_changes: true
+
+# Adapters, composition roots, route modules, and generated output are exercised by the browser
+# journeys rather than by unit tests, so counting them here would measure the wrong suite.
+ignore:
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/test-support/**"
+  - "src/contexts/*/infrastructure/**"
+  - "src/contexts/*/composition/**"
+  - "src/contexts/*/presentation/web/*.tsx"
+  - "src/contexts/*/presentation/web/components/**"
+  - "src/platform/**"
+  - "packages/**"
+  - "apps/**"
+  - "e2e/**"
+  - "tests/**"
+  - "scripts/**"
+  - "drizzle/**"
