@@ -51,6 +51,14 @@ describe("the listings an evaluation reads", () => {
     ["Germany", "Berlin", "matched", true],
     ["Japan", "Yokohama", "matched", false],
     ["Australia", "Brisbane", "matched", true],
+    ["United States", "Austin, TX", "matched", false],
+    ["Canada", "London, ON", "matched", false],
+    ["Australia", "Sydney, NSW", "matched", false],
+    ["Scotland, United Kingdom", "Glasgow, Scotland", "matched", false],
+    ["London", "London, Ontario, Canada", "matched", false],
+    ["SA", "Johannesburg", "excluded", false],
+    ["SA", "Riyadh", "matched", false],
+    ["SK", "Seoul", "excluded", false],
     ["United Kingdom", "Dubai", "excluded", false],
     ["Dubai, United Arab Emirates", "Abu Dhabi", "excluded", false],
     ["London, England, United Kingdom", "London, Ontario", "excluded", false],
@@ -89,6 +97,35 @@ describe("the listings an evaluation reads", () => {
 
     expect(listingReadColumns(recorded)).toEqual([columnsTheEvaluationReads]);
   });
+
+  it.each([
+    ["Japan", "Yokohama", "Japan", "excluded"],
+    ["United Kingdom", "London", "Canada", "matched"],
+  ])(
+    "applies country exclusion %s / %s / %s with geographic certainty",
+    async (target, location, excludedCountry, status) => {
+      const profileId = seedProfile(database);
+      database
+        .update(searchProfiles)
+        .set({ locationTerms: [target], excludedLocationTerms: [excludedCountry] })
+        .where(eq(searchProfiles.id, profileId))
+        .run();
+      const jobId = seedListing(database, "geographic-exclusion");
+      database
+        .update(jobs)
+        .set({ locationText: location, locations: [location] })
+        .where(eq(jobs.id, jobId))
+        .run();
+
+      await evaluateAndStore(loadProfile(database, profileId), {}, database);
+
+      const match = matchesOf(database, profileId)[0];
+      expect(match?.status).toBe(status);
+      expect(match?.exclusionReasons).toEqual(
+        status === "excluded" ? [{ code: "excluded-location", term: excludedCountry }] : [],
+      );
+    },
+  );
 
   it("keeps a selected city narrow when discovery supplies its search aliases", async () => {
     const profileId = seedProfile(database);

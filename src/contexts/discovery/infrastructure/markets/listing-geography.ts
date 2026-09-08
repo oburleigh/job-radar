@@ -1,13 +1,19 @@
-import { CountryStateCity } from "@tansuasici/country-state-city/node";
+import { CountryStateCity, type LocationSearchOptions } from "@tansuasici/country-state-city/node";
 
 import type { MatchableJob } from "@/contexts/discovery/domain/job-match";
 import { resolveCountry } from "@/platform/locations/location-search.server";
 
 type GeographicLocations = NonNullable<MatchableJob["geographicLocations"]>;
 
+const searchOptions: LocationSearchOptions = {
+  entityTypes: ["city", "state"],
+  typoTolerance: false,
+  limit: 100, // The public catalogue API caps results at 100.
+};
+
 export function createListingGeographyResolver() {
   // Build the catalogue's index at application startup, before an evaluation begins.
-  CountryStateCity.searchLocations("", { entityTypes: ["city", "state"], typoTolerance: false });
+  CountryStateCity.searchLocations("", searchOptions);
   const cache = new Map<string, GeographicLocations>();
   const places = new Map<string, ReturnType<typeof findPlaces>>();
   return (values: readonly string[]): GeographicLocations => {
@@ -41,16 +47,16 @@ function resolve(
   const found = places.get(key) ?? findPlaces(name);
   places.set(key, found);
   const candidates = found.flatMap((place) => {
-    const parent = CountryStateCity.getCountryByIso2(place.countryCode);
-    if (!parent) return [];
-    const countryTerms = resolveCountry(parent.name)?.searchTerms ?? [
-      parent.name,
-      parent.iso2,
-      parent.iso3,
+    const stateName = place.stateName ?? place.name;
+    const countryTerms = resolveCountry(place.countryName)?.searchTerms ?? [
+      place.countryName,
+      place.countryCode,
     ];
     if (
       !qualifiers.every((qualifier) =>
-        [place.stateName, ...countryTerms].some((term) => normalize(term) === normalize(qualifier)),
+        [stateName, place.stateCode ?? "", ...countryTerms].some(
+          (term) => normalize(term) === normalize(qualifier),
+        ),
       )
     )
       return [];
@@ -59,8 +65,9 @@ function resolve(
         countryCode: place.countryCode,
         terms: [
           place.name,
-          `${place.name}, ${parent.name}`,
-          `${place.name}, ${place.stateName}, ${parent.name}`,
+          `${place.name}, ${place.countryName}`,
+          `${place.name}, ${stateName}, ${place.countryName}`,
+          `${stateName}, ${place.countryName}`,
           ...countryTerms,
         ],
       },
@@ -71,21 +78,11 @@ function resolve(
 }
 
 function findPlaces(name: string) {
-  return CountryStateCity.searchLocations(name, {
-    entityTypes: ["city", "state"],
-    typoTolerance: false,
-    limit: Number.MAX_SAFE_INTEGER,
-  })
-    .filter(
-      (place) =>
-        (place.matchReason === "canonical-exact" || place.matchReason === "alias-exact") &&
-        place.record.lifecycleStatus !== "historical",
-    )
-    .map((place) => ({
-      name: place.name,
-      stateName: place.stateName ?? place.name,
-      countryCode: place.countryCode,
-    }));
+  return CountryStateCity.searchLocations(name, searchOptions).filter(
+    (place) =>
+      (place.matchReason === "canonical-exact" || place.matchReason === "alias-exact") &&
+      place.record.lifecycleStatus !== "historical",
+  );
 }
 
 function normalize(value: string): string {

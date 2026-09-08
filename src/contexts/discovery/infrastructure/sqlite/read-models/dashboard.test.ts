@@ -87,6 +87,61 @@ describe("dashboard opportunity payload", () => {
 
   afterEach(() => sqlite.close());
 
+  it("orders published roles newest first, breaks date ties by score, and puts undated roles last", () => {
+    const profileId = seedProfile(database);
+    seedMatchedJob(database, profileId, "old", {
+      title: "Old role",
+      score: 99,
+      publishedAt: new Date("2026-08-20"),
+    });
+    seedMatchedJob(database, profileId, "new-low", {
+      title: "New lower score",
+      score: 70,
+      publishedAt: new Date("2026-08-25"),
+    });
+    seedMatchedJob(database, profileId, "undated", {
+      title: "Undated role",
+      score: 100,
+      publishedAt: null,
+    });
+    seedMatchedJob(database, profileId, "new-high", {
+      title: "New higher score",
+      score: 90,
+      publishedAt: new Date("2026-08-25"),
+    });
+    expect(getDashboardData({ profileId }, database).jobs.map((job) => job.title)).toEqual([
+      "New higher score",
+      "New lower score",
+      "Old role",
+      "Undated role",
+    ]);
+  });
+
+  it("orders the surviving primary listing by its own publication date after deduplication", () => {
+    const profileId = seedProfile(database);
+    seedMatchedJob(database, profileId, "secondary", {
+      title: "Duplicate role",
+      atsType: "linkedin",
+      score: 99,
+      publishedAt: new Date("2026-08-25"),
+    });
+    seedMatchedJob(database, profileId, "primary", {
+      title: "Duplicate role",
+      atsType: "greenhouse",
+      score: 80,
+      publishedAt: new Date("2026-08-20"),
+    });
+    seedMatchedJob(database, profileId, "middle", {
+      title: "Middle role",
+      score: 75,
+      publishedAt: new Date("2026-08-23"),
+    });
+    expect(getDashboardData({ profileId }, database).jobs.map((job) => job.canonicalUrl)).toEqual([
+      "https://example.test/jobs/middle",
+      "https://example.test/jobs/primary",
+    ]);
+  });
+
   it("returns only the fields the opportunity interface renders", () => {
     const profileId = seedProfile(database);
     seedMatchedJob(database, profileId, "matched-one");
@@ -286,6 +341,7 @@ function seedProfile(database: ReturnType<typeof createDatabase>): number {
 }
 
 interface MatchedJobFixture {
+  readonly publishedAt?: Date | null;
   readonly atsType?: AtsType;
   readonly evidence?: JobListingEvidence;
   readonly title?: string;
@@ -318,7 +374,7 @@ function seedMatchedJob(
       department: "Engineering",
       employmentType: "Full-time",
       workplaceType: "Hybrid",
-      publishedAt: recordedAt,
+      publishedAt: fixture.publishedAt === undefined ? recordedAt : fixture.publishedAt,
       salaryCurrency: fixture.salaryCurrency ?? "USD",
       salaryMin: fixture.salaryMin === undefined ? 90_000 : fixture.salaryMin,
       salaryMax: fixture.salaryMax === undefined ? 120_000 : fixture.salaryMax,
