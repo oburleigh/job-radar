@@ -11,6 +11,10 @@ export interface MatchableJob {
   readonly title: string;
   readonly locationText: string;
   readonly locations: readonly string[];
+  readonly geographicLocations?: readonly {
+    readonly terms: readonly string[];
+    readonly uncertain: boolean;
+  }[];
   readonly description: string;
   readonly department: string;
   readonly workplaceType: string;
@@ -47,6 +51,7 @@ export type MatchReason =
   | { readonly code: "job-context-match"; readonly term: string }
   | { readonly code: "salary-overlap"; readonly salary: AnnualSalaryRange }
   | { readonly code: "location-match"; readonly term: string }
+  | { readonly code: "location-uncertain"; readonly term: string }
   | { readonly code: "remote-allowed" }
   | { readonly code: "posted-age"; readonly days: number }
   | { readonly code: "posting-date-unknown" };

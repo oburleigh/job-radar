@@ -73,6 +73,19 @@ const baseJob: MatchableJob = {
 };
 
 describe("deterministic matching", () => {
+  it("keeps location uncertainty visible in the two-reason card summary", () => {
+    const result = evaluateJob(
+      { ...baseJob, geographicLocations: [{ terms: ["United Kingdom"], uncertain: true }] },
+      { ...profile, locationTerms: ["United Kingdom"], requiredJobTerms: ["engineering"] },
+      new Date("2026-07-29T00:00:00Z"),
+    );
+    expect(result.status).toBe("matched");
+    expect(result.reasons.slice(0, 2)).toEqual([
+      { code: "title-match", term: "Head of Engineering" },
+      { code: "location-uncertain", term: "United Kingdom" },
+    ]);
+  });
+
   it("matches a recent target title in the target location", () => {
     const result = evaluateJob(baseJob, profile, new Date("2026-07-29T00:00:00Z"));
 

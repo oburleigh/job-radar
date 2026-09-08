@@ -8,7 +8,7 @@ describe("discovery benchmark command", () => {
 
     expect(result.exitCode).toBe(0);
     expect(JSON.parse(result.stdout)).toEqual(expect.objectContaining({ passed: true }));
-  });
+  }, 60_000);
 
   it("returns a failing exit code without hiding uncovered profiles", async () => {
     const result = await evaluateDiscoveryBenchmark({

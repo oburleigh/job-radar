@@ -5,6 +5,7 @@ import { currencyFrom } from "@/contexts/discovery/domain/currency";
 import { evaluateJob } from "@/contexts/discovery/domain/evaluate-job";
 import { isVerifiedJobListing } from "@/contexts/discovery/domain/job-listing-provenance";
 import { getJobRadarConfig } from "@/contexts/discovery/infrastructure/configuration/job-radar-config";
+import { createListingGeographyResolver } from "@/contexts/discovery/infrastructure/markets/listing-geography";
 import { db } from "@/contexts/discovery/infrastructure/sqlite/database";
 import {
   jobMatches,
@@ -12,9 +13,11 @@ import {
   type searchProfiles,
 } from "@/contexts/discovery/infrastructure/sqlite/schema";
 import { screeningCountColumns } from "@/contexts/discovery/infrastructure/sqlite/screening-count-columns";
+import { resolveLocations } from "@/platform/locations/location-search.server";
 
 type ProfileRow = typeof searchProfiles.$inferSelect;
 type Database = typeof db;
+const resolveGeography = createListingGeographyResolver();
 
 export interface EvaluationSummary {
   evaluated: number;
@@ -64,6 +67,11 @@ export async function evaluateAndStore(
 ): Promise<EvaluationSummary> {
   const now = new Date();
   const config = getJobRadarConfig(database);
+  const locationTerms = matchingLocationTerms(profile.locationTerms, options.locationTerms);
+  const excludedLocationTerms = matchingLocationTerms(
+    profile.excludedLocationTerms,
+    options.excludedLocationTerms,
+  );
   const yieldEvery = options.yieldEvery ?? config.discovery.workYieldBatchSize;
   // Paging by id over `jobs_active_id_idx` holds peak memory to one batch instead of the table, and
   // the highest active id read up front bounds the pass to a finite id range rather than to a set
@@ -109,6 +117,7 @@ export async function evaluateAndStore(
       const result = evaluateJob(
         {
           ...job,
+          geographicLocations: resolveGeography([job.locationText, ...job.locations]),
           verified: isVerifiedJobListing(job.evidence),
           publishedSalary: createAnnualSalaryRange(
             job.salaryCurrency,
@@ -118,10 +127,8 @@ export async function evaluateAndStore(
         },
         {
           ...profile,
-          locationTerms: [...(options.locationTerms ?? profile.locationTerms)],
-          excludedLocationTerms: [
-            ...(options.excludedLocationTerms ?? profile.excludedLocationTerms),
-          ],
+          locationTerms,
+          excludedLocationTerms,
           salaryCurrency: currencyFrom(profile.salaryCurrency),
         },
         config.matching,
@@ -167,4 +174,15 @@ export async function evaluateAndStore(
   }
 
   return { evaluated, matched, excluded };
+}
+
+function matchingLocationTerms(selected: readonly string[], expanded = selected): string[] {
+  const cities = resolveLocations(selected).filter((location) => location.kind === "city");
+  const cityAliases = new Set(cities.flatMap((city) => city.searchTerms));
+  return [
+    ...new Set([
+      ...expanded.filter((term) => !cityAliases.has(term)),
+      ...cities.map((city) => city.label),
+    ]),
+  ];
 }

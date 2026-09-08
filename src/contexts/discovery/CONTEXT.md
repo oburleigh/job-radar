@@ -74,6 +74,9 @@ _Avoid_: Match, job listing
 The result of evaluating a job listing against one search profile. A match records the score and the reasons for inclusion or exclusion.
 _Avoid_: Search result, saved job
 
+**Location uncertain**:
+A match whose listing names a place with several possible countries, including a target country. It remains visible for review without claiming that its country is confirmed.
+
 ## Current boundary
 
 The domain owns search-profile vocabulary, annual salary interpretation, job-listing state, and deterministic matching. The application owns search-query planning, the Discovery Run lifecycle, use-case orchestration, and the ports consumed by those use cases.
