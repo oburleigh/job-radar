@@ -26,7 +26,8 @@ const destinations: readonly Destination[] = [
  * The slowest sample keeps a ceiling so a genuine stall still fails. Both are set against
  * measurements recorded below, not against what looks tidy.
  *
- * Measured 2026-09-02, worst route (Opportunities), median then slowest:
+ * Historical baseline before Screening summary removal, measured 2026-09-02:
+ * worst route (Opportunities), median then slowest:
  *   GitHub ubuntu-latest runner   data 166.4 / 205.3   completion 290.5 / 355.8
  *   Local development machine     data 126.7 / 142.8   completion 278.4 / 355.4
  */
@@ -65,10 +66,18 @@ test("keeps representative workspace route transitions below the multi-second ra
         page.getByRole("heading", { level: 1, name: destination.heading }),
       ).toBeVisible();
       if (cycle === 0 && destination.link === "Opportunities") {
-        const summary = page.getByRole("region", { name: "Screening summary" });
-        await expect(summary.getByText("80000 active listings excluded")).toBeVisible();
-        await expect(summary.getByText("26667", { exact: true })).toHaveCount(2);
-        await expect(summary.getByText("13333", { exact: true })).toHaveCount(3);
+        await expect(
+          page.getByRole("link", { name: "30 active sources · 946 company boards", exact: true }),
+        ).toBeVisible();
+        const opportunities = page.getByRole("region", { name: "Ranked opportunities" });
+        await expect(opportunities).toBeVisible();
+        await expect(opportunities.getByRole("article")).toHaveCount(20);
+        await expect(opportunities.getByRole("heading", { level: 2 })).toHaveText(
+          Array.from(
+            { length: 20 },
+            (_, index) => `Staff Platform Engineer ${String(index + 1).padStart(2, "0")}`,
+          ),
+        );
       }
       const probe = await readNavigationProbe(page);
       const resources = await page.evaluate(() =>
