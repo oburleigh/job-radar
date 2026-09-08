@@ -7,6 +7,7 @@ import {
 
 interface LocationComboboxProps {
   readonly error?: string | undefined;
+  readonly id: string;
   readonly name: string;
   readonly initialOptions?: readonly LocationOption[] | undefined;
   readonly onCountrySelected?: ((option: CountryCurrencyOption) => void) | undefined;
@@ -16,6 +17,7 @@ interface LocationComboboxProps {
 
 export function LocationCombobox({
   error,
+  id,
   initialOptions,
   name,
   onChange,
@@ -26,6 +28,7 @@ export function LocationCombobox({
     <LocationAutocomplete
       {...(error ? { error } : {})}
       hint="Choose countries, administrative areas, or cities to include in discovery."
+      id={id}
       {...(initialOptions ? { initialOptions } : {})}
       name={name}
       onChange={onChange}

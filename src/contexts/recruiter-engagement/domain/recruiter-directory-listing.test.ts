@@ -6,40 +6,70 @@ import {
   reconcileRecruiterDirectory,
   removeDirectoryRecord,
 } from "./recruiter-directory";
-import { listRecruiterRegistry } from "./recruiter-registry";
+import { listRecruiterDirectory } from "./recruiter-directory-listing";
 
 const profileHosts = ["linkedin.com/in"];
 const observedAt = new Date("2026-08-28T10:00:00.000Z");
 
-describe("recruiter registry", () => {
+describe("recruiter listing", () => {
   it("lists firms with their recruiters and the specialisms the evidence supports", () => {
-    const registry = listRecruiterRegistry(seeded(), { profileHosts });
+    const listing = listRecruiterDirectory(seeded(), { profileHosts });
 
-    expect(registry.firms.map((firm) => [firm.name, firm.specialisms])).toEqual([
+    expect(listing.firms.map((firm) => [firm.name, firm.specialisms])).toEqual([
       ["Acme Search", ["Software engineering"]],
       ["Beacon Talent", ["Hospitality"]],
     ]);
-    expect(registry.firms[0]?.recruiters.map((person) => person.name)).toEqual(["Amina Khan"]);
-    expect(registry.availableSpecialisms).toEqual(["Hospitality", "Software engineering"]);
+    expect(listing.firms[0]?.recruiters.map((person) => person.name)).toEqual(["Amina Khan"]);
+    expect(listing.availableSpecialisms).toEqual(["Hospitality", "Software engineering"]);
   });
 
-  it("narrows the registry to one specialism, keeping only the firms that hold it", () => {
-    const registry = listRecruiterRegistry(seeded(), {
+  it("narrows the listing to one specialism, keeping only the firms that hold it", () => {
+    const listing = listRecruiterDirectory(seeded(), {
       profileHosts,
       specialism: "Hospitality",
     });
 
-    expect(registry.firms.map((firm) => firm.name)).toEqual(["Beacon Talent"]);
-    expect(registry.availableSpecialisms).toEqual(["Hospitality", "Software engineering"]);
+    expect(listing.firms.map((firm) => firm.name)).toEqual(["Beacon Talent"]);
+    expect(listing.availableSpecialisms).toEqual(["Hospitality", "Software engineering"]);
+    /*
+     * Acme Search holds the other specialism, so neither it nor Amina Khan belongs in this view.
+     * Testing the unassociated list against the filtered firms returned her as a recruiter without
+     * a firm and counted her, so filtering the Directory raised its own recruiter count.
+     */
+    expect(listing.unassociatedRecruiters.map((recruiter) => recruiter.name)).toEqual([]);
+    expect(listing.firms.flatMap((firm) => firm.recruiters.map((person) => person.name))).toEqual([
+      "Rafael Costa",
+    ]);
+    expect({ firmCount: listing.firmCount, recruiterCount: listing.recruiterCount }).toEqual({
+      firmCount: 1,
+      recruiterCount: 1,
+    });
+  });
+
+  it("still lists a recruiter whose firm the Directory never held", () => {
+    const directory = seeded();
+    const detached = {
+      ...directory,
+      recruiters: directory.recruiters.map((recruiter) =>
+        recruiter.name === "Amina Khan" ? { ...recruiter, firmId: null } : recruiter,
+      ),
+    };
+
+    const listing = listRecruiterDirectory(detached, { profileHosts });
+
+    expect(listing.unassociatedRecruiters.map((recruiter) => recruiter.name)).toEqual([
+      "Amina Khan",
+    ]);
+    expect(listing.recruiterCount).toBe(2);
   });
 
   it("offers a profile action only where the evidence is a personal profile", () => {
-    const registry = listRecruiterRegistry(seeded(), { profileHosts });
+    const listing = listRecruiterDirectory(seeded(), { profileHosts });
 
-    expect(registry.firms[0]?.recruiters[0]?.publicProfileUrl).toBe(
+    expect(listing.firms[0]?.recruiters[0]?.publicProfileUrl).toBe(
       "https://www.linkedin.com/in/amina-khan",
     );
-    expect(registry.firms[1]?.recruiters[0]?.publicProfileUrl).toBeNull();
+    expect(listing.firms[1]?.recruiters[0]?.publicProfileUrl).toBeNull();
   });
 
   it("hides removed records by default and marks them when asked for", () => {
@@ -52,11 +82,11 @@ describe("recruiter registry", () => {
       removedAt: new Date("2026-08-29T10:00:00.000Z"),
     });
 
-    expect(listRecruiterRegistry(removed, { profileHosts }).firms.map((firm) => firm.name)).toEqual(
-      ["Beacon Talent"],
-    );
     expect(
-      listRecruiterRegistry(removed, { includeRemoved: true, profileHosts }).firms.map((firm) => [
+      listRecruiterDirectory(removed, { profileHosts }).firms.map((firm) => firm.name),
+    ).toEqual(["Beacon Talent"]);
+    expect(
+      listRecruiterDirectory(removed, { includeRemoved: true, profileHosts }).firms.map((firm) => [
         firm.name,
         firm.removed,
       ]),
@@ -64,14 +94,14 @@ describe("recruiter registry", () => {
       ["Acme Search", true],
       ["Beacon Talent", false],
     ]);
-    expect(listRecruiterRegistry(removed, { profileHosts }).removedCount).toBe(2);
+    expect(listRecruiterDirectory(removed, { profileHosts }).removedCount).toBe(2);
   });
 
-  it("counts what the registry holds so the surface does not recount it", () => {
-    const registry = listRecruiterRegistry(seeded(), { profileHosts });
+  it("counts what the listing holds so the surface does not recount it", () => {
+    const listing = listRecruiterDirectory(seeded(), { profileHosts });
 
-    expect(registry.firmCount).toBe(2);
-    expect(registry.recruiterCount).toBe(2);
+    expect(listing.firmCount).toBe(2);
+    expect(listing.recruiterCount).toBe(2);
   });
 
   it("keeps a recruiter whose firm was removed without cascade, listed as unassociated", () => {
@@ -84,10 +114,10 @@ describe("recruiter registry", () => {
       removedAt: new Date("2026-08-29T10:00:00.000Z"),
     });
 
-    const registry = listRecruiterRegistry(removed, { profileHosts });
+    const listing = listRecruiterDirectory(removed, { profileHosts });
 
-    expect(registry.firms.map((firm) => firm.name)).toEqual(["Beacon Talent"]);
-    expect(registry.unassociatedRecruiters.map((person) => person.name)).toEqual(["Amina Khan"]);
+    expect(listing.firms.map((firm) => firm.name)).toEqual(["Beacon Talent"]);
+    expect(listing.unassociatedRecruiters.map((person) => person.name)).toEqual(["Amina Khan"]);
   });
 });
 

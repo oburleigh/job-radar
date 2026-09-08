@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type { AnnualSalaryRange } from "@/contexts/discovery/domain/annual-salary";
 import { createAnnualSalaryRange } from "@/contexts/discovery/domain/annual-salary";
@@ -57,16 +57,6 @@ export interface DashboardCounts {
   readonly applied: number;
 }
 
-export interface DashboardScreeningSummary {
-  readonly total: number;
-  readonly title: number;
-  readonly location: number;
-  readonly stale: number;
-  readonly unverified: number;
-  readonly context: number;
-  readonly salary: number;
-}
-
 export interface DashboardLastRun {
   readonly id: number;
   readonly provider: string;
@@ -83,7 +73,6 @@ export interface DashboardData {
   readonly profile: DashboardProfiles[number] | null;
   readonly jobs: readonly DashboardJob[];
   readonly counts: DashboardCounts;
-  readonly screened: DashboardScreeningSummary;
   readonly activeSources: number;
   readonly activeBoards: number;
   readonly lastRun: DashboardLastRun | null;
@@ -103,15 +92,6 @@ export function getDashboardData(filters: JobFilters, database: Database): Dashb
       profile: null,
       jobs: [],
       counts: { matched: 0, new: 0, saved: 0, applied: 0 },
-      screened: {
-        total: 0,
-        title: 0,
-        location: 0,
-        stale: 0,
-        unverified: 0,
-        context: 0,
-        salary: 0,
-      },
       activeSources: 0,
       activeBoards: 0,
       lastRun: null,
@@ -163,8 +143,6 @@ export function getDashboardData(filters: JobFilters, database: Database): Dashb
     filters.state === "hidden"
       ? dedupeCrossSourceMatches(matchedRows.filter((row) => row.state === "hidden"))
       : activeRows;
-
-  const screened = readScreeningSummary(profile.id, database);
 
   const counts = {
     matched: activeRows.length,
@@ -236,28 +214,10 @@ export function getDashboardData(filters: JobFilters, database: Database): Dashb
     profile,
     jobs: filteredJobs,
     counts,
-    screened,
     activeSources,
     activeBoards,
     lastRun,
   };
-}
-
-function readScreeningSummary(profileId: number, database: Database): DashboardScreeningSummary {
-  return database.get<DashboardScreeningSummary>(sql`
-    SELECT
-      count(*) AS total,
-      coalesce(sum(${jobMatches.excludedTitleReasonCount}), 0) AS title,
-      coalesce(sum(${jobMatches.excludedLocationReasonCount}), 0) AS location,
-      coalesce(sum(${jobMatches.staleReasonCount}), 0) AS stale,
-      coalesce(sum(${jobMatches.unverifiedReasonCount}), 0) AS unverified,
-      coalesce(sum(${jobMatches.contextReasonCount}), 0) AS context,
-      coalesce(sum(${jobMatches.salaryReasonCount}), 0) AS salary
-    FROM ${jobMatches} INDEXED BY job_matches_screening_summary_idx
-    WHERE ${jobMatches.profileId} = ${profileId}
-      AND ${jobMatches.status} = 'excluded'
-      AND ${jobMatches.listingIsActive} = 1
-  `);
 }
 
 function dedupeCrossSourceMatches<

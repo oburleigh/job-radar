@@ -1,4 +1,4 @@
-import { Button } from "@job-radar/design-ui";
+import { Button, TextArea, TextField } from "@job-radar/design-ui";
 import { Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useFetcher } from "react-router";
@@ -36,6 +36,7 @@ export function RuntimeSettingsForm({
   const fieldError = (field: string) =>
     !state.ok && state.field === field ? state.message : undefined;
   const salaryCurrencyError = fieldError("salaryCurrency");
+  const marketVocabularyError = fieldError("marketVocabulary");
 
   useEffect(() => {
     if (!state.ok && state.field) {
@@ -92,10 +93,15 @@ export function RuntimeSettingsForm({
             min={limits.maxRequestsPerRun.min}
             max={limits.maxRequestsPerRun.max}
           />
-          <label className="form-span-two">
-            <span>HTTP user agent</span>
-            <input name="userAgent" required defaultValue={network.userAgent} />
-          </label>
+          <div className="form-span-two">
+            <TextField
+              defaultValue={network.userAgent}
+              id={runtimeSettingFieldId("userAgent")}
+              label="HTTP user agent"
+              name="userAgent"
+              required
+            />
+          </div>
           <NumberField
             label="Total jobs per discovered board"
             name="boardJobLimit"
@@ -149,39 +155,27 @@ export function RuntimeSettingsForm({
             min={limits.discoveryStaleAfterMs.min}
             max={limits.discoveryStaleAfterMs.max}
           />
-          <label>
-            <span>Search strategies</span>
-            <textarea name="strategies" rows={4} defaultValue={discovery.strategies.join("\n")} />
-            <small className="field-help">
-              One ordered strategy per line: role-first, location-first, phrase, or relaxed-title.
-            </small>
-          </label>
+          <TextArea
+            defaultValue={discovery.strategies.join("\n")}
+            hint="One ordered strategy per line: role-first, location-first, phrase, or relaxed-title."
+            id={runtimeSettingFieldId("strategies")}
+            label="Search strategies"
+            name="strategies"
+            rows={4}
+          />
         </div>
         <div className="form-grid">
-          <label>
-            <span>Market vocabulary (JSON)</span>
-            <textarea
-              className="code-field"
-              name="marketVocabulary"
-              required
-              rows={14}
-              defaultValue={JSON.stringify(marketVocabulary, null, 2)}
-              aria-invalid={Boolean(fieldError("marketVocabulary"))}
-              aria-describedby={
-                fieldError("marketVocabulary") ? "marketVocabulary-error" : undefined
-              }
-            />
-            {fieldError("marketVocabulary") ? (
-              <small id="marketVocabulary-error" className="field-error">
-                {fieldError("marketVocabulary")}
-              </small>
-            ) : (
-              <small className="field-help">
-                Country aliases and configured descendants widen country targets. Cities and
-                subdivisions stay narrow.
-              </small>
-            )}
-          </label>
+          <TextArea
+            className="code-field"
+            defaultValue={JSON.stringify(marketVocabulary, null, 2)}
+            {...(marketVocabularyError === undefined ? {} : { error: marketVocabularyError })}
+            hint="Country aliases and configured descendants widen country targets. Cities and subdivisions stay narrow."
+            id={runtimeSettingFieldId("marketVocabulary")}
+            label="Market vocabulary (JSON)"
+            name="marketVocabulary"
+            required
+            rows={14}
+          />
         </div>
         <fieldset className="form-grid settings-subsection">
           <legend>Provider execution</legend>
@@ -253,29 +247,23 @@ export function RuntimeSettingsForm({
           </div>
         </fieldset>
         <div className="form-grid form-grid-two settings-text-grid">
-          <label>
-            <span>Structured verification source IDs</span>
-            <textarea
-              name="structuredVerificationSources"
-              rows={4}
-              defaultValue={discovery.structuredVerificationSources.join("\n")}
-            />
-            <small className="field-help">
-              Search-only integration IDs that publish schema.org JobPosting data.
-            </small>
-          </label>
-          <label>
-            <span>Closed-listing markers</span>
-            <textarea
-              name="closedListingMarkers"
-              required
-              rows={4}
-              defaultValue={discovery.closedListingMarkers.join("\n")}
-            />
-            <small className="field-help">
-              A listed phrase marks a fetched search-only role as inactive.
-            </small>
-          </label>
+          <TextArea
+            defaultValue={discovery.structuredVerificationSources.join("\n")}
+            hint="Search-only integration IDs that publish schema.org JobPosting data."
+            id={runtimeSettingFieldId("structuredVerificationSources")}
+            label="Structured verification source IDs"
+            name="structuredVerificationSources"
+            rows={4}
+          />
+          <TextArea
+            defaultValue={discovery.closedListingMarkers.join("\n")}
+            hint="A listed phrase marks a fetched search-only role as inactive."
+            id={runtimeSettingFieldId("closedListingMarkers")}
+            label="Closed-listing markers"
+            name="closedListingMarkers"
+            required
+            rows={4}
+          />
         </div>
       </section>
 
@@ -336,37 +324,37 @@ export function RuntimeSettingsForm({
           />
         </div>
         <div className="form-grid form-grid-two settings-text-grid">
-          <label>
-            <span>Ignored title words</span>
-            <textarea name="stopWords" rows={6} defaultValue={matching.stopWords.join("\n")} />
-          </label>
-          <label>
-            <span>Generic leadership words</span>
-            <textarea
-              name="genericTitleTerms"
-              required
-              rows={6}
-              defaultValue={matching.genericTitleTerms.join("\n")}
-            />
-          </label>
-          <label>
-            <span>Remote work terms</span>
-            <textarea
-              name="remoteTerms"
-              required
-              rows={6}
-              defaultValue={matching.remoteTerms.join("\n")}
-            />
-          </label>
-          <label>
-            <span>Unrestricted remote phrases</span>
-            <textarea
-              name="unrestrictedRemotePhrases"
-              required
-              rows={6}
-              defaultValue={matching.unrestrictedRemotePhrases.join("\n")}
-            />
-          </label>
+          <TextArea
+            defaultValue={matching.stopWords.join("\n")}
+            id={runtimeSettingFieldId("stopWords")}
+            label="Ignored title words"
+            name="stopWords"
+            rows={6}
+          />
+          <TextArea
+            defaultValue={matching.genericTitleTerms.join("\n")}
+            id={runtimeSettingFieldId("genericTitleTerms")}
+            label="Generic leadership words"
+            name="genericTitleTerms"
+            required
+            rows={6}
+          />
+          <TextArea
+            defaultValue={matching.remoteTerms.join("\n")}
+            id={runtimeSettingFieldId("remoteTerms")}
+            label="Remote work terms"
+            name="remoteTerms"
+            required
+            rows={6}
+          />
+          <TextArea
+            defaultValue={matching.unrestrictedRemotePhrases.join("\n")}
+            id={runtimeSettingFieldId("unrestrictedRemotePhrases")}
+            label="Unrestricted remote phrases"
+            name="unrestrictedRemotePhrases"
+            required
+            rows={6}
+          />
         </div>
       </section>
 
@@ -382,15 +370,14 @@ export function RuntimeSettingsForm({
             .sort(([, left], [, right]) => left.priority - right.priority)
             .map(([name, provider]) => (
               <div className="provider-settings" key={name}>
-                <label>
-                  <span>{provider.label} endpoint</span>
-                  <input
-                    name={`provider:${name}:endpoint`}
-                    type="url"
-                    required
-                    defaultValue={provider.endpoint}
-                  />
-                </label>
+                <TextField
+                  defaultValue={provider.endpoint}
+                  id={runtimeSettingFieldId(`provider:${name}:endpoint`)}
+                  label={`${provider.label} endpoint`}
+                  name={`provider:${name}:endpoint`}
+                  required
+                  type="url"
+                />
                 <NumberField
                   label={`${provider.label} maximum per query`}
                   name={`provider:${name}:maxResults`}
@@ -398,23 +385,21 @@ export function RuntimeSettingsForm({
                   min={limits.providerMaxResults.min}
                   max={limits.providerMaxResults.max}
                 />
-                <label>
-                  <span>Strategy override</span>
-                  <textarea
-                    name={`provider:${name}:strategies`}
-                    rows={4}
-                    defaultValue={provider.strategies?.join("\n") ?? ""}
-                  />
-                  <small className="field-help">Leave blank to use the discovery order.</small>
-                </label>
-                <label>
-                  <span>Market locations (JSON)</span>
-                  <textarea
-                    name={`provider:${name}:marketLocations`}
-                    rows={7}
-                    defaultValue={JSON.stringify(provider.marketLocations, null, 2)}
-                  />
-                </label>
+                <TextArea
+                  defaultValue={provider.strategies?.join("\n") ?? ""}
+                  hint="Leave blank to use the discovery order."
+                  id={runtimeSettingFieldId(`provider:${name}:strategies`)}
+                  label="Strategy override"
+                  name={`provider:${name}:strategies`}
+                  rows={4}
+                />
+                <TextArea
+                  defaultValue={JSON.stringify(provider.marketLocations, null, 2)}
+                  id={runtimeSettingFieldId(`provider:${name}:marketLocations`)}
+                  label="Market locations (JSON)"
+                  name={`provider:${name}:marketLocations`}
+                  rows={7}
+                />
                 <small className="field-help">Credential: {provider.apiKeyEnv}</small>
               </div>
             ))}
@@ -512,37 +497,20 @@ function NumberField({
   error,
 }: NumberFieldProps) {
   const inputId = runtimeSettingFieldId(name);
-  const helpId = `${inputId}-help`;
-  const errorId = `${inputId}-error`;
-  const describedBy = [help ? helpId : undefined, error ? errorId : undefined]
-    .filter(Boolean)
-    .join(" ");
   return (
-    <label htmlFor={inputId}>
-      <span>{label}</span>
-      <input
-        aria-describedby={describedBy || undefined}
-        aria-invalid={Boolean(error)}
-        id={inputId}
-        name={name}
-        type="number"
-        min={min}
-        max={max}
-        step={step}
-        required
-        defaultValue={value}
-      />
-      {help ? (
-        <small className="field-help" id={helpId}>
-          {help}
-        </small>
-      ) : null}
-      {error ? (
-        <p className="field-error" id={errorId}>
-          {error}
-        </p>
-      ) : null}
-    </label>
+    <TextField
+      defaultValue={value}
+      {...(error === undefined ? {} : { error })}
+      {...(help === undefined ? {} : { hint: help })}
+      id={inputId}
+      label={label}
+      max={max}
+      min={min}
+      name={name}
+      required
+      step={step}
+      type="number"
+    />
   );
 }
 

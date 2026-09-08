@@ -1,4 +1,4 @@
-import { Button, TextField } from "@job-radar/design-ui";
+import { Button, Card, SelectField, TextField } from "@job-radar/design-ui";
 import { Form } from "react-router";
 import type {
   ShortlistProspectResult,
@@ -45,7 +45,7 @@ export function ShortlistWorkspace({
       ) : (
         <div className="recruiter-shortlist-grid">
           {shortlists.map((shortlist) => (
-            <article className="recruiter-shortlist-card" key={shortlist.id}>
+            <Card className="recruiter-shortlist-card" key={shortlist.id}>
               <header>
                 <div>
                   <span className="recruiter-record-label">
@@ -83,7 +83,7 @@ export function ShortlistWorkspace({
                   ))}
                 </ul>
               )}
-            </article>
+            </Card>
           ))}
         </div>
       )}
@@ -250,16 +250,18 @@ export function AddToShortlist({
       <input name="intent" type="hidden" value="add-prospect" />
       <input name="runId" type="hidden" value={runId} />
       <input name="recruiterId" type="hidden" value={recruiter.id} />
-      <label>
-        <span>Add to Shortlist</span>
-        <select disabled={isSubmitting} name="shortlistId">
-          {available.map((shortlist) => (
-            <option key={shortlist.id} value={shortlist.id}>
-              {shortlist.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <SelectField
+        disabled={isSubmitting}
+        id={`add-to-shortlist-${recruiter.id}`}
+        label="Add to Shortlist"
+        name="shortlistId"
+      >
+        {available.map((shortlist) => (
+          <option key={shortlist.id} value={shortlist.id}>
+            {shortlist.name}
+          </option>
+        ))}
+      </SelectField>
       <Button busy={isSubmitting} disabled={isSubmitting} type="submit">
         Add Prospect
       </Button>

@@ -35,6 +35,7 @@ export function DeleteProfileButton({ profileId, profileName }: DeleteProfileBut
         label={`Delete ${profileName}`}
         onClick={handleDelete}
         title={`Delete ${profileName}`}
+        variant="danger"
       >
         <Trash2 size={17} />
       </IconButton>

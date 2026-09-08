@@ -1,4 +1,4 @@
-import { buttonAttributes, PageHeader, SectionHeader } from "@job-radar/design-ui";
+import { buttonAttributes, PageHeader, Panel, SectionHeader } from "@job-radar/design-ui";
 import { Radar } from "lucide-react";
 import { type ActionFunctionArgs, Link, redirect, useLoaderData } from "react-router";
 import { discoveryWeb } from "@/contexts/discovery/composition/discovery-web.server";
@@ -90,8 +90,6 @@ export default function JobsPage() {
             }
           />
 
-          <ScreeningSummary screened={data.screened} />
-
           {data.jobs.length > 0 ? (
             <section className="job-grid" aria-label="Ranked opportunities">
               {data.jobs.map((job) => (
@@ -104,7 +102,7 @@ export default function JobsPage() {
               ))}
             </section>
           ) : (
-            <section className="empty-state">
+            <Panel as="section" className="empty-state" padding="comfortable">
               <span className="empty-icon">
                 <Radar size={29} />
               </span>
@@ -121,76 +119,19 @@ export default function JobsPage() {
                   Review sources
                 </Link>
               </div>
-            </section>
+            </Panel>
           )}
         </>
       ) : (
-        <section className="empty-state">
+        <Panel as="section" className="empty-state" padding="comfortable">
           <h2>Create a search profile first</h2>
           <p>A profile defines the titles and locations you want to track.</p>
           <Link {...buttonAttributes("primary")} to="/profiles">
             Create profile
           </Link>
-        </section>
+        </Panel>
       )}
     </div>
-  );
-}
-
-function ScreeningSummary({
-  screened,
-}: {
-  screened: {
-    total: number;
-    title: number;
-    location: number;
-    stale: number;
-    unverified: number;
-    context: number;
-    salary: number;
-  };
-}) {
-  if (screened.total === 0) {
-    return null;
-  }
-
-  return (
-    <section className="screening-summary" aria-label="Screening summary">
-      <div>
-        <span className="screening-index">Profile screen</span>
-        <strong>{screened.total} active listings excluded</strong>
-      </div>
-      <dl>
-        <div>
-          <dt>Title</dt>
-          <dd>{screened.title}</dd>
-        </div>
-        <div>
-          <dt>Location</dt>
-          <dd>{screened.location}</dd>
-        </div>
-        <div>
-          <dt>Stale</dt>
-          <dd>{screened.stale}</dd>
-        </div>
-        <div>
-          <dt>Unverified</dt>
-          <dd>{screened.unverified}</dd>
-        </div>
-        {screened.context > 0 ? (
-          <div>
-            <dt>Context</dt>
-            <dd>{screened.context}</dd>
-          </div>
-        ) : null}
-        {screened.salary > 0 ? (
-          <div>
-            <dt>Salary</dt>
-            <dd>{screened.salary}</dd>
-          </div>
-        ) : null}
-      </dl>
-    </section>
   );
 }
 

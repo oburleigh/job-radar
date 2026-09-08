@@ -42,7 +42,7 @@ const statusRoles = [
   ["Success", "--jr-color-success", "--jr-color-success-subtle", "--jr-color-success-border"],
   ["Danger", "--jr-color-danger", "--jr-color-danger-subtle", "--jr-color-border-strong"],
   ["Warning", "--jr-color-warning-text", "--jr-color-warning-subtle", "--jr-color-warning-border"],
-  ["Info", "--jr-color-text", "--jr-color-info-subtle", "--jr-color-info-border"],
+  ["Info", "--jr-color-text", "--jr-color-info-subtle", "--jr-color-border-strong"],
 ] as const;
 
 const overlayRoles = [
@@ -97,10 +97,7 @@ const radii = [
   ["--jr-radius-pill", "Badges and filters, never buttons"],
 ] as const;
 
-const elevations = [
-  ["--jr-shadow-raised", "A row or card lifting under the pointer"],
-  ["--jr-shadow-overlay", "Modals, popovers, toasts"],
-] as const;
+const elevations = [["--jr-shadow-overlay", "Modals, popovers, toasts"]] as const;
 
 const durations = [
   ["--jr-motion-duration-instant", "Colour and state change"],
@@ -125,8 +122,11 @@ const curves = [
 ] as const;
 
 const metrics = [
+  ["--jr-size-control-indicator", "Checkbox and radio boxes"],
   ["--jr-control-height-sm", "Compact control"],
   ["--jr-control-height-md", "Default control, meets the 44px target"],
+  ["--jr-control-width-touch", "Utility control width on narrow screens"],
+  ["--jr-control-height-touch", "Utility control height on narrow screens"],
   ["--jr-bar-height", "A full-width bar, and the space a page reserves for it"],
   ["--jr-masthead-height", "The masthead, and the scroll clearance it needs"],
   ["--jr-content-width", "Maximum content measure"],

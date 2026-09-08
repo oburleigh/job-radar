@@ -1,19 +1,28 @@
 import {
   Button,
+  Card,
+  Checkbox,
+  Combobox,
+  ControlRow,
   IconButton,
   Modal,
   NotificationBadge,
   PageHeader,
+  Panel,
+  RadioGroup,
+  SearchField,
   SectionHeader,
   SelectField,
   Skeleton,
   Switch,
   TabNavigation,
+  TextArea,
   TextField,
   TokenAutocomplete,
   Tooltip,
 } from "@job-radar/design-ui";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { useState } from "react";
 
 const meta = {
   title: "Design system/Components",
@@ -29,8 +38,12 @@ export const Buttons: Story = {
       <Button variant="primary">Primary</Button>
       <Button>Secondary</Button>
       <Button variant="danger">Danger</Button>
+      <Button variant="utility">Utility</Button>
       <Button busy>Saving</Button>
       <IconButton label="Dismiss example">×</IconButton>
+      <IconButton label="Delete example" variant="danger">
+        ×
+      </IconButton>
     </div>
   ),
 };
@@ -98,6 +111,35 @@ export const Sections: Story = {
   ),
 };
 
+export const Boxes: Story = {
+  render: () => (
+    <div style={{ display: "grid", gap: "var(--jr-space-5)" }}>
+      <Panel>
+        <SectionHeader
+          description="One radius for every page-level box, so two pages cannot disagree."
+          title="Panel"
+          variant="contained"
+        />
+      </Panel>
+      <ControlRow fields={3}>
+        <SelectField id="story-control-row-market" label="Market" name="market">
+          <option>Every market</option>
+        </SelectField>
+        <SelectField id="story-control-row-state" label="State" name="state">
+          <option>Every state</option>
+        </SelectField>
+        <SearchField id="story-control-row-search" label="Search" name="q" />
+        <Button variant="secondary">Apply filters</Button>
+      </ControlRow>
+      <div style={{ display: "grid", gap: "var(--jr-space-3)" }}>
+        <Card>A record, one step down in radius from the panel it sits in.</Card>
+        <Card tone="retired">The same record once it has been removed.</Card>
+        <Card tone="outlined">A record with a neutral boundary inside another surface.</Card>
+      </div>
+    </div>
+  ),
+};
+
 export const Tabs: Story = {
   render: () => (
     <div style={{ display: "grid", gap: "var(--jr-space-5)" }}>
@@ -154,4 +196,78 @@ export const Annotations: Story = {
       </span>
     </div>
   ),
+};
+
+export const LongFormEntry: Story = {
+  render: () => (
+    <div style={{ display: "grid", gap: "1rem", width: "26rem" }}>
+      <TextArea
+        hint="One value per line."
+        id="story-text-area"
+        label="Excluded title terms"
+        rows={5}
+      />
+      <TextArea error="Enter at least one term." id="story-text-area-error" label="Required list" />
+      <SearchField id="story-search" label="Search matches" placeholder="Title, company" />
+    </div>
+  ),
+};
+
+export const Choices: Story = {
+  render: () => {
+    const [scope, setScope] = useState("with-recruiters");
+    return (
+      <div style={{ display: "grid", gap: "1.25rem", width: "26rem" }}>
+        <Checkbox
+          description="Accept location-agnostic remote jobs."
+          id="story-checkbox"
+          label="Include remote roles"
+        />
+        <RadioGroup
+          id="story-radio-group"
+          legend="What happens to its recruiters?"
+          name="story-cascade"
+          onChange={setScope}
+          options={[
+            { label: "Remove them with the firm", value: "with-recruiters" },
+            { description: "They stay in the registry.", label: "Keep them", value: "firm-only" },
+          ]}
+          value={scope}
+        />
+      </div>
+    );
+  },
+};
+
+export const Filtering: Story = {
+  render: () => {
+    const [currency, setCurrency] = useState("AED");
+    return (
+      <div style={{ width: "22rem" }}>
+        <Combobox
+          hint="Filter by code, name, or country."
+          id="story-combobox"
+          label="Salary currency"
+          name="story-currency"
+          onChange={setCurrency}
+          options={[
+            {
+              detail: "UAE Dirham",
+              label: "AED",
+              searchTerms: ["United Arab Emirates"],
+              value: "AED",
+            },
+            {
+              detail: "Pound Sterling",
+              label: "GBP",
+              searchTerms: ["United Kingdom"],
+              value: "GBP",
+            },
+            { detail: "Singapore Dollar", label: "SGD", searchTerms: ["Singapore"], value: "SGD" },
+          ]}
+          value={currency}
+        />
+      </div>
+    );
+  },
 };

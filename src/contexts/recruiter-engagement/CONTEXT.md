@@ -41,6 +41,10 @@ _Avoid_: Resume, Retry
 
 **Directory**
 : The context-owned set of canonical recruitment firms and recruiters reconciled from observations. It is not a shared people directory.
+_Avoid_: Registry, which names discovery's ATS Registry and made one word mean two different sets
+
+**Directory listing**
+: One filtered read of the Directory for a surface to render, carrying the firms, the recruiters without a firm, the specialisms available to filter by, and the counts each of those is drawn from.
 
 **Recruitment firm**
 : A canonical recruitment organisation identified from its public website domain. Observed names and other sourced facts remain evidence rather than silently replacing the canonical record.

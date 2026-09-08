@@ -26,7 +26,7 @@ export function RecruiterLocationCombobox({
       id="recruiter-target-locations"
       {...(initialOptions ? { initialOptions } : {})}
       name={name}
-      label="Target locations (required)"
+      label="Target locations"
       onChange={onChange}
       placeholder="Type a country, city, or region"
       required

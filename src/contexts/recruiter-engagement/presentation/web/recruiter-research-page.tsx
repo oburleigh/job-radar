@@ -1,9 +1,11 @@
 import {
   Button,
   PageHeader,
+  Panel,
   SectionHeader,
   SelectField,
   TabNavigation,
+  TextArea,
   TextField,
   TokenAutocomplete,
   type TokenAutocompleteOption,
@@ -27,7 +29,7 @@ import type {
   RankedRecruiter,
   RankedRecruiterDirectory,
 } from "@/contexts/recruiter-engagement/domain/recruiter-directory";
-import type { RecruiterRegistry } from "@/contexts/recruiter-engagement/domain/recruiter-registry";
+import type { RecruiterDirectoryListing } from "@/contexts/recruiter-engagement/domain/recruiter-directory-listing";
 import type {
   ResearchCoverage,
   ResearchRun,
@@ -36,9 +38,12 @@ import type {
 import type { RecruiterResearchStartField } from "@/contexts/recruiter-engagement/presentation/web/requests/recruiter-research-request";
 import type { LocationOption } from "@/platform/http/location-option";
 import { useRevalidationPoll } from "@/platform/http/use-revalidation-poll";
+import {
+  type RecruiterDirectoryFilters,
+  RecruiterDirectoryPanel,
+} from "./recruiter-directory-panel";
 import { RecruiterEvidenceHistory } from "./recruiter-evidence-history";
 import { RecruiterLocationCombobox } from "./recruiter-location-combobox";
-import { type RecruiterRegistryFilters, RecruiterRegistryPanel } from "./recruiter-registry-panel";
 import { AddToShortlist, ShortlistWorkspace } from "./shortlist-workspace";
 
 import "./styles.css";
@@ -75,10 +80,10 @@ type RecruiterResearchPageProps = {
     }[];
     readonly selectedProvider: string;
   };
-  readonly registry?: RecruiterRegistry;
-  readonly registryFilters?: RecruiterRegistryFilters;
+  readonly listing?: RecruiterDirectoryListing;
+  readonly directoryFilters?: RecruiterDirectoryFilters;
   readonly research?: RecruiterResearchRunView;
-  readonly view?: "registry" | "run";
+  readonly view?: "directory" | "run";
 };
 
 const activeStatuses = new Set<ResearchRun["status"]>(["pending", "running", "interrupted"]);
@@ -98,8 +103,8 @@ export function RecruiterResearchPage({
   defaultTargets,
   initialLocationOptions,
   providerSelection,
-  registry,
-  registryFilters,
+  listing,
+  directoryFilters,
   research,
   view = "run",
 }: RecruiterResearchPageProps) {
@@ -206,18 +211,18 @@ export function RecruiterResearchPage({
           Research
         </Link>
         <Link
-          aria-current={view === "registry" ? "page" : undefined}
-          to="/recruiter-search?view=registry"
+          aria-current={view === "directory" ? "page" : undefined}
+          to="/recruiter-search?view=directory"
         >
-          Registry
+          Directory
         </Link>
       </TabNavigation>
 
-      {view === "registry" && registry && registryFilters ? (
-        <RecruiterRegistryPanel
-          filters={registryFilters}
+      {view === "directory" && listing && directoryFilters ? (
+        <RecruiterDirectoryPanel
+          filters={directoryFilters}
           isSubmitting={isSubmitting}
-          registry={registry}
+          listing={listing}
         />
       ) : (
         <>
@@ -226,7 +231,13 @@ export function RecruiterResearchPage({
             meta="Public web only"
             title="Set the market focus"
           />
-          <section className="panel recruiter-brief-panel" aria-labelledby="recruiter-brief-title">
+          <Panel
+            as="section"
+            className="recruiter-brief-panel"
+            overflow="visible"
+            padding="comfortable"
+            aria-labelledby="recruiter-brief-title"
+          >
             <Form
               key={run?.id ?? "new-research"}
               method="post"
@@ -251,7 +262,7 @@ export function RecruiterResearchPage({
                   hint="Cannot exceed the recruiter target."
                   id="firm-target"
                   inputMode="numeric"
-                  label="Firms to find (required)"
+                  label="Firms to find"
                   min="1"
                   name="firmTarget"
                   required
@@ -266,7 +277,7 @@ export function RecruiterResearchPage({
                   hint="Positive whole numbers with no fixed maximum."
                   id="recruiter-target"
                   inputMode="numeric"
-                  label="Recruiters to find (required)"
+                  label="Recruiters to find"
                   min="1"
                   name="recruiterTarget"
                   required
@@ -282,7 +293,7 @@ export function RecruiterResearchPage({
                 )}
                 id="recruiter-specialisms"
                 invalidSelectionMessage="Choose a Specialism from the suggestions."
-                label="Specialisms (required)"
+                label="Specialisms"
                 name="specialisms"
                 onChange={setSpecialisms}
                 options={criterionOptions([...criteriaOptions.specialisms, ...specialisms])}
@@ -300,7 +311,7 @@ export function RecruiterResearchPage({
                 )}
                 id="recruiter-industries"
                 invalidSelectionMessage="Choose a Target industry from the suggestions."
-                label="Target industries (required)"
+                label="Target industries"
                 name="industries"
                 onChange={setIndustries}
                 options={criterionOptions([...criteriaOptions.industries, ...industries])}
@@ -315,29 +326,20 @@ export function RecruiterResearchPage({
                 open={optionalContextOpen}
               >
                 <summary>Add optional search context</summary>
-                <label className="recruiter-textarea-label" htmlFor="recruiter-brief">
-                  <span>Search brief (optional)</span>
-                  <textarea
-                    value={briefDescription}
-                    disabled={isSubmitting || isActive}
-                    {...textareaAccessibility("recruiter-brief", briefError, true)}
-                    id="recruiter-brief"
-                    maxLength={1000}
-                    name="brief"
-                    onChange={(event) => setBriefDescription(event.target.value)}
-                    placeholder="e.g. Director-level roles at product-led companies"
-                    rows={3}
-                  />
-                  <small id="recruiter-brief-hint">
-                    Use this only for details the selections above cannot express, such as seniority
-                    or employer type.
-                  </small>
-                  {briefError ? (
-                    <small className="jr-field-error" id="recruiter-brief-error">
-                      {briefError}
-                    </small>
-                  ) : null}
-                </label>
+                <TextArea
+                  className="recruiter-brief-input"
+                  disabled={isSubmitting || isActive}
+                  error={briefError}
+                  hint="Use this only for details the selections above cannot express, such as seniority or employer type."
+                  id="recruiter-brief"
+                  label="Search brief (optional)"
+                  maxLength={1000}
+                  name="brief"
+                  onChange={(event) => setBriefDescription(event.target.value)}
+                  placeholder="e.g. Director-level roles at product-led companies"
+                  rows={3}
+                  value={briefDescription}
+                />
               </details>
               <section className="recruiter-execution" aria-labelledby="research-adapter-title">
                 <div className="recruiter-execution-copy">
@@ -432,7 +434,7 @@ export function RecruiterResearchPage({
                 )}
               </div>
             </Form>
-          </section>
+          </Panel>
 
           {actionError ? (
             <p className="recruiter-action-error" role="alert">
@@ -489,19 +491,9 @@ function researchStageLabel(stage: ResearchRun["checkpoint"] | undefined): strin
   return stage === "recruiters" ? "Finding recruiters" : "Researching firms";
 }
 
-function textareaAccessibility(id: string, error: string | undefined, hasHint: boolean) {
-  const describedBy = [hasHint ? `${id}-hint` : undefined, error ? `${id}-error` : undefined]
-    .filter(Boolean)
-    .join(" ");
-  return {
-    "aria-describedby": describedBy || undefined,
-    "aria-invalid": error ? true : undefined,
-  };
-}
-
 function EmptyResearchState() {
   return (
-    <section className="empty-state recruiter-empty-state">
+    <Panel as="section" className="empty-state recruiter-empty-state" padding="comfortable">
       <span className="empty-icon" aria-hidden="true">
         <LoaderCircle size={27} />
       </span>
@@ -510,7 +502,7 @@ function EmptyResearchState() {
         Choose a market focus and targets. Firm observations appear before the recruiter stage
         completes.
       </p>
-    </section>
+    </Panel>
   );
 }
 
@@ -532,7 +524,7 @@ function ResearchRunResult({
         <h2 id="recruiter-results-title">Run results</h2>
         <span>{run.id}</span>
       </div>
-      <div className="panel recruiter-run-panel">
+      <Panel className="recruiter-run-panel" overflow="clipped">
         <div className="recruiter-run-summary" role="status">
           <RunStatus status={run.status} />
           <dl>
@@ -737,7 +729,7 @@ function ResearchRunResult({
             </ul>
           </section>
         ) : null}
-      </div>
+      </Panel>
     </section>
   );
 }

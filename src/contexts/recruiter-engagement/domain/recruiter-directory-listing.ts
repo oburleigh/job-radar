@@ -5,7 +5,7 @@ import {
   resolveFirmId,
 } from "./recruiter-directory";
 
-export type RegistryRecruiter = {
+export type DirectoryRecruiter = {
   readonly companyName: string;
   readonly id: string;
   readonly name: string;
@@ -15,33 +15,33 @@ export type RegistryRecruiter = {
   readonly title: string;
 };
 
-export type RegistryFirm = {
+export type DirectoryFirm = {
   readonly id: string;
   readonly name: string;
-  readonly recruiters: readonly RegistryRecruiter[];
+  readonly recruiters: readonly DirectoryRecruiter[];
   readonly removed: boolean;
   readonly specialisms: readonly string[];
   readonly websiteUrl: string;
 };
 
-export type RecruiterRegistry = {
+export type RecruiterDirectoryListing = {
   readonly availableSpecialisms: readonly string[];
   readonly firmCount: number;
-  readonly firms: readonly RegistryFirm[];
+  readonly firms: readonly DirectoryFirm[];
   readonly recruiterCount: number;
   /** Every removal in the directory, not only those matching the active filter. */
   readonly removedCount: number;
-  readonly unassociatedRecruiters: readonly RegistryRecruiter[];
+  readonly unassociatedRecruiters: readonly DirectoryRecruiter[];
 };
 
-export function listRecruiterRegistry(
+export function listRecruiterDirectory(
   directory: RecruiterDirectory,
   command: {
     readonly includeRemoved?: boolean;
     readonly profileHosts: readonly string[];
     readonly specialism?: string;
   },
-): RecruiterRegistry {
+): RecruiterDirectoryListing {
   const keep = (kind: "firm" | "recruiter", recordId: string) =>
     command.includeRemoved === true || !isDirectoryRecordRemoved(directory, kind, recordId);
 
@@ -57,7 +57,7 @@ export function listRecruiterRegistry(
         matchesSpecialism(specialismsByFirm.get(firm.id) ?? [], command.specialism),
     )
     .map(
-      (firm): RegistryFirm => ({
+      (firm): DirectoryFirm => ({
         id: firm.id,
         name: firm.name,
         recruiters: directory.recruiters
@@ -68,7 +68,7 @@ export function listRecruiterRegistry(
               resolveFirmId(directory, recruiter.firmId) === firm.id &&
               keep("recruiter", recruiter.id),
           )
-          .map((recruiter) => toRegistryRecruiter(directory, recruiter, command.profileHosts))
+          .map((recruiter) => toDirectoryRecruiter(directory, recruiter, command.profileHosts))
           .toSorted(byName),
         removed: isDirectoryRecordRemoved(directory, "firm", firm.id),
         specialisms: specialismsByFirm.get(firm.id) ?? [],
@@ -77,16 +77,26 @@ export function listRecruiterRegistry(
     )
     .toSorted(byName);
 
-  const listedFirmIds = new Set(firms.map((firm) => firm.id));
+  /*
+   * A recruiter is without a firm when the Directory holds no firm for it, which is not the same as
+   * its firm failing the active specialism filter. Testing against the filtered firms listed every
+   * recruiter at every non-matching firm as unassociated, so a filter added recruiters to the very
+   * count that claims to be filtered.
+   */
+  const directoryFirmIds = new Set(
+    directory.firms
+      .filter((firm) => firm.mergedInto === null && keep("firm", firm.id))
+      .map((firm) => firm.id),
+  );
   const unassociatedRecruiters = directory.recruiters
     .filter(
       (recruiter) =>
         recruiter.mergedInto === null &&
         keep("recruiter", recruiter.id) &&
         (recruiter.firmId === null ||
-          !listedFirmIds.has(resolveFirmId(directory, recruiter.firmId))),
+          !directoryFirmIds.has(resolveFirmId(directory, recruiter.firmId))),
     )
-    .map((recruiter) => toRegistryRecruiter(directory, recruiter, command.profileHosts))
+    .map((recruiter) => toDirectoryRecruiter(directory, recruiter, command.profileHosts))
     .toSorted(byName);
 
   return {
@@ -101,11 +111,11 @@ export function listRecruiterRegistry(
   };
 }
 
-function toRegistryRecruiter(
+function toDirectoryRecruiter(
   directory: RecruiterDirectory,
   recruiter: Recruiter,
   profileHosts: readonly string[],
-): RegistryRecruiter {
+): DirectoryRecruiter {
   return {
     companyName: recruiter.companyName,
     id: recruiter.id,

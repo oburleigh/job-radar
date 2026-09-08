@@ -4,10 +4,14 @@ import { describe, expect, it } from "vitest";
 import {
   Button,
   buttonAttributes,
+  Card,
+  ControlRow,
+  controlRowAttributes,
   IconButton,
   Modal,
   NotificationBadge,
   PageHeader,
+  Panel,
   SectionHeader,
   SelectField,
   Skeleton,
@@ -17,6 +21,63 @@ import {
 } from "./index";
 
 describe("generic UI public contract", () => {
+  it("gives every page-level box one shape, whichever element carries it", () => {
+    const div = renderToStaticMarkup(<Panel>Body</Panel>);
+    const section = renderToStaticMarkup(<Panel as="section">Body</Panel>);
+
+    expect(div).toBe('<div class="jr-panel">Body</div>');
+    expect(section).toBe('<section class="jr-panel">Body</section>');
+  });
+
+  it("states a panel's overflow only where the product has asked for one", () => {
+    expect(renderToStaticMarkup(<Panel>Body</Panel>)).not.toContain("data-overflow");
+    expect(renderToStaticMarkup(<Panel overflow="clipped">Body</Panel>)).toContain(
+      'data-overflow="clipped"',
+    );
+    expect(renderToStaticMarkup(<Panel overflow="visible">Body</Panel>)).toContain(
+      'data-overflow="visible"',
+    );
+  });
+
+  it("keeps a caller's layout class beside the panel's own", () => {
+    const html = renderToStaticMarkup(<Panel className="run-panel">Body</Panel>);
+
+    expect(html).toContain('class="jr-panel run-panel"');
+  });
+
+  it("separates a card's tone and inset from its box", () => {
+    expect(renderToStaticMarkup(<Card>Row</Card>)).toBe('<article class="jr-card">Row</article>');
+    expect(renderToStaticMarkup(<Card tone="retired">Row</Card>)).toContain('data-tone="retired"');
+    expect(renderToStaticMarkup(<Card tone="outlined">Row</Card>)).toContain(
+      'data-tone="outlined"',
+    );
+    expect(renderToStaticMarkup(<Card padding="none">Row</Card>)).toContain('data-padding="none"');
+    expect(renderToStaticMarkup(<Card as="li">Row</Card>)).toContain("<li ");
+  });
+
+  it("sizes a control row from its field count rather than its page", () => {
+    expect(renderToStaticMarkup(<ControlRow fields={2}>Fields</ControlRow>)).toContain(
+      'data-fields="2"',
+    );
+    expect(renderToStaticMarkup(<ControlRow fields={3}>Fields</ControlRow>)).toContain(
+      'data-fields="3"',
+    );
+    expect(renderToStaticMarkup(<ControlRow fields={2}>Fields</ControlRow>)).toContain(
+      'class="jr-panel jr-control-row"',
+    );
+  });
+
+  it("shares control-row presentation with a row that must be another component", () => {
+    expect(controlRowAttributes(3, "filter-bar")).toEqual({
+      className: "jr-panel jr-control-row filter-bar",
+      "data-fields": 3,
+    });
+    expect(controlRowAttributes(1)).toEqual({
+      className: "jr-panel jr-control-row",
+      "data-fields": 1,
+    });
+  });
+
   it("renders a busy primary button with native button semantics", () => {
     const html = renderToStaticMarkup(
       <Button busy variant="primary">
@@ -72,6 +133,25 @@ describe("generic UI public contract", () => {
     expect(html).toContain('aria-describedby="profile-name-hint profile-name-error"');
   });
 
+  it("renders a unit beside a text field without a second bordered box", () => {
+    const html = renderToStaticMarkup(
+      <TextField id="max-age" label="Maximum age" name="maxAgeDays" suffix="days" type="number" />,
+    );
+
+    expect(html).toContain("jr-text-field-shell");
+    expect(html).toContain('class="jr-text-field-suffix">days</span>');
+    expect(html).toContain('id="max-age"');
+    // The unit is decoration; the field keeps its own accessible name from the label.
+    expect(html).toContain('for="max-age"');
+  });
+
+  it("omits the shell entirely when a text field carries no unit", () => {
+    const html = renderToStaticMarkup(<TextField id="profile-name" label="Name" />);
+
+    expect(html).not.toContain("jr-text-field-shell");
+    expect(html).not.toContain("jr-text-field-suffix");
+  });
+
   it("connects a native select to the shared field, hint, and error contract", () => {
     const html = renderToStaticMarkup(
       <SelectField
@@ -118,6 +198,15 @@ describe("generic UI public contract", () => {
 
     expect(html).toContain('aria-label="Close dialog"');
   });
+
+  it.each(["warning", "danger", "success", "neutral"] as const)(
+    "exposes the panel %s tone without product classes",
+    (tone) => {
+      const html = renderToStaticMarkup(<Panel tone={tone}>Outcome</Panel>);
+      expect(html).toContain(`data-tone="${tone}"`);
+      expect(html).toContain('class="jr-panel"');
+    },
+  );
 
   it("keeps decorative skeletons out of the accessibility tree", () => {
     const html = renderToStaticMarkup(<Skeleton width="8rem" />);

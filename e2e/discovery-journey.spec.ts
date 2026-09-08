@@ -13,6 +13,12 @@ async function setDocumentVisibility(page: Page, state: "hidden" | "visible"): P
 
 const fixtureUrl = "http://127.0.0.1:3200";
 
+test.use({
+  launchOptions: {
+    args: ["--host-resolver-rules=MAP job-radar.test 127.0.0.1", "--no-proxy-server"],
+  },
+});
+
 test("completes discovery and triage while profile editing remains responsive", async ({
   page,
   request,
@@ -185,6 +191,59 @@ test("completes discovery and triage while profile editing remains responsive", 
   await page.screenshot({ path: "test-results/ui-review/discovery-running-desktop.png" });
   await expect(runningNotice).toHaveCount(0, { timeout: 4_500 });
   expect(Date.now() - noticeStartedAt).toBeGreaterThanOrEqual(3_000);
+
+  await activeActivity.click();
+  const activeCard = page.getByRole("article", { name: `Discovery Run #${started.runId}` });
+  const runningLink = page.getByRole("link", {
+    name: `Run #${started.runId} Running`,
+    exact: true,
+  });
+  for (const theme of ["light", "dark"]) {
+    await page.evaluate((value) => {
+      document.documentElement.dataset.theme = value;
+    }, theme);
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 1000 });
+      await expect(runningLink).toBeVisible();
+      await expect(runningLink).toHaveCSS("border-radius", "6px");
+      const colours = await runningLink.evaluate((element) => {
+        const probe = document.createElement("span");
+        probe.style.color = "var(--jr-color-text-muted)";
+        element.append(probe);
+        const expected = getComputedStyle(probe).color;
+        probe.remove();
+        return { actual: getComputedStyle(element).color, expected };
+      });
+      expect(colours.actual).toBe(colours.expected);
+      await expect(activeCard).toHaveCSS("border-radius", "12px");
+      await expect(activeCard).toHaveCSS("border-width", "1px");
+      await expect(activeCard).toHaveCSS("border-style", "solid");
+      const borderColours = await activeCard.evaluate((element) => {
+        const probe = document.createElement("span");
+        probe.style.color = "var(--jr-color-border-strong)";
+        element.append(probe);
+        const expected = getComputedStyle(probe).color;
+        probe.remove();
+        return { actual: getComputedStyle(element).borderColor, expected };
+      });
+      expect(borderColours.actual).toBe(borderColours.expected);
+      const box = await activeCard.boundingBox();
+      expect(box?.x).toBeGreaterThanOrEqual(0);
+      expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(width);
+      await page.screenshot({
+        path: `test-results/ui-review/activity-running-${width}-${theme}.png`,
+        fullPage: true,
+      });
+      await activeCard.screenshot({
+        path: `test-results/ui-review/active-card-${width}-${theme}.png`,
+      });
+    }
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.evaluate(() => {
+    document.documentElement.dataset.theme = "light";
+  });
+  await page.goto(`/?profile=${profileId}&provider=serper`);
 
   await expect(
     page.getByRole("button", { name: `Cancel discovery #${started.runId}` }),
@@ -398,7 +457,7 @@ test("shows persisted board progress while matching waits for collection", async
   const token = crypto.randomUUID().slice(0, 8);
 
   try {
-    await configureDiscoveryFixtures(page);
+    await configureDiscoveryFixtures(page, undefined, 120_000);
     await disableAllKnownBoards(page);
     await addKnownBoard(page, {
       companyName: "Acme Progress",
@@ -487,6 +546,7 @@ test("shows persisted board progress while matching waits for collection", async
     await captureRunStateMatrix(page, "running-detail");
 
     await page.reload();
+    await page.waitForLoadState("networkidle");
     const restoredProgress = page.getByRole("region", {
       name: `Discovery Run #${started.runId} progress`,
     });
@@ -632,9 +692,9 @@ test("cancels a running discovery without resurrecting a delayed poll", async ({
     timeout: 30_000,
   });
   await activeRun.getByRole("link", { name: `View run #${started.runId}` }).click();
-  const cancelDiscovery = page.getByRole("button", {
-    name: `Cancel discovery #${started.runId}`,
-  });
+  const cancelDiscovery = page
+    .getByRole("region", { name: `Discovery Run #${started.runId} progress` })
+    .getByRole("button", { name: `Cancel discovery #${started.runId}` });
 
   const failedCancellation = page.waitForResponse(
     (response) =>
@@ -700,6 +760,10 @@ test("explains that a returned role was excluded by location", async ({ page }) 
 
   await page.getByRole("link", { name: "Activity" }).click();
   await runHistoryLinkFor(page, started.runId).click();
+  const publicUrl = page.getByLabel("Public job URL");
+  await expect(publicUrl).toHaveCSS("height", "44px");
+  await expect(publicUrl).toHaveCSS("font-size", "16px");
+  await expect(publicUrl).toHaveCSS("border-radius", "8px");
   await page
     .getByLabel("Public job URL")
     .fill("https://boards.greenhouse.io/acme-mismatch/jobs/67890");
@@ -841,12 +905,63 @@ test("explains every zero-match funnel state", async ({ page }) => {
   }
 });
 
+test.describe("discovery over plain HTTP", () => {
+  test("starts discovery without secure-context crypto and reports its run outcome", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+    await configureDiscoveryFixtures(page, `${fixtureUrl}/serper/failure`);
+    await disableAllKnownBoards(page);
+    const enabledSource = page
+      .getByRole("list")
+      .getByRole("switch", { name: /^Enable / })
+      .first();
+    await enabledSource.click();
+    await expect(page.getByRole("list").getByRole("switch", { name: /^Disable / })).toHaveCount(1);
+    const profile = await createProfile(page);
+    await page.goto(`http://job-radar.test:3100/?profile=${profile.id}&provider=serper`);
+    await page.waitForLoadState("networkidle");
+    expect(
+      await page.evaluate(() => ({
+        secure: window.isSecureContext,
+        randomUUID: typeof window.crypto.randomUUID,
+        getRandomValues: typeof window.crypto.getRandomValues,
+      })),
+    ).toEqual({ secure: false, randomUUID: "undefined", getRandomValues: "function" });
+
+    const errors: string[] = [];
+    const starts: Request[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    page.on("request", (request) => {
+      if (request.method() === "POST" && new URL(request.url()).pathname === "/api/discovery-runs")
+        starts.push(request);
+    });
+    await page.getByRole("button", { name: "Run discovery" }).click();
+    expect(errors).toEqual([]);
+    await expect.poll(() => starts.length).toBe(1);
+    const startedRequest = starts[0];
+    if (!startedRequest) throw new Error("Run discovery sent no start request.");
+    expect(startedRequest.postDataJSON()).toEqual({ profileId: profile.id, provider: "serper" });
+    const response = await startedRequest.response();
+    expect(response?.status()).toBe(202);
+    const started: { runId: number } = await response?.json();
+    const outcome = page.getByRole("alert").filter({ hasText: "Discovery failed" });
+    await expect(outcome).toContainText("Serper.dev was unavailable after 3 attempts", {
+      timeout: 30_000,
+    });
+    await expect(outcome.getByRole("link", { name: `View run #${started.runId}` })).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+});
+
 async function configureDiscoveryFixtures(
   page: Page,
   serperEndpoint = `${fixtureUrl}/serper/success`,
+  requestTimeoutMs = 30_000,
 ): Promise<void> {
   await page.goto("/settings/opportunities");
   await page.waitForLoadState("networkidle");
+  await page.getByLabel("Request timeout (ms)").fill(String(requestTimeoutMs));
   await page.getByLabel("Run status polling (ms)").fill("1000");
   await page.getByLabel("Requested web results per query").fill("1");
   await page.getByLabel("Background work batch size").fill("1");

@@ -3,6 +3,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { productAppearanceViolations } from "./component-appearance";
+
 const repositoryRoot = process.cwd();
 const packages = {
   tokens: {
@@ -233,17 +235,61 @@ describe("design system boundaries", () => {
    * most common value was 18px, which the nine-step scale does not contain. A page carried four to
    * six left edges as a result.
    */
-  it("keeps spacing, radius and stacking in the token layer", () => {
+  /**
+   * Every visual decision, not five properties. An earlier version of this gate covered padding,
+   * margin, gap, radius and stacking, and reported the stylesheets clean while a hundred raw pixel
+   * values remained in `min-height`, `width`, `border`, `max-width`, `top` and nine others. A gate
+   * that measures part of a rule and reports it as the whole rule is worse than none, because it
+   * reads as evidence.
+   *
+   * A device pixel is absolute and ignores the reader's font size. `rem` is not, so one-off layout
+   * geometry is expressed in `rem` and repeated semantic values take their token. Media conditions
+   * are device widths rather than layout, so they are exempt.
+   */
+  it("expresses every visual value as a token or a relative unit", () => {
     for (const stylesheet of tokenConsumers.filter((file) => file.endsWith(".css"))) {
-      const source = readConsumer(stylesheet);
+      const declarations = readConsumer(stylesheet)
+        .split("\n")
+        .filter((line) => !line.trimStart().startsWith("@media"));
 
-      expect(source, `${stylesheet} sets spacing in raw pixels`).not.toMatch(
-        /(?:padding|margin|gap)[a-z-]*:[^;]*\b\d+px/,
+      const raw = declarations.filter((line) => /^\s*[a-z-]+:[^;]*\b\d+px/.test(line));
+      expect(
+        raw.map((line) => line.trim()),
+        `${stylesheet} sets a visual value in raw pixels`,
+      ).toEqual([]);
+
+      expect(readConsumer(stylesheet), `${stylesheet} sets a raw stacking order`).not.toMatch(
+        /z-index:\s*\d/,
       );
-      expect(source, `${stylesheet} sets a corner radius in raw pixels`).not.toMatch(
-        /border-radius:[^;]*\b\d+px/,
-      );
-      expect(source, `${stylesheet} sets a raw stacking order`).not.toMatch(/z-index:\s*\d/);
+    }
+  });
+
+  /**
+   * The design system is the only way the product builds a control. `<button>` was already barred;
+   * everything else was not, and 48 visible controls were hand-rolled across the two contexts
+   * because three components did not exist to use. Adding the component is the fix; hand-rolling
+   * one is not.
+   *
+   * A hidden input carries a form payload and renders nothing, so it is not a control.
+   */
+  it("builds every control from the shared component package", () => {
+    for (const layer of [
+      discoveryPresentation,
+      recruiterEngagementPresentation,
+      "src/contexts/discovery/composition/web",
+      "src/contexts/recruiter-engagement/composition/web",
+    ]) {
+      for (const file of sourceFiles(path.join(repositoryRoot, layer))) {
+        const source = readFileSync(file, "utf8");
+
+        expect(source, `${file} hand-rolls a select`).not.toMatch(/<select\b/);
+        expect(source, `${file} hand-rolls a textarea`).not.toMatch(/<textarea\b/);
+
+        const visibleInputs = [...source.matchAll(/<input\b[^>]*>/g)]
+          .map((match) => match[0])
+          .filter((element) => !/type="hidden"/.test(element));
+        expect(visibleInputs, `${file} hand-rolls a visible input`).toEqual([]);
+      }
     }
   });
 
@@ -308,6 +354,40 @@ describe("design system boundaries", () => {
     }
   });
 
+  it("keeps page-level box styling inside the shared component package", () => {
+    for (const stylesheet of productStylesheets) {
+      const source = withoutComments(readFileSync(path.join(repositoryRoot, stylesheet), "utf8"));
+
+      for (const match of source.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+        const selector = match[1] ?? "";
+        const body = match[2] ?? "";
+        const rule = selector.trim().replace(/\s+/g, " ");
+
+        /*
+         * Two independent tests, because requiring a fill and a corner together let a radius-only
+         * rule redraw the corner and pass, which is the defect this gate was written for: the
+         * Directory drew `--jr-radius-md` boxes while Opportunities drew `--jr-radius-xl`. The
+         * card and panel radii are the components' own whether or not a fill comes with them.
+         */
+        const drawsABox =
+          /background:\s*var\(--jr-color-surface/.test(body) && /border-radius:/.test(body);
+        const takesAnOwnedRadius = /border-radius:\s*var\(--jr-radius-(?:lg|xl)\)/.test(body);
+
+        if (drawsABox || takesAnOwnedRadius) {
+          expect(
+            boxesDrawnByTheProduct[rule],
+            `${stylesheet} draws its own box in \`${rule}\`; use Panel, Card or ControlRow`,
+          ).toBeTypeOf("string");
+        }
+      }
+    }
+  });
+
+  it("leaves shared component appearance to its owner across product styling", () => {
+    const violations = productAppearanceViolations(path.join(repositoryRoot, "src"));
+    expect(violations).toEqual([]);
+  });
+
   it("keeps native button styling inside the shared component package", () => {
     for (const layer of [
       discoveryPresentation,
@@ -340,6 +420,24 @@ interface JsonDocument {
   };
 }
 
+/** The two stylesheets a product context is allowed to own. */
+const productStylesheets = [
+  `${discoveryPresentation}/styles.css`,
+  `${recruiterEngagementPresentation}/styles.css`,
+] as const;
+
+/**
+ * A surface fill and a corner together make a box, and boxes belong to `Panel`, `Card` and
+ * `ControlRow`. Each rule here is a smaller shape inside something else rather than a box in its
+ * own right, with the reason it is not one.
+ */
+const boxesDrawnByTheProduct: Record<string, string> = {
+  ".settings-static-value": "a read-only value shown inline in a field, not a container",
+  ".filter-reset": "a control's own fill, sized to the control row's trailing track",
+  ".score-ring": "the match score's pill, whose radius is its shape",
+  ".recruiter-shortlist-prospects > li": "a line inside a card, insetted rather than boxed",
+};
+
 /** The gallery, which documents tokens. It is deliberately not counted as consumption. */
 const galleryFiles = [
   `${webDocs}/src/tokens.stories.tsx`,
@@ -363,6 +461,8 @@ const publishedWithoutConsumer: Record<string, string> = {
 /** Set by the product at runtime rather than declared by the token layer. */
 const productLocalProperties = new Set([
   "--discovery-notice-hold-duration",
+  "--anchor-width",
+  "--available-height", // provided by Base UI on its positioned surfaces
   "--transform-origin", // provided by Base UI on its positioned surfaces
 ]);
 

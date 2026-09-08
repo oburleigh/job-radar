@@ -1,4 +1,4 @@
-import { Button } from "@job-radar/design-ui";
+import { Button, Checkbox, TextArea, TextField } from "@job-radar/design-ui";
 import { Save } from "lucide-react";
 import { useState } from "react";
 import { useFetcher } from "react-router";
@@ -64,41 +64,34 @@ export function ProfileForm({ profile, defaults, initialLocationOptions }: Profi
           </div>
         </div>
         <div className="form-grid form-grid-three">
-          <label>
-            <span>Profile name</span>
-            <input
-              name="name"
-              required
-              defaultValue={profile?.name ?? ""}
-              placeholder="Example profile name"
-            />
-          </label>
-          <label>
-            <span>Maximum age</span>
-            <div className="input-suffix">
-              <input
-                name="maxAgeDays"
-                type="number"
-                min="1"
-                max="365"
-                defaultValue={profile?.maxAgeDays ?? defaults.maximumAgeDays}
-              />
-              <span>days</span>
-            </div>
-          </label>
-          <label>
-            <span>Minimum score</span>
-            <div className="input-suffix">
-              <input
-                name="minScore"
-                type="number"
-                min="0"
-                max="100"
-                defaultValue={profile?.minScore ?? defaults.minimumScore}
-              />
-              <span>/ 100</span>
-            </div>
-          </label>
+          <TextField
+            defaultValue={profile?.name ?? ""}
+            id="profile-name"
+            label="Profile name"
+            name="name"
+            placeholder="Example profile name"
+            required
+          />
+          <TextField
+            defaultValue={profile?.maxAgeDays ?? defaults.maximumAgeDays}
+            id="profile-max-age-days"
+            label="Maximum age"
+            max="365"
+            min="1"
+            name="maxAgeDays"
+            suffix="days"
+            type="number"
+          />
+          <TextField
+            defaultValue={profile?.minScore ?? defaults.minimumScore}
+            id="profile-min-score"
+            label="Minimum score"
+            max="100"
+            min="0"
+            name="minScore"
+            suffix="/ 100"
+            type="number"
+          />
         </div>
         <div className="form-grid form-grid-three">
           <CurrencyCombobox
@@ -107,30 +100,28 @@ export function ProfileForm({ profile, defaults, initialLocationOptions }: Profi
             onChange={setSalaryCurrency}
             value={salaryCurrency}
           />
-          <label>
-            <span>Preferred salary minimum</span>
-            <input
-              name="salaryMin"
-              type="number"
-              min="1000"
-              max="100000000"
-              step="1000"
-              defaultValue={profile?.salaryMin ?? ""}
-              placeholder="100000"
-            />
-          </label>
-          <label>
-            <span>Preferred salary maximum</span>
-            <input
-              name="salaryMax"
-              type="number"
-              min="1000"
-              max="100000000"
-              step="1000"
-              defaultValue={profile?.salaryMax ?? ""}
-              placeholder="150000"
-            />
-          </label>
+          <TextField
+            defaultValue={profile?.salaryMin ?? ""}
+            id="profile-salary-min"
+            label="Preferred salary minimum"
+            max="100000000"
+            min="1000"
+            name="salaryMin"
+            placeholder="100000"
+            step="1000"
+            type="number"
+          />
+          <TextField
+            defaultValue={profile?.salaryMax ?? ""}
+            id="profile-salary-max"
+            label="Preferred salary maximum"
+            max="100000000"
+            min="1000"
+            name="salaryMax"
+            placeholder="150000"
+            step="1000"
+            type="number"
+          />
         </div>
         <p className="field-help">
           Salary is optional and annual. A published range in the same currency must overlap this
@@ -146,18 +137,18 @@ export function ProfileForm({ profile, defaults, initialLocationOptions }: Profi
           </div>
         </div>
         <div className="form-grid form-grid-two">
-          <label>
-            <span>Target job titles</span>
-            <textarea
-              name="titleTerms"
-              required
-              rows={11}
-              defaultValue={profile?.titleTerms.join("\n") ?? ""}
-              placeholder={"Head of Engineering\nVP Engineering"}
-            />
-          </label>
+          <TextArea
+            defaultValue={profile?.titleTerms.join("\n") ?? ""}
+            id="profile-title-terms"
+            label="Target job titles"
+            name="titleTerms"
+            placeholder={"Head of Engineering\nVP Engineering"}
+            required
+            rows={11}
+          />
           <LocationCombobox
             error={locationError}
+            id="profile-location-terms"
             {...(initialLocationOptions ? { initialOptions: initialLocationOptions } : {})}
             name="locationTerms"
             onChange={setLocationTerms}
@@ -169,29 +160,20 @@ export function ProfileForm({ profile, defaults, initialLocationOptions }: Profi
             values={locationTerms}
           />
         </div>
-        <label className="checkbox-row">
-          <input
-            type="checkbox"
-            name="includeRemote"
-            defaultChecked={profile?.includeRemote ?? false}
-          />
-          <span>
-            <strong>Include remote roles</strong>
-            Accept location-agnostic remote jobs. Country-restricted remote roles must still match a
-            target location.
-          </span>
-        </label>
-        <label className="checkbox-row">
-          <input
-            type="checkbox"
-            name="includeUnverified"
-            defaultChecked={profile?.includeUnverified ?? false}
-          />
-          <span>
-            <strong>Include unverified web-search leads</strong>
-            Show search-only pages that could not be confirmed through a structured ATS feed.
-          </span>
-        </label>
+        <Checkbox
+          defaultChecked={profile?.includeRemote ?? false}
+          description="Accept location-agnostic remote jobs. Country-restricted remote roles must still match a target location."
+          id="profile-include-remote"
+          label="Include remote roles"
+          name="includeRemote"
+        />
+        <Checkbox
+          defaultChecked={profile?.includeUnverified ?? false}
+          description="Show search-only pages that could not be confirmed through a structured ATS feed."
+          id="profile-include-unverified"
+          label="Include unverified web-search leads"
+          name="includeUnverified"
+        />
       </section>
 
       <section className="form-section">
@@ -204,15 +186,14 @@ export function ProfileForm({ profile, defaults, initialLocationOptions }: Profi
           </div>
         </div>
         <div className="form-grid">
-          <label>
-            <span>Required job keywords, one per line</span>
-            <textarea
-              name="requiredJobTerms"
-              rows={5}
-              defaultValue={profile?.requiredJobTerms.join("\n") ?? ""}
-              placeholder={"Keyword one\nKeyword two"}
-            />
-          </label>
+          <TextArea
+            defaultValue={profile?.requiredJobTerms.join("\n") ?? ""}
+            id="profilerequired-job-terms"
+            label="Required job keywords, one per line"
+            name="requiredJobTerms"
+            placeholder={"Keyword one\nKeyword two"}
+            rows={5}
+          />
         </div>
       </section>
 
@@ -224,33 +205,30 @@ export function ProfileForm({ profile, defaults, initialLocationOptions }: Profi
           </div>
         </div>
         <div className="form-grid form-grid-two">
-          <label>
-            <span>Excluded title terms</span>
-            <textarea
-              name="excludedTitleTerms"
-              rows={6}
-              defaultValue={profile?.excludedTitleTerms.join("\n") ?? ""}
-              placeholder={"Intern\nGraduate\nAssistant"}
-            />
-          </label>
-          <label>
-            <span>Excluded job context terms</span>
-            <textarea
-              name="excludedDescriptionTerms"
-              rows={6}
-              defaultValue={profile?.excludedDescriptionTerms.join("\n") ?? ""}
-              placeholder={"US only\nSecurity clearance required"}
-            />
-          </label>
-          <label>
-            <span>Excluded location terms</span>
-            <textarea
-              name="excludedLocationTerms"
-              rows={6}
-              defaultValue={profile?.excludedLocationTerms.join("\n") ?? ""}
-              placeholder={"Canada\nUnited States"}
-            />
-          </label>
+          <TextArea
+            defaultValue={profile?.excludedTitleTerms.join("\n") ?? ""}
+            id="profileexcluded-title-terms"
+            label="Excluded title terms"
+            name="excludedTitleTerms"
+            placeholder={"Intern\nGraduate\nAssistant"}
+            rows={6}
+          />
+          <TextArea
+            defaultValue={profile?.excludedDescriptionTerms.join("\n") ?? ""}
+            id="profileexcluded-description-terms"
+            label="Excluded job context terms"
+            name="excludedDescriptionTerms"
+            placeholder={"US only\nSecurity clearance required"}
+            rows={6}
+          />
+          <TextArea
+            defaultValue={profile?.excludedLocationTerms.join("\n") ?? ""}
+            id="profileexcluded-location-terms"
+            label="Excluded location terms"
+            name="excludedLocationTerms"
+            placeholder={"Canada\nUnited States"}
+            rows={6}
+          />
         </div>
       </section>
 

@@ -1,4 +1,4 @@
-import { Button, NotificationBadge, Tooltip } from "@job-radar/design-ui";
+import { Button, buttonAttributes, NotificationBadge, Tooltip } from "@job-radar/design-ui";
 import {
   BriefcaseBusiness,
   CircleUserRound,
@@ -127,107 +127,108 @@ export function AppNavigation({ activeRunCount }: { readonly activeRunCount: num
 
   return (
     <header className="masthead">
-      <Link className="brand" to="/" aria-label="Job Radar opportunities">
-        <span className="brand-mark" aria-hidden="true">
-          <Radar size={21} strokeWidth={2.4} />
-        </span>
-        <span className="brand-copy">
-          <span className="brand-name">Job Radar</span>
-          <span className="brand-kicker">Private opportunity index</span>
-        </span>
-      </Link>
+      <div className="masthead-inner">
+        <Link className="brand" to="/" aria-label="Job Radar opportunities">
+          <span className="brand-mark" aria-hidden="true">
+            <Radar size={21} strokeWidth={2.4} />
+          </span>
+          <span className="brand-copy">
+            <span className="brand-name">Job Radar</span>
+            <span className="brand-kicker">Private opportunity index</span>
+          </span>
+        </Link>
 
-      <nav className="nav-list" aria-label="Primary navigation">
-        {primaryNavigation.map((item) => {
-          const Icon = item.icon;
-          const active = matchesNavigationPath(item.href, pathname);
-          const pending = pendingPathname
-            ? matchesNavigationPath(item.href, pendingPathname)
-            : false;
-          return (
+        <nav className="nav-list" aria-label="Primary navigation">
+          {primaryNavigation.map((item) => {
+            const Icon = item.icon;
+            const active = matchesNavigationPath(item.href, pathname);
+            const pending = pendingPathname
+              ? matchesNavigationPath(item.href, pendingPathname)
+              : false;
+            return (
+              <Link
+                aria-busy={pending || undefined}
+                key={item.href}
+                to={item.href}
+                className={`nav-link${active ? " nav-link-active" : ""}${pending ? " nav-link-pending" : ""}`}
+                aria-current={active ? "page" : undefined}
+              >
+                <Icon className="nav-icon" size={17} aria-hidden="true" />
+                <span className="nav-label">{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+        <span className="sr-only" role="status" aria-live="polite">
+          {pendingDestination ? `Loading ${pendingDestination.label}.` : ""}
+        </span>
+
+        <div className="utility-controls">
+          <div className="profile-menu" ref={profileMenuRef}>
+            <Tooltip label="Search profiles">
+              <Button
+                aria-controls="search-profiles-menu"
+                aria-current={profileActive ? "page" : undefined}
+                aria-expanded={profileMenuOpen}
+                aria-haspopup="menu"
+                id="search-profiles-trigger"
+                onClick={() => setProfileMenuOpen((open) => !open)}
+                variant="utility"
+              >
+                <CircleUserRound size={19} aria-hidden="true" />
+                <span className="sr-only">Search profiles</span>
+              </Button>
+            </Tooltip>
+            {profileMenuOpen ? (
+              <div className="profile-menu-content" id="search-profiles-menu" role="menu">
+                <Link
+                  className="profile-menu-item"
+                  onClick={() => setProfileMenuOpen(false)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      setProfileMenuOpen(false);
+                      document.getElementById("search-profiles-trigger")?.focus();
+                    }
+                  }}
+                  ref={profileMenuItemRef}
+                  role="menuitem"
+                  to="/profiles"
+                >
+                  <SlidersHorizontal size={17} aria-hidden="true" />
+                  Search profiles
+                </Link>
+              </div>
+            ) : null}
+          </div>
+          <Tooltip label={activityLabel}>
             <Link
-              aria-busy={pending || undefined}
-              key={item.href}
-              to={item.href}
-              className={`nav-link${active ? " nav-link-active" : ""}${pending ? " nav-link-pending" : ""}`}
-              aria-current={active ? "page" : undefined}
+              aria-busy={activityPending || undefined}
+              aria-current={matchesNavigationPath("/activity", pathname) ? "page" : undefined}
+              {...buttonAttributes("utility")}
+              to="/activity"
             >
-              <Icon className="nav-icon" size={17} aria-hidden="true" />
-              <span className="nav-label">{item.label}</span>
+              <History size={19} aria-hidden="true" />
+              <NotificationBadge count={activeRunCount} />
             </Link>
-          );
-        })}
-      </nav>
-      <span className="sr-only" role="status" aria-live="polite">
-        {pendingDestination ? `Loading ${pendingDestination.label}.` : ""}
-      </span>
-
-      <div className="utility-controls">
-        <div className="profile-menu" ref={profileMenuRef}>
-          <Tooltip label="Search profiles">
-            <Button
-              aria-controls="search-profiles-menu"
-              aria-current={profileActive ? "page" : undefined}
-              aria-expanded={profileMenuOpen}
-              aria-haspopup="menu"
-              className={`utility-control${profileActive ? " utility-control-active" : ""}`}
-              id="search-profiles-trigger"
-              onClick={() => setProfileMenuOpen((open) => !open)}
-              variant="quiet"
+          </Tooltip>
+          <Tooltip label="System settings">
+            <Link
+              aria-busy={settingsPending || undefined}
+              aria-current={matchesNavigationPath("/settings", pathname) ? "page" : undefined}
+              {...buttonAttributes("utility")}
+              to="/settings/opportunities"
             >
-              <CircleUserRound size={19} aria-hidden="true" />
-              <span className="sr-only">Search profiles</span>
+              <Cog size={19} aria-hidden="true" />
+            </Link>
+          </Tooltip>
+          <Tooltip label={themeLabel}>
+            <Button className="theme-toggle" onClick={cycleTheme} variant="utility">
+              <ThemeIcon size={19} aria-hidden="true" />
+              <span>{theme}</span>
             </Button>
           </Tooltip>
-          {profileMenuOpen ? (
-            <div className="profile-menu-content" id="search-profiles-menu" role="menu">
-              <Link
-                className="profile-menu-item"
-                onClick={() => setProfileMenuOpen(false)}
-                onKeyDown={(event) => {
-                  if (event.key === "Escape") {
-                    event.preventDefault();
-                    setProfileMenuOpen(false);
-                    document.getElementById("search-profiles-trigger")?.focus();
-                  }
-                }}
-                ref={profileMenuItemRef}
-                role="menuitem"
-                to="/profiles"
-              >
-                <SlidersHorizontal size={17} aria-hidden="true" />
-                Search profiles
-              </Link>
-            </div>
-          ) : null}
         </div>
-        <Tooltip label={activityLabel}>
-          <Link
-            aria-busy={activityPending || undefined}
-            aria-current={matchesNavigationPath("/activity", pathname) ? "page" : undefined}
-            className={`utility-link${matchesNavigationPath("/activity", pathname) ? " utility-control-active" : ""}${activityPending ? " utility-control-pending" : ""}`}
-            to="/activity"
-          >
-            <History size={19} aria-hidden="true" />
-            <NotificationBadge count={activeRunCount} />
-          </Link>
-        </Tooltip>
-        <Tooltip label="System settings">
-          <Link
-            aria-busy={settingsPending || undefined}
-            aria-current={matchesNavigationPath("/settings", pathname) ? "page" : undefined}
-            className={`utility-link${matchesNavigationPath("/settings", pathname) ? " utility-control-active" : ""}${settingsPending ? " utility-control-pending" : ""}`}
-            to="/settings/opportunities"
-          >
-            <Cog size={19} aria-hidden="true" />
-          </Link>
-        </Tooltip>
-        <Tooltip label={themeLabel}>
-          <Button className="theme-toggle utility-control" onClick={cycleTheme} variant="quiet">
-            <ThemeIcon size={19} aria-hidden="true" />
-            <span>{theme}</span>
-          </Button>
-        </Tooltip>
       </div>
     </header>
   );

@@ -1,4 +1,4 @@
-import { Button, SelectField } from "@job-radar/design-ui";
+import { Button, controlRowAttributes, SelectField } from "@job-radar/design-ui";
 import { Play } from "lucide-react";
 import { useState, useTransition } from "react";
 import { Link, useLocation, useNavigate, useNavigation, useSearchParams } from "react-router";
@@ -45,7 +45,7 @@ export function RunControls({
   }
 
   function runDiscovery() {
-    const requestId = crypto.randomUUID();
+    const requestId = crypto.getRandomValues(new Uint32Array(4)).join("-");
     const profileName =
       profiles.find((profile) => profile.id === profileId)?.name ?? `Profile ${profileId}`;
     dispatchDiscoveryRunStart({
@@ -86,7 +86,10 @@ export function RunControls({
   }
 
   return (
-    <section className="run-controls" aria-label="Discovery controls">
+    <section
+      {...controlRowAttributes(providers.length > 0 ? 2 : 1, "run-controls")}
+      aria-label="Discovery controls"
+    >
       <SelectField
         disabled={isPending || isSelectionPending}
         id="opportunity-search-profile"

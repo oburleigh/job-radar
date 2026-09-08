@@ -1,4 +1,4 @@
-import { Button } from "@job-radar/design-ui";
+import { Button, TextArea } from "@job-radar/design-ui";
 import { Save } from "lucide-react";
 import { useFetcher } from "react-router";
 
@@ -87,23 +87,15 @@ function CatalogueField({
   readonly name: keyof RecruiterResearchSettings["criteriaOptions"];
   readonly values: readonly string[];
 }) {
-  const errorId = `${name}-catalogue-error`;
   return (
-    <label>
-      <span>{label}</span>
-      <textarea
-        aria-describedby={error ? errorId : undefined}
-        aria-invalid={error ? true : undefined}
-        defaultValue={values.join("\n")}
-        name={name}
-        required
-        rows={8}
-      />
-      {error ? (
-        <small className="jr-field-error" id={errorId}>
-          {error}
-        </small>
-      ) : null}
-    </label>
+    <TextArea
+      defaultValue={values.join("\n")}
+      error={error}
+      id={`${name}-catalogue`}
+      label={label}
+      name={name}
+      required
+      rows={8}
+    />
   );
 }

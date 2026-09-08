@@ -3,14 +3,6 @@
   gap: var(--jr-space-5);
 }
 
-.recruiter-run-panel {
-  overflow: hidden;
-}
-
-.recruiter-brief-panel {
-  overflow: visible;
-}
-
 .recruiter-record-label {
   color: var(--jr-color-text-muted);
   font-size: var(--jr-font-size-caption);
@@ -22,12 +14,7 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--jr-space-5);
-  padding: var(--jr-space-5) var(--jr-space-0) var(--jr-space-6);
-}
-
-.recruiter-textarea-label {
-  display: grid;
-  gap: var(--jr-space-2);
+  padding: var(--jr-space-2) var(--jr-space-0) var(--jr-space-3);
 }
 
 .recruiter-target-fields {
@@ -35,29 +22,6 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--jr-space-3);
   align-items: start;
-}
-
-.recruiter-textarea-label > span,
-.recruiter-brief-form .jr-field-label {
-  font-size: var(--jr-font-size-caption);
-  line-height: var(--jr-line-height-caption);
-  font-weight: var(--jr-font-weight-medium);
-  letter-spacing: 0.04em;
-}
-
-.recruiter-textarea-label textarea {
-  width: 100%;
-  resize: vertical;
-  padding: var(--jr-space-3);
-  color: var(--jr-color-text);
-  background: var(--jr-color-surface);
-  border: 1px solid var(--jr-color-border-strong);
-  border-radius: var(--jr-radius-md);
-}
-
-.recruiter-textarea-label textarea[aria-invalid="true"] {
-  background: var(--jr-color-danger-subtle);
-  border-color: var(--jr-color-danger);
 }
 
 .recruiter-optional-context {
@@ -78,14 +42,11 @@
   outline-offset: var(--jr-space-1);
 }
 
-.recruiter-optional-context[open] .recruiter-textarea-label {
-  margin-top: var(--jr-space-2);
-}
-
+/* The form's own two columns, so a panel does not run two column systems at once. */
 .recruiter-execution {
   display: grid;
   grid-column: 1 / -1;
-  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--jr-space-5);
   margin: 0;
   padding: var(--jr-space-5) 0 0;
@@ -134,7 +95,6 @@
   text-decoration: underline;
 }
 
-.recruiter-textarea-label small,
 .recruiter-brief-actions p,
 .recruiter-run-provenance,
 .recruiter-evidence > div,
@@ -153,19 +113,14 @@
   padding-top: var(--jr-space-1);
 }
 
-.recruiter-brief-actions .jr-button,
-.recruiter-run-controls .jr-button {
-  min-height: 44px;
-}
-
 .recruiter-brief-actions p {
-  max-width: 630px;
+  max-width: 39.375rem;
   margin: 0;
 }
 
 .recruiter-start-status {
   display: grid;
-  max-width: 630px;
+  max-width: 39.375rem;
   gap: var(--jr-space-1);
   color: var(--jr-color-text);
 }
@@ -315,7 +270,7 @@
 
 .recruiter-source-plan li {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(170px, 0.45fr);
+  grid-template-columns: minmax(0, 1fr) minmax(10.625rem, 0.45fr);
   gap: var(--jr-space-2) var(--jr-space-4);
   padding-top: var(--jr-space-3);
 }
@@ -480,7 +435,7 @@
   display: grid;
   gap: var(--jr-space-1);
   padding-left: var(--jr-space-3);
-  border-left: 1px solid var(--jr-color-accent);
+  border-left: var(--jr-border-width) solid var(--jr-color-accent);
 }
 
 .recruiter-evidence-history a {
@@ -579,9 +534,6 @@
 .recruiter-shortlist-card {
   display: grid;
   gap: var(--jr-space-3);
-  padding: var(--jr-space-4);
-  background: var(--jr-color-surface);
-  border-radius: var(--jr-radius-md);
 }
 
 .recruiter-shortlist-card > header,
@@ -671,36 +623,6 @@
   margin-top: var(--jr-space-2);
 }
 
-.recruiter-add-to-shortlist label {
-  display: grid;
-  gap: var(--jr-space-1);
-  color: var(--jr-color-text-muted);
-  font-size: var(--jr-font-size-caption);
-  line-height: var(--jr-line-height-caption);
-}
-
-.recruiter-add-to-shortlist label > span {
-  font-size: var(--jr-font-size-caption);
-  line-height: var(--jr-line-height-caption);
-  font-weight: var(--jr-font-weight-semibold);
-  letter-spacing: 0.04em;
-}
-
-.recruiter-add-to-shortlist select {
-  min-height: var(--jr-control-height-md);
-  padding: 0 var(--jr-space-3);
-  color: var(--jr-color-text);
-  background: var(--jr-color-surface);
-  border: var(--jr-border-width) solid var(--jr-color-border-strong);
-  border-radius: var(--jr-radius-md);
-  font: inherit;
-}
-
-.recruiter-add-to-shortlist select:focus-visible {
-  outline: var(--jr-focus-width) solid var(--jr-color-focus-ring);
-  outline-offset: var(--jr-border-width);
-}
-
 .recruiter-firm-observation {
   display: grid;
   gap: var(--jr-space-4);
@@ -733,7 +655,7 @@
   font-size: var(--jr-font-size-caption);
   line-height: var(--jr-line-height-caption);
   text-decoration: underline;
-  text-underline-offset: 3px;
+  text-underline-offset: 0.1875rem;
 }
 
 .recruiter-firm-observation > p {
@@ -745,7 +667,7 @@
   display: grid;
   gap: var(--jr-space-2);
   padding-left: var(--jr-space-3);
-  border-left: 1px solid var(--jr-color-accent);
+  border-left: var(--jr-border-width) solid var(--jr-color-accent);
 }
 
 .recruiter-evidence blockquote,
@@ -845,13 +767,13 @@
   display: flex;
   align-items: center;
   gap: var(--jr-space-3);
-  min-height: 150px;
+  min-height: 9.375rem;
   padding: var(--jr-space-4);
   color: var(--jr-color-text-muted);
 }
 
 .recruiter-empty-results p {
-  max-width: 560px;
+  max-width: 35rem;
   margin: 0;
 }
 
@@ -933,66 +855,77 @@
   }
 }
 
-.recruiter-registry {
+.recruiter-directory {
   display: grid;
   gap: var(--jr-space-4);
 }
 
-.recruiter-registry-filters {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  gap: var(--jr-space-3);
-  padding: var(--jr-space-4);
-  background: var(--jr-color-surface-subtle);
-  border-radius: var(--jr-radius-md);
+.recruiter-directory-intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--jr-space-3) var(--jr-space-5);
+  align-items: start;
 }
 
-.recruiter-registry-toggle {
+.recruiter-directory-intro > p {
+  margin: 0;
+}
+
+.recruiter-directory-counts {
+  display: grid;
+  gap: var(--jr-space-1);
+  justify-items: end;
+  text-align: right;
+  color: var(--jr-color-text-muted);
+  font-size: var(--jr-font-size-caption);
+  line-height: var(--jr-line-height-caption);
+}
+
+.recruiter-directory-filter-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--jr-space-4);
+}
+
+.recruiter-directory-toggle {
   display: flex;
   align-items: center;
   gap: var(--jr-space-2);
   min-height: var(--jr-control-height-md);
 }
 
-.recruiter-registry-tiles {
+.recruiter-directory-tiles {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
   gap: var(--jr-space-4);
 }
 
-.recruiter-registry-tile {
+.recruiter-directory-tile {
   display: grid;
   gap: var(--jr-space-3);
   align-content: start;
-  padding: var(--jr-space-4);
-  background: var(--jr-color-surface);
-  border-radius: var(--jr-radius-md);
 }
 
-.recruiter-registry-tile[data-removed="true"] {
-  background: var(--jr-color-surface-subtle);
-}
-
-.recruiter-registry-tile > header {
+.recruiter-directory-tile > header {
   display: flex;
   justify-content: space-between;
   gap: var(--jr-space-3);
 }
 
-.recruiter-registry-tile h3 {
+.recruiter-directory-tile h3 {
   margin: 0;
   font-family: var(--jr-font-family-display);
   font-size: var(--jr-font-size-heading);
   line-height: var(--jr-line-height-heading);
 }
 
-.recruiter-registry-tile > header p {
+.recruiter-directory-tile > header p {
   margin: 0;
   color: var(--jr-color-text-muted);
 }
 
-.recruiter-registry-removed-label {
+.recruiter-directory-removed-label {
   align-self: start;
   padding: 0 var(--jr-space-2);
   color: var(--jr-color-warning-text);
@@ -1001,7 +934,7 @@
   white-space: nowrap;
 }
 
-.recruiter-registry-people {
+.recruiter-directory-people {
   display: grid;
   gap: var(--jr-space-2);
   margin: 0;
@@ -1009,7 +942,7 @@
   list-style: none;
 }
 
-.recruiter-registry-person {
+.recruiter-directory-person {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
@@ -1017,56 +950,29 @@
   padding-top: var(--jr-space-2);
 }
 
-.recruiter-registry-person[data-removed="true"] .recruiter-registry-person-name {
+.recruiter-directory-person[data-removed="true"] .recruiter-directory-person-name {
   text-decoration: line-through;
 }
 
-.recruiter-registry-person > div {
+.recruiter-directory-person > div {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--jr-space-2);
 }
 
-.recruiter-registry-person-title {
+.recruiter-directory-person-title {
   color: var(--jr-color-text-muted);
 }
 
-.recruiter-registry-person-actions a {
+.recruiter-directory-person-actions a {
   display: inline-flex;
   align-items: center;
   gap: var(--jr-space-1);
 }
 
-.recruiter-registry-confirm {
-  display: grid;
-  gap: var(--jr-space-3);
-  padding: var(--jr-space-3);
-  background: var(--jr-color-danger-subtle);
-  border-radius: var(--jr-radius-md);
-}
-
-.recruiter-registry-confirm fieldset {
-  display: grid;
-  gap: var(--jr-space-2);
-  margin: 0;
-  padding: 0;
-}
-
-.recruiter-registry-confirm label {
-  display: flex;
-  align-items: center;
-  gap: var(--jr-space-2);
-}
-
-.recruiter-registry-confirm > div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--jr-space-2);
-}
-
-.recruiter-registry-empty,
-.recruiter-registry-empty-people {
+.recruiter-directory-empty,
+.recruiter-directory-empty-people {
   margin: 0;
   color: var(--jr-color-text-muted);
 }

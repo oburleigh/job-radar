@@ -1,4 +1,4 @@
-import { Button } from "@job-radar/design-ui";
+import { Button, Checkbox, TextArea, TextField } from "@job-radar/design-ui";
 import { Save } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useFetcher } from "react-router";
@@ -60,45 +60,45 @@ export function IntegrationSettingsForm({
         </div>
         <div className="form-grid form-grid-two">
           {isNew ? (
-            <label>
-              <span>Integration ID</span>
-              <input
-                ref={integrationIdRef}
-                name="atsType"
-                required
-                pattern="[a-z][a-z0-9-]{1,39}"
-                placeholder="teamtailor"
-              />
-              <small className="field-help">
-                Lowercase letters, numbers, and hyphens. This cannot be renamed.
-              </small>
-            </label>
+            <TextField
+              hint="Lowercase letters, numbers, and hyphens. This cannot be renamed."
+              id="integration-ats-type"
+              label="Integration ID"
+              name="atsType"
+              pattern="[a-z][a-z0-9-]{1,39}"
+              placeholder="teamtailor"
+              ref={integrationIdRef}
+              required
+            />
           ) : null}
-          <label>
-            <span>Display name</span>
-            <input name="label" required defaultValue={integration.label} />
-          </label>
-          <label>
-            <span>Priority</span>
-            <input
-              name="priority"
-              type="number"
-              min="0"
-              max="10000"
-              required
-              defaultValue={integration.priority}
-            />
-          </label>
-          <label className="form-span-two">
-            <span>Source patterns, one per line</span>
-            <textarea
-              name="searchPatterns"
-              rows={6}
-              required
+          <TextField
+            defaultValue={integration.label}
+            id="integration-label"
+            label="Display name"
+            name="label"
+            required
+          />
+          <TextField
+            defaultValue={integration.priority}
+            id="integration-priority"
+            label="Priority"
+            max="10000"
+            min="0"
+            name="priority"
+            required
+            type="number"
+          />
+          <div className="form-span-two">
+            <TextArea
               defaultValue={integration.searchPatterns.join("\n")}
+              id="integration-search-patterns"
+              label="Source patterns, one per line"
+              name="searchPatterns"
               placeholder="jobs.example-ats.com"
+              required
+              rows={6}
             />
-          </label>
+          </div>
         </div>
       </section>
 
@@ -110,18 +110,20 @@ export function IntegrationSettingsForm({
           </div>
         </div>
         <div className="form-grid form-grid-two">
-          <label>
-            <span>Exact hostnames</span>
-            <textarea name="hostnames" rows={6} defaultValue={integration.hostnames.join("\n")} />
-          </label>
-          <label>
-            <span>Hostname suffixes</span>
-            <textarea
-              name="hostSuffixes"
-              rows={6}
-              defaultValue={integration.hostSuffixes.join("\n")}
-            />
-          </label>
+          <TextArea
+            defaultValue={integration.hostnames.join("\n")}
+            id="integration-hostnames"
+            label="Exact hostnames"
+            name="hostnames"
+            rows={6}
+          />
+          <TextArea
+            defaultValue={integration.hostSuffixes.join("\n")}
+            id="integration-host-suffixes"
+            label="Hostname suffixes"
+            name="hostSuffixes"
+            rows={6}
+          />
         </div>
       </section>
 
@@ -134,41 +136,32 @@ export function IntegrationSettingsForm({
             </div>
           </div>
           <div className="form-grid form-grid-two">
-            <label>
-              <span>API page size</span>
-              <input
-                name="pageSize"
-                type="number"
-                min="1"
-                max="1000"
-                defaultValue={integration.pageSize ?? ""}
-              />
-              <small className="field-help">
-                This is not the board limit. Direct sync paginates up to the global jobs-per-board
-                total.
-              </small>
-            </label>
-            <label>
-              <span>Endpoint templates</span>
-              <textarea
-                className="code-field"
-                name="endpoints"
-                rows={Math.max(6, Object.keys(integration.endpoints).length + 2)}
-                defaultValue={JSON.stringify(integration.endpoints, null, 2)}
-              />
-            </label>
-          </div>
-          <label className="checkbox-row">
-            <input
-              type="checkbox"
-              name="supportsBoardSync"
-              defaultChecked={integration.supportsBoardSync}
+            <TextField
+              defaultValue={integration.pageSize ?? ""}
+              hint="This is not the board limit. Direct sync paginates up to the global jobs-per-board total."
+              id="integration-page-size"
+              label="API page size"
+              max="1000"
+              min="1"
+              name="pageSize"
+              type="number"
             />
-            <span>
-              <strong>Enable direct board sync</strong>
-              Fetch structured jobs after a company board has been discovered.
-            </span>
-          </label>
+            <TextArea
+              className="code-field"
+              defaultValue={JSON.stringify(integration.endpoints, null, 2)}
+              id="integration-endpoints"
+              label="Endpoint templates"
+              name="endpoints"
+              rows={Math.max(6, Object.keys(integration.endpoints).length + 2)}
+            />
+          </div>
+          <Checkbox
+            defaultChecked={integration.supportsBoardSync}
+            description="Fetch structured jobs after a company board has been discovered."
+            id="integration-supports-board-sync"
+            label="Enable direct board sync"
+            name="supportsBoardSync"
+          />
         </section>
       ) : (
         <section className="form-section">

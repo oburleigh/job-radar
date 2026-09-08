@@ -20,7 +20,7 @@ import { createSavePublicSearchSettings } from "@/contexts/recruiter-engagement/
 import { createSaveResearchCriteriaOptions } from "@/contexts/recruiter-engagement/application/research-settings/save-research-criteria-options";
 import { createShortlistManagement } from "@/contexts/recruiter-engagement/application/shortlists/manage-shortlists";
 import { rankRecruiterDirectory } from "@/contexts/recruiter-engagement/domain/recruiter-directory";
-import { listRecruiterRegistry } from "@/contexts/recruiter-engagement/domain/recruiter-registry";
+import { listRecruiterDirectory } from "@/contexts/recruiter-engagement/domain/recruiter-directory-listing";
 import type { ResearchRun } from "@/contexts/recruiter-engagement/domain/research-run";
 import { createAfterResponseResearchRunScheduler } from "@/contexts/recruiter-engagement/infrastructure/background/after-response-research-run-scheduler";
 import { createCodexCliClient } from "@/contexts/recruiter-engagement/infrastructure/codex/codex-cli-client";
@@ -184,11 +184,11 @@ export const recruiterEngagementWeb = {
     };
   },
   listResearchRuns: activity.listResearchRuns,
-  async getRecruiterRegistry(filters: {
+  async getRecruiterDirectoryListing(filters: {
     readonly includeRemoved?: boolean;
     readonly specialism?: string;
   }) {
-    return listRecruiterRegistry(await directory.getDirectory(), {
+    return listRecruiterDirectory(await directory.getDirectory(), {
       profileHosts: currentSettings().publicSearch.profileSourceHosts,
       ...filters,
     });

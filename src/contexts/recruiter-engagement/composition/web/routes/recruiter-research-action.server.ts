@@ -103,7 +103,7 @@ export function createRecruiterResearchAction({
             recordId: parsed.command.recordId,
           });
         }
-        return redirect(registryDestination(formData));
+        return redirect(directoryDestination(formData));
       } catch (error) {
         return { error: error instanceof Error ? error.message : String(error) };
       }
@@ -187,8 +187,8 @@ export function createRecruiterResearchAction({
   };
 }
 
-function registryDestination(formData: FormData): string {
-  const parameters = new URLSearchParams({ view: "registry" });
+function directoryDestination(formData: FormData): string {
+  const parameters = new URLSearchParams({ view: "directory" });
   const specialism = formData.get("specialism");
   if (typeof specialism === "string" && specialism.length > 0) {
     parameters.set("specialism", specialism);

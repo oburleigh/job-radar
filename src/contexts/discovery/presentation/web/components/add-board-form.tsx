@@ -1,4 +1,4 @@
-import { Button } from "@job-radar/design-ui";
+import { Button, TextField } from "@job-radar/design-ui";
 import { Plus } from "lucide-react";
 import { useFetcher } from "react-router";
 
@@ -18,19 +18,20 @@ export function AddBoardForm() {
       className="add-board-form"
     >
       <input type="hidden" name="intent" value="add-board" />
-      <label>
-        <span>Company</span>
-        <input name="companyName" placeholder="Optional company name" />
-      </label>
-      <label className="board-url-field">
-        <span>Public ATS job, careers, or board URL</span>
-        <input
-          name="url"
-          type="url"
-          required
-          placeholder="https://jobs.example-ats.com/company/..."
-        />
-      </label>
+      <TextField
+        id="add-board-company-name"
+        label="Company"
+        name="companyName"
+        placeholder="Optional company name"
+      />
+      <TextField
+        id="add-board-url"
+        label="Public ATS job, careers, or board URL"
+        name="url"
+        placeholder="https://jobs.example-ats.com/company/..."
+        required
+        type="url"
+      />
       <Button type="submit" disabled={pending} busy={pending} variant="primary">
         <Plus size={17} />
         {pending ? "Adding..." : "Add ATS URL"}

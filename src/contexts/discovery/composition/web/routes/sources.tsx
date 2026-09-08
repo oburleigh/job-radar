@@ -1,4 +1,4 @@
-import { SectionHeader } from "@job-radar/design-ui";
+import { Panel, SectionHeader } from "@job-radar/design-ui";
 import { DatabaseZap, Search } from "lucide-react";
 import { type ActionFunctionArgs, useLoaderData } from "react-router";
 import type { AddJobSourceResult } from "@/contexts/discovery/application/source-coverage/add/result";
@@ -136,10 +136,10 @@ export default function SourcesPage() {
 
         <CompanyBoardsToggle enabled={data.companyBoardsEnabled} boardCount={data.boards.length} />
 
-        <div className="panel">
+        <Panel overflow="clipped">
           <AddBoardForm />
           <CompanySitesTable boards={data.boards} atsLabels={atsLabels} />
-        </div>
+        </Panel>
       </section>
     </section>
   );

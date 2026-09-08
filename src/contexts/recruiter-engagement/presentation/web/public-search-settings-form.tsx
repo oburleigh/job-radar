@@ -1,4 +1,4 @@
-import { Button, SelectField } from "@job-radar/design-ui";
+import { Button, SelectField, TextArea, TextField } from "@job-radar/design-ui";
 import { Save } from "lucide-react";
 import { useFetcher } from "react-router";
 
@@ -149,10 +149,15 @@ function NumberField({
   readonly value: number;
 }) {
   return (
-    <label>
-      <span>{label}</span>
-      <input defaultValue={value} min="1" name={name} required type="number" />
-    </label>
+    <TextField
+      defaultValue={value}
+      id={`public-search-${name}`}
+      label={label}
+      min="1"
+      name={name}
+      required
+      type="number"
+    />
   );
 }
 
@@ -166,9 +171,12 @@ function TermField({
   readonly values: readonly string[];
 }) {
   return (
-    <label>
-      <span>{label}</span>
-      <textarea defaultValue={values.join("\n")} name={name} rows={4} />
-    </label>
+    <TextArea
+      defaultValue={values.join("\n")}
+      id={`public-search-${name}`}
+      label={label}
+      name={name}
+      rows={4}
+    />
   );
 }

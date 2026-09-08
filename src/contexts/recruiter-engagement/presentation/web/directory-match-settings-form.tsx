@@ -1,4 +1,4 @@
-import { Button } from "@job-radar/design-ui";
+import { Button, TextField } from "@job-radar/design-ui";
 import { Save } from "lucide-react";
 import { useFetcher } from "react-router";
 import type { DirectoryMatchWeights } from "@/contexts/recruiter-engagement/domain/recruiter-directory";
@@ -83,9 +83,15 @@ function WeightField({
   readonly value: number;
 }) {
   return (
-    <label>
-      <span>{label}</span>
-      <input defaultValue={value} max="100" min="0" name={name} required type="number" />
-    </label>
+    <TextField
+      defaultValue={value}
+      id={`directory-match-${name}`}
+      label={label}
+      max="100"
+      min="0"
+      name={name}
+      required
+      type="number"
+    />
   );
 }

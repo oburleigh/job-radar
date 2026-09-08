@@ -1,12 +1,8 @@
 @import "@job-radar/design-ui/styles.css";
 
 @layer job-radar.reset {
-  * {
-    box-sizing: border-box;
-  }
-
   html {
-    min-width: 320px;
+    min-width: 20rem;
     background: var(--jr-color-canvas);
     scroll-padding-top: calc(var(--jr-masthead-height) + var(--jr-space-4));
     scrollbar-gutter: stable;
@@ -23,70 +19,22 @@
     line-height: var(--jr-line-height-body);
   }
 
-  button,
-  input,
-  select,
-  textarea {
-    color: inherit;
-    font: inherit;
-  }
-
-  /*
-   * The user agent draws a border on both, and a fieldset's is a 2px groove. Suppressing them
-   * here rather than per selector is what stopped a `border: 0` from being deleted along with
-   * the outlines it was never part of.
-   */
-  fieldset,
-  button {
-    margin: 0;
-    padding: 0;
-    border: 0;
-  }
-
-  button,
-  select {
-    cursor: pointer;
-  }
-
-  button:disabled,
-  select:disabled,
-  input:disabled,
-  textarea:disabled {
-    cursor: wait;
-    opacity: var(--jr-opacity-disabled);
-  }
-
   a {
     color: inherit;
     text-decoration: none;
   }
 
-  button:focus-visible,
-  a:focus-visible,
-  input:focus-visible,
-  select:focus-visible,
-  textarea:focus-visible {
+  a:focus-visible {
     outline: var(--jr-focus-width) solid var(--jr-color-focus-ring);
-    outline-offset: 2px;
+    outline-offset: 0.125rem;
     box-shadow: 0 0 0 var(--jr-space-1) var(--jr-color-focus-halo);
-  }
-
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: calc(-1 * var(--jr-border-width));
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
   }
 }
 
 .skip-link {
   position: fixed;
-  top: 8px;
-  left: 8px;
+  top: 0.5rem;
+  left: 0.5rem;
   z-index: var(--jr-z-skip-link);
   padding: var(--jr-space-3) var(--jr-space-4);
   color: var(--jr-color-text-on-accent);
@@ -107,32 +55,36 @@
   position: sticky;
   top: 0;
   z-index: var(--jr-z-header);
-  display: grid;
-  min-height: var(--jr-masthead-height);
-  grid-template-columns: 250px minmax(500px, 1fr) auto;
-  align-items: center;
-  padding: var(--jr-space-3) clamp(var(--jr-space-4), 2vw, var(--jr-space-6));
+  padding-block: var(--jr-space-3);
   color: var(--jr-color-text);
   background: var(--jr-color-canvas);
 }
 
+.masthead-inner {
+  display: grid;
+  min-height: var(--jr-masthead-height);
+  grid-template-columns: 15.625rem minmax(31.25rem, 1fr) auto;
+  align-items: center;
+}
+
+/* No inline pad, so the mark's left edge lands on the page column every panel below starts at. */
 .brand {
   display: flex;
   min-width: 0;
   align-items: center;
   gap: var(--jr-space-3);
-  padding: var(--jr-space-3) var(--jr-space-5);
+  padding: var(--jr-space-3) var(--jr-space-0);
 }
 
 .brand-mark {
   display: grid;
-  width: 38px;
-  height: 38px;
+  width: 2.375rem;
+  height: 2.375rem;
   flex: 0 0 auto;
   place-items: center;
   color: var(--jr-color-text-on-accent);
   background: var(--jr-color-accent);
-  border: 1px solid var(--jr-color-accent);
+  border: var(--jr-border-width) solid var(--jr-color-accent);
   border-radius: 50%;
 }
 
@@ -173,9 +125,10 @@
   min-height: var(--jr-control-height-md);
   align-items: center;
   gap: var(--jr-space-2);
-  padding: 0 var(--jr-space-4);
+  padding: var(--jr-space-0) var(--jr-space-4);
   color: var(--jr-color-text-muted);
   border-radius: var(--jr-radius-md);
+  font-weight: var(--jr-font-weight-medium);
   transition:
     color var(--jr-motion-duration-instant) var(--jr-ease-out),
     background-color var(--jr-motion-duration-instant) var(--jr-ease-out);
@@ -188,8 +141,7 @@
 
 .nav-link-active {
   color: var(--jr-color-text);
-  background: var(--jr-color-surface-subtle);
-  font-weight: var(--jr-font-weight-medium);
+  background: var(--jr-color-surface-hover);
 }
 
 .nav-link-active:hover {
@@ -225,35 +177,8 @@
   position: relative;
 }
 
-.utility-control,
-.utility-link {
-  position: relative;
-  display: inline-flex;
-  width: var(--jr-control-height-md);
-  min-width: var(--jr-control-height-md);
-  min-height: var(--jr-control-height-md);
-  align-items: center;
-  justify-content: center;
-  color: var(--jr-color-text-muted);
-  background: transparent;
-  border-radius: var(--jr-radius-md);
-}
-
-.utility-control:hover,
-.utility-link:hover {
-  color: var(--jr-color-text);
-  background: var(--jr-color-surface-hover);
-}
-
-.utility-control-active {
-  color: var(--jr-color-text);
-  background: var(--jr-color-surface-hover);
-}
-
 .theme-toggle {
   width: auto;
-  gap: var(--jr-space-2);
-  padding: 0 var(--jr-space-3);
 }
 
 .theme-toggle span {
@@ -264,9 +189,9 @@
 .profile-menu-content {
   position: absolute;
   z-index: var(--jr-z-dropdown);
-  top: calc(100% + 8px);
-  right: 8px;
-  min-width: 190px;
+  top: calc(100% + 0.5rem);
+  right: 0.5rem;
+  min-width: 11.875rem;
   padding: var(--jr-space-2);
   background: var(--jr-color-surface);
   box-shadow: var(--jr-shadow-overlay);
@@ -274,7 +199,7 @@
 
 .profile-menu-item {
   display: flex;
-  min-height: 44px;
+  min-height: var(--jr-control-height-md);
   align-items: center;
   gap: var(--jr-space-3);
   padding: 0 var(--jr-space-3);
@@ -295,10 +220,30 @@
   min-width: 0;
 }
 
-.page {
+/*
+ * The masthead spans the viewport for its background, but its contents sit on the same column as
+ * the page. Two different insets put the brand 14px off the page heading at 1440 and 188px off at
+ * 1920, where the page reaches its content width and centres while the masthead does not.
+ */
+.page,
+.masthead-inner {
   width: min(var(--jr-content-width), 100%);
-  margin: 0 auto;
-  padding: var(--jr-space-7) clamp(var(--jr-space-5), 3vw, var(--jr-space-8)) var(--jr-space-8);
+  margin-inline: auto;
+  padding-inline: clamp(var(--jr-space-5), 3vw, var(--jr-space-8));
+}
+
+/*
+ * One rhythm for every route. Three mechanisms were in use: this page was block with ad-hoc child
+ * margins, Recruiter Search was a grid whose children also carried margins that stacked on the
+ * gap, and Settings was block again. Measured gaps between sections ran 0, 8, 24, 32, 56 and 72px.
+ * The column owns the gap; a page-level child carries no vertical margin.
+ */
+.page {
+  display: grid;
+  align-content: start;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--jr-space-5);
+  padding-block: var(--jr-space-7) var(--jr-space-8);
 }
 
 .index-label {
@@ -321,17 +266,6 @@
   color: var(--jr-color-text-muted);
   background: var(--jr-color-surface-subtle);
   border-radius: var(--jr-radius-sm);
-}
-
-.run-controls {
-  display: grid;
-  width: 100%;
-  grid-template-columns: minmax(180px, 0.8fr) minmax(220px, 1fr) auto;
-  align-items: end;
-  gap: var(--jr-space-4);
-  padding: var(--jr-space-4);
-  background: var(--jr-color-surface-subtle);
-  border-radius: var(--jr-radius-xl);
 }
 
 .opportunity-toolbar {
@@ -378,81 +312,8 @@ table td a:hover {
   display: none;
 }
 
-.filter-bar {
-  display: grid;
-  grid-template-columns: minmax(160px, 0.8fr) minmax(160px, 0.8fr) minmax(260px, 1.5fr) 44px;
-  align-items: end;
-  gap: var(--jr-space-4);
-  margin: var(--jr-space-5) 0 0;
-  padding: var(--jr-space-4);
-  background: var(--jr-color-surface-subtle);
-  border-radius: var(--jr-radius-xl);
-}
-
 .filter-pending {
   opacity: 0.66;
-}
-
-.filter-field > span,
-.search-field > span,
-.form-grid label > span,
-.form-grid .jr-field-label,
-.add-board-form label > span {
-  display: block;
-  margin: 0 0 var(--jr-space-1);
-  color: var(--jr-color-text-muted);
-  font-size: var(--jr-font-size-caption);
-  line-height: var(--jr-line-height-caption);
-  font-weight: var(--jr-font-weight-medium);
-  letter-spacing: 0.04em;
-}
-
-.filter-field select,
-.search-field > div {
-  width: 100%;
-  height: 44px;
-  color: var(--jr-color-text);
-  background: var(--jr-color-surface-subtle);
-  border: 1px solid var(--jr-color-border);
-  border-radius: var(--jr-radius-md);
-}
-
-.filter-field select {
-  padding: 0 var(--jr-space-6) 0 var(--jr-space-3);
-  font-size: var(--jr-font-size-sm);
-  line-height: var(--jr-line-height-sm);
-}
-
-.search-field > div {
-  display: flex;
-  align-items: center;
-  gap: var(--jr-space-2);
-  padding: 0 var(--jr-space-3);
-  color: var(--jr-color-text-subtle);
-}
-
-.search-field input {
-  width: 100%;
-  height: 100%;
-  padding: 0;
-  color: var(--jr-color-text);
-  background: transparent;
-  border: 0;
-  outline: 0;
-}
-
-.filter-reset {
-  display: grid;
-  width: 44px;
-  height: 44px;
-  place-items: center;
-  color: var(--jr-color-text-muted);
-  background: var(--jr-color-surface);
-  border-radius: var(--jr-radius-md);
-}
-
-.filter-reset:hover {
-  color: var(--jr-color-danger);
 }
 
 .section-heading,
@@ -507,61 +368,6 @@ table td a:hover {
   line-height: var(--jr-line-height-caption);
 }
 
-.screening-summary {
-  display: grid;
-  grid-template-columns: minmax(230px, 1fr) auto;
-  align-items: stretch;
-  margin: 0 0 var(--jr-space-2);
-  background: var(--jr-color-surface-subtle);
-  border-radius: var(--jr-radius-lg);
-}
-
-.screening-summary > div {
-  display: grid;
-  align-content: center;
-  gap: var(--jr-space-1);
-  padding: var(--jr-space-3) var(--jr-space-4);
-}
-
-.screening-index {
-  color: var(--jr-color-warning-text);
-  font-size: var(--jr-font-size-caption);
-  line-height: var(--jr-line-height-caption);
-  font-weight: var(--jr-font-weight-medium);
-  letter-spacing: 0.06em;
-}
-
-.screening-summary strong {
-  font-size: var(--jr-font-size-sm);
-  line-height: var(--jr-line-height-sm);
-}
-
-.screening-summary dl {
-  display: flex;
-  margin: 0;
-}
-
-.screening-summary dl > div {
-  display: grid;
-  min-width: 76px;
-  place-items: center;
-  padding: var(--jr-space-3) var(--jr-space-3);
-}
-
-.screening-summary dt {
-  color: var(--jr-color-warning-text);
-  font-size: var(--jr-font-size-caption);
-  line-height: var(--jr-line-height-caption);
-}
-
-.screening-summary dd {
-  margin: var(--jr-space-1) 0 0;
-  font-family: var(--jr-font-family-display);
-  font-size: var(--jr-font-size-title);
-  line-height: var(--jr-line-height-title);
-  font-weight: var(--jr-font-weight-semibold);
-}
-
 .job-grid {
   display: grid;
   gap: var(--jr-space-2);
@@ -571,17 +377,9 @@ table td a:hover {
   display: grid;
   min-width: 0;
   grid-template-columns:
-    minmax(250px, 1.2fr) minmax(235px, 1fr) minmax(125px, 0.55fr)
-    minmax(220px, 0.9fr) 170px;
+    minmax(15.625rem, 1.2fr) minmax(14.6875rem, 1fr) minmax(7.8125rem, 0.55fr)
+    minmax(13.75rem, 0.9fr) 10.625rem;
   align-items: stretch;
-  background: var(--jr-color-surface-subtle);
-  border-radius: var(--jr-radius-lg);
-  transition: background-color var(--jr-motion-duration-instant) var(--jr-ease-out);
-}
-
-.job-card:hover {
-  background: var(--jr-color-surface-hover);
-  box-shadow: var(--jr-shadow-raised);
 }
 
 .job-card-heading,
@@ -606,7 +404,7 @@ table td a:hover {
 .job-tags > li {
   display: inline-flex;
   width: fit-content;
-  min-height: 19px;
+  min-height: 1.1875rem;
   align-items: center;
   padding: var(--jr-space-1) var(--jr-space-2);
   font-size: var(--jr-font-size-caption);
@@ -645,7 +443,7 @@ table td a:hover {
 
 .job-card-heading h2 a:hover {
   text-decoration: underline;
-  text-underline-offset: 3px;
+  text-underline-offset: 0.1875rem;
 }
 
 .job-card-heading h2 svg {
@@ -672,7 +470,7 @@ table td a:hover {
 
 .job-metadata > div {
   display: grid;
-  grid-template-columns: 75px minmax(0, 1fr);
+  grid-template-columns: 4.6875rem minmax(0, 1fr);
   gap: var(--jr-space-2);
 }
 
@@ -718,15 +516,15 @@ table td a:hover {
 
 .match-footer {
   display: grid;
-  grid-template-columns: 42px 1fr;
+  grid-template-columns: 2.625rem 1fr;
   align-content: center;
   gap: var(--jr-space-3);
 }
 
 .score-ring {
   display: grid;
-  width: 40px;
-  height: 40px;
+  width: var(--jr-control-height-sm);
+  height: var(--jr-control-height-sm);
   place-items: center;
   color: var(--jr-color-text);
   background: var(--jr-color-surface-hover);
@@ -759,35 +557,18 @@ table td a:hover {
   margin: 0;
 }
 
-.job-actions .jr-icon-button {
-  background: transparent;
-  border-color: transparent;
-}
-
-.job-actions .jr-icon-button:hover:not(:disabled) {
-  background: var(--jr-color-surface-hover);
-}
-
-.job-actions .jr-icon-button.applied[aria-pressed="true"] {
-  color: var(--jr-color-text-on-action);
-  background: var(--jr-color-success);
-  border-color: var(--jr-color-success);
-}
-
 .empty-state {
   display: grid;
-  min-height: 330px;
+  min-height: 20.625rem;
   place-items: center;
   align-content: center;
   gap: var(--jr-space-3);
-  padding: var(--jr-space-8) var(--jr-space-5);
+
   text-align: center;
-  background: var(--jr-color-surface-subtle);
-  border-radius: var(--jr-radius-xl);
 }
 
 .empty-state.compact {
-  min-height: 250px;
+  min-height: 15.625rem;
 }
 
 .empty-state h2 {
@@ -798,15 +579,15 @@ table td a:hover {
 }
 
 .empty-state p {
-  max-width: 540px;
+  max-width: 33.75rem;
   margin: 0 0 var(--jr-space-2);
   color: var(--jr-color-text-muted);
 }
 
 .empty-icon {
   display: grid;
-  width: 54px;
-  height: 54px;
+  width: 3.375rem;
+  height: 3.375rem;
   place-items: center;
   color: var(--jr-color-accent);
   background: var(--jr-color-accent-subtle);
@@ -822,7 +603,7 @@ table td a:hover {
 
 .profile-layout {
   display: grid;
-  grid-template-columns: 250px minmax(0, 1fr);
+  grid-template-columns: 15.625rem minmax(0, 1fr);
   margin-top: var(--jr-space-5);
 }
 
@@ -839,7 +620,7 @@ table td a:hover {
 .profile-tile {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  min-height: 58px;
+  min-height: 3.625rem;
   margin-bottom: var(--jr-space-1);
   background: var(--jr-color-surface);
   transition:
@@ -882,16 +663,6 @@ table td a:hover {
   padding: var(--jr-space-2);
 }
 
-.profile-tile-actions .jr-icon-button {
-  color: var(--jr-color-text);
-}
-
-.profile-tile-actions .jr-icon-button:hover:not(:disabled) {
-  color: var(--jr-color-accent-strong);
-  background: var(--jr-color-accent-subtle);
-  border-color: var(--jr-color-accent-border);
-}
-
 .profile-tile-actions .profile-tile-action {
   text-decoration: none;
 }
@@ -905,32 +676,14 @@ table td a:hover {
   display: flex;
 }
 
-.profile-tile-actions .delete-profile-control .jr-icon-button {
-  color: var(--jr-color-danger);
-}
-
-.profile-tile-actions .delete-profile-control .jr-icon-button:hover:not(:disabled) {
-  color: var(--jr-color-text-on-action);
-  background: var(--jr-color-danger);
-  border-color: var(--jr-color-danger);
-}
-
 .profile-tile.active .profile-tile-actions {
   border-left-color: var(--jr-color-overlay-border);
-}
-
-.profile-tile.active .profile-tile-actions .jr-icon-button {
-  color: var(--jr-color-text-muted);
-}
-
-.profile-tile.active .profile-tile-actions .delete-profile-control .jr-icon-button {
-  color: var(--jr-color-text-on-accent);
 }
 
 .profile-new-tile {
   display: flex;
   width: 100%;
-  min-height: 44px;
+  min-height: var(--jr-control-height-md);
   align-items: center;
   justify-content: center;
   gap: var(--jr-space-2);
@@ -957,7 +710,7 @@ table td a:hover {
 }
 
 .editor-heading {
-  padding: var(--jr-space-5) var(--jr-space-6) 0;
+  padding: var(--jr-space-5) var(--jr-space-4) 0;
 }
 
 .editor-heading h2 {
@@ -974,7 +727,7 @@ table td a:hover {
 
 .form-section {
   display: grid;
-  grid-template-columns: 230px minmax(0, 1fr);
+  grid-template-columns: 14.375rem minmax(0, 1fr);
   gap: var(--jr-space-5);
   padding: var(--jr-space-5) var(--jr-space-4);
 }
@@ -1025,7 +778,7 @@ table td a:hover {
 }
 
 .settings-number-grid {
-  grid-template-columns: repeat(5, minmax(115px, 1fr));
+  grid-template-columns: repeat(5, minmax(7.1875rem, 1fr));
 }
 
 .provider-grid {
@@ -1063,112 +816,9 @@ table td a:hover {
   grid-column: span 2;
 }
 
-.form-grid input,
-.form-grid select,
-.form-grid textarea,
-.add-board-form input {
-  width: 100%;
-  color: var(--jr-color-text);
-  background: var(--jr-color-surface-subtle);
-  border: 1px solid var(--jr-color-border);
-  border-radius: var(--jr-radius-md);
-}
-
-.form-grid input,
-.form-grid select,
-.add-board-form input {
-  height: 44px;
-  padding: 0 var(--jr-space-3);
-}
-
-.form-grid textarea {
-  min-height: 122px;
-  padding: var(--jr-space-3) var(--jr-space-3);
-  resize: vertical;
-  line-height: 1.5;
-}
-
-.form-grid .code-field {
-  font-family: var(--jr-font-family-mono);
-  font-size: var(--jr-font-size-caption);
-  line-height: var(--jr-line-height-caption);
-}
-
-.form-grid input:focus,
-.form-grid select:focus,
-.form-grid textarea:focus,
-.add-board-form input:focus {
-  border-color: var(--jr-color-accent);
-}
-
-.form-grid .jr-token-autocomplete-input input {
-  width: auto;
-  padding: 0 var(--jr-space-1);
-  background: transparent;
-  border: 0;
-  outline: 0;
-}
-
 .form-field {
   position: relative;
   min-width: 0;
-}
-
-.form-field > label > span {
-  display: block;
-  margin: 0 0 var(--jr-space-1);
-  color: var(--jr-color-text-muted);
-  font-size: var(--jr-font-size-caption);
-  line-height: var(--jr-line-height-caption);
-  font-weight: var(--jr-font-weight-semibold);
-}
-
-.combobox-options {
-  position: absolute;
-  z-index: var(--jr-z-dropdown);
-  right: 0;
-  left: 0;
-  max-height: 18.75rem;
-  margin: var(--jr-space-1) 0 0;
-  padding: var(--jr-space-1);
-  overflow-y: auto;
-  list-style: none;
-  background: var(--jr-color-surface);
-  border: var(--jr-border-width) solid var(--jr-color-border-strong);
-  border-radius: var(--jr-radius-sm);
-  box-shadow: var(--jr-shadow-overlay);
-}
-
-.combobox-options[hidden] {
-  display: none;
-}
-
-.currency-combobox .combobox-options {
-  width: max(100%, 22rem);
-  right: auto;
-}
-
-.runtime-settings-form .currency-combobox .combobox-options {
-  right: 0;
-  left: auto;
-}
-
-.combobox-options [role="option"] {
-  display: grid;
-  min-height: var(--jr-control-height-md);
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: var(--jr-space-3);
-  padding: var(--jr-space-2) var(--jr-space-3);
-  color: var(--jr-color-text);
-  border-radius: var(--jr-radius-sm);
-  cursor: pointer;
-}
-
-.combobox-options [role="option"][aria-selected="true"],
-.combobox-options [role="option"]:hover {
-  color: var(--jr-color-text-on-accent);
-  background: var(--jr-color-accent);
 }
 
 .currency-option-code {
@@ -1188,13 +838,6 @@ table td a:hover {
   overflow-wrap: anywhere;
 }
 
-.combobox-options [role="option"][aria-selected="true"] .currency-option-code,
-.combobox-options [role="option"]:hover .currency-option-code {
-  color: inherit;
-  background: transparent;
-  border-color: currentColor;
-}
-
 .field-error {
   margin: var(--jr-space-1) 0 0;
   color: var(--jr-color-danger);
@@ -1211,59 +854,14 @@ table td a:hover {
   line-height: var(--jr-line-height-caption);
 }
 
+/* The form section's copy holds column one; every control block sits in column two. */
+.form-section > .field-help,
+.form-section > .jr-checkbox {
+  grid-column: 2;
+}
+
 .form-section > .field-help {
   grid-column: 2;
-}
-
-.input-suffix {
-  display: flex;
-  align-items: center;
-  background: var(--jr-color-surface-subtle);
-  border: 1px solid var(--jr-color-border);
-  border-radius: var(--jr-radius-md);
-}
-
-.input-suffix input {
-  border: 0;
-  background: transparent;
-}
-
-.input-suffix > span {
-  min-width: max-content;
-  padding-right: var(--jr-space-3);
-  color: var(--jr-color-text-muted);
-  font-size: var(--jr-font-size-caption);
-  line-height: var(--jr-line-height-caption);
-}
-
-.checkbox-row {
-  display: grid;
-  min-height: 58px;
-  grid-column: 2;
-  grid-template-columns: 20px minmax(0, 1fr);
-  align-items: start;
-  gap: var(--jr-space-3);
-  padding: var(--jr-space-3) var(--jr-space-4);
-  background: var(--jr-color-info-subtle);
-  border: 1px solid var(--jr-color-info-border);
-}
-
-.checkbox-row input {
-  width: 18px;
-  height: 18px;
-  margin: var(--jr-space-1) 0 0;
-  accent-color: var(--jr-color-accent);
-}
-
-.checkbox-row strong {
-  display: block;
-  margin-bottom: var(--jr-space-1);
-}
-
-.checkbox-row span {
-  color: var(--jr-color-text-muted);
-  font-size: var(--jr-font-size-caption);
-  line-height: var(--jr-line-height-caption);
 }
 
 .form-submit-row {
@@ -1271,11 +869,11 @@ table td a:hover {
   bottom: 0;
   z-index: var(--jr-z-sticky);
   display: flex;
-  min-height: 72px;
+  min-height: 4.5rem;
   align-items: center;
   justify-content: space-between;
   gap: var(--jr-space-4);
-  padding: var(--jr-space-3) var(--jr-space-6);
+  padding: var(--jr-space-3) var(--jr-space-4);
   background: var(--jr-color-overlay-surface);
 }
 
@@ -1299,11 +897,11 @@ table td a:hover {
 
 .delete-error {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 0.375rem);
   right: 0;
   z-index: var(--jr-z-raised);
   width: max-content;
-  max-width: 320px;
+  max-width: 20rem;
   padding: var(--jr-space-2) var(--jr-space-3);
   color: var(--jr-color-danger);
   font-size: var(--jr-font-size-caption);
@@ -1313,22 +911,20 @@ table td a:hover {
 
 .inline-action > span {
   position: absolute;
-  top: calc(100% + 5px);
+  top: calc(100% + 0.3125rem);
   right: 0;
   width: max-content;
-  max-width: 300px;
+  max-width: 18.75rem;
   color: var(--jr-color-text-muted);
   font-size: var(--jr-font-size-caption);
   line-height: var(--jr-line-height-caption);
 }
 
 .source-section,
-.settings-section {
-  margin-top: var(--jr-space-6);
-}
-
 .source-grid {
   display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1337,7 +933,7 @@ table td a:hover {
 
 .company-boards-control {
   display: flex;
-  min-height: 68px;
+  min-height: 4.25rem;
   align-items: center;
   justify-content: space-between;
   gap: var(--jr-space-6);
@@ -1373,8 +969,8 @@ table td a:hover {
 
 .source-card {
   display: grid;
-  min-height: 68px;
-  grid-template-columns: 46px minmax(250px, 1fr) minmax(170px, 0.45fr) 74px;
+  min-height: 4.25rem;
+  grid-template-columns: 2.875rem minmax(15.625rem, 1fr) minmax(10.625rem, 0.45fr) 4.625rem;
   align-items: center;
   padding-inline: var(--jr-space-6);
 }
@@ -1385,8 +981,8 @@ table td a:hover {
 
 .source-card-icon {
   display: grid;
-  width: 32px;
-  height: 32px;
+  width: 2rem;
+  height: 2rem;
   place-items: center;
   justify-self: start;
   color: var(--jr-color-accent);
@@ -1431,15 +1027,9 @@ table td a:hover {
   justify-self: center;
 }
 
-.panel {
-  min-width: 0;
-  background: var(--jr-color-surface-subtle);
-  border-radius: var(--jr-radius-xl);
-}
-
 .add-board-form {
   display: grid;
-  grid-template-columns: minmax(180px, 0.6fr) minmax(300px, 1.4fr) auto;
+  grid-template-columns: minmax(11.25rem, 0.6fr) minmax(18.75rem, 1.4fr) auto;
   align-items: end;
   gap: var(--jr-space-3);
   padding: var(--jr-space-4);
@@ -1499,14 +1089,8 @@ td a {
   font-weight: var(--jr-font-weight-medium);
 }
 
-.run-panel {
-  margin-top: var(--jr-space-5);
-}
-
 .active-discovery-runs {
   margin-top: var(--jr-space-6);
-  background: var(--jr-color-surface-subtle);
-  border-radius: var(--jr-radius-xl);
 }
 
 .active-discovery-runs > .section-heading {
@@ -1516,16 +1100,9 @@ td a {
 
 .active-discovery-run-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 21.25rem), 1fr));
   gap: var(--jr-space-3);
   padding: 0 var(--jr-space-4) var(--jr-space-4);
-}
-
-.active-discovery-run-card {
-  min-width: 0;
-  background: var(--jr-color-surface-subtle);
-  border: 1px solid var(--jr-color-border-strong);
-  border-inline-start: 4px solid var(--jr-color-accent-strong);
 }
 
 .active-discovery-run {
@@ -1640,26 +1217,6 @@ td a {
   line-height: var(--jr-line-height-caption);
 }
 
-.run-outcome {
-  box-shadow: inset var(--jr-space-1) 0 var(--jr-color-warning-border);
-}
-
-.run-outcome-failed {
-  box-shadow: inset var(--jr-space-1) 0 var(--jr-color-danger);
-}
-
-.run-outcome-completed {
-  box-shadow: inset var(--jr-space-1) 0 var(--jr-color-success);
-}
-
-.run-outcome-partial {
-  box-shadow: inset var(--jr-space-1) 0 var(--jr-color-warning-border);
-}
-
-.run-outcome-cancelled {
-  box-shadow: inset var(--jr-space-1) 0 var(--jr-color-border-strong);
-}
-
 .run-outcome-detail {
   margin: 0;
   padding: 0 var(--jr-space-4) var(--jr-space-4);
@@ -1673,24 +1230,6 @@ td a {
   align-items: end;
   gap: var(--jr-space-3);
   padding: var(--jr-space-4);
-}
-
-.known-role-form label {
-  display: grid;
-  gap: var(--jr-space-2);
-  color: var(--jr-color-text-muted);
-  font-size: var(--jr-font-size-caption);
-  line-height: var(--jr-line-height-caption);
-  font-weight: var(--jr-font-weight-medium);
-}
-
-.known-role-form input {
-  width: 100%;
-  height: 44px;
-  padding: 0 var(--jr-space-3);
-  color: var(--jr-color-text);
-  background: var(--jr-color-surface-subtle);
-  border: 1px solid var(--jr-color-border);
 }
 
 .known-role-form .field-help,
@@ -1731,7 +1270,7 @@ td a {
 
 .diagnostic-stages > li {
   display: grid;
-  grid-template-columns: minmax(150px, 0.35fr) minmax(0, 1fr);
+  grid-template-columns: minmax(9.375rem, 0.35fr) minmax(0, 1fr);
 }
 
 .diagnostic-stages > li > strong {
@@ -1763,10 +1302,11 @@ td a {
 .run-status,
 .health {
   display: inline-flex;
-  min-height: 24px;
+  min-height: 1.5rem;
   align-items: center;
   gap: var(--jr-space-2);
   padding: var(--jr-space-1) var(--jr-space-2);
+  border-radius: var(--jr-radius-sm);
   font-size: var(--jr-font-size-caption);
   line-height: var(--jr-line-height-caption);
   font-weight: var(--jr-font-weight-medium);
@@ -1808,14 +1348,14 @@ td a {
 }
 
 .run-running {
-  color: var(--jr-color-accent-strong);
-  background: var(--jr-color-accent-subtle);
+  color: var(--jr-color-text-muted);
+  background: var(--jr-color-surface-subtle);
 }
 
 .error-count {
   display: inline-grid;
-  min-width: 24px;
-  height: 24px;
+  min-width: 1.5rem;
+  height: 1.5rem;
   place-items: center;
   color: var(--jr-color-text);
   background: var(--jr-color-danger);
@@ -1844,7 +1384,7 @@ td a {
 
 [data-sonner-toaster].discovery-notification-layer {
   z-index: var(--jr-z-toast);
-  width: min(430px, calc(100vw - 36px));
+  width: min(26.875rem, calc(100vw - 2.25rem));
 }
 
 .discovery-notice-content {
@@ -1855,7 +1395,7 @@ td a {
 }
 
 [data-sonner-toast].discovery-notice {
-  width: min(430px, calc(100vw - 36px));
+  width: min(26.875rem, calc(100vw - 2.25rem));
   color: var(--jr-color-text);
   background: var(--jr-color-surface);
   box-shadow: var(--jr-shadow-overlay);
@@ -1905,15 +1445,9 @@ td a {
   background: var(--jr-color-warning-subtle);
 }
 
-.discovery-notice .jr-icon-button {
-  color: var(--jr-color-text);
-  border-color: var(--jr-color-overlay-border);
-}
-
 .discovery-notice.notice-partial p,
 .discovery-notice.notice-partial .discovery-notice-icon,
-.discovery-notice.notice-partial .discovery-notice-links a,
-.discovery-notice.notice-partial .jr-icon-button {
+.discovery-notice.notice-partial .discovery-notice-links a {
   color: var(--jr-color-warning-text);
 }
 
@@ -1934,7 +1468,7 @@ td a {
   line-height: var(--jr-line-height-caption);
   font-weight: var(--jr-font-weight-medium);
   text-decoration: underline;
-  text-underline-offset: 3px;
+  text-underline-offset: 0.1875rem;
 }
 
 .spin {
@@ -1948,8 +1482,8 @@ td a {
 }
 
 @media (max-width: 1240px) {
-  .masthead {
-    grid-template-columns: 210px minmax(430px, 1fr) auto;
+  .masthead-inner {
+    grid-template-columns: 13.125rem minmax(26.875rem, 1fr) auto;
   }
 
   .brand {
@@ -1967,12 +1501,12 @@ td a {
 
   .job-card {
     grid-template-columns:
-      minmax(230px, 1.15fr) minmax(210px, 1fr) 112px minmax(190px, 0.85fr)
-      170px;
+      minmax(14.375rem, 1.15fr) minmax(13.125rem, 1fr) 7rem minmax(11.875rem, 0.85fr)
+      10.625rem;
   }
 
   .settings-number-grid {
-    grid-template-columns: repeat(3, minmax(120px, 1fr));
+    grid-template-columns: repeat(3, minmax(7.5rem, 1fr));
   }
 
   .provider-grid {
@@ -1981,8 +1515,8 @@ td a {
 }
 
 @media (max-width: 980px) {
-  .masthead {
-    grid-template-columns: 190px 1fr auto;
+  .masthead-inner {
+    grid-template-columns: 11.875rem 1fr auto;
   }
 
   .nav-link {
@@ -1990,7 +1524,7 @@ td a {
   }
 
   .job-card {
-    grid-template-columns: minmax(260px, 1.1fr) minmax(230px, 1fr) 170px;
+    grid-template-columns: minmax(16.25rem, 1.1fr) minmax(14.375rem, 1fr) 10.625rem;
   }
 
   .job-tags {
@@ -2008,25 +1542,19 @@ td a {
   }
 
   .profile-layout {
-    grid-template-columns: 210px minmax(0, 1fr);
+    grid-template-columns: 13.125rem minmax(0, 1fr);
   }
 
   .form-section {
     grid-template-columns: 1fr;
   }
 
-  .form-grid,
-  .checkbox-row,
-  .form-section > .field-help {
-    grid-column: 1;
-  }
-
   .form-section-copy {
-    max-width: 520px;
+    max-width: 32.5rem;
   }
 
   .source-card {
-    grid-template-columns: 42px minmax(210px, 1fr) minmax(150px, 0.55fr) 68px;
+    grid-template-columns: 2.625rem minmax(13.125rem, 1fr) minmax(9.375rem, 0.55fr) 4.25rem;
   }
 }
 
@@ -2067,26 +1595,21 @@ td a {
 
   .masthead {
     position: sticky;
+    padding-block: var(--jr-space-2);
+  }
+
+  .masthead-inner {
     min-height: 0;
     grid-template-columns: 1fr auto;
-    padding: var(--jr-space-2) var(--jr-space-4);
   }
 
   .brand {
-    min-height: 60px;
-  }
-
-  .utility-control,
-  .utility-link,
-  .theme-toggle {
-    min-width: 52px;
-    min-height: 57px;
-    padding: 0;
+    min-height: 3.75rem;
   }
 
   .brand-mark {
-    width: 34px;
-    height: 34px;
+    width: 2.125rem;
+    height: 2.125rem;
   }
 
   /* Inter is wider than the condensed face this replaced, and the name wrapped and clipped. */
@@ -2110,7 +1633,7 @@ td a {
   }
 
   .nav-link {
-    min-height: 65px;
+    min-height: 4.0625rem;
     flex-direction: column;
     justify-content: center;
     gap: var(--jr-space-1);
@@ -2129,15 +1652,14 @@ td a {
     text-transform: none;
   }
 
-  .page {
-    padding: var(--jr-space-4) var(--jr-space-4)
-      calc(var(--jr-bar-height) + var(--jr-space-5) + env(safe-area-inset-bottom));
+  .page,
+  .masthead-inner {
+    padding-inline: var(--jr-space-4);
   }
 
-  .run-controls,
-  .filter-bar {
-    padding: var(--jr-space-3);
-    gap: var(--jr-space-2);
+  .page {
+    padding-block: var(--jr-space-4)
+      calc(var(--jr-bar-height) + var(--jr-space-5) + env(safe-area-inset-bottom));
   }
 
   .section-heading,
@@ -2149,24 +1671,8 @@ td a {
     margin-top: var(--jr-space-3);
   }
 
-  .jr-page-header {
-    gap: var(--jr-space-3);
-  }
-
-  .filter-bar {
-    grid-template-columns: 1fr 1fr;
-  }
-
   .search-field {
     grid-column: 1 / -1;
-  }
-
-  .screening-summary {
-    grid-template-columns: 1fr;
-  }
-
-  .screening-summary dl {
-    overflow-x: auto;
   }
 
   .job-card {
@@ -2214,8 +1720,8 @@ td a {
 
   .profile-tile,
   .profile-new-tile {
-    flex: 0 0 180px;
-    width: 180px;
+    flex: 0 0 11.25rem;
+    width: 11.25rem;
     margin: 0;
   }
 
@@ -2226,24 +1732,17 @@ td a {
     grid-template-columns: 1fr;
   }
 
-  .currency-combobox .combobox-options,
-  .runtime-settings-form .currency-combobox .combobox-options {
-    right: 0;
-    left: 0;
-    width: 100%;
-  }
-
   .form-span-two {
     grid-column: 1;
   }
 
   .source-card {
-    grid-template-columns: 38px minmax(0, 1fr) 62px;
+    grid-template-columns: 2.375rem minmax(0, 1fr) 3.875rem;
   }
 
   .source-mode {
     grid-column: 2;
-    min-height: 36px;
+    min-height: 2.25rem;
     padding: var(--jr-space-2) var(--jr-space-3);
   }
 
@@ -2282,10 +1781,6 @@ td a {
     display: none;
   }
 
-  .run-controls {
-    grid-template-columns: 1fr;
-  }
-
   .run-controls > .jr-button {
     width: 100%;
   }
@@ -2296,7 +1791,7 @@ td a {
   }
 
   .active-discovery-run-actions > .jr-button {
-    flex: 1 1 140px;
+    flex: 1 1 8.75rem;
   }
 
   .run-scope-summary {
@@ -2306,13 +1801,9 @@ td a {
 
   .filter-disclosure {
     display: inline-flex;
-    gap: var(--jr-space-2);
+
     align-self: start;
     margin: var(--jr-space-4) 0 var(--jr-space-0);
-  }
-
-  .filter-bar {
-    grid-template-columns: minmax(0, 1fr);
   }
 
   .filter-bar:not([data-expanded]) {
@@ -2365,11 +1856,11 @@ td a {
   }
 
   .job-metadata > div {
-    grid-template-columns: 70px minmax(0, 1fr);
+    grid-template-columns: 4.375rem minmax(0, 1fr);
   }
 
   .source-card {
-    grid-template-columns: minmax(0, 1fr) 58px;
+    grid-template-columns: minmax(0, 1fr) 3.625rem;
   }
 
   .source-card-icon {
@@ -2387,6 +1878,22 @@ td a {
 }
 
 @media (max-width: 760px) {
+  .form-section,
+  .form-grid-two,
+  .form-grid-three,
+  .provider-grid,
+  .settings-number-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .form-grid,
+  .form-section > .field-help,
+  .form-section > .jr-checkbox,
+  .form-span-two,
+  .settings-subsection-grid {
+    grid-column: 1;
+  }
+
   .profile-list {
     display: grid;
     grid-template-columns: 1fr;
