@@ -1,0 +1,78 @@
+diff --git a/combobox/popup/ComboboxPopup.js b/combobox/popup/ComboboxPopup.js
+index 97eab87a4ed5e6c9326356c29acbf2b480e0c283..a611e5dd8eaa0f7baee8a4a0057e37876c5aa75b 100644
+--- a/combobox/popup/ComboboxPopup.js
++++ b/combobox/popup/ComboboxPopup.js
+@@ -113,6 +113,7 @@ const ComboboxPopup = exports.ComboboxPopup = /*#__PURE__*/React.forwardRef(func
+     context: floatingRootContext,
+     disabled: !mounted,
+     modal: focusManagerModal,
++    outsideElementsHidden: modal,
+     openInteractionType: openMethod,
+     initialFocus: resolvedInitialFocus,
+     returnFocus: resolvedFinalFocus,
+diff --git a/combobox/popup/ComboboxPopup.mjs b/combobox/popup/ComboboxPopup.mjs
+index 476518de171f8f03e1a5a3a33c3bd074150d9f10..b4d1a165597e389f4a1a8123fe112b9d49cd6068 100644
+--- a/combobox/popup/ComboboxPopup.mjs
++++ b/combobox/popup/ComboboxPopup.mjs
+@@ -107,6 +107,7 @@ export const ComboboxPopup = /*#__PURE__*/React.forwardRef(function ComboboxPopu
+     context: floatingRootContext,
+     disabled: !mounted,
+     modal: focusManagerModal,
++    outsideElementsHidden: modal,
+     openInteractionType: openMethod,
+     initialFocus: resolvedInitialFocus,
+     returnFocus: resolvedFinalFocus,
+diff --git a/floating-ui-react/components/FloatingFocusManager.d.ts b/floating-ui-react/components/FloatingFocusManager.d.ts
+index cf652c44b4273cc050147a3b5fdbfed5d3b6fe51..3b44f70729c5f5d17e80556a013c4cb519c7bac6 100644
+--- a/floating-ui-react/components/FloatingFocusManager.d.ts
++++ b/floating-ui-react/components/FloatingFocusManager.d.ts
+@@ -61,6 +61,7 @@ export interface FloatingFocusManagerProps {
+    * @default true
+    */
+   modal?: boolean | undefined;
++  outsideElementsHidden?: boolean | undefined;
+   /**
+    * Determines whether `focusout` event listeners that control whether the
+    * floating element should be closed if the focus moves outside of it are
+diff --git a/floating-ui-react/components/FloatingFocusManager.js b/floating-ui-react/components/FloatingFocusManager.js
+index 5d5b40c9500cd0f4f546dd62ef38d3900e3b6519..7e50c03f34b940e9da3f94b367a4e191ea1bc58f 100644
+--- a/floating-ui-react/components/FloatingFocusManager.js
++++ b/floating-ui-react/components/FloatingFocusManager.js
+@@ -124,6 +124,7 @@ function FloatingFocusManager(props) {
+     returnFocus = true,
+     restoreFocus = false,
+     modal = true,
++    outsideElementsHidden,
+     closeOnFocusOut = true,
+     openInteractionType = '',
+     nextFocusableElement,
+@@ -343,7 +344,7 @@ function FloatingFocusManager(props) {
+     const controlInsideElements = [floating, ...portalNodes, beforeGuardRef.current, afterGuardRef.current, portalContext?.beforeOutsideRef.current, portalContext?.afterOutsideRef.current, ...getResolvedInsideElements()];
+     const insideElements = [...controlInsideElements, rootAncestorComboboxDomReference, (0, _resolveRef.resolveRef)(previousFocusableElement), (0, _resolveRef.resolveRef)(nextFocusableElement), isUntrappedTypeableCombobox ? domReference : null].filter(x => x != null);
+     const ariaHiddenCleanup = (0, _markOthers.markOthers)(insideElements, {
+-      ariaHidden: modal || isUntrappedTypeableCombobox,
++      ariaHidden: outsideElementsHidden ?? (modal || isUntrappedTypeableCombobox),
+       mark: false
+     });
+     const markerInsideElements = [floating, ...portalNodes].filter(x => x != null);
+diff --git a/floating-ui-react/components/FloatingFocusManager.mjs b/floating-ui-react/components/FloatingFocusManager.mjs
+index 8a6039fc4fb65de89bb4bfcca286ef819a54fcf4..36709bd272485bd8bfccb9b38e8f5ad75a7c789c 100644
+--- a/floating-ui-react/components/FloatingFocusManager.mjs
++++ b/floating-ui-react/components/FloatingFocusManager.mjs
+@@ -118,6 +118,7 @@ export function FloatingFocusManager(props) {
+     returnFocus = true,
+     restoreFocus = false,
+     modal = true,
++    outsideElementsHidden,
+     closeOnFocusOut = true,
+     openInteractionType = '',
+     nextFocusableElement,
+@@ -337,7 +338,7 @@ export function FloatingFocusManager(props) {
+     const controlInsideElements = [floating, ...portalNodes, beforeGuardRef.current, afterGuardRef.current, portalContext?.beforeOutsideRef.current, portalContext?.afterOutsideRef.current, ...getResolvedInsideElements()];
+     const insideElements = [...controlInsideElements, rootAncestorComboboxDomReference, resolveRef(previousFocusableElement), resolveRef(nextFocusableElement), isUntrappedTypeableCombobox ? domReference : null].filter(x => x != null);
+     const ariaHiddenCleanup = markOthers(insideElements, {
+-      ariaHidden: modal || isUntrappedTypeableCombobox,
++      ariaHidden: outsideElementsHidden ?? (modal || isUntrappedTypeableCombobox),
+       mark: false
+     });
+     const markerInsideElements = [floating, ...portalNodes].filter(x => x != null);

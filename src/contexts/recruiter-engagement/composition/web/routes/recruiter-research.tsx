@@ -12,12 +12,12 @@ export async function loader({ request }: { readonly request: Request }) {
   const specialism = parameters.get("specialism");
   const showRemoved = parameters.get("showRemoved") === "on";
   return {
-    registry: await recruiterEngagementWeb.getRecruiterRegistry({
+    listing: await recruiterEngagementWeb.getRecruiterDirectoryListing({
       ...(showRemoved ? { includeRemoved: true } : {}),
       ...(specialism ? { specialism } : {}),
     }),
-    registryFilters: { showRemoved, specialism: specialism ?? null },
-    view: parameters.get("view") === "registry" ? ("registry" as const) : ("run" as const),
+    directoryFilters: { showRemoved, specialism: specialism ?? null },
+    view: parameters.get("view") === "directory" ? ("directory" as const) : ("run" as const),
     research,
     criteriaOptions: recruiterEngagementWeb.getResearchCriteriaOptions(),
     defaultTargets: recruiterEngagementWeb.getDefaultSearchTargets(),
@@ -43,8 +43,8 @@ export default function RecruiterResearchRoute() {
     defaultTargets,
     initialLocationOptions,
     providerSelection,
-    registry,
-    registryFilters,
+    listing,
+    directoryFilters,
     research,
     view,
   } = useLoaderData<typeof loader>();
@@ -63,8 +63,8 @@ export default function RecruiterResearchRoute() {
       criteriaOptions={criteriaOptions}
       defaultTargets={defaultTargets}
       initialLocationOptions={initialLocationOptions}
-      registry={registry}
-      registryFilters={registryFilters}
+      listing={listing}
+      directoryFilters={directoryFilters}
       view={view}
       {...(providerSelection ? { providerSelection } : {})}
     />

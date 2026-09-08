@@ -2,6 +2,50 @@
 
 @layer job-radar.tokens, job-radar.reset, job-radar.components, job-radar.product;
 
+@layer job-radar.reset {
+  * {
+    box-sizing: border-box;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    color: inherit;
+    font: inherit;
+  }
+
+  /* Remove user-agent box borders, including the fieldset groove; focus outlines remain. */
+  fieldset,
+  button {
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  button,
+  select {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  select:disabled,
+  input:disabled,
+  textarea:disabled {
+    cursor: wait;
+    opacity: var(--jr-opacity-disabled);
+  }
+
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: var(--jr-focus-width) solid var(--jr-color-focus-ring);
+    outline-offset: 0.125rem;
+    box-shadow: 0 0 0 var(--jr-space-1) var(--jr-color-focus-halo);
+  }
+}
+
 @layer job-radar.components {
   .jr-button {
     display: inline-flex;
@@ -56,6 +100,31 @@
     background: transparent;
   }
 
+  .jr-button[data-variant="utility"] {
+    position: relative;
+    min-width: var(--jr-control-height-md);
+    min-height: var(--jr-control-height-md);
+    padding: 0 var(--jr-space-3);
+    color: var(--jr-color-text-muted);
+    background: transparent;
+    border: 0;
+    font: inherit;
+  }
+
+  .jr-button[data-variant="utility"]:hover:not(:disabled),
+  .jr-button[data-variant="utility"][aria-current="page"] {
+    color: var(--jr-color-text);
+    background: var(--jr-color-surface-hover);
+  }
+
+  @media (max-width: 760px) {
+    .jr-button[data-variant="utility"] {
+      min-width: var(--jr-control-width-touch);
+      min-height: var(--jr-control-height-touch);
+      padding: 0;
+    }
+  }
+
   .jr-button[data-variant="primary"] {
     color: var(--jr-color-text-on-action);
     background: var(--jr-color-action);
@@ -93,7 +162,10 @@
   .jr-icon-button:focus-visible,
   .jr-select-field:focus-visible,
   .jr-switch:focus-visible,
-  .jr-text-field:focus-visible {
+  .jr-text-field:focus-visible,
+  .jr-combobox-input:focus-visible,
+  .jr-checkbox-control:focus-visible,
+  .jr-radio-control:focus-visible {
     outline: var(--jr-focus-width) solid var(--jr-color-focus-ring);
     outline-offset: var(--jr-space-1);
     box-shadow: 0 0 0 var(--jr-space-1) var(--jr-color-focus-halo);
@@ -105,7 +177,25 @@
    * different numbers of DOM rows place their controls at different offsets. Measured on the
    * recruiter brief, that put two controls in one row 13px out of alignment.
    */
+  .jr-field,
+  .jr-field *,
+  .jr-checkbox,
+  .jr-checkbox *,
+  .jr-radio-group,
+  .jr-radio-group * {
+    box-sizing: border-box;
+  }
+
+  .jr-field,
+  .jr-checkbox,
+  .jr-radio-group {
+    font-family: var(--jr-font-family-ui);
+    font-size: var(--jr-font-size-body);
+    line-height: var(--jr-line-height-body);
+  }
+
   .jr-field {
+    min-width: 0;
     display: grid;
     align-content: start;
     gap: var(--jr-space-2);
@@ -159,6 +249,16 @@
     border-color: var(--jr-color-border);
   }
 
+  .jr-icon-button[data-variant="danger"] {
+    color: var(--jr-color-danger);
+  }
+
+  .jr-icon-button[data-variant="danger"]:hover:not(:disabled) {
+    color: var(--jr-color-danger);
+    background: var(--jr-color-danger-subtle);
+    border-color: var(--jr-color-danger);
+  }
+
   .jr-icon-button:disabled {
     color: var(--jr-color-disabled-text);
     cursor: not-allowed;
@@ -206,13 +306,154 @@
   }
 
   .jr-text-field {
+    width: 100%;
+    min-width: 0;
     min-height: var(--jr-control-height-md);
+    padding: var(--jr-space-2) var(--jr-space-3);
+    color: var(--jr-color-text);
+    background: var(--jr-color-surface);
+    border: var(--jr-border-width) solid var(--jr-color-border-strong);
+    border-radius: var(--jr-radius-md);
+    font-family: var(--jr-font-family-ui);
+    font-size: var(--jr-font-size-body);
+    line-height: var(--jr-line-height-body);
+  }
+
+  .jr-text-field-shell {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: var(--jr-space-2);
+  }
+
+  .jr-text-field-shell > .jr-text-field {
+    flex: 1 1 auto;
+  }
+
+  .jr-text-field-suffix {
+    flex: 0 0 auto;
+    color: var(--jr-color-text-muted);
+    font-size: var(--jr-font-size-caption);
+    line-height: var(--jr-line-height-caption);
+  }
+
+  .jr-search-field {
+    display: flex;
+    align-items: center;
+    gap: var(--jr-space-2);
+    height: var(--jr-control-height-md);
+    padding-inline: var(--jr-space-3);
+    color: var(--jr-color-text-subtle);
+    background: var(--jr-color-surface);
+    border: var(--jr-border-width) solid var(--jr-color-border-strong);
+    border-radius: var(--jr-radius-md);
+  }
+
+  .jr-search-field-mark {
+    display: inline-flex;
+    flex: none;
+  }
+
+  .jr-search-field-control {
+    width: 100%;
+    min-width: 0;
+    color: var(--jr-color-text);
+    background: none;
+    border: none;
+    font: inherit;
+  }
+
+  .jr-search-field:has(input:disabled) {
+    color: var(--jr-color-disabled-text);
+    background: var(--jr-color-disabled-surface);
+    cursor: not-allowed;
+  }
+
+  .jr-search-field-control:focus {
+    outline: none;
+  }
+
+  .jr-search-field:has(.jr-search-field-control:focus-visible) {
+    outline: var(--jr-focus-width) solid var(--jr-color-focus-ring);
+    outline-offset: var(--jr-space-1);
+  }
+
+  .jr-text-area {
+    width: 100%;
+    min-width: 0;
+    min-height: calc(
+      var(--jr-line-height-body) *
+      5 +
+      var(--jr-space-3) *
+      2 +
+      var(--jr-border-width) *
+      2
+    );
     padding: var(--jr-space-3);
     color: var(--jr-color-text);
     background: var(--jr-color-surface);
     border: var(--jr-border-width) solid var(--jr-color-border-strong);
     border-radius: var(--jr-radius-md);
     font: inherit;
+    resize: vertical;
+  }
+
+  .jr-text-area:disabled {
+    color: var(--jr-color-disabled-text);
+    background: var(--jr-color-disabled-surface);
+    cursor: not-allowed;
+  }
+
+  .jr-text-area[aria-invalid="true"] {
+    border-color: var(--jr-color-danger);
+  }
+
+  .jr-checkbox,
+  .jr-radio {
+    min-height: var(--jr-control-height-md);
+    padding-block: var(--jr-space-3);
+    cursor: pointer;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--jr-space-3);
+    align-items: start;
+  }
+
+  .jr-checkbox-control,
+  .jr-radio-control {
+    width: var(--jr-size-control-indicator);
+    height: var(--jr-size-control-indicator);
+    margin: var(--jr-space-0);
+    accent-color: var(--jr-color-accent);
+  }
+
+  .jr-checkbox-copy,
+  .jr-radio-copy {
+    display: grid;
+    gap: var(--jr-space-1);
+  }
+
+  .jr-checkbox-copy > span:first-child,
+  .jr-radio-copy > span:first-child {
+    color: var(--jr-color-text);
+    font-size: var(--jr-font-size-sm);
+    line-height: var(--jr-line-height-sm);
+    font-weight: var(--jr-font-weight-medium);
+  }
+
+  .jr-checkbox-copy > :where(span + span),
+  .jr-radio-copy > :where(span + span) {
+    color: var(--jr-color-text-muted);
+    font-size: var(--jr-font-size-caption);
+    line-height: var(--jr-line-height-caption);
+  }
+
+  .jr-radio-group {
+    display: grid;
+    gap: var(--jr-space-3);
+    margin: var(--jr-space-0);
+    padding: var(--jr-space-0);
+    border: none;
   }
 
   .jr-text-field:disabled {
@@ -225,23 +466,18 @@
     border-color: var(--jr-color-danger);
   }
 
-  .jr-select-field-group .jr-field-label {
-    font-size: var(--jr-font-size-caption);
-    line-height: var(--jr-line-height-caption);
-  }
-
   .jr-select-field {
     width: 100%;
     height: var(--jr-control-height-md);
     padding-block: var(--jr-space-0);
     padding-inline: var(--jr-space-3) var(--jr-space-6);
     color: var(--jr-color-text);
-    background: var(--jr-color-surface-subtle);
+    background: var(--jr-color-surface);
     border: var(--jr-border-width) solid var(--jr-color-border-strong);
     border-radius: var(--jr-radius-md);
     font-family: var(--jr-font-family-ui);
-    font-size: var(--jr-font-size-sm);
-    line-height: var(--jr-line-height-sm);
+    font-size: var(--jr-font-size-body);
+    line-height: var(--jr-line-height-body);
   }
 
   .jr-select-field:disabled {
@@ -251,7 +487,6 @@
   }
 
   .jr-select-field[aria-invalid="true"] {
-    background: var(--jr-color-danger-subtle);
     border-color: var(--jr-color-danger);
   }
 
@@ -266,15 +501,14 @@
     color: var(--jr-color-danger);
   }
 
+  /* The field layout comes from `.jr-field`; only the popover anchor is this component's own. */
   .jr-token-autocomplete {
     position: relative;
-    display: grid;
     min-width: 0;
-    align-content: start;
-    gap: var(--jr-space-2);
   }
 
   .jr-token-autocomplete-input {
+    min-width: 0;
     display: flex;
     min-height: var(--jr-control-height-md);
     align-items: center;
@@ -301,19 +535,19 @@
   }
 
   .jr-token-autocomplete-input:focus-within {
-    border-color: var(--jr-color-accent);
+    outline: var(--jr-focus-width) solid var(--jr-color-focus-ring);
+    outline-offset: var(--jr-space-1);
     box-shadow: 0 0 0 var(--jr-space-1) var(--jr-color-focus-halo);
   }
 
   .jr-token-autocomplete-input:has(input[aria-invalid="true"]) {
-    background: var(--jr-color-danger-subtle);
     border-color: var(--jr-color-danger);
   }
 
   .jr-token-autocomplete-input input {
     width: auto;
     min-width: 10rem;
-    height: var(--jr-control-height-md);
+    height: calc(var(--jr-control-height-md) - var(--jr-space-1) * 2 - var(--jr-border-width) * 2);
     flex: 1 1 13rem;
     padding: 0 var(--jr-space-1);
     color: inherit;
@@ -385,13 +619,87 @@
     min-width: 0;
   }
 
-  .jr-token-autocomplete-options {
-    position: absolute;
-    box-sizing: border-box;
+  .jr-combobox {
+    position: relative;
+  }
+
+  .jr-combobox-input {
+    width: 100%;
+    min-height: var(--jr-control-height-md);
+    padding: var(--jr-space-2) var(--jr-space-3);
+    color: var(--jr-color-text);
+    background: var(--jr-color-surface);
+    border: var(--jr-border-width) solid var(--jr-color-border-strong);
+    border-radius: var(--jr-radius-md);
+    font-family: var(--jr-font-family-ui);
+    font-size: var(--jr-font-size-body);
+    line-height: var(--jr-line-height-body);
+  }
+
+  .jr-combobox-input:disabled {
+    color: var(--jr-color-disabled-text);
+    background: var(--jr-color-disabled-surface);
+    cursor: not-allowed;
+  }
+
+  .jr-combobox-input[aria-invalid="true"] {
+    border-color: var(--jr-color-danger);
+  }
+
+  .jr-combobox-positioner {
     z-index: var(--jr-z-dropdown);
-    top: calc(100% + var(--jr-space-1));
-    right: 0;
-    left: 0;
+    width: var(--anchor-width);
+  }
+
+  .jr-combobox-options {
+    box-sizing: border-box;
+    padding: var(--jr-space-1);
+    color: var(--jr-color-text);
+    background: var(--jr-color-surface);
+    border-radius: var(--jr-radius-md);
+    box-shadow: var(--jr-shadow-overlay);
+  }
+
+  /* The scroll sits on the listbox itself, so the region axe checks is the one with tabindex. */
+  .jr-combobox-list {
+    display: block;
+    max-height: 18rem;
+    overflow-y: auto;
+  }
+
+  .jr-combobox-options[hidden] {
+    display: none;
+  }
+
+  .jr-combobox-option {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--jr-space-3);
+    padding: var(--jr-space-2) var(--jr-space-3);
+    border-radius: var(--jr-radius-sm);
+    cursor: pointer;
+  }
+
+  .jr-combobox-option[data-highlighted],
+  .jr-combobox-option:hover {
+    color: var(--jr-color-text-on-accent);
+    background: var(--jr-color-accent);
+  }
+
+  .jr-combobox-option small {
+    color: var(--jr-color-text-muted);
+    font-size: var(--jr-font-size-caption);
+    line-height: var(--jr-line-height-caption);
+  }
+
+  .jr-combobox-option[data-highlighted] small,
+  .jr-combobox-option:hover small {
+    color: var(--jr-color-text-on-accent);
+  }
+
+  .jr-token-autocomplete-options {
+    box-sizing: border-box;
     padding: var(--jr-space-1);
     color: var(--jr-color-text);
     background: var(--jr-color-surface);
@@ -511,7 +819,7 @@
     overflow: auto;
     color: var(--jr-color-text);
     background: var(--jr-color-surface);
-    border-radius: var(--jr-radius-md);
+    border-radius: var(--jr-radius-lg);
     box-shadow: var(--jr-shadow-overlay);
   }
 
@@ -608,7 +916,6 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--jr-space-5);
-    margin: var(--jr-space-6) 0 0;
     padding: 0 0 var(--jr-space-3);
   }
 
@@ -664,19 +971,13 @@
     overflow-x: auto;
   }
 
-  .jr-tab-navigation[data-level="primary"] {
-    margin-top: var(--jr-space-7);
-  }
-
-  .jr-tab-navigation[data-level="secondary"] {
-    margin-top: var(--jr-space-5);
-  }
+  /* The page column owns the gap above a tab strip, so neither level adds one. */
 
   .jr-tab-navigation > a {
-    min-height: 44px;
+    min-height: var(--jr-control-height-md);
     padding: var(--jr-space-3) var(--jr-space-4);
     color: var(--jr-color-text-muted);
-    font-weight: var(--jr-font-weight-semibold);
+    font-weight: var(--jr-font-weight-medium);
     white-space: nowrap;
   }
 
@@ -690,7 +991,6 @@
   .jr-tab-navigation > a.pending {
     position: relative;
     color: var(--jr-color-text);
-    font-weight: var(--jr-font-weight-medium);
   }
 
   .jr-tab-navigation > a[aria-current="page"]::after,
@@ -714,6 +1014,7 @@
   @media (max-width: 56rem) {
     .jr-page-header {
       grid-template-columns: 1fr;
+      gap: var(--jr-space-3);
     }
 
     .jr-header-actions {
@@ -745,5 +1046,117 @@
 @media (prefers-reduced-motion: reduce) {
   .jr-skeleton {
     animation: none;
+  }
+}
+
+@layer job-radar.components {
+  .jr-panel {
+    min-width: 0;
+    background: var(--jr-color-surface-subtle);
+    border-radius: var(--jr-radius-xl);
+  }
+
+  .jr-panel[data-tone="warning"] {
+    box-shadow: inset var(--jr-space-1) 0 var(--jr-color-warning-border);
+  }
+
+  .jr-panel[data-tone="danger"] {
+    box-shadow: inset var(--jr-space-1) 0 var(--jr-color-danger);
+  }
+
+  .jr-panel[data-tone="success"] {
+    box-shadow: inset var(--jr-space-1) 0 var(--jr-color-success);
+  }
+
+  .jr-panel[data-tone="neutral"] {
+    box-shadow: inset var(--jr-space-1) 0 var(--jr-color-border-strong);
+  }
+
+  .jr-panel[data-overflow="clipped"] {
+    overflow: hidden;
+  }
+
+  .jr-panel[data-overflow="visible"] {
+    overflow: visible;
+  }
+
+  .jr-panel[data-padding="comfortable"] {
+    padding: var(--jr-space-4);
+  }
+
+  .jr-control-row {
+    display: grid;
+    align-items: end;
+    gap: var(--jr-space-4);
+    padding: var(--jr-space-4);
+  }
+
+  /* One field does not become a full-width field; the row's action keeps the far edge. */
+  .jr-control-row[data-fields="1"] {
+    grid-template-columns: minmax(10rem, 25rem) auto;
+    justify-content: space-between;
+  }
+
+  .jr-control-row[data-fields="2"] {
+    grid-template-columns: repeat(2, minmax(10rem, 1fr)) auto;
+  }
+
+  .jr-control-row[data-fields="3"] {
+    grid-template-columns: repeat(3, minmax(10rem, 1fr)) auto;
+  }
+
+  .jr-control-row[data-fields="4"] {
+    grid-template-columns: repeat(4, minmax(10rem, 1fr)) auto;
+  }
+
+  .jr-card {
+    min-width: 0;
+    padding: var(--jr-space-4);
+    background: var(--jr-color-surface-subtle);
+    border-radius: var(--jr-radius-lg);
+  }
+
+  .jr-card[data-padding="none"] {
+    padding: 0;
+  }
+
+  .jr-card[data-tone="retired"] {
+    background: var(--jr-color-surface);
+  }
+
+  .jr-card[data-tone="outlined"] {
+    border: var(--jr-border-width) solid var(--jr-color-border-strong);
+  }
+
+  @media (max-width: 760px) {
+    .jr-control-row {
+      padding: var(--jr-space-3);
+      gap: var(--jr-space-2);
+    }
+
+    .jr-control-row[data-fields="3"],
+    .jr-control-row[data-fields="4"] {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 500px) {
+    .jr-control-row[data-fields] {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+}
+
+@layer job-radar.reset {
+  /* Both contexts name a heading that only assistive technology should read. */
+  .sr-only {
+    position: absolute;
+    width: var(--jr-border-width);
+    height: var(--jr-border-width);
+    padding: 0;
+    margin: calc(-1 * var(--jr-border-width));
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
   }
 }

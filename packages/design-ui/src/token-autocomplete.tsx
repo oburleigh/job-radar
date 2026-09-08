@@ -63,6 +63,7 @@ export function TokenAutocomplete({
   const errorId = useId();
   const hintId = useId();
   const anchorRef = useRef<HTMLDivElement>(null);
+  const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(null);
   const [inputValue, setInputValue] = useState("");
   const [open, setOpen] = useState(false);
   const [selectionError, setSelectionError] = useState("");
@@ -93,9 +94,10 @@ export function TokenAutocomplete({
     .join(" ");
 
   return (
-    <div className={["jr-token-autocomplete", className].filter(Boolean).join(" ")}>
+    <div className={["jr-field", "jr-token-autocomplete", className].filter(Boolean).join(" ")}>
       <label className="jr-field-label" htmlFor={inputId}>
         {label}
+        {required ? " (required)" : ""}
       </label>
       <input name={name} type="hidden" value={formValues.join("\n")} readOnly />
       <Combobox.Root
@@ -118,7 +120,11 @@ export function TokenAutocomplete({
           onQueryChange?.(query);
           setSelectionError("");
         }}
-        onValueChange={(nextOptions) => {
+        onValueChange={(nextOptions, details) => {
+          if (details.reason === "escape-key") {
+            details.cancel();
+            return;
+          }
           const previous = new Set(selectedOptions.map((option) => valueNormalizer(option.value)));
           const added = nextOptions.find((option) => !previous.has(valueNormalizer(option.value)));
           if (added) {
@@ -146,7 +152,13 @@ export function TokenAutocomplete({
         open={open}
         value={selectedOptions}
       >
-        <div className="jr-token-autocomplete-anchor" ref={anchorRef}>
+        <div
+          className="jr-token-autocomplete-anchor"
+          ref={(element) => {
+            anchorRef.current = element;
+            setPortalContainer(element);
+          }}
+        >
           <Combobox.InputGroup className="jr-token-autocomplete-input">
             <Combobox.Chips className="jr-token-autocomplete-chips">
               <Combobox.Value>
@@ -234,23 +246,28 @@ export function TokenAutocomplete({
               </Combobox.Value>
             </Combobox.Chips>
           </Combobox.InputGroup>
-          <div
-            className="jr-token-autocomplete-options"
-            hidden={!open || selectableOptions.length === 0}
-          >
-            <Combobox.List id={listboxId}>
-              {(option: TokenAutocompleteOption) => (
-                <Combobox.Item
-                  className="jr-token-autocomplete-option"
-                  key={option.value}
-                  value={option}
-                >
-                  <span>{option.label}</span>
-                  {option.detail ? <small>{option.detail}</small> : null}
-                </Combobox.Item>
-              )}
-            </Combobox.List>
-          </div>
+          <Combobox.Portal container={portalContainer} keepMounted>
+            <Combobox.Positioner
+              align="start"
+              collisionAvoidance={{ side: "none", align: "shift" }}
+              className="jr-combobox-positioner"
+            >
+              <Combobox.Popup className="jr-token-autocomplete-options">
+                <Combobox.List id={listboxId}>
+                  {(option: TokenAutocompleteOption) => (
+                    <Combobox.Item
+                      className="jr-token-autocomplete-option"
+                      key={option.value}
+                      value={option}
+                    >
+                      <span>{option.label}</span>
+                      {option.detail ? <small>{option.detail}</small> : null}
+                    </Combobox.Item>
+                  )}
+                </Combobox.List>
+              </Combobox.Popup>
+            </Combobox.Positioner>
+          </Combobox.Portal>
         </div>
       </Combobox.Root>
       {hint ? (

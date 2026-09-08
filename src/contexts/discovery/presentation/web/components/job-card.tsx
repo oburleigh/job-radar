@@ -1,3 +1,4 @@
+import { Card } from "@job-radar/design-ui";
 import { ArrowUpRight, Banknote, Building2, CalendarDays, MapPin } from "lucide-react";
 
 import type { AnnualSalaryRange } from "@/contexts/discovery/domain/annual-salary";
@@ -35,7 +36,7 @@ export function JobCard({ profileId, atsLabel, job }: JobCardProps) {
   const jobUrl = job.applyUrl || job.canonicalUrl;
 
   return (
-    <article className="job-card">
+    <Card className="job-card" padding="none">
       <div className="job-card-heading">
         <div className="record-stamps">
           <span className={job.verified ? "verified-tag" : "lead-tag"}>
@@ -97,7 +98,7 @@ export function JobCard({ profileId, atsLabel, job }: JobCardProps) {
       </div>
 
       <JobActions profileId={profileId} jobId={job.id} initialState={job.state} />
-    </article>
+    </Card>
   );
 }
 

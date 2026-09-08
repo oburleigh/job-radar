@@ -28,6 +28,15 @@ Every public token begins with `--jr-`. The token package also owns:
 - shadows and stacking levels
 - motion durations and easing
 
+Box surfaces are rounded through their shared owner: Panels use `--jr-radius-xl`,
+Cards and Modals use `--jr-radius-lg`, and field controls use `--jr-radius-md`.
+Pill indicators retain their circular shape. Product styles do not override these radii.
+An outlined Card uses the neutral strong border. Running is a neutral status;
+danger colours identify failures and destructive actions.
+Run and health labels use `--jr-radius-sm`.
+The masthead touch target is 52px wide and 57px high to preserve the existing
+mobile navigation geometry; it is intentionally separate from the form-control scale.
+
 Product and component styles must not contain raw colour values or raw numeric font sizes. Add or
 reuse a semantic token instead. Architecture tests enforce these rules.
 
@@ -43,16 +52,9 @@ or system mode.
 ## Components
 
 Generic components expose small, context-neutral contracts. They accept primitives and presentation
-values, not domain entities. The current public set is:
-
-- `Button` and `buttonAttributes` for button and link actions
-- `IconButton` for labelled icon-only actions
-- `TextField`
-- `TokenAutocomplete` for multi-value suggestion selection
-- `Switch`
-- `Modal`
-- `Skeleton`
-- `PageHeader`
+values, not domain entities. The public set is exported from
+[`packages/design-ui/src/index.ts`](packages/design-ui/src/index.ts).
+Storybook documents the components and their supported variants.
 
 Application code must use these controls instead of restyling native buttons. A new shared component
 must represent repeated generic interaction, not a single Discovery feature.

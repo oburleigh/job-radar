@@ -1,12 +1,11 @@
 import path from "node:path";
 import Database from "better-sqlite3";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { bootstrapJobRadar } from "@/contexts/discovery/infrastructure/configuration/bootstrap-job-radar";
 import { backfillJobMatchListingActivity } from "./backfill-listing-activity";
-import { getDashboardData } from "./read-models/dashboard";
 import * as schema from "./schema";
 import { jobMatches, jobs, searchProfiles } from "./schema";
 import { screeningCountColumns } from "./screening-count-columns";
@@ -29,18 +28,18 @@ describe("listing activity denormalised onto job matches", () => {
     sqlite.close();
   });
 
-  it("follows a listing out of the screening summary when it closes and back when it reopens", () => {
+  it("drops an excluded match from the active set when its listing closes, and returns it when it reopens", () => {
     const profileId = seedProfile(database);
     const jobId = seedExcludedMatch(database, profileId, "closing-one");
     seedExcludedMatch(database, profileId, "staying-one");
 
-    expect(screenedTotal(database, profileId)).toBe(2);
+    expect(activeExcludedMatches(database, profileId)).toBe(2);
 
     setListingActivity(database, jobId, false);
-    expect(screenedTotal(database, profileId)).toBe(1);
+    expect(activeExcludedMatches(database, profileId)).toBe(1);
 
     setListingActivity(database, jobId, true);
-    expect(screenedTotal(database, profileId)).toBe(2);
+    expect(activeExcludedMatches(database, profileId)).toBe(2);
   });
 
   it("writes nothing when a re-sighting sets a listing's activity to what it already was", () => {
@@ -155,7 +154,7 @@ describe("listing activity denormalised onto job matches", () => {
 
     expect(backfillJobMatchListingActivity(database)).toBe(2);
     expect(backfillJobMatchListingActivity(database)).toBe(0);
-    expect(screenedTotal(database, profileId)).toBe(1);
+    expect(activeExcludedMatches(database, profileId)).toBe(1);
   });
 });
 
@@ -163,8 +162,21 @@ function createDatabase(sqlite: Database.Database) {
   return drizzle(sqlite, { schema });
 }
 
-function screenedTotal(database: ReturnType<typeof createDatabase>, profileId: number): number {
-  return getDashboardData({ profileId }, database).screened.total;
+function activeExcludedMatches(
+  database: ReturnType<typeof createDatabase>,
+  profileId: number,
+): number {
+  return database
+    .select({ listingIsActive: jobMatches.listingIsActive })
+    .from(jobMatches)
+    .where(
+      and(
+        eq(jobMatches.profileId, profileId),
+        eq(jobMatches.status, "excluded"),
+        eq(jobMatches.listingIsActive, true),
+      ),
+    )
+    .all().length;
 }
 
 function listingActivityFlags(database: ReturnType<typeof createDatabase>): readonly boolean[] {

@@ -15,7 +15,7 @@ const removedAt = new Date("2026-08-29T10:00:00.000Z");
 const reobservedAt = new Date("2026-08-30T10:00:00.000Z");
 
 describe("recruiter directory removal", () => {
-  it("hides a removed firm and its recruiters from the ranked registry by default", () => {
+  it("hides a removed firm and its recruiters from the ranked listing by default", () => {
     const directory = seeded();
     const acmeId = firmIdFor(directory, "Acme Search");
 
@@ -59,9 +59,9 @@ describe("recruiter directory removal", () => {
       removedAt,
     });
 
-    const registry = ranked(removed);
-    expect(registry.firms.map((firm) => firm.name)).toEqual(["Acme Search", "Beacon Talent"]);
-    expect(registry.firms.flatMap((firm) => firm.recruiters.map((person) => person.name))).toEqual([
+    const listing = ranked(removed);
+    expect(listing.firms.map((firm) => firm.name)).toEqual(["Acme Search", "Beacon Talent"]);
+    expect(listing.firms.flatMap((firm) => firm.recruiters.map((person) => person.name))).toEqual([
       "Rafael Costa",
     ]);
   });
@@ -88,7 +88,7 @@ describe("recruiter directory removal", () => {
     );
   });
 
-  it("shows removed records, marked as removed, when the registry asks for them", () => {
+  it("shows removed records, marked as removed, when the listing asks for them", () => {
     const directory = seeded();
     const acmeId = firmIdFor(directory, "Acme Search");
     const removed = removeDirectoryRecord(directory, {
@@ -98,13 +98,13 @@ describe("recruiter directory removal", () => {
       removedAt,
     });
 
-    const registry = ranked(removed, { includeRemoved: true });
+    const listing = ranked(removed, { includeRemoved: true });
 
-    expect(registry.firms.map((firm) => [firm.name, firm.removed])).toEqual([
+    expect(listing.firms.map((firm) => [firm.name, firm.removed])).toEqual([
       ["Acme Search", true],
       ["Beacon Talent", false],
     ]);
-    expect(registry.firms.find((firm) => firm.name === "Acme Search")?.recruiters[0]?.removed).toBe(
+    expect(listing.firms.find((firm) => firm.name === "Acme Search")?.recruiters[0]?.removed).toBe(
       true,
     );
   });
@@ -125,9 +125,9 @@ describe("recruiter directory removal", () => {
 
     const restored = restoreDirectoryRecord(removed, { kind: "firm", recordId: acmeId });
 
-    const registry = ranked(restored);
-    expect(registry.firms.map((firm) => firm.name)).toEqual(["Acme Search"]);
-    expect(registry.firms[0]?.recruiters.map((person) => person.name)).toEqual(["Amina Khan"]);
+    const listing = ranked(restored);
+    expect(listing.firms.map((firm) => firm.name)).toEqual(["Acme Search"]);
+    expect(listing.firms[0]?.recruiters.map((person) => person.name)).toEqual(["Amina Khan"]);
   });
 
   it("leaves a separately removed recruiter removed when its firm is restored", () => {

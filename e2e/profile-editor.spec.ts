@@ -18,19 +18,17 @@ test("edits profile locations and salary currency through keyboard comboboxes", 
   await expect(page.locator('textarea[placeholder*="Technology"]')).toHaveCount(0);
 
   const locations = page.getByRole("combobox", { name: "Target locations" });
-  const locationLabelStyles = await page
-    .getByText("Target locations", { exact: true })
-    .evaluate((label) => {
-      const styles = getComputedStyle(label);
-      return { color: styles.color, fontSize: styles.fontSize, fontWeight: styles.fontWeight };
-    });
-  const titleLabelStyles = await page
-    .getByText("Target job titles", { exact: true })
-    .evaluate((label) => {
-      const styles = getComputedStyle(label);
-      return { color: styles.color, fontSize: styles.fontSize, fontWeight: styles.fontWeight };
-    });
-  expect(locationLabelStyles).toEqual(titleLabelStyles);
+  const labelStyles = (fieldId: string) =>
+    page
+      .locator(`.jr-field-label[for="${fieldId}"], label[for="${fieldId}"] > .jr-field-label`)
+      .first()
+      .evaluate((label) => {
+        const styles = getComputedStyle(label);
+        return { color: styles.color, fontSize: styles.fontSize, fontWeight: styles.fontWeight };
+      });
+  expect(await labelStyles("profile-location-terms")).toEqual(
+    await labelStyles("profile-title-terms"),
+  );
 
   const locationControlStyles = await locations.evaluate((input) => {
     const outer = input.closest(".jr-token-autocomplete-input");

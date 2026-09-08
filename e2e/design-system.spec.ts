@@ -127,6 +127,169 @@ test("sets body text at regular weight and the body size", async ({ page }) => {
   expect(faces.every((status) => status === "loaded")).toBe(true);
 });
 
+test("gives a tab strip one weight and lets the underline carry the current tab", async ({
+  page,
+}) => {
+  await page.goto("/recruiter-search");
+
+  const tabs = await page.evaluate(() => {
+    const strip = document.querySelector('nav[aria-label="Recruiter Search sections"]');
+    if (!strip) {
+      return [];
+    }
+    return [...strip.querySelectorAll("a")].map((tab) => ({
+      label: tab.textContent?.trim() ?? "",
+      current: tab.getAttribute("aria-current") === "page",
+      weight: getComputedStyle(tab).fontWeight,
+      underline: getComputedStyle(tab, "::after").content,
+    }));
+  });
+
+  expect(tabs.length, "the strip must render more than one tab to compare").toBeGreaterThan(1);
+  const current = tabs.filter((tab) => tab.current);
+  expect(current, "exactly one tab must be current").toHaveLength(1);
+
+  expect(
+    [...new Set(tabs.map((tab) => tab.weight))],
+    "every tab shares one weight, so the current tab is neither lighter nor heavier",
+  ).toHaveLength(1);
+
+  // Equal weights must not be reached by dropping the state signal instead. Measured on the
+  // running product, a generated underline reports content "" and an absent one reports "none".
+  expect(current[0]?.underline, "the current tab must carry the underline").toBe('""');
+  for (const tab of tabs.filter((candidate) => !candidate.current)) {
+    expect(tab.underline, `${tab.label} is not current and must carry no underline`).toBe("none");
+  }
+});
+
+/**
+ * The masthead spans the viewport so its background can bleed, but its contents belong on the page
+ * column. Measured before the fix: the brand sat 14px left of the page heading at 1440 and 188px
+ * left at 1920, where the page reaches its content width and centres while the masthead does not.
+ * The widths straddle every breakpoint that redefines either inset.
+ */
+for (const width of [1920, 1440, 1240, 980, 760, 390]) {
+  test(`aligns the masthead with the page column at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/");
+
+    const edges = await page.evaluate(() => {
+      const rect = (selector: string) => {
+        const element = document.querySelector(selector);
+        return element === null ? null : element.getBoundingClientRect();
+      };
+      const brand = rect("a.brand");
+      const utility = rect(".utility-controls");
+      const heading = rect(".jr-page-header");
+      // A collapsed box reports a zero rect, so only laid-out boxes can carry the contract.
+      const boxes = [...document.querySelectorAll(".page > *")]
+        .map((element) => element.getBoundingClientRect())
+        .filter((box) => box.width > 40);
+      return {
+        brandLeft: brand === null ? null : Math.round(brand.left),
+        utilityRight: utility === null ? null : Math.round(utility.right),
+        headingLeft: heading === null ? null : Math.round(heading.left),
+        boxLefts: [...new Set(boxes.map((box) => Math.round(box.left)))],
+        boxRights: [...new Set(boxes.map((box) => Math.round(box.right)))],
+      };
+    });
+
+    expect(edges.brandLeft, "the brand must be laid out").not.toBeNull();
+    expect(edges.headingLeft, "the page header must be laid out").not.toBeNull();
+    expect(edges.boxLefts.length, "every page box shares one left edge").toBe(1);
+
+    expect(edges.headingLeft).toBe(edges.brandLeft);
+    expect(edges.boxLefts[0]).toBe(edges.brandLeft);
+    if (edges.utilityRight !== null) {
+      expect(Math.max(...edges.boxRights)).toBe(edges.utilityRight);
+    }
+  });
+}
+
+/**
+ * One vertical rhythm per page. Three mechanisms were in use at once: Opportunities was a block
+ * container spaced by ad-hoc child margins, Recruiter Search was a grid whose children added
+ * margins on top of the gap, and Settings was block again. Measured gaps between sections ran
+ * 0, 8, 24, 32, 56 and 72px on one screen or another.
+ */
+for (const route of ["/", "/recruiter-search", "/settings", "/activity"]) {
+  test(`spaces every section on ${route} by one rhythm`, async ({ page }) => {
+    await page.goto(route);
+
+    const gaps = await page.evaluate(() => {
+      const column = document.querySelector(".page");
+      if (column === null) {
+        return null;
+      }
+      const laidOut = [...column.children]
+        .map((child) => child.getBoundingClientRect())
+        .filter((box) => box.height > 0);
+      return laidOut
+        .slice(1)
+        .map((box, index) => Math.round(box.top - (laidOut[index] as DOMRect).bottom));
+    });
+
+    expect(gaps, "the page column must be present").not.toBeNull();
+    expect((gaps ?? []).length, "a page needs two sections to have a rhythm").toBeGreaterThan(0);
+    expect(
+      [...new Set(gaps ?? [])],
+      `${route} spaces its sections ${(gaps ?? []).join(", ")}`,
+    ).toHaveLength(1);
+  });
+}
+
+/**
+ * Opportunities inset its fields by one step inside a control row while Recruiter Search's brief
+ * form used a zero inline pad, so the first field on one page sat 16px left of the other's. The
+ * pages are compared to each other rather than to a fixed number, which is the contract that
+ * matters and survives a change to the step.
+ */
+test("starts the first field on the same edge on every page that has one", async ({ page }) => {
+  const firstFieldLeft = async (route: string) => {
+    await page.goto(route);
+    return page.evaluate(() => {
+      const field = document.querySelector(".jr-field, .jr-combobox");
+      return field === null ? null : Math.round(field.getBoundingClientRect().left);
+    });
+  };
+
+  const opportunities = await firstFieldLeft("/");
+  const recruiterSearch = await firstFieldLeft("/recruiter-search");
+
+  expect(opportunities, "Opportunities must render a field").not.toBeNull();
+  expect(recruiterSearch, "Recruiter Search must render a field").not.toBeNull();
+  expect(recruiterSearch).toBe(opportunities);
+});
+
+test("sizes the fields in a control row equally", async ({ page }) => {
+  await page.goto("/");
+
+  const rows = await page.evaluate(() =>
+    ["section.run-controls", "section.filter-bar"].map((selector) => {
+      const row = document.querySelector(selector);
+      return {
+        selector,
+        present: row !== null,
+        fieldWidths: [...(row?.querySelectorAll("select") ?? [])].map((field) =>
+          Math.round(field.getBoundingClientRect().width),
+        ),
+      };
+    }),
+  );
+
+  for (const row of rows) {
+    expect(row.present, `${row.selector} must render to be measured`).toBe(true);
+    expect(
+      row.fieldWidths.length,
+      `${row.selector} must hold more than one field to compare`,
+    ).toBeGreaterThan(1);
+    expect(
+      [...new Set(row.fieldWidths)],
+      `${row.selector} sizes its fields ${row.fieldWidths.join(" and ")}`,
+    ).toHaveLength(1);
+  }
+});
+
 test("reduces movement without removing state fades under prefers-reduced-motion", async ({
   page,
 }) => {

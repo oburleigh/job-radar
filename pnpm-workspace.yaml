@@ -24,7 +24,14 @@ minimumReleaseAgeExclude:
   - '@storybook/react@10.5.10'
   - storybook@10.5.10
 overrides:
+  '@lhci/cli>tmp': 0.2.7
+  '@lhci/cli>uuid': 11.1.1
   esbuild: 0.28.2
+  'external-editor>tmp': 0.2.7
+  fast-uri: 3.1.6
   'hyperid>uuid': 11.1.1
   postcss: 8.5.26
+  qs: 6.16.0
   sharp: 0.35.3
+patchedDependencies:
+  '@base-ui/react@1.7.0': patches/@base-ui__react@1.7.0.patch

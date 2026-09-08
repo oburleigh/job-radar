@@ -1,28 +1,28 @@
-import type { SelectHTMLAttributes } from "react";
+import type { TextareaHTMLAttributes } from "react";
 
-export interface SelectFieldProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, "id"> {
+export interface TextAreaProps extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "id"> {
   readonly error?: string | undefined;
   readonly hint?: string | undefined;
   readonly id: string;
   readonly label: string;
 }
 
-export function SelectField({ error, hint, id, label, ...selectProps }: SelectFieldProps) {
+export function TextArea({ error, hint, id, label, ...textAreaProps }: TextAreaProps) {
   const describedBy = [hint ? `${id}-hint` : undefined, error ? `${id}-error` : undefined]
     .filter(Boolean)
     .join(" ");
 
   return (
-    <label className="jr-field jr-select-field-group" htmlFor={id}>
+    <label className="jr-field" htmlFor={id}>
       <span className="jr-field-label">
         {label}
-        {selectProps.required ? " (required)" : ""}
+        {textAreaProps.required ? " (required)" : ""}
       </span>
-      <select
-        {...selectProps}
+      <textarea
+        {...textAreaProps}
         aria-describedby={describedBy || undefined}
         aria-invalid={error ? true : undefined}
-        className={["jr-select-field", selectProps.className].filter(Boolean).join(" ")}
+        className={["jr-text-area", textAreaProps.className].filter(Boolean).join(" ")}
         id={id}
       />
       {hint ? (

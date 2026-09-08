@@ -1,6 +1,7 @@
-import { useEffect, useId, useMemo, useState } from "react";
+import { Combobox, type ComboboxOption } from "@job-radar/design-ui";
+import { useMemo } from "react";
 
-import { type CurrencyOption, currencyOptionsMatching } from "./country-currency-catalogue";
+import { currencyOptions } from "./country-currency-catalogue";
 
 interface CurrencyComboboxProps {
   readonly error?: string | undefined;
@@ -9,140 +10,32 @@ interface CurrencyComboboxProps {
   readonly value: string;
 }
 
+/**
+ * The shared Combobox owns the listbox, filtering and keyboard contract. This supplies the
+ * currency catalogue and nothing else.
+ */
 export function CurrencyCombobox({ error, name, onChange, value }: CurrencyComboboxProps) {
-  const inputId = useId();
-  const listboxId = useId();
-  const errorId = useId();
-  const [query, setQuery] = useState(value);
-  const [open, setOpen] = useState(false);
-  const [hasInteracted, setHasInteracted] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(-1);
-  const [announcement, setAnnouncement] = useState("");
-  const suggestions = useMemo(
-    () => (hasInteracted ? currencyOptionsMatching(query) : []),
-    [hasInteracted, query],
+  const options = useMemo<readonly ComboboxOption[]>(
+    () =>
+      currencyOptions.map((option) => ({
+        detail: option.currencyName,
+        label: option.currencyCode,
+        searchTerms: [option.currencyName, ...option.countryNames],
+        value: option.currencyCode,
+      })),
+    [],
   );
-  const isPopupVisible = open && suggestions.length > 0;
-  const activeOption = isPopupVisible && activeIndex >= 0 ? suggestions[activeIndex] : undefined;
-
-  useEffect(() => {
-    setQuery(value);
-  }, [value]);
-
-  useEffect(() => {
-    if (!isPopupVisible || activeIndex < 0) {
-      return;
-    }
-    document
-      .getElementById(`${listboxId}-${activeIndex}`)
-      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }, [activeIndex, isPopupVisible, listboxId]);
-
-  function selectCurrency(option: CurrencyOption) {
-    onChange(option.currencyCode);
-    setQuery(option.currencyCode);
-    setAnnouncement(
-      option.countryNames[0]
-        ? `${option.currencyCode} selected for ${option.countryNames[0]}.`
-        : `${option.currencyCode} selected.`,
-    );
-    setActiveIndex(-1);
-    setOpen(false);
-  }
-
-  function moveActive(direction: 1 | -1) {
-    setHasInteracted(true);
-    setOpen(true);
-    if (suggestions.length === 0) {
-      return;
-    }
-    setActiveIndex((current) => {
-      if (current < 0) {
-        return direction === 1 ? 0 : suggestions.length - 1;
-      }
-      return (current + direction + suggestions.length) % suggestions.length;
-    });
-  }
 
   return (
-    <div className="form-field currency-combobox">
-      <label htmlFor={inputId}>
-        <span>Salary currency</span>
-      </label>
-      <input name={name} type="hidden" value={value} readOnly />
-      <input
-        aria-activedescendant={activeOption ? `${listboxId}-${activeIndex}` : undefined}
-        aria-controls={listboxId}
-        aria-describedby={error ? errorId : undefined}
-        aria-expanded={isPopupVisible}
-        aria-invalid={Boolean(error)}
-        aria-autocomplete="list"
-        autoComplete="off"
-        id={inputId}
-        onBlur={() => {
-          setQuery(value);
-          setActiveIndex(-1);
-          setOpen(false);
-        }}
-        onChange={(event) => {
-          setHasInteracted(true);
-          setQuery(event.target.value);
-          setActiveIndex(-1);
-          setOpen(true);
-        }}
-        onFocus={() => {
-          setHasInteracted(true);
-          setOpen(true);
-        }}
-        onKeyDown={(event) => {
-          if (event.key === "ArrowDown") {
-            event.preventDefault();
-            moveActive(1);
-          } else if (event.key === "ArrowUp") {
-            event.preventDefault();
-            moveActive(-1);
-          } else if ((event.key === "Enter" || event.key === "Tab") && activeOption) {
-            if (event.key === "Enter") {
-              event.preventDefault();
-            }
-            selectCurrency(activeOption);
-          } else if (event.key === "Escape") {
-            setActiveIndex(-1);
-            setOpen(false);
-          }
-        }}
-        placeholder="Search code, currency, or country"
-        role="combobox"
-        value={query}
-      />
-      <div className="combobox-options" hidden={!isPopupVisible} id={listboxId} role="listbox">
-        {isPopupVisible
-          ? suggestions.map((option, index) => (
-              <div
-                aria-selected={index === activeIndex}
-                id={`${listboxId}-${index}`}
-                key={option.currencyCode}
-                onMouseDown={(event) => {
-                  event.preventDefault();
-                  selectCurrency(option);
-                }}
-                role="option"
-                tabIndex={-1}
-              >
-                <strong className="currency-option-code">{option.currencyCode}</strong>
-                <span className="currency-option-name">{option.currencyName}</span>
-              </div>
-            ))
-          : null}
-      </div>
-      {error ? (
-        <p className="field-error" id={errorId}>
-          {error}
-        </p>
-      ) : null}
-      <p className="sr-only" role="status">
-        {announcement}
-      </p>
-    </div>
+    <Combobox
+      {...(error === undefined ? {} : { error })}
+      id="profile-salary-currency"
+      label="Salary currency"
+      name={name}
+      onChange={onChange}
+      options={options}
+      placeholder="Search code, currency, or country"
+      value={value}
+    />
   );
 }

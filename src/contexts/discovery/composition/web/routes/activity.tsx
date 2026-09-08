@@ -1,4 +1,4 @@
-import { PageHeader } from "@job-radar/design-ui";
+import { Card, PageHeader, Panel } from "@job-radar/design-ui";
 import { CheckCircle2, CircleAlert, CircleX, Clock3, LoaderCircle } from "lucide-react";
 import { Link, useLoaderData } from "react-router";
 import { discoveryWeb } from "@/contexts/discovery/composition/discovery-web.server";
@@ -42,25 +42,26 @@ export default function ActivityPage() {
         description="Review Discovery Runs and Research Runs without losing the feature and settings that produced each one."
       />
       {activeDiscoveryRuns.length > 0 ? (
-        <section className="active-discovery-runs" aria-label="Active Discovery Runs">
+        <Panel as="section" className="active-discovery-runs" aria-label="Active Discovery Runs">
           <div className="section-heading">
             <h2>Active Discovery Runs</h2>
             <span>{activeDiscoveryRuns.length} running</span>
           </div>
           <div className="active-discovery-run-list">
             {activeDiscoveryRuns.map((run) => (
-              <article
-                className="active-discovery-run-card"
+              <Card
+                padding="none"
+                tone="outlined"
                 aria-label={`Discovery Run #${run.id}`}
                 key={run.id}
               >
                 <ActiveDiscoveryRun run={run} showRunLink />
-              </article>
+              </Card>
             ))}
           </div>
-        </section>
+        </Panel>
       ) : null}
-      <section className="panel run-panel" aria-labelledby="activity-log-title">
+      <Panel as="section" className="run-panel" aria-labelledby="activity-log-title">
         <div className="section-heading">
           <h2 id="activity-log-title">Run history</h2>
           <span>{items.length} recorded</span>
@@ -85,15 +86,15 @@ export default function ActivityPage() {
             </table>
           </div>
         ) : (
-          <div className="empty-state compact">
+          <Panel className="empty-state compact" padding="comfortable">
             <span className="empty-icon">
               <Clock3 size={27} />
             </span>
             <h2>No runs recorded</h2>
             <p>Start an Opportunity discovery or Recruiter Search to create the first run.</p>
-          </div>
+          </Panel>
         )}
-      </section>
+      </Panel>
     </div>
   );
 }

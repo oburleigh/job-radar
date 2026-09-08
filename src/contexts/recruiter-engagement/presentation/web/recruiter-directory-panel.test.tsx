@@ -1,33 +1,71 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { describe, expect, it } from "vitest";
-import type { RecruiterRegistry } from "@/contexts/recruiter-engagement/domain/recruiter-registry";
-import { type RecruiterRegistryFilters, RecruiterRegistryPanel } from "./recruiter-registry-panel";
+import type { RecruiterDirectoryListing } from "@/contexts/recruiter-engagement/domain/recruiter-directory-listing";
+import {
+  type RecruiterDirectoryFilters,
+  RecruiterDirectoryPanel,
+} from "./recruiter-directory-panel";
 
-describe("recruiter registry panel", () => {
-  it("shows what the registry holds and offers a profile action only where one exists", () => {
-    const html = render(registry());
+describe("recruiter Directory panel", () => {
+  it("names the Directory rather than a registry", () => {
+    const html = render(listing());
 
-    expect(html).toContain("2 firms · 3 recruiters shown · 0 removed across the whole registry");
+    expect(html).toContain("Directory");
+    expect(html).not.toContain("Registry");
+    expect(html).not.toContain("registry");
+  });
+
+  it("shows what the Directory holds and offers a profile action only where one exists", () => {
+    const html = render(listing());
+
+    expect(html).toContain("Showing 2 firms and 3 recruiters.");
+    expect(html).not.toContain("removed from the whole Directory");
     expect(html).toContain("Open Amina Khan on LinkedIn");
     expect(html).toContain("https://www.linkedin.com/in/amina-khan");
     expect(html).not.toContain("Open Rafael Costa on LinkedIn");
     expect(html).toContain("Rafael Costa");
   });
 
-  it("names the firm and its recruiter count before the removal happens", () => {
-    const html = render(registry());
+  it("names the firm on the control that opens its removal, and asks nothing until then", () => {
+    const html = render(listing());
 
-    expect(html).toContain("Remove Acme Search. What happens to its 2 recruiters?");
-    expect(html).toContain("Remove them with the firm");
-    expect(html).toContain("Keep them, without a firm");
-    expect(html).toContain('value="with-recruiters"');
-    expect(html).toContain('value="firm-only"');
+    expect(html).toContain('aria-label="Remove Acme Search"');
+    expect(html).toContain('aria-label="Remove Beacon Talent"');
+    // The cascade question lives in the dialog, which is closed until the control is used.
+    expect(html).not.toContain("Remove them with the firm");
+    expect(html).not.toContain('value="with-recruiters"');
+  });
+
+  it("counts one firm and one recruiter in the singular", () => {
+    const html = render(
+      listing({
+        firmCount: 1,
+        firms: [
+          {
+            id: "firm-beacon",
+            name: "Beacon Talent",
+            recruiters: [],
+            removed: false,
+            specialisms: ["Hospitality"],
+            websiteUrl: "https://beacon-talent.ae",
+          },
+        ],
+        recruiterCount: 1,
+        removedCount: 1,
+      }),
+    );
+
+    expect(html).toContain("Showing 1 firm and 1 recruiter.");
+    expect(html).toContain("1 record removed from the whole Directory.");
+    expect(html).not.toContain("1 firms");
+    expect(html).not.toContain("1 recruiters");
+    expect(html).not.toContain("1 records");
   });
 
   it("offers restoring rather than removing a record that is already removed", () => {
     const html = render(
-      registry({
+      listing({
         firms: [
           {
             id: "firm-acme",
@@ -45,57 +83,61 @@ describe("recruiter registry panel", () => {
 
     expect(html).toContain("Restore Acme Search");
     expect(html).toContain('name="intent" value="restore-directory-record"');
-    expect(html).not.toContain("Remove Acme Search. What happens");
+    expect(html).not.toContain('aria-label="Remove Acme Search"');
   });
 
   it("carries the active filters through a removal so the view does not reset", () => {
-    const html = render(registry(), { showRemoved: true, specialism: "Software engineering" });
+    const html = render(listing(), { showRemoved: true, specialism: "Software engineering" });
 
     expect(html).toContain('type="hidden" name="specialism" value="Software engineering"');
     expect(html).toContain('type="hidden" name="showRemoved" value="on"');
   });
 
   it("does not present a directory-wide removed count as if the filter applied to it", () => {
-    const html = render(registry({ firmCount: 1, recruiterCount: 1, removedCount: 14 }), {
+    const html = render(listing({ firmCount: 1, recruiterCount: 1, removedCount: 14 }), {
       showRemoved: false,
       specialism: "Hospitality",
     });
 
-    expect(html).toContain("1 firms · 1 recruiters shown · 14 removed across the whole registry");
+    // The filtered pair and the Directory-wide total are separate sentences, not one run of numbers.
+    expect(html).toContain("Showing 1 firm and 1 recruiter.");
+    expect(html).toContain("14 records removed from the whole Directory.");
   });
 
-  it("says why a filtered registry is empty rather than showing nothing", () => {
+  it("says why a filtered Directory is empty rather than showing nothing", () => {
     const html = render(
-      registry({ firms: [], recruiterCount: 0, firmCount: 0, unassociatedRecruiters: [] }),
+      listing({ firms: [], recruiterCount: 0, firmCount: 0, unassociatedRecruiters: [] }),
       { showRemoved: false, specialism: "Hospitality" },
     );
 
-    expect(html).toContain("No firms in the registry hold the Hospitality specialism.");
+    expect(html).toContain("No firms in the Directory hold the Hospitality specialism.");
   });
 
   it("distinguishes removing one recruiter from removing the firm", () => {
-    const html = render(registry());
+    const html = render(listing());
 
     expect(html).toContain("Remove Amina Khan");
     expect(html).toContain('type="hidden" name="kind" value="recruiter"');
-    expect(html).toContain('type="hidden" name="kind" value="firm"');
+    // A firm removal is a dialog rather than an inline form, so it posts no kind until confirmed.
+    expect(html).not.toContain('type="hidden" name="kind" value="firm"');
+    expect(html).toContain('aria-label="Remove Acme Search"');
   });
 });
 
 function render(
-  value: RecruiterRegistry,
-  filters: RecruiterRegistryFilters = { showRemoved: false, specialism: null },
+  value: RecruiterDirectoryListing,
+  filters: RecruiterDirectoryFilters = { showRemoved: false, specialism: null },
 ): string {
   const router = createMemoryRouter([
     {
       path: "/",
-      element: <RecruiterRegistryPanel filters={filters} isSubmitting={false} registry={value} />,
+      element: <RecruiterDirectoryPanel filters={filters} isSubmitting={false} listing={value} />,
     },
   ]);
   return renderToStaticMarkup(<RouterProvider router={router} />);
 }
 
-function registry(overrides: Partial<RecruiterRegistry> = {}): RecruiterRegistry {
+function listing(overrides: Partial<RecruiterDirectoryListing> = {}): RecruiterDirectoryListing {
   return {
     availableSpecialisms: ["Hospitality", "Software engineering"],
     firmCount: 2,

@@ -176,6 +176,34 @@ test("starts recruiter research from the browser and renders firms and recruiter
   await page.emulateMedia({ colorScheme: "light" });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: "test-results/recruiter-directory-mobile.png", fullPage: true });
+  await page.getByRole("link", { name: "Directory", exact: true }).click();
+  await page.getByRole("button", { name: "Remove Recruitment Search 1", exact: true }).click();
+  const removal = page.getByRole("dialog");
+  const keep = removal.getByRole("radio", { name: "Keep them, without a firm" });
+  const remove = removal.getByRole("radio", { name: "Remove them with the firm" });
+  await expect(remove).toBeChecked();
+  const row = removal.locator("label").filter({
+    has: page.getByRole("radio", { name: "Keep them, without a firm" }),
+  });
+  const rowBox = await row.boundingBox();
+  if (!rowBox) throw new Error("The removal option must be measurable.");
+  expect(rowBox.height).toBeGreaterThanOrEqual(44);
+  const indicator = await keep.boundingBox();
+  expect(indicator?.width).toBe(18);
+  expect(indicator?.height).toBe(18);
+  await row.click({ position: { x: rowBox.width - 2, y: 2 } });
+  await expect(keep).toBeChecked();
+  await expect(remove).not.toBeChecked();
+  await keep.focus();
+  await keep.press("ArrowUp");
+  await expect(remove).toBeChecked();
+  await expect(remove).toBeFocused();
+  await expect(remove).toHaveCSS("outline-style", "solid");
+  await expect(removal).toHaveCSS("border-radius", "12px");
+  await removal.screenshot({ path: "test-results/removal-radio-mobile.png" });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await removal.screenshot({ path: "test-results/removal-radio-desktop.png" });
+  await page.keyboard.press("Escape");
   await page.getByRole("link", { name: "Activity" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Activity" })).toBeVisible();
   await expect(page.getByRole("heading", { level: 1, name: "Discovery history" })).toHaveCount(0);
@@ -457,7 +485,18 @@ test("uses the shared country catalogue in the location autocomplete and keeps c
     throw new Error("Recruiter research content edges must be measurable.");
   }
   expect(Math.abs(pageTitle.x - briefHeading.x)).toBeLessThanOrEqual(1);
-  expect(Math.abs(pageTitle.x - optionalContext.x)).toBeLessThanOrEqual(1);
+  // The disclosure is inside the brief panel, so it lines up with that panel's first field rather
+  // than with the page column. Comparing it to the title asserted the zero inset that put every
+  // label hard against the panel's edge.
+  const firstBriefField = await page
+    .locator(".recruiter-brief-form .jr-field")
+    .first()
+    .boundingBox();
+  if (!firstBriefField) {
+    throw new Error("The brief form's first field must be measurable.");
+  }
+  expect(Math.abs(firstBriefField.x - optionalContext.x)).toBeLessThanOrEqual(1);
+  expect(optionalContext.x).toBeGreaterThan(pageTitle.x);
 
   const targetLocations = page.getByLabel("Target locations");
   await expect(targetLocations).toHaveAttribute("role", "combobox");
@@ -491,7 +530,9 @@ test("uses the shared country catalogue in the location autocomplete and keeps c
   await targetLocations.fill("");
   await targetLocations.press("Backspace");
   await expect(page.getByLabel("Remove China")).toHaveCount(0);
+  await expect(page.getByLabel("Remove Zimbabwe")).toBeVisible();
   await targetLocations.press("Escape");
+  await expect(page.getByLabel("Remove Zimbabwe")).toBeVisible();
   await page.getByLabel("Remove Zimbabwe").click();
   await expect(page.getByLabel("Geography")).toHaveCount(0);
 
@@ -650,7 +691,7 @@ test("places the suggestion panel below the field it belongs to", async ({ page 
   await expect(suggestionsFor(page).first()).toBeVisible();
 
   const field = await locations.boundingBox();
-  const panel = await page.locator(".jr-token-autocomplete-options:not([hidden])").boundingBox();
+  const panel = await page.getByRole("listbox").locator("..").boundingBox();
   if (!field || !panel) {
     throw new Error("The field and its suggestion panel must both be measurable.");
   }

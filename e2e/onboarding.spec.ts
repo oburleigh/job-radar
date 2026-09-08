@@ -9,6 +9,8 @@ test.describe
         page.getByRole("heading", { level: 2, name: "Create a search profile first" }),
       ).toBeVisible();
 
+      await expect(page.locator(".empty-state")).toHaveCSS("padding", "16px");
+
       await page.goto("/settings/adapters/source-coverage");
       await expect(page.getByText("15 active", { exact: true })).toBeVisible();
       await expect(page.getByText("0 registered", { exact: true })).toBeVisible();
@@ -23,6 +25,8 @@ test.describe
     test("keeps profile actions with their saved profile tiles", async ({ page }) => {
       await page.setViewportSize({ width: 1440, height: 1000 });
       await page.goto("/profiles?new=1");
+      // Typing before hydration is lost when React takes over the uncontrolled fields.
+      await page.waitForLoadState("networkidle");
 
       await page.getByLabel("Profile name").fill("UAE engineering leadership");
       await chooseComboboxOption(page, "Salary currency", "AED");
@@ -92,6 +96,10 @@ test.describe
       await expect(secondProfile.locator("button")).toHaveCount(0);
       await expect(cloneSecondProfile).toBeVisible();
       await expect(deleteSecondProfile).toBeVisible();
+      await expect(deleteSecondProfile).toHaveAttribute("data-variant", "danger");
+      expect(
+        await deleteSecondProfile.evaluate((element) => getComputedStyle(element).color),
+      ).not.toBe(await cloneSecondProfile.evaluate((element) => getComputedStyle(element).color));
 
       const [secondProfileBox, cloneBox, deleteBox, newProfileBox] = await Promise.all([
         secondProfileTile.boundingBox(),
@@ -156,10 +164,12 @@ test.describe
       await page.screenshot({ path: "test-results/profiles-desktop.png", fullPage: true });
       await page.emulateMedia({ colorScheme: "dark" });
       await page.reload();
+      await page.waitForLoadState("networkidle");
       await page.screenshot({ path: "test-results/profiles-desktop-dark.png", fullPage: true });
       await page.emulateMedia({ colorScheme: "light" });
       await page.setViewportSize({ width: 390, height: 844 });
       await page.reload();
+      await page.waitForLoadState("networkidle");
       const mobileProfileList = page.locator(".profile-list");
       const mobileNewProfileTile = mobileProfileList.getByRole("link", {
         name: "New profile",
@@ -283,6 +293,7 @@ test.describe
       await expect(table.getByRole("switch", { name: /^Enable / })).toHaveCount(boardCount);
 
       await page.reload();
+      await page.waitForLoadState("networkidle");
       const enableAll = page.getByRole("switch", { name: "Enable all company boards" });
       await expect(enableAll).not.toBeChecked();
       await expect(page.getByRole("table").getByRole("switch", { name: /^Enable / })).toHaveCount(
@@ -319,21 +330,23 @@ test.describe
       await page.getByRole("button", { name: "Save public search settings" }).click();
       await expect(page.getByText("Public search settings saved to SQLite.")).toBeVisible();
       await page.reload();
+      await page.waitForLoadState("networkidle");
       await expect(page.getByLabel("Requests per stage")).toHaveValue("24");
 
       await page
         .getByRole("navigation", { name: "Recruiter Search settings" })
         .getByRole("link", { name: "Directory ranking" })
         .click();
-      await page.getByLabel("Specialism", { exact: true }).fill("25");
-      await page.getByLabel("Current mandates or activity", { exact: true }).fill("10");
+      await page.getByLabel("Specialism (required)", { exact: true }).fill("25");
+      await page.getByLabel("Current mandates or activity (required)", { exact: true }).fill("10");
       await page.getByRole("button", { name: "Save directory ranking" }).click();
       await expect(page.getByText("Directory ranking saved to SQLite.")).toBeVisible();
       await page.reload();
-      await expect(page.getByLabel("Specialism", { exact: true })).toHaveValue("25");
-      await expect(page.getByLabel("Current mandates or activity", { exact: true })).toHaveValue(
-        "10",
-      );
+      await page.waitForLoadState("networkidle");
+      await expect(page.getByLabel("Specialism (required)", { exact: true })).toHaveValue("25");
+      await expect(
+        page.getByLabel("Current mandates or activity (required)", { exact: true }),
+      ).toHaveValue("10");
 
       await page
         .getByRole("navigation", { name: "Settings" })
@@ -388,10 +401,12 @@ test.describe
       await page.screenshot({ path: "test-results/settings-desktop.png", fullPage: true });
       await page.emulateMedia({ colorScheme: "dark" });
       await page.reload();
+      await page.waitForLoadState("networkidle");
       await page.screenshot({ path: "test-results/settings-desktop-dark.png", fullPage: true });
       await page.emulateMedia({ colorScheme: "light" });
       await page.setViewportSize({ width: 390, height: 844 });
       await page.reload();
+      await page.waitForLoadState("networkidle");
       const [mobileMarketBox, mobileProviderBox, mobileStructuredBox, mobileClosedListingBox] =
         await Promise.all([
           marketVocabulary.boundingBox(),
@@ -426,15 +441,19 @@ test.describe
     test("saves the Recruiter Search criteria catalogues", async ({ page }) => {
       await page.goto("/settings/recruiter-search/research-criteria");
       await page.getByText("Edit industries and Specialisms", { exact: true }).click();
-      const industries = page.getByRole("textbox", { name: "Target industries", exact: true });
+      const industries = page.getByRole("textbox", {
+        name: "Target industries (required)",
+        exact: true,
+      });
       await industries.fill(`${await industries.inputValue()}\nAerospace`);
       await page.getByRole("button", { name: "Save Research criteria" }).click();
 
       await expect(page.getByText("Research criteria saved to SQLite.")).toBeVisible();
       await page.reload();
+      await page.waitForLoadState("networkidle");
       await page.getByText("Edit industries and Specialisms", { exact: true }).click();
       await expect(
-        page.getByRole("textbox", { name: "Target industries", exact: true }),
+        page.getByRole("textbox", { name: "Target industries (required)", exact: true }),
       ).toHaveValue(/Aerospace/);
       await page.screenshot({
         fullPage: true,
@@ -509,7 +528,7 @@ test.describe
           .nth(1)
           .locator(".jr-section-header-trailing > span")
           .boundingBox(),
-        page.locator(".source-section").nth(1).locator(".panel").boundingBox(),
+        page.locator(".source-section").nth(1).locator(".jr-panel").boundingBox(),
       ]);
       if (
         !pageHeader ||
@@ -573,6 +592,7 @@ test.describe
       await page.screenshot({ path: "test-results/sources-desktop.png", fullPage: true });
       await page.emulateMedia({ colorScheme: "dark" });
       await page.reload();
+      await page.waitForLoadState("networkidle");
       await expect(page.getByRole("heading", { level: 2, name: "Source Coverage" })).toBeVisible();
       await page.screenshot({ path: "test-results/sources-desktop-dark.png", fullPage: true });
       await page.emulateMedia({ colorScheme: "light" });

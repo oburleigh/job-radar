@@ -99,7 +99,7 @@ describe("recruiter research route action", () => {
     });
   });
 
-  it("removes a firm with its recruiters and returns to the filtered registry", async () => {
+  it("removes a firm with its recruiters and returns to the filtered listing", async () => {
     const removeDirectoryRecord = vi.fn();
     const action = createRecruiterResearchAction({
       assertLocalHost: vi.fn(),
@@ -116,7 +116,7 @@ describe("recruiter research route action", () => {
     });
 
     const response = await action(
-      registryRequest({
+      directoryListingRequest({
         cascadeRecruiters: "with-recruiters",
         intent: "remove-directory-record",
         kind: "firm",
@@ -132,7 +132,7 @@ describe("recruiter research route action", () => {
       recordId: "firm-1",
     });
     expect((response as Response).headers.get("location")).toBe(
-      "/recruiter-search?view=registry&specialism=Software+engineering&showRemoved=on",
+      "/recruiter-search?view=directory&specialism=Software+engineering&showRemoved=on",
     );
   });
 
@@ -153,7 +153,7 @@ describe("recruiter research route action", () => {
     });
 
     await action(
-      registryRequest({
+      directoryListingRequest({
         cascadeRecruiters: "firm-only",
         intent: "remove-directory-record",
         kind: "firm",
@@ -186,7 +186,7 @@ describe("recruiter research route action", () => {
 
     await expect(
       action(
-        registryRequest({
+        directoryListingRequest({
           intent: "remove-directory-record",
           kind: "firm",
           recordId: "firm-1",
@@ -213,7 +213,7 @@ describe("recruiter research route action", () => {
     });
 
     const response = await action(
-      registryRequest({
+      directoryListingRequest({
         intent: "remove-directory-record",
         kind: "recruiter",
         recordId: "recruiter-1",
@@ -225,7 +225,7 @@ describe("recruiter research route action", () => {
       kind: "recruiter",
       recordId: "recruiter-1",
     });
-    expect((response as Response).headers.get("location")).toBe("/recruiter-search?view=registry");
+    expect((response as Response).headers.get("location")).toBe("/recruiter-search?view=directory");
   });
 
   it("restores a removed record", async () => {
@@ -246,7 +246,7 @@ describe("recruiter research route action", () => {
     });
 
     await action(
-      registryRequest({
+      directoryListingRequest({
         intent: "restore-directory-record",
         kind: "firm",
         recordId: "firm-1",
@@ -333,7 +333,7 @@ function directoryRequest(): Request {
   });
 }
 
-function registryRequest(fields: Record<string, string>): Request {
+function directoryListingRequest(fields: Record<string, string>): Request {
   const form = new FormData();
   for (const [name, value] of Object.entries(fields)) {
     form.set(name, value);

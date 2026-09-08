@@ -8,7 +8,12 @@ import { LocationCombobox } from "./location-combobox";
 describe("profile editor comboboxes", () => {
   it("renders an input-backed target-location combobox with removable values", () => {
     const markup = renderWithRouter(
-      <LocationCombobox name="locationTerms" onChange={() => undefined} values={["China"]} />,
+      <LocationCombobox
+        id="profile-location-terms"
+        name="locationTerms"
+        onChange={() => undefined}
+        values={["China"]}
+      />,
     );
 
     expect(markup).toContain('role="combobox"');
@@ -23,6 +28,7 @@ describe("profile editor comboboxes", () => {
   it("keeps saved city locations visible for canonical validation on submission", () => {
     const markup = renderWithRouter(
       <LocationCombobox
+        id="profile-location-terms"
         name="locationTerms"
         onChange={() => undefined}
         values={["China", "Dubai"]}
@@ -39,7 +45,8 @@ describe("profile editor comboboxes", () => {
       <CurrencyCombobox name="salaryCurrency" onChange={() => undefined} value="GBP" />,
     );
 
-    expect(markup).toContain('role="listbox"');
+    expect(markup).toContain('role="combobox"');
+    expect(markup).not.toContain('role="listbox"');
     expect(markup).toContain('aria-expanded="false"');
     expect(markup).not.toContain('role="option"');
     expect(markup).not.toContain("British Pound");
@@ -63,6 +70,7 @@ describe("profile editor comboboxes", () => {
   it("renders an invalid target-location chooser with a field-specific error relation", () => {
     const markup = renderWithRouter(
       <LocationCombobox
+        id="profile-location-terms"
         error="Add at least one target location."
         name="locationTerms"
         onChange={() => undefined}

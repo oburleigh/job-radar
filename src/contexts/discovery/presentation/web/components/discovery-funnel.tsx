@@ -1,4 +1,4 @@
-import { buttonAttributes } from "@job-radar/design-ui";
+import { buttonAttributes, Panel } from "@job-radar/design-ui";
 import { Link } from "react-router";
 
 export interface DiscoveryFunnelCounts {
@@ -36,7 +36,7 @@ export function DiscoveryFunnel({
   ] as const;
 
   return (
-    <section className="panel run-panel" aria-labelledby="discovery-funnel-heading">
+    <Panel as="section" className="run-panel" aria-labelledby="discovery-funnel-heading">
       <div className="section-heading">
         <div>
           <h2 id="discovery-funnel-heading">Discovery funnel</h2>
@@ -62,7 +62,7 @@ export function DiscoveryFunnel({
           </Link>
         </div>
       ) : null}
-    </section>
+    </Panel>
   );
 }
 

@@ -1,4 +1,4 @@
-import { Button, buttonAttributes, PageHeader } from "@job-radar/design-ui";
+import { Button, buttonAttributes, PageHeader, Panel, TextField } from "@job-radar/design-ui";
 import { ArrowLeft, CheckCircle2, CircleAlert, CircleX, LoaderCircle } from "lucide-react";
 import { Form, Link, type LoaderFunctionArgs, useLoaderData } from "react-router";
 import { discoveryWeb } from "@/contexts/discovery/composition/discovery-web.server";
@@ -62,8 +62,18 @@ export default function RunDetailPage() {
       />
 
       {run.status !== "running" ? (
-        <section
-          className={`panel run-panel run-outcome run-outcome-${outcome.kind}`}
+        <Panel
+          as="section"
+          className="run-panel"
+          tone={
+            outcome.kind === "completed"
+              ? "success"
+              : outcome.kind === "failed"
+                ? "danger"
+                : outcome.kind === "cancelled"
+                  ? "neutral"
+                  : "warning"
+          }
           aria-labelledby="run-outcome-heading"
         >
           <div className="section-heading">
@@ -75,23 +85,24 @@ export default function RunDetailPage() {
             {boardEvidence} · {webEvidence}
             {run.error ? ` · ${formatRunFailureDetail(run.error)}` : ""}
           </p>
-        </section>
+        </Panel>
       ) : null}
 
       {run.status === "running" ? (
-        <section
-          className="panel run-panel active-discovery-run-detail"
+        <Panel
+          as="section"
+          className="run-panel active-discovery-run-detail"
           aria-label={`Discovery Run #${run.id} progress`}
         >
           <ActiveDiscoveryRun run={run} showProfileName={false} />
-        </section>
+        </Panel>
       ) : null}
 
       {run.outcome === "completed" || run.outcome === "partial" ? (
         <DiscoveryFunnel counts={data.funnel} profileId={run.profileId} />
       ) : null}
 
-      <section className="panel run-panel" id="known-role-check">
+      <Panel as="section" className="run-panel" id="known-role-check">
         <div className="section-heading">
           <div>
             <p className="eyebrow">Known role check</p>
@@ -100,17 +111,15 @@ export default function RunDetailPage() {
           <span>Trace one public URL through this run</span>
         </div>
         <Form method="get" className="known-role-form">
-          <label htmlFor="known-role-url">
-            <span>Public job URL</span>
-            <input
-              id="known-role-url"
-              name="jobUrl"
-              type="url"
-              defaultValue={data.requestedJobUrl}
-              placeholder="https://jobs.example.com/company/role"
-              required
-            />
-          </label>
+          <TextField
+            defaultValue={data.requestedJobUrl}
+            id="known-role-url"
+            label="Public job URL"
+            name="jobUrl"
+            placeholder="https://jobs.example.com/company/role"
+            required
+            type="url"
+          />
           <Button type="submit" variant="primary">
             Explain this role
           </Button>
@@ -121,9 +130,9 @@ export default function RunDetailPage() {
           {data.diagnosticError ? <p role="alert">{data.diagnosticError}</p> : null}
         </Form>
         {data.diagnostic ? <KnownRoleDiagnostic diagnostic={data.diagnostic} /> : null}
-      </section>
+      </Panel>
 
-      <section className="panel run-panel" id="query-details">
+      <Panel as="section" className="run-panel" id="query-details">
         <div className="section-heading">
           <h2>Requests by market and lane</h2>
           <span>{run.hitCount} unique search hits</span>
@@ -185,10 +194,10 @@ export default function RunDetailPage() {
             Request-level history is available for granular discovery runs.
           </p>
         )}
-      </section>
+      </Panel>
 
       {queries.length > 0 ? (
-        <section className="panel run-panel">
+        <Panel as="section" className="run-panel">
           <div className="section-heading">
             <h2>Every provider request</h2>
             <span>{queries.length} requests</span>
@@ -251,7 +260,7 @@ export default function RunDetailPage() {
               </tbody>
             </table>
           </div>
-        </section>
+        </Panel>
       ) : null}
     </div>
   );

@@ -10,25 +10,25 @@
      * a border as the only way to divide the page.
      */
     --jr-palette-white: oklch(100% 0 0deg);
-    --jr-palette-black: oklch(15.2% 0.004 70deg);
+    --jr-palette-black: oklch(15.2% 0 0deg);
     --jr-palette-canvas-light: oklch(100% 0 0deg);
-    --jr-palette-canvas-dark: oklch(15.2% 0.004 70deg);
-    --jr-palette-surface-subtle-light: oklch(98.2% 0.0025 70deg);
-    --jr-palette-surface-subtle-dark: oklch(18.4% 0.005 70deg);
-    --jr-palette-surface-light: oklch(96.2% 0.004 70deg);
-    --jr-palette-surface-dark: oklch(21.4% 0.006 70deg);
-    --jr-palette-surface-hover-light: oklch(93.4% 0.005 70deg);
-    --jr-palette-surface-hover-dark: oklch(26% 0.007 70deg);
-    --jr-palette-text-light: oklch(20% 0.008 70deg);
-    --jr-palette-text-dark: oklch(96% 0.004 70deg);
-    --jr-palette-text-muted-light: oklch(46% 0.009 70deg);
-    --jr-palette-text-muted-dark: oklch(76% 0.008 70deg);
-    --jr-palette-text-subtle-light: oklch(51% 0.009 70deg);
-    --jr-palette-text-subtle-dark: oklch(70% 0.009 70deg);
-    --jr-palette-border-light: oklch(89.5% 0.004 70deg);
-    --jr-palette-border-dark: oklch(30% 0.007 70deg);
-    --jr-palette-border-strong-light: oklch(56% 0.008 70deg);
-    --jr-palette-border-strong-dark: oklch(57% 0.01 70deg);
+    --jr-palette-canvas-dark: oklch(15.2% 0 0deg);
+    --jr-palette-surface-subtle-light: oklch(98.2% 0 0deg);
+    --jr-palette-surface-subtle-dark: oklch(18.4% 0 0deg);
+    --jr-palette-surface-light: oklch(96.2% 0 0deg);
+    --jr-palette-surface-dark: oklch(21.4% 0 0deg);
+    --jr-palette-surface-hover-light: oklch(93.4% 0 0deg);
+    --jr-palette-surface-hover-dark: oklch(26% 0 0deg);
+    --jr-palette-text-light: oklch(20% 0 0deg);
+    --jr-palette-text-dark: oklch(96% 0 0deg);
+    --jr-palette-text-muted-light: oklch(46% 0 0deg);
+    --jr-palette-text-muted-dark: oklch(76% 0 0deg);
+    --jr-palette-text-subtle-light: oklch(51% 0 0deg);
+    --jr-palette-text-subtle-dark: oklch(70% 0 0deg);
+    --jr-palette-border-light: oklch(89.5% 0 0deg);
+    --jr-palette-border-dark: oklch(30% 0 0deg);
+    --jr-palette-border-strong-light: oklch(56% 0 0deg);
+    --jr-palette-border-strong-dark: oklch(57% 0 0deg);
     --jr-palette-orange-100: oklch(96.5% 0.025 45deg);
     --jr-palette-orange-300: oklch(79% 0.145 38deg);
     --jr-palette-orange-400: oklch(70.094% 0.1923 34.12deg);
@@ -112,10 +112,6 @@
     --jr-color-action-hover: var(--jr-color-accent-strong);
     --jr-color-text-on-action: var(--jr-color-text-on-accent);
     --jr-color-info-subtle: light-dark(var(--jr-palette-cyan-100), var(--jr-palette-cyan-800));
-    --jr-color-info-border: light-dark(
-      var(--jr-palette-cyan-border-light),
-      var(--jr-palette-cyan-border-dark)
-    );
     --jr-color-warning-subtle: light-dark(
       var(--jr-palette-yellow-100),
       var(--jr-palette-yellow-800)
@@ -195,9 +191,6 @@
     --jr-radius-pill: 999rem;
     --jr-border-width: 0.0625rem;
     --jr-focus-width: 0.125rem;
-    --jr-shadow-raised:
-      0 0.0625rem 0.125rem color-mix(in oklch, var(--jr-palette-black) 6%, transparent),
-      0 0.0625rem 0.1875rem color-mix(in oklch, var(--jr-palette-black) 4%, transparent);
     --jr-shadow-overlay:
       0 0.75rem 2rem color-mix(in oklch, var(--jr-palette-black) 12%, transparent),
       0 0.125rem 0.5rem color-mix(in oklch, var(--jr-palette-black) 6%, transparent);
@@ -217,8 +210,11 @@
     --jr-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
     --jr-ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
     --jr-opacity-disabled: 0.58;
+    --jr-size-control-indicator: 1.125rem;
     --jr-control-height-sm: 2.5rem;
     --jr-control-height-md: 2.75rem;
+    --jr-control-width-touch: 3.25rem;
+    --jr-control-height-touch: 3.5625rem;
     --jr-bar-height: 4.25rem;
     --jr-masthead-height: 4.5rem;
     --jr-content-width: 98.75rem;

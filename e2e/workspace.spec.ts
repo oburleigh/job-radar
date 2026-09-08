@@ -106,11 +106,13 @@ test("loads the opportunity workspace with its visible page header and without d
   await page.screenshot({ path: "test-results/opportunities-desktop.png", fullPage: true });
   await page.emulateMedia({ colorScheme: "dark" });
   await page.reload();
+  await page.waitForLoadState("networkidle");
   await expect(opportunitiesHeading).toBeVisible();
   await page.screenshot({ path: "test-results/opportunities-desktop-dark.png", fullPage: true });
   await page.emulateMedia({ colorScheme: "light" });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
+  await page.waitForLoadState("networkidle");
   await expect(opportunitiesHeading).toBeVisible();
   const mobileMatches = await page
     .getByRole("heading", { level: 2, name: "Matches" })
@@ -242,6 +244,7 @@ test("keeps settings in stable sections without carrying opportunity selection",
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
+  await page.waitForLoadState("networkidle");
   const [mobileSettingsNavigation, mobileAdapterSettings] = await Promise.all([
     settingsNavigation.boundingBox(),
     page.getByRole("heading", { level: 2, name: "ATS Registry" }).boundingBox(),

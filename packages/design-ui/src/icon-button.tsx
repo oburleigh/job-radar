@@ -8,7 +8,7 @@ export interface IconButtonProps
   readonly children: ReactNode;
   readonly label: string;
   readonly pressed?: boolean;
-  readonly variant?: "ghost" | "outlined";
+  readonly variant?: "ghost" | "outlined" | "danger";
 }
 
 export function IconButton({

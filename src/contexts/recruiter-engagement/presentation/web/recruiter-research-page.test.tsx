@@ -331,25 +331,25 @@ describe("recruiter research page", () => {
 
     expect(html).toContain("Continued from run-original");
   });
-  it("shows the registry instead of the research form when the registry tab is open", () => {
-    const html = renderRegistryView();
+  it("shows the listing instead of the research form when the listing tab is open", () => {
+    const html = renderDirectoryView();
 
-    expect(html).toContain('id="recruiter-registry-title"');
+    expect(html).toContain('id="recruiter-directory-title"');
     expect(html).toContain("Acme Search");
     expect(html).not.toContain('id="recruiter-brief-title"');
-    expect(html).toContain('href="/recruiter-search?view=registry"');
+    expect(html).toContain('href="/recruiter-search?view=directory"');
   });
 
-  it("keeps the research form and the registry link on the research tab", () => {
-    const html = renderRegistryView("run");
+  it("keeps the research form and the listing link on the research tab", () => {
+    const html = renderDirectoryView("run");
 
     expect(html).toContain('id="recruiter-brief-title"');
-    expect(html).not.toContain('id="recruiter-registry-title"');
-    expect(html).toContain('href="/recruiter-search?view=registry"');
+    expect(html).not.toContain('id="recruiter-directory-title"');
+    expect(html).toContain('href="/recruiter-search?view=directory"');
   });
 });
 
-function renderRegistryView(view: "registry" | "run" = "registry"): string {
+function renderDirectoryView(view: "directory" | "run" = "directory"): string {
   const router = createMemoryRouter([
     {
       path: "/",
@@ -361,7 +361,7 @@ function renderRegistryView(view: "registry" | "run" = "registry"): string {
             providers: [{ configured: true, label: "Serper.dev", name: "serper" }],
             selectedProvider: "serper",
           }}
-          registry={{
+          listing={{
             availableSpecialisms: ["Software engineering"],
             firmCount: 1,
             firms: [
@@ -378,7 +378,7 @@ function renderRegistryView(view: "registry" | "run" = "registry"): string {
             removedCount: 0,
             unassociatedRecruiters: [],
           }}
-          registryFilters={{ showRemoved: false, specialism: null }}
+          directoryFilters={{ showRemoved: false, specialism: null }}
           view={view}
         />
       ),

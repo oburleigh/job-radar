@@ -86,7 +86,7 @@ in this list.
 - border presence, weight and colour between sibling elements
 - `font-weight`, against `--jr-font-weight-medium`, `-semibold`, `-bold`
 - `line-height`, against `--jr-line-height-tight`, `-body`
-- elevation, against `--jr-shadow-raised`, `-toast`
+- elevation, against `--jr-shadow-overlay`
 - stacking, against the six `--jr-z-*` layers
 - icon sizing and optical alignment
 - affordance: whether a control looks like a control
@@ -136,9 +136,10 @@ what produces V1 and V3, so report it where a gap looks arbitrary.
 
 ### V6. Icon-only controls disagree within a row
 
-Controls sitting in one row must agree on border, radius and fill. Measured on
-the masthead of all 15 routes: `button.jr-button` at radius 4px beside
-`a.utility-link` at radius 0px.
+Controls sitting in one row must agree on border, radius and fill for equivalent
+interaction states. The former masthead mixed 4px button radii with square links.
+Corrected 2026-09-08: masthead actions and links share the Button utility variant;
+browser geometry checks cover their agreement.
 
 ### V7. Icon-only controls with no tooltip
 

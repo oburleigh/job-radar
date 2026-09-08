@@ -60,6 +60,7 @@ export default defineConfig({
       command: `pnpm db:setup && pnpm build && pnpm exec react-router-serve ${serverBuildPath}`,
       env: {
         DB_PATH: databasePath,
+        ALLOW_REMOTE_UI: "1",
         HOST: "127.0.0.1",
         JOB_RADAR_BUILD_DIRECTORY: buildDirectory,
         PORT: "3100",
