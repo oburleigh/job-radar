@@ -160,6 +160,11 @@ export function getDashboardData(filters: JobFilters, database: Database): Dashb
         !query ||
         `${row.title} ${row.companyName} ${row.locationText}`.toLowerCase().includes(query),
     )
+    .sort((left, right) => {
+      const leftDate = left.publishedAt?.getTime() ?? Number.NEGATIVE_INFINITY;
+      const rightDate = right.publishedAt?.getTime() ?? Number.NEGATIVE_INFINITY;
+      return leftDate === rightDate ? 0 : rightDate - leftDate;
+    })
     .slice(0, 250)
     .map(
       (row): DashboardJob => ({

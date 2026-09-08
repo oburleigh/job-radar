@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 import { evaluateDiscoveryBenchmark } from "./command";
 import { discoveryBenchmarkCorpus } from "./corpus";
 
-describe("discovery benchmark command", () => {
+describe("discovery benchmark command", { timeout: 60_000 }, () => {
   it("returns a successful JSON report for the credential-free corpus", async () => {
     const result = await evaluateDiscoveryBenchmark(discoveryBenchmarkCorpus);
 
     expect(result.exitCode).toBe(0);
     expect(JSON.parse(result.stdout)).toEqual(expect.objectContaining({ passed: true }));
-  }, 60_000);
+  });
 
   it("returns a failing exit code without hiding uncovered profiles", async () => {
     const result = await evaluateDiscoveryBenchmark({

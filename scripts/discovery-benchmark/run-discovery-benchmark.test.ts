@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { discoveryBenchmarkCorpus } from "./corpus";
 import { runDiscoveryBenchmark } from "./run-discovery-benchmark";
 
-describe("deterministic discovery benchmark", () => {
+describe("deterministic discovery benchmark", { timeout: 60_000 }, () => {
   it("does not open the configured application database", async () => {
     const directory = mkdtempSync(path.join(tmpdir(), "job-radar-benchmark-import-"));
     const configuredDatabasePath = path.join(directory, "private.sqlite");
@@ -26,7 +26,7 @@ describe("deterministic discovery benchmark", () => {
       }
       rmSync(directory, { recursive: true, force: true });
     }
-  }, 60_000);
+  });
 
   it("records the exact Asia legacy request formula", async () => {
     const report = await runDiscoveryBenchmark(discoveryBenchmarkCorpus);

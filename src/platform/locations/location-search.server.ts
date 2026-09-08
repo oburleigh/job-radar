@@ -21,6 +21,11 @@ const countries = CountryStateCity.getAllCountries() as Country[];
 const countryAliases = new Map(
   countries.flatMap((country) => aliases(country).map((alias) => [normalise(alias), country])),
 );
+for (const country of countries) {
+  for (const canonical of [country.name, country.iso2, country.iso3]) {
+    countryAliases.set(normalise(canonical), country);
+  }
+}
 const resolvedLocations = new Map<string, LocationOption | null>();
 
 export function resolveCountry(value: string): LocationOption | null {
@@ -100,7 +105,9 @@ function countryOption(country: Country): LocationOption {
     id: `csc:country:${country.id}`,
     kind: "country",
     label: country.name,
-    searchTerms: aliases(country),
+    searchTerms: aliases(country).filter(
+      (alias) => countryAliases.get(normalise(alias)) === country,
+    ),
   };
 }
 

@@ -10,6 +10,8 @@ describe("country state city location catalogue adapter", () => {
     ["UAE", "United Arab Emirates", "AE"],
     ["AE", "United Arab Emirates", "AE"],
     ["ARE", "United Arab Emirates", "AE"],
+    ["SA", "Saudi Arabia", "SA"],
+    ["SK", "Slovakia", "SK"],
   ])("resolves the country alias %s before similarly named cities", (query, label, code) => {
     expect(searchLocations(query, 5)[0]).toMatchObject({
       countryCode: code,
