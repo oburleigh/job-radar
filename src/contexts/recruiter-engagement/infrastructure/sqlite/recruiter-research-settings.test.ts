@@ -1,9 +1,7 @@
-import path from "node:path";
-
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { describe, expect, it } from "vitest";
+import { initializeTestSchema } from "~/tests/support/current-schema";
 
 import {
   bootstrapRecruiterResearch,
@@ -22,7 +20,7 @@ describe("recruiter research settings", () => {
   it("loads the product defaults from SQLite and preserves an existing operator value", () => {
     const sqlite = new Database(":memory:");
     const database = drizzle(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
     const firstBootstrapAt = new Date("2026-08-28T00:00:00.000Z");
     bootstrapRecruiterResearch(database, firstBootstrapAt);
     const configured = getRecruiterResearchSettings(database);
@@ -53,7 +51,7 @@ describe("recruiter research settings", () => {
   it("replaces the former technology-focused default with an empty research brief", () => {
     const sqlite = new Database(":memory:");
     const database = drizzle(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
     bootstrapRecruiterResearch(database);
     database
       .update(recruiterResearchSettings)
@@ -74,7 +72,7 @@ describe("recruiter research settings", () => {
   it("replaces the intermediate account-default technology brief", () => {
     const sqlite = new Database(":memory:");
     const database = drizzle(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
     bootstrapRecruiterResearch(database);
     database
       .update(recruiterResearchSettings)
@@ -95,7 +93,7 @@ describe("recruiter research settings", () => {
   it("fails closed when settings have not been bootstrapped", () => {
     const sqlite = new Database(":memory:");
     const database = drizzle(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
 
     expect(() => getRecruiterResearchSettings(database)).toThrow(
       "Missing recruiter research settings in SQLite",
@@ -105,7 +103,7 @@ describe("recruiter research settings", () => {
   it("persists configured directory match weights", () => {
     const sqlite = new Database(":memory:");
     const database = drizzle(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
     bootstrapRecruiterResearch(database);
     const weights = {
       currentMandatesOrActivity: 10,
@@ -125,7 +123,7 @@ describe("recruiter research settings", () => {
   it("persists the provider and public query policy together", () => {
     const sqlite = new Database(":memory:");
     const database = drizzle(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
     bootstrapRecruiterResearch(database);
     const publicSearch = {
       ...defaultRecruiterResearchSettings.publicSearch,
@@ -141,7 +139,7 @@ describe("recruiter research settings", () => {
   it("persists configured Research criteria catalogues", () => {
     const sqlite = new Database(":memory:");
     const database = drizzle(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
     bootstrapRecruiterResearch(database);
     const options = {
       industries: ["Technology", "Financial services"],
@@ -156,7 +154,7 @@ describe("recruiter research settings", () => {
   it("replaces the former technology-specific public query defaults", () => {
     const sqlite = new Database(":memory:");
     const database = drizzle(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
     bootstrapRecruiterResearch(database);
     const settings = getRecruiterResearchSettings(database);
     database
@@ -189,7 +187,7 @@ describe("recruiter research settings", () => {
   it("maps legacy ranking factors to the new evidence-backed factors", () => {
     const sqlite = new Database(":memory:");
     const database = drizzle(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
     bootstrapRecruiterResearch(database);
     const settings = getRecruiterResearchSettings(database);
     database
@@ -225,7 +223,7 @@ describe("recruiter research settings", () => {
   it("migrates an intermediate contactability-only ranking row", () => {
     const sqlite = new Database(":memory:");
     const database = drizzle(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
     bootstrapRecruiterResearch(database);
     const settings = getRecruiterResearchSettings(database);
     database
@@ -260,7 +258,7 @@ describe("recruiter research settings", () => {
   it("identifies the invalid field in a corrupted settings row", () => {
     const sqlite = new Database(":memory:");
     const database = drizzle(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
     bootstrapRecruiterResearch(database);
     const settings = getRecruiterResearchSettings(database);
     database
@@ -281,7 +279,7 @@ describe("recruiter research settings", () => {
   it("rejects configured firm targets that cannot provide one recruiter per firm", () => {
     const sqlite = new Database(":memory:");
     const database = drizzle(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
     bootstrapRecruiterResearch(database);
     const settings = getRecruiterResearchSettings(database);
     database
@@ -426,7 +424,7 @@ describe("recruiter research settings", () => {
 function freshDatabase() {
   const sqlite = new Database(":memory:");
   const database = drizzle(sqlite);
-  migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+  initializeTestSchema(database);
   return database;
 }
 

@@ -1,9 +1,6 @@
-import path from "node:path";
 import Database from "better-sqlite3";
 import { asc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
-
 import { createJobDiscovery } from "@/contexts/discovery/application/discovery-runs/discover/discover-jobs";
 import { SEARCH_STRATEGIES } from "@/contexts/discovery/application/discovery-runs/planning/plan-search-lanes";
 import { isVerifiedJobListing } from "@/contexts/discovery/domain/job-listing-provenance";
@@ -29,6 +26,7 @@ import {
   searchProfiles,
   sourceDomains,
 } from "@/contexts/discovery/infrastructure/sqlite/schema";
+import { initializeCurrentSchema } from "~/scripts/database/current-schema";
 
 import type {
   DiscoveryBenchmarkCorpus,
@@ -57,7 +55,7 @@ export async function runDiscoveryBenchmark(corpus: DiscoveryBenchmarkCorpus) {
   const database = drizzle(sqlite, { schema });
 
   try {
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeCurrentSchema(database);
     bootstrapJobRadar(database, corpus.benchmarkedAt);
     configureBenchmarkMarkets(database);
     configureBenchmarkVerificationSources(database);

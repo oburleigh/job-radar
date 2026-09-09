@@ -1,8 +1,7 @@
-import path from "node:path";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { initializeTestSchema } from "~/tests/support/current-schema";
 
 import {
   hasStaleUnverifiedJobMatches,
@@ -19,7 +18,7 @@ describe("legacy job evidence repair", () => {
     sqlite = new Database(":memory:");
     sqlite.pragma("foreign_keys = ON");
     database = createDatabase(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
   });
 
   afterEach(() => {

@@ -1,9 +1,5 @@
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { describe, expect, it } from "vitest";
 import {
   continueResearchRun,
@@ -16,6 +12,7 @@ import {
   testSearchBrief,
   testSourcePlan,
 } from "@/contexts/recruiter-engagement/test-support/research-policy-fixtures";
+import { initializeTestSchema } from "~/tests/support/current-schema";
 import { createSqliteResearchRunStore } from "./sqlite-research-run-store";
 
 describe("SQLite research run store", () => {
@@ -23,7 +20,7 @@ describe("SQLite research run store", () => {
     const sqlite = new Database(":memory:");
     sqlite.pragma("foreign_keys = ON");
     const database = drizzle(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
     const store = createSqliteResearchRunStore(database);
     const older = createResearchRun({
       id: "run-older",
@@ -50,7 +47,7 @@ describe("SQLite research run store", () => {
     const sqlite = new Database(":memory:");
     sqlite.pragma("foreign_keys = ON");
     const database = drizzle(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
     const store = createSqliteResearchRunStore(database);
     const execution = {
       model: "retired-model",
@@ -74,7 +71,7 @@ describe("SQLite research run store", () => {
     const sqlite = new Database(":memory:");
     sqlite.pragma("foreign_keys = ON");
     const database = drizzle(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
     const store = createSqliteResearchRunStore(database);
     const run = createResearchRun({
       id: "run-pre-freeze",
@@ -96,7 +93,7 @@ describe("SQLite research run store", () => {
     const sqlite = new Database(":memory:");
     sqlite.pragma("foreign_keys = ON");
     const database = drizzle(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
     const store = createSqliteResearchRunStore(database);
     const run = createResearchRun({
       id: "run-source-failures",
@@ -130,7 +127,7 @@ describe("SQLite research run store", () => {
     const sqlite = new Database(":memory:");
     sqlite.pragma("foreign_keys = ON");
     const database = drizzle(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
     const run = createResearchRun({
       id: "run-1",
       brief: testSearchBrief({ description: "UAE technology", recruiterTarget: 1 }),
@@ -201,7 +198,7 @@ describe("SQLite research run store", () => {
     const sqlite = new Database(":memory:");
     sqlite.pragma("foreign_keys = ON");
     const database = drizzle(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
     const store = createSqliteResearchRunStore(database);
     const run = createResearchRun({
       id: "run-2",
@@ -246,7 +243,7 @@ describe("SQLite research run store", () => {
     const sqlite = new Database(":memory:");
     sqlite.pragma("foreign_keys = ON");
     const database = drizzle(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
     const store = createSqliteResearchRunStore(database);
     const run = createResearchRun({
       id: "run-budget-partial",
@@ -300,7 +297,7 @@ describe("SQLite research run store", () => {
     const sqlite = new Database(":memory:");
     sqlite.pragma("foreign_keys = ON");
     const database = drizzle(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
     const store = createSqliteResearchRunStore(database);
     const run = createResearchRun({
       id: "run-malformed",
@@ -317,34 +314,11 @@ describe("SQLite research run store", () => {
     await expect(store.get(run.id)).rejects.toThrow("Invalid persisted recruiter research run");
   });
 
-  it("migrates the final recruiter schema onto an existing pre-0008 database", () => {
-    const sqlite = new Database(":memory:");
-    sqlite.pragma("foreign_keys = ON");
-    const database = drizzle(sqlite);
-    const migrationsFolder = path.resolve(process.cwd(), "drizzle");
-    const legacyMigrationsFolder = migrationPrefix(migrationsFolder, 7);
-
-    try {
-      migrate(database, { migrationsFolder: legacyMigrationsFolder });
-      migrate(database, { migrationsFolder });
-
-      expect(sqlite.prepare("PRAGMA table_info(recruiter_research_runs)").all()).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ name: "criteria" }),
-          expect.objectContaining({ name: "budget" }),
-          expect.objectContaining({ name: "retry_of_run_id" }),
-        ]),
-      );
-    } finally {
-      rmSync(legacyMigrationsFolder, { recursive: true, force: true });
-    }
-  });
-
   it("carries only the continued run's observations onto a continuation", async () => {
     const sqlite = new Database(":memory:");
     sqlite.pragma("foreign_keys = ON");
     const database = drizzle(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
     const store = createSqliteResearchRunStore(database);
     const seed = async (id: string, firmNames: readonly string[]) => {
       const run = createResearchRun({
@@ -403,26 +377,3 @@ describe("SQLite research run store", () => {
     expect(await store.observationsFor("run-unrelated")).toHaveLength(1);
   });
 });
-
-function migrationPrefix(migrationsFolder: string, lastIndex: number): string {
-  const directory = mkdtempSync(path.join(tmpdir(), "job-radar-migrations-"));
-  const metaDirectory = path.join(directory, "meta");
-  mkdirSync(metaDirectory);
-  const journal = JSON.parse(
-    readFileSync(path.join(migrationsFolder, "meta", "_journal.json"), "utf8"),
-  ) as {
-    entries: Array<{ idx: number; tag: string }>;
-  };
-  const entries = journal.entries.filter((entry) => entry.idx <= lastIndex);
-  writeFileSync(
-    path.join(metaDirectory, "_journal.json"),
-    JSON.stringify({ ...journal, entries }, null, 2),
-  );
-  for (const entry of entries) {
-    cpSync(
-      path.join(migrationsFolder, `${entry.tag}.sql`),
-      path.join(directory, `${entry.tag}.sql`),
-    );
-  }
-  return directory;
-}

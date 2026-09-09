@@ -43,4 +43,3 @@ ignore:
   - "e2e/**"
   - "tests/**"
   - "scripts/**"
-  - "drizzle/**"

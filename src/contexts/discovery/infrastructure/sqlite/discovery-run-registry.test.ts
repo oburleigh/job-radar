@@ -1,11 +1,9 @@
-import path from "node:path";
-
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { STALE_DISCOVERY_RUN_CODE } from "@/contexts/discovery/domain/stale-discovery-run";
 import * as schema from "@/contexts/discovery/infrastructure/sqlite/schema";
+import { initializeTestSchema } from "~/tests/support/current-schema";
 import { createSqliteDiscoveryRunRegistry } from "./discovery-run-registry";
 
 const now = new Date("2026-08-20T09:00:00.000Z");
@@ -18,7 +16,7 @@ describe("SQLite discovery run registry", () => {
     sqlite = new Database(":memory:");
     sqlite.pragma("foreign_keys = ON");
     database = createDatabase(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
   });
 
   afterEach(() => {

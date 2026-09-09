@@ -1,10 +1,9 @@
-import path from "node:path";
 import Database from "better-sqlite3";
 import { and, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { bootstrapJobRadar } from "@/contexts/discovery/infrastructure/configuration/bootstrap-job-radar";
+import { initializeTestSchema } from "~/tests/support/current-schema";
 import { backfillJobMatchListingActivity } from "./backfill-listing-activity";
 import * as schema from "./schema";
 import { jobMatches, jobs, searchProfiles } from "./schema";
@@ -21,7 +20,7 @@ describe("listing activity denormalised onto job matches", () => {
     sqlite = new Database(":memory:");
     sqlite.pragma("foreign_keys = ON");
     database = createDatabase(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
   });
 
   afterEach(() => {

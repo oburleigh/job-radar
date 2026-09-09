@@ -1,10 +1,9 @@
-import path from "node:path";
 import Database from "better-sqlite3";
 import { eq, inArray, type Logger } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { beforeEach, describe, expect, it } from "vitest";
 import { bootstrapJobRadar } from "@/contexts/discovery/infrastructure/configuration/bootstrap-job-radar";
+import { initializeTestSchema } from "~/tests/support/current-schema";
 import * as schema from "./schema";
 import { jobMatches, jobs, searchProfiles } from "./schema";
 import { evaluateAndStore } from "./store-matches";
@@ -39,7 +38,7 @@ describe("the listings an evaluation reads", () => {
     sqlite.pragma("foreign_keys = ON");
     recorded = [];
     database = createDatabase(sqlite, recorded);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
     bootstrapJobRadar(database);
   });
 

@@ -1,17 +1,16 @@
-import path from "node:path";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { describe, expect, it } from "vitest";
 import { createRecruiterDirectoryMaintenance } from "@/contexts/recruiter-engagement/application/directory/maintain-recruiter-directory";
 import { testEvidence } from "@/contexts/recruiter-engagement/test-support/research-policy-fixtures";
+import { initializeTestSchema } from "~/tests/support/current-schema";
 import { createSqliteRecruiterDirectoryStore } from "./sqlite-recruiter-directory-store";
 
 describe("SQLite recruiter directory store", () => {
   it("retains canonical identities and evidence across process restarts", async () => {
     const sqlite = new Database(":memory:");
     const database = drizzle(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
     const firstProcess = createRecruiterDirectoryMaintenance({
       store: createSqliteRecruiterDirectoryStore(database),
     });
@@ -40,7 +39,7 @@ describe("SQLite recruiter directory store", () => {
   it("rejects malformed persisted directory data at the SQLite boundary", async () => {
     const sqlite = new Database(":memory:");
     const database = drizzle(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
     sqlite
       .prepare("INSERT INTO recruiter_directory_state (key, payload, updated_at) VALUES (?, ?, ?)")
       .run("default", JSON.stringify({ firms: "invalid" }), Date.now());

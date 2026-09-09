@@ -1,11 +1,8 @@
-import path from "node:path";
-
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-
 import * as schema from "@/contexts/discovery/infrastructure/sqlite/schema";
+import { initializeTestSchema } from "~/tests/support/current-schema";
 
 import { createSqliteSourceCoverageStore } from "./sqlite-source-coverage-store";
 
@@ -22,7 +19,7 @@ describe("SQLite source coverage store", () => {
 
   it.each([false, true])("changes every company-board choice to %s", (enabled) => {
     const database = drizzle(sqlite, { schema });
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
     database
       .insert(schema.companyBoards)
       .values(

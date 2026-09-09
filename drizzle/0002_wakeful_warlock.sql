@@ -1,1 +1,0 @@
-ALTER TABLE `company_boards` ADD `last_warning` text DEFAULT '' NOT NULL;

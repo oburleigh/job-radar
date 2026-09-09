@@ -18,8 +18,8 @@ diagnostic. Individual `test:performance:*` commands build before running their 
 ## Synthetic production fixture
 
 Lighthouse, Playwright, Autocannon, and the SQLite diagnostic share the fixture launcher in
-`tests/support/production-performance-server.ts`. It creates a temporary database, runs the normal setup
-and migrations, and seeds one search profile with 20 structured matched jobs. The production server binds
+`tests/support/production-performance-server.ts`. It creates a temporary database, initializes the current schema and product defaults,
+and seeds one search profile with 20 structured matched jobs. The production server binds
 to `127.0.0.1:3300` with a fake provider key. Cleanup removes the database when the check exits.
 
 The rendered fixture includes `Staff Platform Engineer 01`. The browser gate asserts that heading before

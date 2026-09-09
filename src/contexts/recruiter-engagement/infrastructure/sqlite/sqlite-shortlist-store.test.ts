@@ -1,16 +1,15 @@
-import path from "node:path";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { describe, expect, it } from "vitest";
 import type { Shortlist } from "@/contexts/recruiter-engagement/domain/shortlist";
+import { initializeTestSchema } from "~/tests/support/current-schema";
 import { createSqliteShortlistStore } from "./sqlite-shortlist-store";
 
 describe("SQLite Shortlist store", () => {
   it("retains named Shortlists and explicit Prospect contact exclusions across restarts", async () => {
     const sqlite = new Database(":memory:");
     const database = drizzle(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
     const firstProcess = createSqliteShortlistStore(
       database,
       () => new Date("2026-08-30T10:05:00.000Z"),
@@ -37,7 +36,7 @@ describe("SQLite Shortlist store", () => {
   it("lists Shortlists in creation order rather than identifier order", async () => {
     const sqlite = new Database(":memory:");
     const database = drizzle(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
     const store = createSqliteShortlistStore(database);
     const later: Shortlist = {
       createdAt: new Date("2026-08-30T11:00:00.000Z"),
@@ -61,7 +60,7 @@ describe("SQLite Shortlist store", () => {
   it("rejects a persisted Shortlist whose payload identity differs from its SQLite identity", async () => {
     const sqlite = new Database(":memory:");
     const database = drizzle(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
     sqlite
       .prepare("INSERT INTO recruiter_shortlists (id, payload, updated_at) VALUES (?, ?, ?)")
       .run(

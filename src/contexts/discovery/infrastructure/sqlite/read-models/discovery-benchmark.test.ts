@@ -4,7 +4,6 @@ import path from "node:path";
 
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { bootstrapJobRadar } from "@/contexts/discovery/infrastructure/configuration/bootstrap-job-radar";
 import * as schema from "@/contexts/discovery/infrastructure/sqlite/schema";
@@ -17,6 +16,7 @@ import {
   jobs,
   searchProfiles,
 } from "@/contexts/discovery/infrastructure/sqlite/schema";
+import { initializeTestSchema } from "~/tests/support/current-schema";
 import { readDiscoveryBenchmark } from "./discovery-benchmark";
 
 const benchmarkedAt = new Date("2026-08-23T20:30:00.000Z");
@@ -31,7 +31,7 @@ describe("discovery benchmark evidence", () => {
     directory = mkdtempSync(path.join(tmpdir(), "job-radar-discovery-benchmark-"));
     sqlite = new Database(path.join(directory, "job-radar.sqlite"));
     database = createDatabase(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
     bootstrapJobRadar(database, new Date("2026-08-23T20:00:00.000Z"));
   });
 

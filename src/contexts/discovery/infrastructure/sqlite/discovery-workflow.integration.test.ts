@@ -3,7 +3,6 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { eq } from "drizzle-orm";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createJobDiscovery } from "@/contexts/discovery/application/discovery-runs/discover/discover-jobs";
 import type { SearchProvider } from "@/contexts/discovery/application/discovery-runs/ports/search-provider";
@@ -13,6 +12,7 @@ import { type SearchProfileId, searchProfileIdFrom } from "@/contexts/discovery/
 import { createSearchProfileDefinition } from "@/contexts/discovery/domain/search-profile";
 import { bootstrapJobRadar } from "@/contexts/discovery/infrastructure/configuration/bootstrap-job-radar";
 import { createSqliteSearchProfileRepository } from "@/contexts/discovery/infrastructure/sqlite/search-profile-repository";
+import { initializeTestSchema } from "~/tests/support/current-schema";
 
 const testDirectory = mkdtempSync(path.join(tmpdir(), "job-radar-runner-concurrency-"));
 const previousDatabasePath = process.env.DB_PATH;
@@ -38,7 +38,7 @@ const { createSqliteJobMatchEvaluator } = await import(
 
 describe("discovery concurrency", () => {
   beforeAll(() => {
-    migrate(db, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(db);
     bootstrapJobRadar(db, new Date("2026-08-20T09:00:00.000Z"));
   });
 
