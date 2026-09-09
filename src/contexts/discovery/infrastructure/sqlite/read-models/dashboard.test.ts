@@ -1,10 +1,6 @@
-import path from "node:path";
-
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-
 import type { JobListingEvidence } from "@/contexts/discovery/domain/job-listing-provenance";
 import type { JobListingState } from "@/contexts/discovery/domain/job-listing-state";
 import type { AtsType } from "@/contexts/discovery/infrastructure/job-sources/ats-integration";
@@ -17,6 +13,7 @@ import {
   searchProfiles,
 } from "@/contexts/discovery/infrastructure/sqlite/schema";
 import { screeningCountColumns } from "@/contexts/discovery/infrastructure/sqlite/screening-count-columns";
+import { initializeTestSchema } from "~/tests/support/current-schema";
 import { getDashboardData } from "./dashboard";
 
 const recordedAt = new Date("2026-08-25T12:00:00.000Z");
@@ -29,7 +26,7 @@ describe("dashboard read model", () => {
     sqlite = new Database(":memory:");
     sqlite.pragma("foreign_keys = ON");
     database = createDatabase(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
   });
 
   afterEach(() => sqlite.close());
@@ -82,7 +79,7 @@ describe("dashboard opportunity payload", () => {
     sqlite = new Database(":memory:");
     sqlite.pragma("foreign_keys = ON");
     database = createDatabase(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
   });
 
   afterEach(() => sqlite.close());

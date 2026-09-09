@@ -3,7 +3,7 @@
 ## Reporting a vulnerability
 
 Report a suspected vulnerability privately through GitHub's
-[private vulnerability reporting](https://github.com/oburleigh/job-radar/security/advisories/new)
+[private vulnerability reporting](../../security/advisories/new)
 rather than opening a public issue. Include what you did, what happened, and the
 version or commit you were on.
 

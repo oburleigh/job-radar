@@ -70,6 +70,23 @@ describe("database setup command", () => {
     rerun.close();
   }, 30_000);
 
+  it("rejects an unsupported existing schema without changing its records", () => {
+    const sqlite = new Database(databasePath);
+    sqlite.exec(
+      "CREATE TABLE app_settings (key text PRIMARY KEY, value text); INSERT INTO app_settings VALUES ('keep', 'unchanged');",
+    );
+    sqlite.close();
+    expect(() => runDatabaseSetup(databasePath)).toThrow(/unsupported existing database schema/i);
+    const retained = new Database(databasePath, { readonly: true });
+    expect(retained.prepare("SELECT * FROM app_settings").all()).toEqual([
+      { key: "keep", value: "unchanged" },
+    ]);
+    expect(retained.prepare("SELECT name FROM sqlite_schema WHERE type = 'table'").all()).toEqual([
+      { name: "app_settings" },
+    ]);
+    retained.close();
+  }, 30_000);
+
   it("repairs legacy structured board jobs without promoting search-only leads", () => {
     runDatabaseSetup(databasePath);
 
@@ -158,7 +175,7 @@ describe("database setup command", () => {
     recovered.close();
   }, 30_000);
 
-  it("preserves pre-ADM-100 discovery history while applying current migrations", () => {
+  it("preserves discovery history when validating the current schema", () => {
     runDatabaseSetup(databasePath);
 
     const sqlite = new Database(databasePath);

@@ -54,3 +54,28 @@ Lefthook runs Biome against staged files and Commitlint against the message. It 
 and unit tests before a push. Run `pnpm check`, `pnpm test:coverage`, and `pnpm test:mutation` before
 handing off a production behaviour change. Run `pnpm build` when a change can affect the production
 bundle.
+
+## Release proposals
+
+Release Please manages one version for the root application. Before 1.0, fixes
+and compatible features advance the patch version; breaking changes advance
+the minor version. Mark breaking changes with `!` or a `BREAKING CHANGE` footer.
+Only `feat` and `fix` produce ordinary release entries; maintenance types such
+as `chore`, `docs`, `perf`, `refactor`, and `revert` do not.
+
+Pushes to `main` update a release pull request with the proposed version and
+changelog. Merging that release pull request creates the stable tag and GitHub
+Release. Ordinary product pull requests do not publish a release. Optional
+release-candidate automation is deferred.
+
+The workflow uses `GITHUB_TOKEN`. Its generated pull requests do not start the
+normal pull-request workflows automatically. Run the Verify workflow manually
+against the release branch and inspect its result before merging the proposal.
+Manual Verify runs the full Linux, macOS, and Windows matrix, so reserve its
+additional runner usage for deliberate release validation.
+Do not merge the first stable release proposal until publication review is complete.
+
+Local research, agent tools, and generated development migrations in `docs/`,
+`tools/`, and `drizzle/` are excluded from Git. Fresh setup uses the checked-in
+schema definitions. Keep local databases, credentials, reports, and Git backups
+out of commits.

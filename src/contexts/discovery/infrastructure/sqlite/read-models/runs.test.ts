@@ -1,9 +1,6 @@
-import path from "node:path";
-
 import Database from "better-sqlite3";
 import { eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { bootstrapJobRadar } from "@/contexts/discovery/infrastructure/configuration/bootstrap-job-radar";
 import {
@@ -21,6 +18,7 @@ import {
   jobs,
   searchProfiles,
 } from "@/contexts/discovery/infrastructure/sqlite/schema";
+import { initializeTestSchema } from "~/tests/support/current-schema";
 import { countActiveDiscoveryRuns, getRunsData, readRunDetail } from "./runs";
 
 const recordedAt = new Date("2026-08-25T12:00:00.000Z");
@@ -39,7 +37,7 @@ describe("completed discovery run funnel", () => {
     sqlite = new Database(":memory:");
     sqlite.pragma("foreign_keys = ON");
     database = createDatabase(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
     bootstrapJobRadar(database);
   });
 
@@ -363,7 +361,7 @@ describe("legacy exclusion-reason migration", () => {
     sqlite = new Database(":memory:");
     sqlite.pragma("foreign_keys = ON");
     database = createDatabase(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
   });
 
   afterEach(() => {

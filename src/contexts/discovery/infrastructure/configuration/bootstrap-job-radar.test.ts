@@ -5,9 +5,7 @@ import path from "node:path";
 import Database from "better-sqlite3";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-
 import * as schema from "@/contexts/discovery/infrastructure/sqlite/schema";
 import {
   appSettings,
@@ -18,6 +16,7 @@ import {
   searchProfiles,
   sourceDomains,
 } from "@/contexts/discovery/infrastructure/sqlite/schema";
+import { initializeTestSchema } from "~/tests/support/current-schema";
 import { bootstrapJobRadar, defaultProviderExecutionSettings } from "./bootstrap-job-radar";
 
 describe("Job Radar database bootstrap", () => {
@@ -29,7 +28,7 @@ describe("Job Radar database bootstrap", () => {
     directory = mkdtempSync(path.join(tmpdir(), "job-radar-bootstrap-"));
     sqlite = new Database(path.join(directory, "job-radar.sqlite"));
     database = createDatabase(sqlite);
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
   });
 
   afterEach(() => {

@@ -1,8 +1,5 @@
-import path from "node:path";
-
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { currencyFrom } from "@/contexts/discovery/domain/currency";
 import {
@@ -11,6 +8,7 @@ import {
   type SearchProfileDraft,
 } from "@/contexts/discovery/domain/search-profile";
 import * as schema from "@/contexts/discovery/infrastructure/sqlite/schema";
+import { initializeTestSchema } from "~/tests/support/current-schema";
 import { createSqliteSearchProfileRepository } from "./search-profile-repository";
 
 describe("SQLite search profile repository", () => {
@@ -21,7 +19,7 @@ describe("SQLite search profile repository", () => {
     sqlite = new Database(":memory:");
     sqlite.pragma("foreign_keys = ON");
     const database = drizzle(sqlite, { schema });
-    migrate(database, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(database);
     repository = createSqliteSearchProfileRepository(database);
   });
 

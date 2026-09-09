@@ -68,3 +68,8 @@ yarn-error.log*
 # local retrospectives
 /retrospectives/
 /artifacts/audit/
+
+# Local research, agent tools and generated schema artifacts
+/docs/
+/tools/
+/drizzle/

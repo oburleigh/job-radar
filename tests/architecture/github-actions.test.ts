@@ -12,6 +12,39 @@ const packageJson = JSON.parse(readFileSync(path.join(repositoryRoot, "package.j
 };
 
 describe("GitHub Actions quality gates", () => {
+  it("keeps one explicit pre-1.0 release stream and scoped workflow writes", () => {
+    const config = JSON.parse(
+      readFileSync(path.join(repositoryRoot, "release-please-config.json"), "utf8"),
+    );
+    const manifest = JSON.parse(
+      readFileSync(path.join(repositoryRoot, ".release-please-manifest.json"), "utf8"),
+    );
+    const workflow = readFileSync(path.join(workflowsRoot, "release-please.yml"), "utf8");
+    expect(Object.keys(config.packages)).toEqual(["."]);
+    expect(config.packages["."]).toMatchObject({
+      "release-type": "node",
+      "initial-version": "0.1.0",
+      "bump-minor-pre-major": true,
+      "bump-patch-for-minor-pre-major": true,
+      "include-component-in-tag": false,
+      "include-v-in-tag": true,
+      "changelog-sections": [
+        { type: "feat", section: "Features" },
+        { type: "fix", section: "Bug Fixes" },
+      ],
+    });
+    expect(Object.keys(manifest).filter((key) => key !== ".")).toEqual([]);
+    if (manifest["."] !== undefined) expect(manifest["."]).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(workflow).toMatch(/^permissions:\n {2}contents: read\n/m);
+    expect(workflow).toContain(
+      "    permissions:\n      contents: write\n      issues: write\n      pull-requests: write",
+    );
+    expect(workflow).toContain("    branches: [main]");
+    expect(workflow).toContain("    if: github.ref == 'refs/heads/main'");
+    expect(workflow).toContain("          target-branch: main");
+    expect(workflow).toContain("  cancel-in-progress: false");
+  });
+
   it("keeps the pull-request triggers, read-only permissions, matrix, and repository gates", () => {
     expect(ciWorkflow).toMatch(/on:\s*\n\s+push:\s*\n\s+branches:\s+\[main\]\s*\n\s+pull_request:/);
     expect(ciWorkflow).toMatch(/permissions:\s*\n\s+contents:\s*read/);

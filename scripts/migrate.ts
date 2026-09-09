@@ -1,9 +1,5 @@
 import "dotenv/config";
 
-import path from "node:path";
-
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
-
 import { bootstrapJobRadar } from "@/contexts/discovery/infrastructure/configuration/bootstrap-job-radar";
 import { backfillJobMatchListingActivity } from "@/contexts/discovery/infrastructure/sqlite/backfill-listing-activity";
 import { db } from "@/contexts/discovery/infrastructure/sqlite/database";
@@ -18,11 +14,10 @@ import {
 import { searchProfiles } from "@/contexts/discovery/infrastructure/sqlite/schema";
 import { evaluateAndStore } from "@/contexts/discovery/infrastructure/sqlite/store-matches";
 import { bootstrapRecruiterResearch } from "@/contexts/recruiter-engagement/infrastructure/sqlite/bootstrap-recruiter-research";
+import { initializeCurrentSchema } from "~/scripts/database/current-schema";
 
 async function main() {
-  migrate(db, {
-    migrationsFolder: path.resolve(process.cwd(), "drizzle"),
-  });
+  initializeCurrentSchema(db);
   bootstrapJobRadar(db);
   bootstrapRecruiterResearch(db);
 

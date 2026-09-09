@@ -1,13 +1,5 @@
 # Job Radar
 
-<p>
-  <a href="https://github.com/oburleigh/job-radar/actions/workflows/ci.yml"><img alt="Verify" src="https://github.com/oburleigh/job-radar/actions/workflows/ci.yml/badge.svg?branch=main"></a>
-  <a href="https://github.com/oburleigh/job-radar/actions/workflows/mutation.yml"><img alt="Full mutation" src="https://github.com/oburleigh/job-radar/actions/workflows/mutation.yml/badge.svg?branch=main"></a>
-  <a href="https://codecov.io/github/oburleigh/job-radar"><img alt="Coverage" src="https://codecov.io/github/oburleigh/job-radar/graph/badge.svg?token=GNBPA2IJPN"></a>
-  <img alt="Node 24" src="https://img.shields.io/badge/node-24-brightgreen">
-  <img alt="pnpm" src="https://img.shields.io/badge/pnpm-11.1.3-orange">
-</p>
-
 Job Radar runs on your machine and keeps job discovery, recruiter research, and
 your review decisions in SQLite. Use **Opportunities** to find and triage job
 listings, and **Recruiter Search** to research recruitment firms and named
@@ -60,6 +52,12 @@ pnpm dev
 
 Open **http://localhost:5173**. A new database has default settings and source
 definitions, but no profiles, company boards, jobs, or run history.
+
+Setup initializes the current schema directly. Running it again preserves an
+existing database with the same schema and keeps edited settings. It rejects
+older or incompatible schemas before changing them; development migration
+history is not distributed. Back up an older database and arrange an explicit
+upgrade before using it with this version.
 
 1. Open **Search profiles** in the masthead and create a profile. Add target
    titles and choose target locations from the catalogue.
@@ -328,8 +326,8 @@ is provided under the [Open Database License 1.0](https://opendatacommons.org/li
 
 Read [`CONTRIBUTING.md`](CONTRIBUTING.md) before opening a pull request.
 Lefthook runs staged-file checks, Conventional Commit validation, and
-pre-push type checking and unit tests. Keep migrations separate from seeded
-product defaults and never include local user data.
+pre-push type checking and unit tests. Keep schema definitions separate from
+seeded product defaults and never include local user data.
 
 ## Licence
 

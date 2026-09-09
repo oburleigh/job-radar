@@ -5,7 +5,6 @@ import path from "node:path";
 import Database from "better-sqlite3";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { searchProfileIdFrom } from "@/contexts/discovery/domain/identifiers";
 import { bootstrapJobRadar } from "@/contexts/discovery/infrastructure/configuration/bootstrap-job-radar";
@@ -14,6 +13,7 @@ import { makeDedupeKey } from "@/contexts/discovery/infrastructure/job-sources/u
 import * as schema from "@/contexts/discovery/infrastructure/sqlite/schema";
 import { createSqliteJobDiscoveryCatalog } from "@/contexts/discovery/infrastructure/sqlite/sqlite-job-discovery-catalog";
 import { createSqliteJobMatchEvaluator } from "@/contexts/discovery/infrastructure/sqlite/sqlite-job-match-evaluator";
+import { initializeTestSchema } from "~/tests/support/current-schema";
 
 const testDirectory = mkdtempSync(path.join(tmpdir(), "job-radar-structured-verification-"));
 const sqlite = new Database(path.join(testDirectory, "job-radar.sqlite"));
@@ -33,7 +33,7 @@ const checkedAt = new Date("2026-08-24T09:00:00.000Z");
 
 describe("structured Web3 job verification", () => {
   beforeAll(() => {
-    migrate(db, { migrationsFolder: path.resolve(process.cwd(), "drizzle") });
+    initializeTestSchema(db);
     bootstrapJobRadar(db, new Date("2026-08-24T08:00:00.000Z"));
   });
 

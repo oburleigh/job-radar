@@ -49,7 +49,6 @@
     "storybook:build": "pnpm --filter @job-radar/web-docs build",
     "prepare": "lefthook install",
     "setup:check": "tsx scripts/check-prerequisites.ts",
-    "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:setup": "pnpm setup:check --database-only && pnpm db:migrate",
     "discover": "tsx scripts/discover.ts",
