@@ -1,4 +1,6 @@
-import { existsSync, readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -43,6 +45,56 @@ describe("GitHub Actions quality gates", () => {
     expect(workflow).toContain("    if: github.ref == 'refs/heads/main'");
     expect(workflow).toContain("          target-branch: main");
     expect(workflow).toContain("  cancel-in-progress: false");
+  });
+
+  it("accepts Release Please manifest bytes without weakening repository formatting", () => {
+    const fixtureRoot = mkdtempSync(path.join(tmpdir(), "job-radar-release-manifest-"));
+    const biomeScript = path.join(
+      repositoryRoot,
+      "node_modules",
+      "@biomejs",
+      "biome",
+      "bin",
+      "biome",
+    );
+    const runBiome = (...command: string[]) =>
+      spawnSync(
+        process.execPath,
+        [
+          biomeScript,
+          ...command,
+          `--config-path=${path.join(fixtureRoot, "biome.jsonc")}`,
+          fixtureRoot,
+        ],
+        { encoding: "utf8" },
+      );
+
+    try {
+      writeFileSync(
+        path.join(fixtureRoot, "biome.jsonc"),
+        readFileSync(path.join(repositoryRoot, "biome.jsonc"), "utf8"),
+      );
+      writeFileSync(path.join(fixtureRoot, ".release-please-manifest.json"), '{".":"0.1.0"}');
+
+      const generatedManifestFormat = runBiome("format");
+      expect(generatedManifestFormat.error).toBeUndefined();
+      expect(generatedManifestFormat.status, generatedManifestFormat.stderr).toBe(0);
+      expect(`${generatedManifestFormat.stdout}\n${generatedManifestFormat.stderr}`).toContain(
+        "Checked 1 file",
+      );
+
+      const generatedManifestCheck = runBiome("check", "--error-on-warnings");
+      expect(generatedManifestCheck.error).toBeUndefined();
+      expect(generatedManifestCheck.status, generatedManifestCheck.stderr).toBe(0);
+
+      writeFileSync(path.join(fixtureRoot, "unrelated.json"), '{"probe":true}');
+      const unrelatedJson = runBiome("format");
+      expect(unrelatedJson.error).toBeUndefined();
+      expect(unrelatedJson.status).toBe(1);
+      expect(`${unrelatedJson.stdout}\n${unrelatedJson.stderr}`).toContain("unrelated.json format");
+    } finally {
+      rmSync(fixtureRoot, { recursive: true, force: true });
+    }
   });
 
   it("keeps the pull-request triggers, read-only permissions, matrix, and repository gates", () => {
