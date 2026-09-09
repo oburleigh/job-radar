@@ -82,7 +82,7 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
     "@babel/parser": "8.0.4",
-    "@biomejs/biome": "^2.5.9",
+    "@biomejs/biome": "^2.5.12",
     "@commitlint/cli": "^21.2.2",
     "@commitlint/config-conventional": "^21.2.2",
     "@lhci/cli": "0.15.1",
@@ -96,19 +96,19 @@
     "@types/node": "26.2.0",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/coverage-v8": "^5.0.0",
     "autocannon": "8.0.0",
     "cross-env": "10.1.0",
     "culori": "4.0.2",
     "drizzle-kit": "0.31.10",
-    "lefthook": "^2.1.10",
+    "lefthook": "^2.1.12",
     "postcss": "8.5.26",
     "postcss-selector-parser": "7.1.6",
     "size-limit": "13.0.3",
     "tsx": "4.23.12",
     "typescript": "^7.0.2",
     "vite": "8.2.2",
-    "vitest": "4.1.11",
+    "vitest": "5.0.0",
     "web-vitals": "6.1.1"
   }
 }
