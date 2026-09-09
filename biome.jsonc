@@ -74,6 +74,13 @@
     }
   },
   "overrides": [
+    // Release Please writes compact JSON, which the repository formatter would rewrite.
+    {
+      "includes": [".release-please-manifest.json"],
+      "formatter": {
+        "enabled": false
+      }
+    },
     {
       "includes": ["packages/design-tokens/src/theme.css"],
       "linter": {
