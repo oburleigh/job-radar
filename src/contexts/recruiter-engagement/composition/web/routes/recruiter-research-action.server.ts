@@ -193,6 +193,10 @@ function directoryDestination(formData: FormData): string {
   if (typeof specialism === "string" && specialism.length > 0) {
     parameters.set("specialism", specialism);
   }
+  const targetMarket = formData.get("targetMarket");
+  if (typeof targetMarket === "string" && targetMarket.length > 0) {
+    parameters.set("targetMarket", targetMarket);
+  }
   if (formData.get("showRemoved") === "on") {
     parameters.set("showRemoved", "on");
   }

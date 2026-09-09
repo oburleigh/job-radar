@@ -123,6 +123,7 @@ describe("recruiter research route action", () => {
         recordId: "firm-1",
         showRemoved: "on",
         specialism: "Software engineering",
+        targetMarket: "United Arab Emirates",
       }),
     );
 
@@ -132,7 +133,7 @@ describe("recruiter research route action", () => {
       recordId: "firm-1",
     });
     expect((response as Response).headers.get("location")).toBe(
-      "/recruiter-search?view=directory&specialism=Software+engineering&showRemoved=on",
+      "/recruiter-search?view=directory&specialism=Software+engineering&targetMarket=United+Arab+Emirates&showRemoved=on",
     );
   });
 

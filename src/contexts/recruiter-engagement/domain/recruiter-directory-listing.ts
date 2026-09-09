@@ -21,11 +21,13 @@ export type DirectoryFirm = {
   readonly recruiters: readonly DirectoryRecruiter[];
   readonly removed: boolean;
   readonly specialisms: readonly string[];
+  readonly targetMarkets: readonly string[];
   readonly websiteUrl: string;
 };
 
 export type RecruiterDirectoryListing = {
   readonly availableSpecialisms: readonly string[];
+  readonly availableTargetMarkets: readonly string[];
   readonly firmCount: number;
   readonly firms: readonly DirectoryFirm[];
   readonly recruiterCount: number;
@@ -40,6 +42,8 @@ export function listRecruiterDirectory(
     readonly includeRemoved?: boolean;
     readonly profileHosts: readonly string[];
     readonly specialism?: string;
+    readonly targetMarket?: string;
+    readonly targetMarketLabels: Readonly<Record<string, string>>;
   },
 ): RecruiterDirectoryListing {
   const keep = (kind: "firm" | "recruiter", recordId: string) =>
@@ -48,13 +52,20 @@ export function listRecruiterDirectory(
   const specialismsByFirm = new Map<string, readonly string[]>(
     directory.firms.map((firm) => [firm.id, firmSpecialisms(directory, firm.id)]),
   );
+  const targetMarketsByFirm = new Map<string, readonly string[]>(
+    directory.firms.map((firm) => [
+      firm.id,
+      firmTargetMarkets(directory, firm.id, command.targetMarketLabels),
+    ]),
+  );
 
   const firms = directory.firms
     .filter(
       (firm) =>
         firm.mergedInto === null &&
         keep("firm", firm.id) &&
-        matchesSpecialism(specialismsByFirm.get(firm.id) ?? [], command.specialism),
+        matchesSelected(specialismsByFirm.get(firm.id) ?? [], command.specialism) &&
+        matchesSelected(targetMarketsByFirm.get(firm.id) ?? [], command.targetMarket),
     )
     .map(
       (firm): DirectoryFirm => ({
@@ -72,6 +83,7 @@ export function listRecruiterDirectory(
           .toSorted(byName),
         removed: isDirectoryRecordRemoved(directory, "firm", firm.id),
         specialisms: specialismsByFirm.get(firm.id) ?? [],
+        targetMarkets: targetMarketsByFirm.get(firm.id) ?? [],
         websiteUrl: firm.websiteUrl,
       }),
     )
@@ -101,6 +113,7 @@ export function listRecruiterDirectory(
 
   return {
     availableSpecialisms: [...new Set([...specialismsByFirm.values()].flat())].toSorted(),
+    availableTargetMarkets: [...new Set([...targetMarketsByFirm.values()].flat())].toSorted(),
     firmCount: firms.length,
     firms,
     recruiterCount:
@@ -109,6 +122,26 @@ export function listRecruiterDirectory(
     removedCount: directory.removals.length,
     unassociatedRecruiters,
   };
+}
+
+function firmTargetMarkets(
+  directory: RecruiterDirectory,
+  firmId: string,
+  targetMarketLabels: Readonly<Record<string, string>>,
+): readonly string[] {
+  const targetMarkets = directory.evidence
+    .filter(
+      (entry) =>
+        entry.observation.kind === "firm" && resolveFirmId(directory, entry.recordId) === firmId,
+    )
+    .flatMap((entry) =>
+      entry.observation.kind === "firm" ? entry.observation.rankingSignals.targetMarkets : [],
+    )
+    .flatMap((targetMarket) => {
+      const label = targetMarketLabels[targetMarket];
+      return Object.hasOwn(targetMarketLabels, targetMarket) && label ? [label] : [];
+    });
+  return [...new Set(targetMarkets)].toSorted();
 }
 
 function toDirectoryRecruiter(
@@ -130,13 +163,16 @@ function toDirectoryRecruiter(
 
 function firmSpecialisms(directory: RecruiterDirectory, firmId: string): readonly string[] {
   const specialisms = directory.evidence
-    .filter((entry) => entry.recordId === firmId && entry.observation.kind === "firm")
+    .filter(
+      (entry) =>
+        entry.observation.kind === "firm" && resolveFirmId(directory, entry.recordId) === firmId,
+    )
     .flatMap((entry) => (entry.observation.kind === "firm" ? entry.observation.specialisms : []));
   return [...new Set(specialisms)].toSorted();
 }
 
-function matchesSpecialism(specialisms: readonly string[], selected: string | undefined): boolean {
-  return selected === undefined || specialisms.includes(selected);
+function matchesSelected(values: readonly string[], selected: string | undefined): boolean {
+  return selected === undefined || values.includes(selected);
 }
 
 function isPublicProfileUrl(profileUrl: string, profileHosts: readonly string[]): boolean {

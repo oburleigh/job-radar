@@ -21,10 +21,41 @@ describe("recruiter Directory panel", () => {
 
     expect(html).toContain("Showing 2 firms and 3 recruiters.");
     expect(html).not.toContain("removed from the whole Directory");
-    expect(html).toContain("Open Amina Khan on LinkedIn");
+    expect(html).toContain("Open Amina Khan public profile");
     expect(html).toContain("https://www.linkedin.com/in/amina-khan");
-    expect(html).not.toContain("Open Rafael Costa on LinkedIn");
+    expect(html).not.toContain("Open Rafael Costa public profile");
     expect(html).toContain("Rafael Costa");
+  });
+
+  it("shows evidence-backed Target market pills and an exact Target market filter", () => {
+    const html = render(listing(), {
+      showRemoved: false,
+      specialism: null,
+      targetMarket: "United Arab Emirates",
+    });
+
+    expect(html).toContain('<span class="jr-field-label">Target market</span>');
+    expect(html).toContain('name="targetMarket"');
+    expect(html).toContain('<option value="">Every target market</option>');
+    expect(html).toContain(
+      '<option value="United Arab Emirates" selected="">United Arab Emirates</option>',
+    );
+    expect(html).toContain('aria-label="Target markets for Acme Search"');
+    expect(html).toContain('<li class="recruiter-tag">United Arab Emirates</li>');
+    expect(html).toContain('aria-label="Target markets for Beacon Talent"');
+    expect(html).toContain('<li class="recruiter-tag">United Kingdom</li>');
+    expect(html).not.toContain("Target location");
+  });
+
+  it("presents firm websites and Recruiter Public profiles as clear external actions", () => {
+    const html = render(listing());
+
+    expect(html).toContain("Open Acme Search website");
+    expect(html).toContain("Open Amina Khan public profile");
+    expect(html).toMatch(/href="https:\/\/acme-search\.ae"[^>]*class="jr-button/);
+    expect(html).toMatch(
+      /href="https:\/\/www\.linkedin\.com\/in\/amina-khan"[^>]*class="jr-button/,
+    );
   });
 
   it("names the firm on the control that opens its removal, and asks nothing until then", () => {
@@ -48,6 +79,7 @@ describe("recruiter Directory panel", () => {
             recruiters: [],
             removed: false,
             specialisms: ["Hospitality"],
+            targetMarkets: ["United Kingdom"],
             websiteUrl: "https://beacon-talent.ae",
           },
         ],
@@ -73,12 +105,13 @@ describe("recruiter Directory panel", () => {
             recruiters: [],
             removed: true,
             specialisms: ["Software engineering"],
+            targetMarkets: ["United Arab Emirates"],
             websiteUrl: "https://acme-search.ae",
           },
         ],
         unassociatedRecruiters: [],
       }),
-      { showRemoved: true, specialism: null },
+      { showRemoved: true, specialism: null, targetMarket: null },
     );
 
     expect(html).toContain("Restore Acme Search");
@@ -87,9 +120,14 @@ describe("recruiter Directory panel", () => {
   });
 
   it("carries the active filters through a removal so the view does not reset", () => {
-    const html = render(listing(), { showRemoved: true, specialism: "Software engineering" });
+    const html = render(listing(), {
+      showRemoved: true,
+      specialism: "Software engineering",
+      targetMarket: "United Arab Emirates",
+    });
 
     expect(html).toContain('type="hidden" name="specialism" value="Software engineering"');
+    expect(html).toContain('type="hidden" name="targetMarket" value="United Arab Emirates"');
     expect(html).toContain('type="hidden" name="showRemoved" value="on"');
   });
 
@@ -97,6 +135,7 @@ describe("recruiter Directory panel", () => {
     const html = render(listing({ firmCount: 1, recruiterCount: 1, removedCount: 14 }), {
       showRemoved: false,
       specialism: "Hospitality",
+      targetMarket: null,
     });
 
     // The filtered pair and the Directory-wide total are separate sentences, not one run of numbers.
@@ -107,7 +146,7 @@ describe("recruiter Directory panel", () => {
   it("says why a filtered Directory is empty rather than showing nothing", () => {
     const html = render(
       listing({ firms: [], recruiterCount: 0, firmCount: 0, unassociatedRecruiters: [] }),
-      { showRemoved: false, specialism: "Hospitality" },
+      { showRemoved: false, specialism: "Hospitality", targetMarket: null },
     );
 
     expect(html).toContain("No firms in the Directory hold the Hospitality specialism.");
@@ -122,11 +161,44 @@ describe("recruiter Directory panel", () => {
     expect(html).not.toContain('type="hidden" name="kind" value="firm"');
     expect(html).toContain('aria-label="Remove Acme Search"');
   });
+
+  it.each([
+    [null, "United Kingdom", "No firms in the Directory hold the United Kingdom Target market."],
+    [
+      "Hospitality",
+      "United Kingdom",
+      "No firms in the Directory hold the Hospitality specialism in the United Kingdom Target market.",
+    ],
+    [null, null, "The Directory is empty. Run a research search to fill it."],
+  ])("explains an empty Directory with filters %s and %s", (specialism, targetMarket, message) => {
+    const html = render(
+      listing({ firms: [], recruiterCount: 0, firmCount: 0, unassociatedRecruiters: [] }),
+      { showRemoved: false, specialism, targetMarket },
+    );
+
+    expect(html).toContain(message);
+  });
+
+  it("states when a firm has no Target market Evidence without inventing Global", () => {
+    const current = listing();
+    const html = render({
+      ...current,
+      firms: current.firms.map((firm) => ({ ...firm, targetMarkets: [] })),
+    });
+
+    expect(html).toContain("No Target market Evidence retained");
+    expect(html).not.toContain('class="recruiter-tag"');
+    expect(html).not.toContain("Global");
+  });
 });
 
 function render(
   value: RecruiterDirectoryListing,
-  filters: RecruiterDirectoryFilters = { showRemoved: false, specialism: null },
+  filters: RecruiterDirectoryFilters = {
+    showRemoved: false,
+    specialism: null,
+    targetMarket: null,
+  },
 ): string {
   const router = createMemoryRouter([
     {
@@ -140,6 +212,7 @@ function render(
 function listing(overrides: Partial<RecruiterDirectoryListing> = {}): RecruiterDirectoryListing {
   return {
     availableSpecialisms: ["Hospitality", "Software engineering"],
+    availableTargetMarkets: ["United Arab Emirates", "United Kingdom"],
     firmCount: 2,
     firms: [
       {
@@ -165,6 +238,7 @@ function listing(overrides: Partial<RecruiterDirectoryListing> = {}): RecruiterD
         ],
         removed: false,
         specialisms: ["Software engineering"],
+        targetMarkets: ["United Arab Emirates"],
         websiteUrl: "https://acme-search.ae",
       },
       {
@@ -173,6 +247,7 @@ function listing(overrides: Partial<RecruiterDirectoryListing> = {}): RecruiterD
         recruiters: [],
         removed: false,
         specialisms: ["Hospitality"],
+        targetMarkets: ["United Kingdom"],
         websiteUrl: "https://beacon-talent.ae",
       },
     ],

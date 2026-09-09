@@ -10,13 +10,19 @@ export async function loader({ request }: { readonly request: Request }) {
   const runId = parameters.get("run");
   const research = runId ? await recruiterEngagementWeb.getResearchRun(runId) : undefined;
   const specialism = parameters.get("specialism");
+  const targetMarket = parameters.get("targetMarket");
   const showRemoved = parameters.get("showRemoved") === "on";
   return {
     listing: await recruiterEngagementWeb.getRecruiterDirectoryListing({
       ...(showRemoved ? { includeRemoved: true } : {}),
       ...(specialism ? { specialism } : {}),
+      ...(targetMarket ? { targetMarket } : {}),
     }),
-    directoryFilters: { showRemoved, specialism: specialism ?? null },
+    directoryFilters: {
+      showRemoved,
+      specialism: specialism ?? null,
+      targetMarket: targetMarket ?? null,
+    },
     view: parameters.get("view") === "directory" ? ("directory" as const) : ("run" as const),
     research,
     criteriaOptions: recruiterEngagementWeb.getResearchCriteriaOptions(),
