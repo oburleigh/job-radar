@@ -1,5 +1,6 @@
 import {
   Button,
+  buttonAttributes,
   Card,
   Checkbox,
   controlRowAttributes,
@@ -20,6 +21,7 @@ import type {
 export type RecruiterDirectoryFilters = {
   readonly showRemoved: boolean;
   readonly specialism: string | null;
+  readonly targetMarket: string | null;
 };
 
 export function RecruiterDirectoryPanel({
@@ -32,6 +34,7 @@ export function RecruiterDirectoryPanel({
   readonly listing: RecruiterDirectoryListing;
 }) {
   const specialismFieldId = useId();
+  const targetMarketFieldId = useId();
   const showRemovedId = useId();
 
   return (
@@ -59,7 +62,7 @@ export function RecruiterDirectoryPanel({
         </p>
       </div>
 
-      <Form {...controlRowAttributes(1, "recruiter-directory-filters")} method="get" role="search">
+      <Form {...controlRowAttributes(2, "recruiter-directory-filters")} method="get" role="search">
         <input name="view" type="hidden" value="directory" />
         <SelectField
           defaultValue={filters.specialism ?? ""}
@@ -71,6 +74,19 @@ export function RecruiterDirectoryPanel({
           {listing.availableSpecialisms.map((specialism) => (
             <option key={specialism} value={specialism}>
               {specialism}
+            </option>
+          ))}
+        </SelectField>
+        <SelectField
+          defaultValue={filters.targetMarket ?? ""}
+          id={targetMarketFieldId}
+          label="Target market"
+          name="targetMarket"
+        >
+          <option value="">Every target market</option>
+          {listing.availableTargetMarkets.map((targetMarket) => (
+            <option key={targetMarket} value={targetMarket}>
+              {targetMarket}
             </option>
           ))}
         </SelectField>
@@ -89,11 +105,7 @@ export function RecruiterDirectoryPanel({
 
       <div aria-live="polite" className="recruiter-directory-tiles">
         {listing.firms.length === 0 && listing.unassociatedRecruiters.length === 0 ? (
-          <p className="recruiter-directory-empty">
-            {filters.specialism
-              ? `No firms in the Directory hold the ${filters.specialism} specialism.`
-              : "The Directory is empty. Run a research search to fill it."}
-          </p>
+          <p className="recruiter-directory-empty">{emptyDirectoryMessage(filters)}</p>
         ) : null}
         {listing.firms.map((firm) => (
           <FirmTile filters={filters} firm={firm} isSubmitting={isSubmitting} key={firm.id} />
@@ -197,9 +209,28 @@ function FirmTile({
           />
         )}
       </Modal>
-      <a href={firm.websiteUrl} rel="noreferrer" target="_blank">
-        Firm website
-      </a>
+      {firm.targetMarkets.length > 0 ? (
+        <ul aria-label={`Target markets for ${firm.name}`} className="recruiter-directory-markets">
+          {firm.targetMarkets.map((targetMarket) => (
+            <li className="recruiter-tag" key={targetMarket}>
+              {targetMarket}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="recruiter-directory-no-market">No Target market Evidence retained</p>
+      )}
+      <div className="recruiter-directory-external-actions">
+        <a
+          href={firm.websiteUrl}
+          rel="noreferrer"
+          target="_blank"
+          {...buttonAttributes("secondary")}
+        >
+          <ExternalLink aria-hidden="true" size={14} />
+          Open {firm.name} website
+        </a>
+      </div>
       <ul className="recruiter-directory-people">
         {firm.recruiters.length > 0 ? (
           firm.recruiters.map((recruiter) => (
@@ -243,9 +274,14 @@ function RecruiterRow({
       </div>
       <div className="recruiter-directory-person-actions">
         {recruiter.publicProfileUrl ? (
-          <a href={recruiter.publicProfileUrl} rel="noreferrer" target="_blank">
+          <a
+            href={recruiter.publicProfileUrl}
+            rel="noreferrer"
+            target="_blank"
+            {...buttonAttributes("secondary")}
+          >
             <ExternalLink aria-hidden="true" size={14} />
-            Open {recruiter.name} on LinkedIn
+            Open {recruiter.name} public profile
           </a>
         ) : null}
         {recruiter.removed ? (
@@ -303,7 +339,23 @@ function FilterFields({ filters }: { readonly filters: RecruiterDirectoryFilters
       {filters.specialism ? (
         <input name="specialism" type="hidden" value={filters.specialism} />
       ) : null}
+      {filters.targetMarket ? (
+        <input name="targetMarket" type="hidden" value={filters.targetMarket} />
+      ) : null}
       {filters.showRemoved ? <input name="showRemoved" type="hidden" value="on" /> : null}
     </>
   );
+}
+
+function emptyDirectoryMessage(filters: RecruiterDirectoryFilters): string {
+  if (filters.specialism && filters.targetMarket) {
+    return `No firms in the Directory hold the ${filters.specialism} specialism in the ${filters.targetMarket} Target market.`;
+  }
+  if (filters.specialism) {
+    return `No firms in the Directory hold the ${filters.specialism} specialism.`;
+  }
+  if (filters.targetMarket) {
+    return `No firms in the Directory hold the ${filters.targetMarket} Target market.`;
+  }
+  return "The Directory is empty. Run a research search to fill it.";
 }

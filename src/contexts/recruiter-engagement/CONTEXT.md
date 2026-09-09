@@ -15,6 +15,10 @@ _Avoid_: Technology brief, research brief
 **Research criteria**:
 The catalogue-backed target locations, specialisms, and target industries that focus both research stages. Target locations come from the configured market vocabulary.
 
+**Target market**:
+The geographic scope supported by a Recruitment firm's retained Evidence. Directory pills and filters include every retained market Evidence value the catalogue can label; Research-run ranking separately evaluates its freshness. Specific places use catalogue labels; Global appears only when retained Evidence explicitly supports worldwide operation.
+_Avoid_: Target location, which names a user-selected Research criterion rather than a firm's retained Evidence
+
 **Specialism**:
 A professional discipline used to focus firm and recruiter research. It is not limited to one sector.
 _Avoid_: Technology specialism
@@ -44,7 +48,7 @@ _Avoid_: Resume, Retry
 _Avoid_: Registry, which names discovery's ATS Registry and made one word mean two different sets
 
 **Directory listing**
-: One filtered read of the Directory for a surface to render, carrying the firms, the recruiters without a firm, the specialisms available to filter by, and the counts each of those is drawn from.
+: One filtered read of the Directory for a surface to render, carrying the firms and their Target markets, the recruiters without a firm, the Specialisms and Target markets available to filter by, and the counts each of those is drawn from.
 
 **Recruitment firm**
 : A canonical recruitment organisation identified from its public website domain. Observed names and other sourced facts remain evidence rather than silently replacing the canonical record.
@@ -128,6 +132,6 @@ _Avoid_: Active adapter, current provider, selected engine
 
 The domain owns the vocabulary, terminal-state rules, canonical identity rules, evidence reconciliation, identity decisions, corrections, Shortlists, contact exclusions, Campaign preparation eligibility, and deterministic directory ranking. The application owns starting, resuming, cancelling, retrying, continuing, target-location validation, recording a run, maintaining the Directory, and managing Shortlists. It depends on run, Directory, and Shortlist stores, a staged research source, a scheduler, and values supplied by composition.
 
-Infrastructure maps configured ISO market entries to selectable target locations, stores runs, the Directory, Shortlists, and recruiter research settings in SQLite, and provides Codex, deterministic, and public-web Sources. Seed data owns the initial brief, target counts, Directory ranking weights, provider selection, query phrases, evidence terms, page limits, and stage request limit. Each Research run freezes the applicable public search policy. Legacy single-location criteria and earlier adapter policy records remain readable. The public-web Source uses the shared server-side web-search transport, accepts partial results, records per-query failures, and maps public firm pages and indexed Public profiles into Observations. The Codex Source researches firms and recruiters through the Codex CLI installed on the machine, one invocation per stage, and consumes no public search provider. The deterministic Source supports local tests.
+Infrastructure maps configured ISO market entries to selectable target locations and retained market Evidence to catalogue labels, stores runs, the Directory, Shortlists, and recruiter research settings in SQLite, and provides Codex, deterministic, and public-web Sources. Seed data owns the initial brief, target counts, Directory ranking weights, provider selection, query phrases, evidence terms, page limits, and stage request limit. Each Research run freezes the applicable public search policy. Legacy single-location criteria and earlier adapter policy records remain readable. The public-web Source uses the shared server-side web-search transport, accepts partial results, records per-query failures, and maps public firm pages and indexed Public profiles into Observations. The Codex Source researches firms and recruiters through the Codex CLI installed on the machine, one invocation per stage, and consumes no public search provider. The deterministic Source supports local tests.
 
 Presentation owns route request parsing, Public search provider selection where it applies, controlled target-location selection, polling, status copy, ranked Directory results, visible unassociated Recruiters, identity decisions, canonical corrections, and Shortlist controls. It does not import SQLite or infrastructure. The composition root selects the deterministic Source only for explicit test configuration. Normal local use selects the Codex Source through the application port. Composition tells presentation whether Public search provider selection applies and which Settings surfaces the Research source in force governs; each surface states that for itself rather than hiding values the operator may be preparing.

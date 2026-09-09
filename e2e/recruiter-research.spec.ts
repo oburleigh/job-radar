@@ -139,7 +139,7 @@ test("starts recruiter research from the browser and renders firms and recruiter
   await expect(page.getByLabel("Recruiters to find")).toHaveAttribute("aria-invalid", "true");
   await expect(page).toHaveURL(/\/recruiter-search$/);
 
-  await page.getByLabel("Recruiters to find").fill("10");
+  await page.getByLabel("Recruiters to find").fill("20");
   await page.getByRole("button", { name: "Start research" }).click();
   await expect(page).toHaveURL(/\/recruiter-search\?run=/);
 
@@ -170,13 +170,81 @@ test("starts recruiter research from the browser and renders firms and recruiter
     /^https:\/\/www\.linkedin\.com\/in\//,
   );
   await expect(page.getByText(/high confidence/).first()).toBeVisible();
-  await page.screenshot({ path: "test-results/recruiter-directory-desktop.png", fullPage: true });
-  await page.emulateMedia({ colorScheme: "dark" });
-  await page.screenshot({ path: "test-results/recruiter-directory-dark.png", fullPage: true });
-  await page.emulateMedia({ colorScheme: "light" });
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.screenshot({ path: "test-results/recruiter-directory-mobile.png", fullPage: true });
   await page.getByRole("link", { name: "Directory", exact: true }).click();
+  await expect(page.getByRole("combobox", { name: "Target market", exact: true })).toHaveValue("");
+  await expect(
+    page
+      .getByRole("list", { name: "Target markets for Recruitment Search 1", exact: true })
+      .getByText("Dubai, United Arab Emirates", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Open Recruitment Search 1 website", exact: true }),
+  ).toHaveAttribute("href", "https://recruitment-search-1.example");
+  await expect(
+    page.getByRole("link", { name: "Open Technology Recruiter 1 public profile", exact: true }),
+  ).toHaveAttribute("href", "https://www.linkedin.com/in/technology-recruiter-1");
+
+  await page
+    .getByRole("combobox", { name: "Target market", exact: true })
+    .selectOption("Dubai, United Arab Emirates");
+  await page.getByRole("button", { name: "Apply filters" }).click();
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("targetMarket"))
+    .toBe("Dubai, United Arab Emirates");
+  await expect(
+    page.getByText("Showing 10 firms and 20 recruiters.", { exact: true }),
+  ).toBeVisible();
+
+  const directory = page.locator(".recruiter-directory");
+  await expect(directory.getByRole("link", { name: / website$/ })).toHaveCount(10);
+  const profileLinks = directory.getByRole("link", { name: / public profile$/ });
+  await expect(profileLinks).toHaveCount(20);
+  expect(
+    await profileLinks.evaluateAll((links) =>
+      links.map((link) => link.getAttribute("href")).sort(),
+    ),
+  ).toEqual(
+    Array.from(
+      { length: 20 },
+      (_, index) => `https://www.linkedin.com/in/technology-recruiter-${index + 1}`,
+    ).sort(),
+  );
+  expect(
+    (await new AxeBuilder({ page }).include(".recruiter-directory").analyze()).violations,
+  ).toEqual([]);
+  const specialismBox = await page
+    .getByRole("combobox", { name: "Specialism", exact: true })
+    .boundingBox();
+  const targetMarketBox = await page
+    .getByRole("combobox", { name: "Target market", exact: true })
+    .boundingBox();
+  if (!specialismBox || !targetMarketBox) throw new Error("Directory filters must be measurable.");
+  expect(Math.abs(specialismBox.y - targetMarketBox.y)).toBeLessThanOrEqual(1);
+  const applyBox = await page.getByRole("button", { name: "Apply filters" }).boundingBox();
+  if (!applyBox) throw new Error("The filter action must be measurable.");
+  expect(
+    Math.abs(applyBox.y + applyBox.height - targetMarketBox.y - targetMarketBox.height),
+  ).toBeLessThanOrEqual(1);
+  await captureDirectoryEvidence(page, "desktop-light");
+  await page.emulateMedia({ colorScheme: "dark" });
+  expect(
+    (await new AxeBuilder({ page }).include(".recruiter-directory").analyze()).violations,
+  ).toEqual([]);
+  await captureDirectoryEvidence(page, "desktop-dark");
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+    ),
+  ).toBe(true);
+  await captureDirectoryEvidence(page, "mobile-dark");
+  await page.emulateMedia({ colorScheme: "light" });
+  await captureDirectoryEvidence(page, "mobile-light");
+  const targetMarketFilter = page.getByRole("combobox", { name: "Target market", exact: true });
+  await targetMarketFilter.focus();
+  await expect(targetMarketFilter).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("checkbox", { name: "Show removed records" })).toBeFocused();
   await page.getByRole("button", { name: "Remove Recruitment Search 1", exact: true }).click();
   const removal = page.getByRole("dialog");
   const keep = removal.getByRole("radio", { name: "Keep them, without a firm" });
@@ -204,6 +272,15 @@ test("starts recruiter research from the browser and renders firms and recruiter
   await page.setViewportSize({ width: 1440, height: 1000 });
   await removal.screenshot({ path: "test-results/removal-radio-desktop.png" });
   await page.keyboard.press("Escape");
+  await page.goto("/recruiter-search?view=directory&targetMarket=United+Kingdom");
+  await expect(
+    page.getByText("No firms in the Directory hold the United Kingdom Target market.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.locator(".recruiter-directory").getByRole("link", { name: / website$/ }),
+  ).toHaveCount(0);
   await page.getByRole("link", { name: "Activity" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Activity" })).toBeVisible();
   await expect(page.getByRole("heading", { level: 1, name: "Discovery history" })).toHaveCount(0);
@@ -698,6 +775,33 @@ test("places the suggestion panel below the field it belongs to", async ({ page 
 
   expect(panel.y).toBeGreaterThanOrEqual(field.y + field.height);
 });
+
+async function captureDirectoryEvidence(page: Page, variant: string) {
+  expect(new URL(page.url()).searchParams.get("view")).toBe("directory");
+  const directory = page.getByRole("region", { name: "Directory", exact: true });
+  await expect(directory).toBeVisible();
+  await expect(
+    directory.getByRole("combobox", { name: "Target market", exact: true }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: `test-results/recruiter-directory-${variant}.png`,
+    fullPage: true,
+  });
+  const clip = await directory.evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    return {
+      x: bounds.x + window.scrollX,
+      y: bounds.y + window.scrollY,
+      width: bounds.width,
+      height: Math.min(bounds.height, 1000),
+    };
+  });
+  await page.screenshot({
+    path: `test-results/recruiter-directory-region-${variant}.png`,
+    fullPage: true,
+    clip,
+  });
+}
 
 function suggestionsFor(page: Page) {
   return page.getByRole("listbox").getByRole("option");

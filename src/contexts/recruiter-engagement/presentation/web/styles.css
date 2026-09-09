@@ -925,6 +925,23 @@
   color: var(--jr-color-text-muted);
 }
 
+.recruiter-directory-markets,
+.recruiter-directory-external-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--jr-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recruiter-directory-no-market {
+  margin: 0;
+  color: var(--jr-color-text-muted);
+  font-size: var(--jr-font-size-caption);
+  line-height: var(--jr-line-height-caption);
+}
+
 .recruiter-directory-removed-label {
   align-self: start;
   padding: 0 var(--jr-space-2);

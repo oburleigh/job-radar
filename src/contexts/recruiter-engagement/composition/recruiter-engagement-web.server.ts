@@ -30,7 +30,10 @@ import {
 } from "@/contexts/recruiter-engagement/infrastructure/codex/codex-policy";
 import { createCodexResearchSource } from "@/contexts/recruiter-engagement/infrastructure/codex/codex-research-source";
 import { createDeterministicStagedResearchSource } from "@/contexts/recruiter-engagement/infrastructure/deterministic/deterministic-staged-research-source";
-import { resolveTargetLocationOptions } from "@/contexts/recruiter-engagement/infrastructure/markets/target-location-catalogue";
+import {
+  resolveTargetLocationOptions,
+  resolveTargetMarketLabels,
+} from "@/contexts/recruiter-engagement/infrastructure/markets/target-location-catalogue";
 import {
   createPublicWebAdapterPolicy,
   createPublicWebSourcePlan,
@@ -187,9 +190,15 @@ export const recruiterEngagementWeb = {
   async getRecruiterDirectoryListing(filters: {
     readonly includeRemoved?: boolean;
     readonly specialism?: string;
+    readonly targetMarket?: string;
   }) {
-    return listRecruiterDirectory(await directory.getDirectory(), {
+    const snapshot = await directory.getDirectory();
+    const targetMarketValues = snapshot.evidence.flatMap((entry) =>
+      entry.observation.kind === "firm" ? entry.observation.rankingSignals.targetMarkets : [],
+    );
+    return listRecruiterDirectory(snapshot, {
       profileHosts: currentSettings().publicSearch.profileSourceHosts,
+      targetMarketLabels: resolveTargetMarketLabels(targetMarketValues),
       ...filters,
     });
   },

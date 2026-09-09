@@ -5,22 +5,103 @@ import {
   type RecruiterDirectory,
   reconcileRecruiterDirectory,
   removeDirectoryRecord,
+  resolveIdentityReview,
 } from "./recruiter-directory";
-import { listRecruiterDirectory } from "./recruiter-directory-listing";
+import { listRecruiterDirectory as listDirectory } from "./recruiter-directory-listing";
 
 const profileHosts = ["linkedin.com/in"];
+const targetMarketLabels = {
+  Global: "Global",
+  UAE: "United Arab Emirates",
+  "United Arab Emirates": "United Arab Emirates",
+  "United Kingdom": "United Kingdom",
+};
 const observedAt = new Date("2026-08-28T10:00:00.000Z");
 
 describe("recruiter listing", () => {
-  it("lists firms with their recruiters and the specialisms the evidence supports", () => {
+  it("lists firms with their recruiters, specialisms, and Target markets the evidence supports", () => {
     const listing = listRecruiterDirectory(seeded(), { profileHosts });
 
-    expect(listing.firms.map((firm) => [firm.name, firm.specialisms])).toEqual([
-      ["Acme Search", ["Software engineering"]],
-      ["Beacon Talent", ["Hospitality"]],
+    expect(listing.firms.map((firm) => [firm.name, firm.specialisms, firm.targetMarkets])).toEqual([
+      ["Acme Search", ["Software engineering"], ["United Arab Emirates"]],
+      ["Beacon Talent", ["Hospitality"], ["United Kingdom"]],
     ]);
     expect(listing.firms[0]?.recruiters.map((person) => person.name)).toEqual(["Amina Khan"]);
     expect(listing.availableSpecialisms).toEqual(["Hospitality", "Software engineering"]);
+    expect(listing.availableTargetMarkets).toEqual(["United Arab Emirates", "United Kingdom"]);
+  });
+
+  it("combines Target market Evidence for one canonical firm across Research runs", () => {
+    const firstRun = reconcileRecruiterDirectory(createEmptyRecruiterDirectory(), {
+      observations: [firmObservation()],
+      recordedAt: observedAt,
+      runId: "run-uae",
+    });
+    const secondRun = reconcileRecruiterDirectory(firstRun, {
+      observations: [
+        firmObservation({
+          evidence: evidenceFor("acme-search.ae/uk"),
+          rankingSignals: {
+            currentMandatesOrActivity: true,
+            namedRecruiterOrTeamEvidence: true,
+            scaleOrTrackRecord: true,
+            targetMarkets: ["United Kingdom"],
+          },
+        }),
+      ],
+      recordedAt: new Date("2026-08-29T10:00:00.000Z"),
+      runId: "run-uk",
+    });
+
+    const listing = listRecruiterDirectory(secondRun, { profileHosts });
+
+    expect(listing.firms).toHaveLength(1);
+    expect(listing.firms[0]?.targetMarkets).toEqual(["United Arab Emirates", "United Kingdom"]);
+  });
+
+  it("shows Global only when retained Evidence explicitly supports it", () => {
+    const directory = reconcileRecruiterDirectory(createEmptyRecruiterDirectory(), {
+      observations: [
+        firmObservation({
+          rankingSignals: {
+            currentMandatesOrActivity: true,
+            namedRecruiterOrTeamEvidence: true,
+            scaleOrTrackRecord: true,
+            targetMarkets: ["Global"],
+          },
+        }),
+      ],
+      recordedAt: observedAt,
+      runId: "run-global",
+    });
+
+    expect(listRecruiterDirectory(directory, { profileHosts }).firms[0]?.targetMarkets).toEqual([
+      "Global",
+    ]);
+    expect(listRecruiterDirectory(seeded(), { profileHosts }).availableTargetMarkets).not.toContain(
+      "Global",
+    );
+  });
+
+  it("drops Target market values the supplied label map does not own", () => {
+    const directory = reconcileRecruiterDirectory(createEmptyRecruiterDirectory(), {
+      observations: [
+        firmObservation({
+          rankingSignals: {
+            currentMandatesOrActivity: true,
+            namedRecruiterOrTeamEvidence: true,
+            scaleOrTrackRecord: true,
+            targetMarkets: ["UAE", "Atlantis", "constructor", "toString", "__proto__"],
+          },
+        }),
+      ],
+      recordedAt: observedAt,
+      runId: "run-catalogue",
+    });
+
+    expect(listRecruiterDirectory(directory, { profileHosts }).firms[0]?.targetMarkets).toEqual([
+      "United Arab Emirates",
+    ]);
   });
 
   it("narrows the listing to one specialism, keeping only the firms that hold it", () => {
@@ -44,6 +125,75 @@ describe("recruiter listing", () => {
       firmCount: 1,
       recruiterCount: 1,
     });
+  });
+
+  it("narrows the listing to an exact Target market without making Recruiters unassociated", () => {
+    const listing = listRecruiterDirectory(seeded(), {
+      profileHosts,
+      targetMarket: "United Kingdom",
+    });
+
+    expect(listing.firms.map((firm) => firm.name)).toEqual(["Beacon Talent"]);
+    expect(listing.availableTargetMarkets).toEqual(["United Arab Emirates", "United Kingdom"]);
+    expect(listing.unassociatedRecruiters).toEqual([]);
+    expect(listing.firms.flatMap((firm) => firm.recruiters.map((person) => person.name))).toEqual([
+      "Rafael Costa",
+    ]);
+    expect({ firmCount: listing.firmCount, recruiterCount: listing.recruiterCount }).toEqual({
+      firmCount: 1,
+      recruiterCount: 1,
+    });
+  });
+
+  it("requires Specialism and Target market filters to match the same firm", () => {
+    const listing = listRecruiterDirectory(seeded(), {
+      profileHosts,
+      specialism: "Software engineering",
+      targetMarket: "United Kingdom",
+    });
+
+    expect(listing.firms).toEqual([]);
+    expect(listing.unassociatedRecruiters).toEqual([]);
+    expect(listing.recruiterCount).toBe(0);
+  });
+
+  it("retains both firms' markets, Specialisms and Recruiters after an identity merge", () => {
+    const candidate = firmObservation({
+      websiteUrl: "https://acme-search.co.uk",
+      evidence: evidenceFor("acme-search.co.uk"),
+      specialisms: ["Hospitality"],
+      rankingSignals: {
+        currentMandatesOrActivity: true,
+        namedRecruiterOrTeamEvidence: true,
+        scaleOrTrackRecord: true,
+        targetMarkets: ["United Kingdom"],
+      },
+    });
+    const directory = reconcileRecruiterDirectory(createEmptyRecruiterDirectory(), {
+      observations: [firmObservation(), recruiterObservation(), candidate],
+      recordedAt: observedAt,
+      runId: "run-merge",
+    });
+    const review = directory.identityReviews[0];
+    if (!review) throw new Error("The alternate firm domain must need an identity decision.");
+    const merged = resolveIdentityReview(directory, {
+      decision: "merge",
+      decidedAt: observedAt,
+      reviewId: review.id,
+    });
+
+    const listing = listRecruiterDirectory(merged, {
+      profileHosts,
+      specialism: "Hospitality",
+      targetMarket: "United Kingdom",
+    });
+
+    expect(listing.firms).toHaveLength(1);
+    expect(listing.firms[0]?.targetMarkets).toEqual(["United Arab Emirates", "United Kingdom"]);
+    expect(listing.firms[0]?.specialisms).toEqual(["Hospitality", "Software engineering"]);
+    expect(listing.firms[0]?.recruiters.map((recruiter) => recruiter.name)).toEqual(["Amina Khan"]);
+    expect(listing.unassociatedRecruiters).toEqual([]);
+    expect(listing.recruiterCount).toBe(1);
   });
 
   it("still lists a recruiter whose firm the Directory never held", () => {
@@ -128,6 +278,12 @@ function seeded(): RecruiterDirectory {
       recruiterObservation(),
       firmObservation({
         companyName: "Beacon Talent",
+        rankingSignals: {
+          currentMandatesOrActivity: true,
+          namedRecruiterOrTeamEvidence: true,
+          scaleOrTrackRecord: true,
+          targetMarkets: ["United Kingdom"],
+        },
         specialisms: ["Hospitality"],
         websiteUrl: "https://beacon-talent.ae",
       }),
@@ -183,4 +339,11 @@ function evidenceFor(source: string): Evidence {
     policyVersion: "1",
     sourceUrl: `https://${source}`,
   };
+}
+
+function listRecruiterDirectory(
+  directory: RecruiterDirectory,
+  command: Omit<Parameters<typeof listDirectory>[1], "targetMarketLabels">,
+) {
+  return listDirectory(directory, { ...command, targetMarketLabels });
 }

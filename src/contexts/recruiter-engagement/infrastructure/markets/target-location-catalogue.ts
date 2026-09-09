@@ -25,3 +25,17 @@ export function resolveTargetLocationOptions(
 ): readonly TargetLocationOption[] {
   return resolveLocations(values).map((location) => ({ key: location.id, label: location.label }));
 }
+
+export function resolveTargetMarketLabels(
+  values: readonly string[],
+): Readonly<Record<string, string>> {
+  return Object.fromEntries(
+    [...new Set(values)].flatMap((value) => {
+      if (value.trim().toLocaleLowerCase() === "global") {
+        return [[value, "Global"]] as const;
+      }
+      const resolved = resolveTargetLocationOptions([value])[0];
+      return resolved ? ([[value, resolved.label]] as const) : [];
+    }),
+  );
+}

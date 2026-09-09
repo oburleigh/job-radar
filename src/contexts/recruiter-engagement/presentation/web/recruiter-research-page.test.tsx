@@ -363,6 +363,7 @@ function renderDirectoryView(view: "directory" | "run" = "directory"): string {
           }}
           listing={{
             availableSpecialisms: ["Software engineering"],
+            availableTargetMarkets: ["United Arab Emirates"],
             firmCount: 1,
             firms: [
               {
@@ -371,6 +372,7 @@ function renderDirectoryView(view: "directory" | "run" = "directory"): string {
                 recruiters: [],
                 removed: false,
                 specialisms: ["Software engineering"],
+                targetMarkets: ["United Arab Emirates"],
                 websiteUrl: "https://acme-search.ae",
               },
             ],
@@ -378,7 +380,7 @@ function renderDirectoryView(view: "directory" | "run" = "directory"): string {
             removedCount: 0,
             unassociatedRecruiters: [],
           }}
-          directoryFilters={{ showRemoved: false, specialism: null }}
+          directoryFilters={{ showRemoved: false, specialism: null, targetMarket: null }}
           view={view}
         />
       ),
