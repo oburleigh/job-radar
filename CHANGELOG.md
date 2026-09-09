@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/oburleigh/job-radar/compare/v0.1.0...v0.1.1) (2026-09-09)
+
+
+### Features
+
+* **ui:** filter recruiter firms by target market ([#32](https://github.com/oburleigh/job-radar/issues/32)) ([2ffee67](https://github.com/oburleigh/job-radar/commit/2ffee67694097d9d6161c782c3054ed920b71502))
+
 ## 0.1.0 (2026-09-09)
 
 
