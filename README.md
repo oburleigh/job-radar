@@ -1,5 +1,10 @@
 # Job Radar
 
+[![Verify](https://github.com/oburleigh/job-radar/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/oburleigh/job-radar/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/github/oburleigh/job-radar/graph/badge.svg)](https://app.codecov.io/github/oburleigh/job-radar)
+[![Licence: MIT](https://img.shields.io/badge/licence-MIT-blue)](LICENSE)
+![Node.js 24](https://img.shields.io/badge/node.js-24-green)
+
 Job Radar runs on your machine and keeps job discovery, recruiter research, and
 your review decisions in SQLite. Use **Opportunities** to find and triage job
 listings, and **Recruiter Search** to research recruitment firms and named
