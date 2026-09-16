@@ -68,6 +68,7 @@ const runtimeSettingsSchema = z
     ),
     discoveryPollIntervalMs: integer(runtimeSettingConstraints.discoveryPollIntervalMs),
     discoveryStaleAfterMs: integer(runtimeSettingConstraints.discoveryStaleAfterMs),
+    todayNextActionLimit: integer(runtimeSettingConstraints.todayNextActionLimit),
     exactTitleScore: integer(runtimeSettingConstraints.exactTitleScore),
     fullTokenScore: integer(runtimeSettingConstraints.fullTokenScore),
     partialTokenScore: integer(runtimeSettingConstraints.partialTokenScore),
@@ -212,6 +213,7 @@ export function parseRuntimeSettingsRequest(
         discoveryNotificationDurationMs: values.discoveryNotificationDurationMs,
         discoveryPollIntervalMs: values.discoveryPollIntervalMs,
         discoveryStaleAfterMs: values.discoveryStaleAfterMs,
+        todayNextActionLimit: values.todayNextActionLimit,
       },
       searchProviders: Object.fromEntries(
         Object.entries(current.searchProviders).map(([name, provider]) => {

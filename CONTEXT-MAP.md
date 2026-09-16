@@ -7,6 +7,10 @@
 - [Recruiter Engagement](./src/contexts/recruiter-engagement/CONTEXT.md) owns public recruitment
   research, canonical firms and recruiters, evidence history, identity review, and directory ranking.
 
+- [Opportunity Tracking](./src/contexts/opportunity-tracking/CONTEXT.md) owns Applications,
+  Application stages and timelines, accepted Next actions, Opportunity assessments, and
+  application-specific Relationship plans.
+
 ## Shared visual capabilities
 
 [`@job-radar/design-tokens`](./packages/design-tokens) and
@@ -14,13 +18,13 @@
 no domain model and are not a bounded context or DDD shared kernel. Their rules are defined in
 [`DESIGN.md`](./DESIGN.md), and their Storybook consumer lives in [`apps/web-docs`](./apps/web-docs).
 
-## Candidate context
+## Relationships
 
-Opportunity Tracking may become a separate context when saved, hidden, applied, and interview states
-gain a lifecycle or language independent from Discovery. Discovery owns the current job-listing
-state, use case, and persistence adapter until that boundary is earned. No empty context package is
-created in advance.
+Opportunity Tracking consumes prepared Discovery contracts for matched Job listings and Search
+profiles, and Recruiter Engagement contracts for existing Prospects. Composition selects concrete
+adapters. Public context contracts expose prepared reads and commands without selecting SQLite
+adapters themselves.
 
-## Relationship
-
-If Opportunity Tracking is split out, it will consume a stable Discovery contract for matched listings. The integration mechanism is deliberately undecided. A direct application call is enough while Job Radar remains one local process; an event bus is not justified by a future possibility alone.
+Discovery retains new, saved, and hidden Job listing states. Legacy applied rows remain migration
+and rollback evidence; current Application state belongs to Opportunity Tracking. Today composes
+owning-context reads without copying their records into a separate store.

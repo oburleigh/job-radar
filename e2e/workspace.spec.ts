@@ -1,6 +1,53 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
+test("exposes the primary workflow destinations", async ({ page }) => {
+  await page.goto("/");
+
+  await expect(page.getByRole("heading", { level: 1, name: "Today" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Opportunities" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Job Radar today" })).toHaveAttribute("href", "/");
+
+  const primaryNavigation = page.getByRole("navigation", { name: "Primary navigation" });
+  await expect(primaryNavigation.getByRole("link")).toHaveText([
+    "Today",
+    "Opportunities",
+    "Recruiter Search",
+    "Applications",
+  ]);
+  await expect(primaryNavigation.getByRole("link", { name: "Today", exact: true })).toHaveAttribute(
+    "href",
+    "/",
+  );
+  const opportunitiesLink = primaryNavigation.getByRole("link", {
+    name: "Opportunities",
+    exact: true,
+  });
+  await expect(opportunitiesLink).toHaveAttribute("href", "/opportunities");
+  await expect(
+    primaryNavigation.getByRole("link", { name: "Recruiter Search", exact: true }),
+  ).toHaveAttribute("href", "/recruiter-search");
+  const applicationsLink = primaryNavigation.getByRole("link", {
+    name: "Applications",
+    exact: true,
+  });
+  await expect(applicationsLink).toHaveAttribute("href", "/applications");
+
+  await applicationsLink.click();
+  await expect(page).toHaveURL("/applications");
+  await expect(page.getByRole("heading", { level: 1, name: "Applications" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "No Applications yet" })).toBeVisible();
+});
+
+test("redirects a legacy Opportunity selection to the Opportunities destination", async ({
+  page,
+}) => {
+  await page.goto("/?profile=3&provider=serper");
+
+  await expect(page).toHaveURL("/opportunities?profile=3&provider=serper");
+  await expect(page.getByRole("heading", { level: 1, name: "Opportunities" })).toBeVisible();
+});
+
 test("keeps personal and system controls in the masthead without crowding primary navigation", async ({
   page,
 }) => {
@@ -9,13 +56,13 @@ test("keeps personal and system controls in the masthead without crowding primar
 
   await expect(page.getByText("Local workspace", { exact: true })).toHaveCount(0);
   const profileMenu = page.getByRole("button", { name: "Search profiles" });
-  const activity = page.getByRole("link", { name: "Activity" });
+  const activity = page.getByRole("banner").getByRole("link", { name: "Activity", exact: true });
   const settings = page.getByRole("link", { name: "System settings" });
   await expect(profileMenu).toBeVisible();
   await expect(settings).toBeVisible();
   await expect(
     page.getByRole("navigation", { name: "Primary navigation" }).getByRole("link"),
-  ).toHaveCount(2);
+  ).toHaveCount(4);
   await expect(page.getByRole("link", { name: "Opportunities", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Recruiter Search" })).toBeVisible();
   await expect(activity).toBeVisible();
@@ -59,7 +106,7 @@ test("keeps personal and system controls in the masthead without crowding primar
   await page.goto("/");
   await expect(
     page.getByRole("navigation", { name: "Primary navigation" }).getByRole("link"),
-  ).toHaveCount(2);
+  ).toHaveCount(4);
   await expect(profileMenu).toBeVisible();
   await expect(settings).toBeVisible();
 });
@@ -68,7 +115,7 @@ test("loads the opportunity workspace with its visible page header and without d
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto("/");
+  await page.goto("/opportunities");
 
   const opportunitiesHeading = page.getByRole("heading", { level: 1, name: "Opportunities" });
   await expect(opportunitiesHeading).toBeVisible();
@@ -261,7 +308,8 @@ test("keeps settings in stable sections without carrying opportunity selection",
 
 test("captures primary route review evidence at desktop and mobile widths", async ({ page }) => {
   const routes = [
-    ["/", "Opportunities", "opportunities"],
+    ["/", "Today", "today"],
+    ["/opportunities", "Opportunities", "opportunities"],
     ["/profiles", "Search profiles", "profiles"],
     ["/activity", "Activity", "activity"],
     ["/recruiter-search", "Recruiter Search", "recruiter-search"],
@@ -283,7 +331,7 @@ test("captures primary route review evidence at desktop and mobile widths", asyn
   await page.locator(".profile-list").screenshot({
     path: "test-results/ui-review/profiles-action-rail-desktop.png",
   });
-  await page.goto("/");
+  await page.goto("/opportunities");
   await page.locator(".jr-page-header").screenshot({
     path: "test-results/ui-review/opportunities-header-desktop.png",
   });
@@ -314,7 +362,7 @@ test("captures primary route review evidence at desktop and mobile widths", asyn
   await page.locator(".profile-list").screenshot({
     path: "test-results/ui-review/profiles-action-rail-desktop-dark.png",
   });
-  await page.goto("/");
+  await page.goto("/opportunities");
   await page.locator(".jr-page-header").screenshot({
     path: "test-results/ui-review/opportunities-header-desktop-dark.png",
   });
@@ -344,7 +392,7 @@ test("captures primary route review evidence at desktop and mobile widths", asyn
   await page.locator(".profile-list").screenshot({
     path: "test-results/ui-review/profiles-action-rail-mobile.png",
   });
-  await page.goto("/");
+  await page.goto("/opportunities");
   await page.locator(".jr-page-header").screenshot({
     path: "test-results/ui-review/opportunities-header-mobile.png",
   });
@@ -479,7 +527,7 @@ test("keeps the narrow first screen on results and still reaches every filter", 
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
+  await page.goto("/opportunities");
 
   const filters = page.getByRole("region", { name: "Filter opportunity catalogue" });
   const disclosure = page.getByRole("button", { name: /^Filters/ });
@@ -510,4 +558,31 @@ test("keeps the narrow first screen on results and still reaches every filter", 
     const box = await select.boundingBox();
     expect(box?.width ?? 0, `${label} is too narrow to show its value`).toBeGreaterThan(280);
   }
+});
+
+test("saves Advisor execution settings and retains them after reload", async ({ page }) => {
+  await page.goto("/settings/opportunities");
+  await expect(
+    page.getByText(
+      "Nothing is sent until you request an Opportunity assessment or a Relationship plan.",
+      { exact: false },
+    ),
+  ).toBeVisible();
+  await page.getByLabel("Advisor model", { exact: false }).fill("test-model-settings");
+  await page.getByLabel("Advisor reasoning effort", { exact: false }).selectOption("medium");
+  await page.getByLabel("Advisor timeout in milliseconds", { exact: false }).fill("17000");
+  await page.getByLabel("Advisor output limit", { exact: false }).fill("6000");
+  await page.getByRole("button", { name: "Save Advisor settings", exact: true }).click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Advisor settings saved." }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel("Advisor model", { exact: false })).toHaveValue(
+    "test-model-settings",
+  );
+  await expect(page.getByLabel("Advisor reasoning effort", { exact: false })).toHaveValue("medium");
+  await expect(page.getByLabel("Advisor timeout in milliseconds", { exact: false })).toHaveValue(
+    "17000",
+  );
+  await expect(page.getByLabel("Advisor output limit", { exact: false })).toHaveValue("6000");
 });

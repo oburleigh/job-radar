@@ -13,6 +13,10 @@ type SetNumericSetting = (
 ) => RuntimeSettingsCommand;
 
 const setNumericSetting: Record<RuntimeNumericSetting, SetNumericSetting> = {
+  todayNextActionLimit: (settings, todayNextActionLimit) => ({
+    ...settings,
+    ui: { ...settings.ui, todayNextActionLimit },
+  }),
   timeoutMs: (settings, timeoutMs) => ({
     ...settings,
     network: { ...settings.network, timeoutMs },
@@ -198,6 +202,13 @@ function withProviderMaxResults(
 }
 
 describe("runtime setting constraints", () => {
+  it.each([2, 6])("rejects a Today Next action limit of %i", (todayNextActionLimit) => {
+    const settings = runtimeSettings();
+    expect(
+      findInvalidRuntimeSetting({ ...settings, ui: { ...settings.ui, todayNextActionLimit } }),
+    ).toBe("todayNextActionLimit");
+  });
+
   it.each(Object.entries(runtimeSettingConstraints))(
     "accepts the inclusive %s boundaries",
     (field, constraint) => {
@@ -366,6 +377,7 @@ function runtimeSettings(): RuntimeSettingsCommand {
       discoveryNotificationDurationMs: 5_000,
       discoveryPollIntervalMs: 2_000,
       discoveryStaleAfterMs: 300_000,
+      todayNextActionLimit: 5,
     },
     searchProviders: {
       test: {

@@ -5,6 +5,7 @@ import { defineConfig } from "drizzle-kit";
 export default defineConfig({
   schema: [
     "./src/contexts/discovery/infrastructure/sqlite/schema.ts",
+    "./src/contexts/opportunity-tracking/infrastructure/sqlite/schema.ts",
     "./src/contexts/recruiter-engagement/infrastructure/sqlite/schema.ts",
   ],
   out: "./drizzle",

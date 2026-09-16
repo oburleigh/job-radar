@@ -142,6 +142,22 @@ describe("context boundaries", () => {
     }
   });
 
+  it("keeps public context contracts free of direct infrastructure wiring", () => {
+    for (const contextRoot of contextDirectories()) {
+      for (const file of sourceFiles(contextRoot).filter(
+        (candidate) => path.dirname(candidate) === contextRoot && !isTestFile(candidate),
+      )) {
+        for (const specifier of importSpecifiers(file)) {
+          const target = internalTarget(file, specifier);
+          expect(
+            target !== null && isInside(target, path.join(contextRoot, "infrastructure")),
+            `${relativePath(file)} imports infrastructure through ${specifier}`,
+          ).toBe(false);
+        }
+      }
+    }
+  });
+
   it("keeps production code independent from test support", () => {
     for (const file of sourceFiles(sourceRoot).filter((candidate) => !isTestFile(candidate))) {
       if (file.includes(`${path.sep}test-support${path.sep}`)) {
@@ -261,6 +277,8 @@ function isPublicContextContract(target: string): boolean {
   return [
     path.join(contextsRoot, "discovery", "composition", "configured-market-vocabulary.server"),
     path.join(contextsRoot, "discovery", "public-web-search.server"),
+    path.join(contextsRoot, "discovery", "public-contract.server"),
+    path.join(contextsRoot, "opportunity-tracking", "public-contract.server"),
     path.join(contextsRoot, "recruiter-engagement", "public-contract"),
     path.join(contextsRoot, "recruiter-engagement", "public-contract.server"),
   ].includes(target);

@@ -221,7 +221,7 @@ describe("dashboard opportunity payload", () => {
     ]);
   });
 
-  it("returns each recorded listing state and falls back to new", () => {
+  it("ignores legacy applied markers while preserving current listing states", () => {
     const profileId = seedProfile(database);
     seedMatchedJob(database, profileId, "saved-one", {
       title: "Director of Engineering",
@@ -240,8 +240,8 @@ describe("dashboard opportunity payload", () => {
 
     const data = getDashboardData({ profileId }, database);
 
-    expect(data.jobs.map((job) => job.state)).toEqual(["saved", "applied", "new"]);
-    expect(data.counts).toEqual({ matched: 3, new: 1, saved: 1, applied: 1 });
+    expect(data.jobs.map((job) => job.state)).toEqual(["saved", "new", "new"]);
+    expect(data.counts).toEqual({ matched: 3, new: 2, saved: 1 });
   });
 
   it("withholds a hidden listing until the hidden filter asks for it", () => {
@@ -260,7 +260,7 @@ describe("dashboard opportunity payload", () => {
     const hidden = getDashboardData({ profileId, state: "hidden" }, database);
 
     expect(visible.jobs.map((job) => job.title)).toEqual(["Head of Platform"]);
-    expect(visible.counts).toEqual({ matched: 1, new: 1, saved: 0, applied: 0 });
+    expect(visible.counts).toEqual({ matched: 1, new: 1, saved: 0 });
     expect(hidden.jobs.map((job) => job.title)).toEqual(["Director of Engineering"]);
   });
 

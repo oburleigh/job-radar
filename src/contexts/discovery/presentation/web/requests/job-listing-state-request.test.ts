@@ -18,6 +18,7 @@ describe("job listing state request", () => {
   it.each([
     ["profileId", "0"],
     ["jobId", "not-a-number"],
+    ["status", "applied"],
     ["status", "deleted"],
   ])("rejects invalid %s input", (field, value) => {
     const formData = new FormData();

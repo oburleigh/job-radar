@@ -15,7 +15,6 @@ interface JobFiltersProps {
     matched: number;
     new: number;
     saved: number;
-    applied: number;
   };
 }
 
@@ -104,7 +103,6 @@ export function JobFilters({ atsLabels, counts }: JobFiltersProps) {
           <option value="all">All active jobs ({counts.matched})</option>
           <option value="new">New ({counts.new})</option>
           <option value="saved">Saved ({counts.saved})</option>
-          <option value="applied">Applied ({counts.applied})</option>
           <option value="hidden">Hidden</option>
         </SelectField>
 

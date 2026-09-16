@@ -1,37 +1,19 @@
 import { Card, PageHeader, Panel } from "@job-radar/design-ui";
 import { CheckCircle2, CircleAlert, CircleX, Clock3, LoaderCircle } from "lucide-react";
 import { Link, useLoaderData } from "react-router";
-import { discoveryWeb } from "@/contexts/discovery/composition/discovery-web.server";
+import {
+  type ActivityItem,
+  loadActivityData,
+} from "@/contexts/discovery/composition/web/activity-data.server";
 import {
   ActiveDiscoveryRun,
   ActiveDiscoveryRunPolling,
 } from "@/contexts/discovery/presentation/web/components/active-discovery-run";
-import { presentDiscoveryRunOutcome } from "@/contexts/discovery/presentation/web/run-outcome-presentation";
-import {
-  isActiveResearchRunActivity,
-  type ResearchRunActivity,
-} from "@/contexts/recruiter-engagement/public-contract";
-import { recruiterActivityContract } from "@/contexts/recruiter-engagement/public-contract.server";
 
-export async function loader() {
-  const [researchRuns, discoveryRuns] = await Promise.all([
-    recruiterActivityContract.listResearchRuns(),
-    Promise.resolve(discoveryWeb.getRunsData()),
-  ]);
-  return {
-    discoveryRuns,
-    items: [
-      ...discoveryRuns.map(discoveryActivity),
-      ...researchRuns.map(researchActivity),
-    ].toSorted((left, right) => right.startedAt.getTime() - left.startedAt.getTime()),
-    pollIntervalMs: discoveryWeb.getUiSettings().discoveryPollIntervalMs,
-  };
-}
-
-type ActivityItem = ReturnType<typeof discoveryActivity> | ReturnType<typeof researchActivity>;
+export const loader = loadActivityData;
 
 export default function ActivityPage() {
-  const { discoveryRuns, items, pollIntervalMs } = useLoaderData<typeof loader>();
+  const { discoveryRuns, items, errors, pollIntervalMs } = useLoaderData<typeof loader>();
   const activeDiscoveryRuns = discoveryRuns.filter((run) => run.status === "running");
   const active = items.some((item) => item.active);
   return (
@@ -39,8 +21,13 @@ export default function ActivityPage() {
       <ActiveDiscoveryRunPolling enabled={active} pollIntervalMs={pollIntervalMs} />
       <PageHeader
         title="Activity"
-        description="Review Discovery Runs and Research Runs without losing the feature and settings that produced each one."
+        description="Review Discovery Runs, Research Runs, and Advisor attempts with their outcomes and settings."
       />
+      {errors.map((message) => (
+        <p key={message} role="alert">
+          {message}
+        </p>
+      ))}
       {activeDiscoveryRuns.length > 0 ? (
         <Panel as="section" className="active-discovery-runs" aria-label="Active Discovery Runs">
           <div className="section-heading">
@@ -109,7 +96,7 @@ function ActivityRow({ item }: { readonly item: ActivityItem }) {
           ? LoaderCircle
           : CircleAlert;
   return (
-    <tr>
+    <tr id={`${item.kind}-${item.id}`}>
       <td>
         <Link
           className={`run-status run-${item.tone}`}
@@ -126,56 +113,19 @@ function ActivityRow({ item }: { readonly item: ActivityItem }) {
       <td>{item.type}</td>
       <td>{formatDate(item.startedAt)}</td>
       <td>{item.scope}</td>
-      <td>{item.outcome}</td>
+      <td>
+        {item.outcome}
+        {item.kind === "advisor" && item.retryOf !== null ? (
+          <>
+            {" "}
+            · <Link to={`#advisor-${item.retryOf}`}>Retry of #{item.retryOf}</Link>
+          </>
+        ) : null}
+      </td>
     </tr>
   );
 }
 
-function discoveryActivity(run: ReturnType<typeof discoveryWeb.getRunsData>[number]) {
-  const outcome = presentDiscoveryRunOutcome(run.outcome);
-  return {
-    active: run.status === "running",
-    href: `/runs/${run.id}`,
-    id: `#${run.id}`,
-    kind: "discovery" as const,
-    outcome: `${run.jobsUpserted} job writes · ${run.matchesFound} matches`,
-    scope: `${run.profileName} · ${run.provider || "No web provider"}`,
-    startedAt: run.startedAt,
-    status: outcome.label,
-    tone: outcome.kind,
-    type: "Discovery Run" as const,
-  };
-}
-
-function researchActivity(run: ResearchRunActivity) {
-  const active = isActiveResearchRunActivity(run);
-  const status = titleCase(run.status);
-  return {
-    active,
-    href: `/recruiter-search?run=${encodeURIComponent(run.id)}`,
-    id: run.id,
-    kind: "research" as const,
-    outcome: run.completionReason ?? `${run.checkpoint} stage`,
-    scope: run.brief.description || run.brief.criteria.specialisms.join(", "),
-    startedAt: run.startedAt,
-    status,
-    tone: active
-      ? ("running" as const)
-      : run.status === "completed"
-        ? ("completed" as const)
-        : run.status === "cancelled"
-          ? ("cancelled" as const)
-          : run.status === "partial"
-            ? ("partial" as const)
-            : ("failed" as const),
-    type: "Research Run" as const,
-  };
-}
-
 function formatDate(value: Date): string {
   return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(value);
-}
-
-function titleCase(value: string): string {
-  return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
 }

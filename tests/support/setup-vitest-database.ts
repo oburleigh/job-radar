@@ -16,6 +16,7 @@ export default function setupVitestDatabase() {
   process.env.JOB_RADAR_TEST_SCHEMA_SQL = schemaPath;
   const databasePath = path.join(directory, "job-radar.sqlite");
   process.env.DB_PATH = databasePath;
+  process.env.JOB_RADAR_TEST_DATABASE_TEMPLATE = databasePath;
 
   const sqlite = new Database(databasePath);
   const database = drizzle(sqlite, { schema });
@@ -24,6 +25,7 @@ export default function setupVitestDatabase() {
   sqlite.close();
 
   return () => {
+    delete process.env.JOB_RADAR_TEST_DATABASE_TEMPLATE;
     rmSync(directory, { recursive: true, force: true });
   };
 }

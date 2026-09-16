@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { CodexFailure, createCodexCliClient } from "./codex-cli-client";
+import { CodexFailure, createCodexCliClient } from "@/platform/codex-cli-client";
 
 const stubBinary = fileURLToPath(new URL("../../test-support/stub-codex-cli.mjs", import.meta.url));
 

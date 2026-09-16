@@ -892,6 +892,7 @@
     font-size: var(--jr-font-size-display);
     font-weight: var(--jr-font-weight-semibold);
     line-height: var(--jr-line-height-display);
+    overflow-wrap: anywhere;
   }
 
   .jr-page-description {

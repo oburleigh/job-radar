@@ -3,13 +3,13 @@ import {
   createResearchRun,
   createSearchBrief,
 } from "@/contexts/recruiter-engagement/domain/research-run";
-import { createCodexCliClient } from "@/contexts/recruiter-engagement/infrastructure/codex/codex-cli-client";
 import {
   createCodexAdapterPolicy,
   createCodexSourcePlan,
 } from "@/contexts/recruiter-engagement/infrastructure/codex/codex-policy";
 import { createCodexResearchSource } from "@/contexts/recruiter-engagement/infrastructure/codex/codex-research-source";
 import { defaultRecruiterResearchSettings } from "@/contexts/recruiter-engagement/infrastructure/sqlite/bootstrap-recruiter-research";
+import { createCodexCliClient } from "@/platform/codex-cli-client";
 
 const settings = defaultRecruiterResearchSettings;
 const firmTarget = 2;

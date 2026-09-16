@@ -25,7 +25,7 @@ test("completes UAE Opportunity Discovery through the real Brave adapter", async
   await keepOnlyAshbySource(page);
   const profileId = await createUaeLeadershipProfile(page);
 
-  await page.goto(`/?profile=${profileId}&provider=brave`);
+  await page.goto(`/opportunities?profile=${profileId}&provider=brave`);
   await expect(page.getByLabel("Web search provider")).toHaveValue("brave");
   const responsePromise = page.waitForResponse(
     (response) =>

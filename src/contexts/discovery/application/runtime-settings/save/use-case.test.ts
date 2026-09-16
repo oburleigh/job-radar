@@ -115,6 +115,7 @@ function runtimeSettings(): RuntimeSettingsCommand {
       discoveryNotificationDurationMs: 5_000,
       discoveryPollIntervalMs: 2_000,
       discoveryStaleAfterMs: 300_000,
+      todayNextActionLimit: 5,
     },
     searchProviders: {},
     integrationPolicy: { customPriority: 1_000 },

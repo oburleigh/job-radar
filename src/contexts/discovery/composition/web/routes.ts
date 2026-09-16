@@ -1,7 +1,12 @@
 import { index, type RouteConfig, route } from "@react-router/dev/routes";
 
 export default [
-  index("./routes/jobs.tsx"),
+  index("./routes/today.tsx"),
+  route("opportunities", "./routes/jobs.tsx"),
+  route(
+    "opportunities/:searchProfileId/:jobListingId",
+    "../../../opportunity-tracking/composition/web/routes/opportunity-detail.tsx",
+  ),
   route("profiles", "./routes/profiles.tsx"),
   route("sources", "./routes/legacy-sources-redirect.ts"),
   route("runs", "./routes/legacy-runs-redirect.ts"),
@@ -10,6 +15,15 @@ export default [
   route(
     "recruiter-search",
     "../../../recruiter-engagement/composition/web/routes/recruiter-research.tsx",
+  ),
+  route("applications", "../../../opportunity-tracking/composition/web/routes/applications.tsx"),
+  route(
+    "applications/new",
+    "../../../opportunity-tracking/composition/web/routes/application-new.tsx",
+  ),
+  route(
+    "applications/:applicationId",
+    "../../../opportunity-tracking/composition/web/routes/application-detail.tsx",
   ),
   route("recruiter-research", "./routes/legacy-recruiter-search-redirect.ts"),
   route("settings", "./routes/settings-layout.tsx", [

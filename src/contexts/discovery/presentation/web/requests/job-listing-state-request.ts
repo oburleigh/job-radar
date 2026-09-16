@@ -7,7 +7,7 @@ import { JOB_LISTING_STATES } from "@/contexts/discovery/domain/job-listing-stat
 const requestSchema = z.object({
   profileId: identifier(searchProfileIdFrom),
   jobId: identifier(jobListingIdFrom),
-  status: z.enum(JOB_LISTING_STATES),
+  status: z.enum(JOB_LISTING_STATES).refine((state) => state !== "applied"),
 });
 
 export type JobListingStateRequestResult =

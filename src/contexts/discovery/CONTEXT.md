@@ -4,6 +4,11 @@ Discovery finds job listings and evaluates them against a person's search criter
 
 ## Language
 
+**Today**:
+The home destination that presents due Next actions, current Applications, and priority
+Opportunities from their owning contexts. It does not copy those records into Discovery.
+_Avoid_: dashboard, command-center context, agent inbox
+
 **Opportunities**:
 The workspace destination that lists the job listings matched to the selected search profile. The
 destination is named Opportunities at every width and in every surface; the records it lists are

@@ -5,6 +5,12 @@ test.describe
   .serial("clean-start onboarding", () => {
     test("shows product defaults without personal workspace records", async ({ page }) => {
       await page.goto("/");
+      await expect(page.getByRole("heading", { level: 1, name: "Today" })).toBeVisible();
+      await expect(
+        page.getByRole("heading", { level: 2, name: "No Next actions yet" }),
+      ).toBeVisible();
+
+      await page.goto("/opportunities");
       await expect(
         page.getByRole("heading", { level: 2, name: "Create a search profile first" }),
       ).toBeVisible();

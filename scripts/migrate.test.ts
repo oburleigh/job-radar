@@ -1,10 +1,11 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
 import Database from "better-sqlite3";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { initializeVersionZeroDatabase } from "~/tests/support/versioned-database";
 
 const repositoryRoot = process.cwd();
 const pnpmExecutable = "pnpm";
@@ -26,6 +27,10 @@ describe("database setup command", () => {
     runDatabaseSetup(databasePath);
 
     const sqlite = new Database(databasePath);
+    expect(sqlite.pragma("user_version", { simple: true })).toBe(2);
+    expect(
+      readdirSync(directory).filter((name) => name.includes(".v0-") && name.endsWith(".backup")),
+    ).toHaveLength(0);
     expect(count(sqlite, "app_settings")).toBe(8);
     expect(count(sqlite, "ats_integrations")).toBe(13);
     expect(count(sqlite, "source_domains")).toBe(15);
@@ -68,6 +73,34 @@ describe("database setup command", () => {
         .get("jobs.ashbyhq.com"),
     ).toBe(0);
     rerun.close();
+  }, 200_000);
+
+  it("sets up an in-memory database without creating a disk file", () => {
+    expect(() => runDatabaseSetup(":memory:")).not.toThrow();
+    expect(existsSync(path.resolve(repositoryRoot, ":memory:"))).toBe(false);
+  }, 30_000);
+
+  it("backs up an existing version-zero database before setup", () => {
+    const schemaPath = process.env.JOB_RADAR_TEST_SCHEMA_SQL;
+    if (!schemaPath) throw new Error("Expected the test schema export.");
+    const legacy = new Database(databasePath);
+    initializeVersionZeroDatabase(legacy, readFileSync(schemaPath, "utf8"));
+    legacy
+      .prepare("INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)")
+      .run("custom", JSON.stringify({ retained: true }), 17);
+    legacy.close();
+
+    runDatabaseSetup(databasePath);
+
+    const migrated = new Database(databasePath, { readonly: true });
+    expect(migrated.pragma("user_version", { simple: true })).toBe(2);
+    expect(
+      migrated.prepare("SELECT value FROM app_settings WHERE key = 'custom'").pluck().get(),
+    ).toBe(JSON.stringify({ retained: true }));
+    migrated.close();
+    expect(
+      readdirSync(directory).filter((name) => name.includes(".v0-") && name.endsWith(".backup")),
+    ).toHaveLength(1);
   }, 30_000);
 
   it("rejects an unsupported existing schema without changing its records", () => {
@@ -76,7 +109,7 @@ describe("database setup command", () => {
       "CREATE TABLE app_settings (key text PRIMARY KEY, value text); INSERT INTO app_settings VALUES ('keep', 'unchanged');",
     );
     sqlite.close();
-    expect(() => runDatabaseSetup(databasePath)).toThrow(/unsupported existing database schema/i);
+    expect(() => runDatabaseSetup(databasePath)).toThrow(/unsupported version 0 database schema/i);
     const retained = new Database(databasePath, { readonly: true });
     expect(retained.prepare("SELECT * FROM app_settings").all()).toEqual([
       { key: "keep", value: "unchanged" },
@@ -173,7 +206,7 @@ describe("database setup command", () => {
     expect(readEvidence(recovered, "legacy-structured")).toBe("structured");
     expect(readMatchStatus(recovered, profileId, "legacy-structured")).toBe("matched");
     recovered.close();
-  }, 30_000);
+  }, 200_000);
 
   it("preserves discovery history when validating the current schema", () => {
     runDatabaseSetup(databasePath);

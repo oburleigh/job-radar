@@ -54,7 +54,6 @@ export interface DashboardCounts {
   readonly matched: number;
   readonly new: number;
   readonly saved: number;
-  readonly applied: number;
 }
 
 export interface DashboardLastRun {
@@ -91,7 +90,7 @@ export function getDashboardData(filters: JobFilters, database: Database): Dashb
       profiles,
       profile: null,
       jobs: [],
-      counts: { matched: 0, new: 0, saved: 0, applied: 0 },
+      counts: { matched: 0, new: 0, saved: 0 },
       activeSources: 0,
       activeBoards: 0,
       lastRun: null,
@@ -136,7 +135,7 @@ export function getDashboardData(filters: JobFilters, database: Database): Dashb
       ...row,
       verified: isVerifiedJobListing(row.evidence),
       salary: createAnnualSalaryRange(row.salaryCurrency, row.salaryMin, row.salaryMax),
-      state: row.state ?? ("new" as const),
+      state: row.state === "saved" || row.state === "hidden" ? row.state : ("new" as const),
     }));
   const activeRows = dedupeCrossSourceMatches(matchedRows.filter((row) => row.state !== "hidden"));
   const rows =
@@ -148,7 +147,6 @@ export function getDashboardData(filters: JobFilters, database: Database): Dashb
     matched: activeRows.length,
     new: activeRows.filter((row) => row.state === "new").length,
     saved: activeRows.filter((row) => row.state === "saved").length,
-    applied: activeRows.filter((row) => row.state === "applied").length,
   };
 
   const query = filters.query?.trim().toLowerCase() ?? "";

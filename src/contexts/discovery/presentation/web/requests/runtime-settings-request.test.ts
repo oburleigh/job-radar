@@ -265,6 +265,7 @@ function currentRuntimeSettings(): RuntimeSettingsCommand {
       discoveryNotificationDurationMs: 5_000,
       discoveryPollIntervalMs: 3_000,
       discoveryStaleAfterMs: 300_000,
+      todayNextActionLimit: 5,
     },
     matching: {
       exactTitleScore: 60,
@@ -342,6 +343,7 @@ function runtimeSettingsForm(profileDefaults: {
     discoveryNotificationDurationMs: String(config.ui.discoveryNotificationDurationMs),
     discoveryPollIntervalMs: String(config.ui.discoveryPollIntervalMs),
     discoveryStaleAfterMs: String(config.ui.discoveryStaleAfterMs),
+    todayNextActionLimit: String(config.ui.todayNextActionLimit),
     exactTitleScore: String(config.matching.exactTitleScore),
     fullTokenScore: String(config.matching.fullTokenScore),
     partialTokenScore: String(config.matching.partialTokenScore),

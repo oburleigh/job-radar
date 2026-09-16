@@ -21,6 +21,7 @@ export default defineConfig({
      */
     reporters: process.env.GITHUB_ACTIONS === "true" ? ["dot", "github-actions"] : ["dot"],
     globalSetup: ["./tests/support/setup-vitest-database.ts"],
+    setupFiles: ["./tests/support/setup-vitest-worker-database.ts"],
     include: [
       "scripts/**/*.test.ts",
       "src/**/*.test.ts",

@@ -65,6 +65,10 @@ export default defineConfig({
         JOB_RADAR_BUILD_DIRECTORY: buildDirectory,
         PORT: "3100",
         JOB_RADAR_RECRUITER_RESEARCH_SOURCE: "deterministic",
+        JOB_RADAR_CODEX_BINARY: path.join(
+          process.cwd(),
+          "tests/support/playwright-advisor-fixture.mjs",
+        ),
         SERPER_API_KEY: "playwright-fixture-key",
       },
       url: BASE_URL,

@@ -7,7 +7,7 @@ import type {
   ResearchExecutionPolicy,
   ResearchRun,
 } from "@/contexts/recruiter-engagement/domain/research-run";
-import { type CodexClient, CodexFailure } from "./codex-cli-client";
+import { type CodexClient, CodexFailure } from "@/platform/codex-cli-client";
 import { codexAdapterId } from "./codex-policy";
 import { firmDiscoveryInstructions, recruiterDiscoveryInstructions } from "./codex-research-prompt";
 import {
