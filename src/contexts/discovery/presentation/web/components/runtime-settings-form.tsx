@@ -142,6 +142,14 @@ export function RuntimeSettingsForm({
             max={limits.discoveryNotificationDurationMs.max}
           />
           <NumberField
+            label="Today Next action limit"
+            name="todayNextActionLimit"
+            value={ui.todayNextActionLimit}
+            min={limits.todayNextActionLimit.min}
+            max={limits.todayNextActionLimit.max}
+            help="Today shows the most urgent open Next actions. All remain available in Applications."
+          />
+          <NumberField
             label="Run status polling (ms)"
             name="discoveryPollIntervalMs"
             value={ui.discoveryPollIntervalMs}

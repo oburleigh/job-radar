@@ -87,7 +87,7 @@ function readReply(replyPath: string): string {
     throw new CodexFailure({
       cause: error,
       code: "codex-reply-missing",
-      message: "Codex finished without writing a research reply.",
+      message: "Codex finished without writing a reply.",
     });
   }
 }

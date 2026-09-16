@@ -373,6 +373,122 @@ table td a:hover {
   gap: var(--jr-space-2);
 }
 
+.opportunity-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--jr-space-4);
+  margin: 0 0 var(--jr-space-4);
+}
+
+.opportunity-facts > div {
+  display: grid;
+  gap: var(--jr-space-1);
+}
+
+.opportunity-facts dt {
+  color: var(--jr-color-text-subtle);
+  font-size: var(--jr-font-size-caption);
+  font-weight: var(--jr-font-weight-medium);
+  line-height: var(--jr-line-height-caption);
+}
+
+.opportunity-facts dd {
+  margin: 0;
+  font-weight: var(--jr-font-weight-semibold);
+}
+
+.application-start-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  align-items: start;
+  gap: var(--jr-space-5);
+}
+
+.application-start-layout .opportunity-facts {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 0;
+}
+
+.application-start-layout h2,
+.application-start-decision .section-heading {
+  margin-top: 0;
+}
+
+.application-start-decision {
+  display: grid;
+  gap: var(--jr-space-3);
+}
+
+.assessment-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--jr-space-5);
+}
+
+.assessment-grid > * {
+  min-width: 0;
+}
+
+.assessment-grid h3,
+.assessment-grid p,
+.assessment-grid ul {
+  margin-top: 0;
+}
+
+.assessment-summary,
+.assessment-evidence,
+.assessment-metadata {
+  grid-column: 1 / -1;
+}
+
+.assessment-metadata {
+  margin-bottom: 0;
+  color: var(--jr-color-text-muted);
+  font-size: var(--jr-font-size-caption);
+  line-height: var(--jr-line-height-caption);
+}
+
+.application-overview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--jr-space-5);
+}
+
+.application-overview h2 {
+  margin-top: 0;
+}
+
+.workflow-section {
+  display: grid;
+  gap: var(--jr-space-3);
+}
+
+.workflow-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr));
+  gap: var(--jr-space-3);
+}
+
+.workflow-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--jr-space-4);
+}
+
+.workflow-card h3,
+.workflow-card p {
+  margin-top: 0;
+}
+
+.workflow-card-actions {
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: var(--jr-space-3);
+}
+
 .job-card {
   display: grid;
   min-width: 0;
@@ -386,7 +502,7 @@ table td a:hover {
 .job-metadata,
 .job-tags,
 .match-footer,
-.job-actions {
+.job-workflow-actions {
   min-width: 0;
   padding: var(--jr-space-4) var(--jr-space-4);
 }
@@ -555,6 +671,17 @@ table td a:hover {
   justify-content: center;
   gap: var(--jr-space-1);
   margin: 0;
+}
+
+.job-workflow-actions {
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: var(--jr-space-2);
+}
+
+.job-workflow-actions .job-actions {
+  padding: 0;
 }
 
 .empty-state {
@@ -1537,7 +1664,7 @@ td a {
     grid-column: 2;
   }
 
-  .job-actions {
+  .job-workflow-actions {
     grid-column: 3;
   }
 
@@ -1558,7 +1685,7 @@ td a {
   }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 48rem) {
   body {
     padding-bottom: var(--jr-bar-height);
   }
@@ -1570,6 +1697,44 @@ td a {
    */
   html {
     scroll-padding-bottom: calc(var(--jr-bar-height) + var(--jr-space-2));
+  }
+
+  .opportunity-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .application-start-layout,
+  .application-start-layout .opportunity-facts,
+  .assessment-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .assessment-summary,
+  .assessment-evidence,
+  .assessment-metadata {
+    grid-column: 1;
+  }
+
+  .application-overview,
+  .workflow-card {
+    align-items: stretch;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .application-overview {
+    flex-direction: column;
+  }
+
+  .application-overview > * {
+    width: 100%;
+  }
+
+  .application-overview > form {
+    display: grid;
+  }
+
+  .workflow-card-actions {
+    align-items: flex-start;
   }
 
   .known-role-form {
@@ -1683,7 +1848,7 @@ td a {
   .job-metadata,
   .job-tags,
   .match-footer,
-  .job-actions {
+  .job-workflow-actions {
     grid-column: 1;
   }
 

@@ -91,6 +91,9 @@ const uiSchema = z.object({
   ).default(defaultUiSettings.discoveryNotificationDurationMs),
   discoveryPollIntervalMs: integer(runtimeSettingConstraints.discoveryPollIntervalMs),
   discoveryStaleAfterMs: integer(runtimeSettingConstraints.discoveryStaleAfterMs),
+  todayNextActionLimit: integer(runtimeSettingConstraints.todayNextActionLimit).default(
+    defaultUiSettings.todayNextActionLimit,
+  ),
 });
 
 const matchingSchema = z.object({

@@ -58,6 +58,7 @@ export interface RuntimeSettings {
     readonly discoveryNotificationDurationMs: number;
     readonly discoveryPollIntervalMs: number;
     readonly discoveryStaleAfterMs: number;
+    readonly todayNextActionLimit: number;
   };
   readonly searchProviders: Readonly<Record<string, SearchProviderSettings>>;
   readonly integrationPolicy: {

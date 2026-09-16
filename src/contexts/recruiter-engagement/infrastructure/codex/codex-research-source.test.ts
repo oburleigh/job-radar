@@ -8,7 +8,7 @@ import {
   testSearchBrief,
   testSourcePlan,
 } from "@/contexts/recruiter-engagement/test-support/research-policy-fixtures";
-import { CodexFailure, type CodexRequest } from "./codex-cli-client";
+import { CodexFailure, type CodexRequest } from "@/platform/codex-cli-client";
 import { codexAdapterId, createCodexSourcePlan } from "./codex-policy";
 import { createCodexResearchSource } from "./codex-research-source";
 

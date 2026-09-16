@@ -13,6 +13,108 @@ async function setDocumentVisibility(page: Page, state: "hidden" | "visible"): P
 
 const fixtureUrl = "http://127.0.0.1:3200";
 
+async function captureCommandCenter(page: Page, surface: string): Promise<void> {
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: width === 390 ? 844 : 1000 });
+    for (const theme of ["light", "dark"]) {
+      await page.evaluate((value) => {
+        document.documentElement.dataset.theme = value;
+      }, theme);
+      await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+      const { violations } = await new AxeBuilder({ page })
+        .include("main")
+        .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+        .analyze();
+      expect(
+        violations.map(({ id }) => id),
+        `${surface} ${width} ${theme}`,
+      ).toEqual([]);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+        width,
+      );
+      await page.screenshot({
+        path: `reports/adm440-visual/${surface}-${width}-${theme}.png`,
+        fullPage: true,
+      });
+      await page
+        .getByRole("main")
+        .screenshot({ path: `reports/adm440-visual/${surface}-${width}-${theme}-content.png` });
+    }
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.evaluate(() => {
+    document.documentElement.dataset.theme = "light";
+  });
+}
+
+async function requestAdvisorWithFeedback(
+  page: Page,
+  region: Locator,
+  input: {
+    intent: string;
+    button: string;
+    pendingButton: string;
+    message: string;
+  },
+): Promise<void> {
+  const pattern = `**${new URL(page.url()).pathname}*`;
+  let release = () => {};
+  const paused = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route(pattern, async (route) => {
+    if (route.request().method() === "POST" && route.request().postData()?.includes(input.intent))
+      await paused;
+    await route.continue();
+  });
+  const response = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      Boolean(response.request().postData()?.includes(input.intent)),
+  );
+  try {
+    await region.getByRole("button", { name: input.button, exact: true }).click();
+    const button = region.getByRole("button", { name: input.pendingButton, exact: true });
+    await expect(button).toBeDisabled();
+    const status = button.locator("..").getByRole("status");
+    await expect(status).toHaveText(input.message);
+    const [statusBox, buttonBox] = await Promise.all([status.boundingBox(), button.boundingBox()]);
+    if (!statusBox || !buttonBox) throw new Error("Advisor feedback must have visible geometry");
+    expect(statusBox.y + statusBox.height).toBeLessThanOrEqual(buttonBox.y);
+  } finally {
+    release();
+    await response;
+    await page.unroute(pattern);
+  }
+}
+
+async function captureRegion(page: Page, region: Locator, surface: string): Promise<void> {
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: width === 390 ? 844 : 1000 });
+    for (const theme of ["light", "dark"]) {
+      await page.evaluate((theme) => {
+        document.documentElement.dataset.theme = theme;
+      }, theme);
+      await region.scrollIntoViewIfNeeded();
+      const box = await region.boundingBox();
+      if (!box) throw new Error(`Missing ${surface} geometry`);
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(width);
+      await region.screenshot({
+        path: `reports/adm440-visual/${surface}-${width}-${theme}-region.png`,
+      });
+      await page.screenshot({
+        path: `reports/adm440-visual/${surface}-${width}-${theme}-viewport.png`,
+      });
+    }
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.evaluate(() => {
+    document.documentElement.dataset.theme = "light";
+  });
+}
+
 test.use({
   launchOptions: {
     args: ["--host-resolver-rules=MAP job-radar.test 127.0.0.1", "--no-proxy-server"],
@@ -23,14 +125,14 @@ test("completes discovery and triage while profile editing remains responsive", 
   page,
   request,
 }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(300_000);
   expect((await request.post(`${fixtureUrl}/control/reset-success`)).ok()).toBe(true);
   await configureDiscoveryFixtures(page);
   await disableAllKnownBoards(page);
   const otherProfile = await createProfile(page);
   const { id: profileId, name: profileName } = await createProfile(page);
 
-  await page.goto("/");
+  await page.goto("/opportunities");
   await expect(page).toHaveURL(/[?&]profile=\d+.*[?&]provider=[^&]+/);
 
   await page.goto("/?profile=999999&provider=missing");
@@ -44,7 +146,7 @@ test("completes discovery and triage while profile editing remains responsive", 
   expect(canonicalUrl.searchParams.get("profile")).not.toBe("999999");
   expect(canonicalUrl.searchParams.get("provider")).not.toBe("missing");
 
-  await page.goto(`/?profile=${profileId}&provider=serper`);
+  await page.goto(`/opportunities?profile=${profileId}&provider=serper`);
   const discoveryControls = page.getByRole("region", {
     name: "Discovery controls",
   });
@@ -243,7 +345,7 @@ test("completes discovery and triage while profile editing remains responsive", 
   await page.evaluate(() => {
     document.documentElement.dataset.theme = "light";
   });
-  await page.goto(`/?profile=${profileId}&provider=serper`);
+  await page.goto(`/opportunities?profile=${profileId}&provider=serper`);
 
   await expect(
     page.getByRole("button", { name: `Cancel discovery #${started.runId}` }),
@@ -270,13 +372,399 @@ test("completes discovery and triage while profile editing remains responsive", 
   await expect(
     page.getByLabel("Ranked opportunities").getByText("Greenhouse", { exact: true }),
   ).toBeVisible();
+  const opportunityCards = page
+    .getByRole("region", { name: "Ranked opportunities" })
+    .getByRole("article");
+  const opportunityCount = await opportunityCards.count();
+  expect(opportunityCount).toBeGreaterThan(0);
+  for (let index = 0; index < opportunityCount; index += 1) {
+    const opportunityCard = opportunityCards.nth(index);
+    await expect(
+      opportunityCard.getByRole("link", { name: "Start Application", exact: true }),
+    ).toHaveAttribute("href", /^\/applications\/new\?searchProfileId=\d+&jobListingId=\d+$/);
+    await expect(
+      opportunityCard.getByRole("button", { name: "Mark as applied", exact: true }),
+    ).toHaveCount(0);
+  }
   await page.getByRole("button", { name: "Dismiss discovery notification" }).click();
+
+  const opportunityReviewPath = await opportunityCards
+    .first()
+    .getByRole("link", { name: "Review Opportunity" })
+    .getAttribute("href");
+  if (!opportunityReviewPath) throw new Error("Expected the Opportunity detail link");
+  await page
+    .getByRole("navigation", { name: "Primary navigation" })
+    .getByRole("link", { name: "Today", exact: true })
+    .click();
+  const prioritySection = page.getByRole("region", { name: "Priority Opportunities" });
+  await expect(
+    prioritySection.getByRole("link", { name: "Head of Engineering" }).first(),
+  ).toBeVisible();
+  await captureCommandCenter(page, "today-priorities");
+  await prioritySection.locator(`a[href="${opportunityReviewPath}"]`).click();
+  await expect(page.getByRole("heading", { name: "Opportunity facts" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Job description", exact: true })).toContainText(
+    "Lead the platform engineering organisation.",
+  );
+  await expect(page.getByRole("link", { name: "Enable Advisor in Settings" })).toBeVisible();
+  await captureCommandCenter(page, "opportunity-detail");
+  await page.goto("/settings/opportunities");
+  await page.getByRole("checkbox", { name: "Enable local Advisor" }).check();
+  await page.getByLabel("Advisor model", { exact: false }).fill("fixture-advisor-failure");
+  await page.getByRole("button", { name: "Save Advisor settings", exact: true }).click();
+  await expect(page.getByText("Advisor settings saved.", { exact: true })).toBeVisible();
+  await page.goto(opportunityReviewPath);
+  await requestAdvisorWithFeedback(
+    page,
+    page.getByRole("region", { name: "Opportunity assessment", exact: true }),
+    {
+      intent: "assess-opportunity",
+      button: "Request assessment",
+      pendingButton: "Assessing Opportunity",
+      message: "Assessing Opportunity with the local Advisor.",
+    },
+  );
+  await expect(page.getByRole("alert")).toContainText("Fixture Advisor unavailable.");
+  await page.goto("/activity");
+  await expect(page.getByRole("row").filter({ hasText: "fixture-advisor-failure" })).toContainText(
+    "Failed",
+  );
+  await page.goto("/settings/opportunities");
+  await page.getByLabel("Advisor model", { exact: false }).fill("fixture-advisor-success");
+  await page.getByRole("button", { name: "Save Advisor settings", exact: true }).click();
+  await expect(page.getByText("Advisor settings saved.", { exact: true })).toBeVisible();
+  await page.goto(opportunityReviewPath);
+  await requestAdvisorWithFeedback(
+    page,
+    page.getByRole("region", { name: "Opportunity assessment", exact: true }),
+    {
+      intent: "assess-opportunity",
+      button: "Request assessment",
+      pendingButton: "Assessing Opportunity",
+      message: "Assessing Opportunity with the local Advisor.",
+    },
+  );
+  await expect(page.getByText("Opportunity assessment completed.", { exact: true })).toBeVisible();
+  const summary = page
+    .locator("section")
+    .filter({ has: page.getByRole("heading", { name: "Advisor summary", exact: true }) })
+    .last();
+  await expect(
+    summary.getByText("The listing advertises an engineering leadership role.", { exact: true }),
+  ).toBeVisible();
+  await expect
+    .soft(summary.getByRole("link", { name: "Open supporting evidence" }))
+    .toHaveAttribute("href", "https://boards.greenhouse.io/acme-fixture/jobs/12345");
+  for (const title of ["Strengths", "Gaps to resolve"]) {
+    const section = page
+      .locator("section")
+      .filter({ has: page.getByRole("heading", { name: title, exact: true }) })
+      .last();
+    await expect(section.getByRole("link", { name: "Open supporting evidence" })).toHaveAttribute(
+      "href",
+      "https://boards.greenhouse.io/acme-fixture/jobs/12345",
+    );
+  }
+  await captureCommandCenter(page, "opportunity-assessed");
+  await captureRegion(
+    page,
+    page
+      .getByRole("article")
+      .filter({ has: page.getByRole("heading", { name: "Advisor summary", exact: true }) }),
+    "assessment",
+  );
+  await page.goto("/activity");
+  const assessmentAttempt = page.getByRole("row").filter({ hasText: "fixture-advisor-success" });
+  await expect(assessmentAttempt).toContainText("Completed");
+  await expect(assessmentAttempt.getByRole("link", { name: /^Retry of #/ })).toHaveAttribute(
+    "href",
+    /#advisor-\d+$/,
+  );
+  await captureRegion(page, page.getByRole("region", { name: "Run history" }), "advisor-history");
+  await page.goto("/settings/opportunities");
+  await page.getByRole("checkbox", { name: "Enable local Advisor" }).uncheck();
+  await page.getByRole("button", { name: "Save Advisor settings", exact: true }).click();
+  await expect(page.getByText("Advisor settings saved.", { exact: true })).toBeVisible();
+
+  await page.goto(`/opportunities?profile=${profileId}&provider=serper`);
+
+  await opportunityCards
+    .first()
+    .getByRole("link", { name: "Start Application", exact: true })
+    .click();
+  await expect(page).toHaveURL(
+    new RegExp(`/applications/new\\?searchProfileId=${profileId}&jobListingId=\\d+$`),
+  );
+  await expect(page.getByRole("heading", { level: 1, name: "Start Application" })).toBeVisible();
+  await expect(
+    page.getByText("Head of Engineering at Acme Fixture", { exact: true }),
+  ).toBeVisible();
+  const opportunitySnapshotHeading = page.getByRole("heading", {
+    level: 2,
+    name: "Opportunity snapshot",
+  });
+  const applicationStartHeading = page.getByRole("heading", {
+    level: 2,
+    name: "Application start",
+  });
+  const [desktopSnapshot, desktopDecision] = await Promise.all([
+    opportunitySnapshotHeading.boundingBox(),
+    applicationStartHeading.boundingBox(),
+  ]);
+  if (!desktopSnapshot || !desktopDecision) {
+    throw new Error("The desktop Application start layout must be measurable.");
+  }
+  expect(Math.abs(desktopSnapshot.y - desktopDecision.y)).toBeLessThanOrEqual(24);
+  expect(desktopSnapshot.x + desktopSnapshot.width).toBeLessThan(desktopDecision.x);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const startApplicationButton = page.getByRole("button", {
+    name: "Start Application",
+    exact: true,
+  });
+  await startApplicationButton.scrollIntoViewIfNeeded();
+  const [mobileSnapshot, mobileDecision, mobileSubmit, mobileNavigation] = await Promise.all([
+    opportunitySnapshotHeading.boundingBox(),
+    applicationStartHeading.boundingBox(),
+    startApplicationButton.boundingBox(),
+    page.getByRole("navigation", { name: "Primary navigation" }).boundingBox(),
+  ]);
+  if (!mobileSnapshot || !mobileDecision || !mobileSubmit || !mobileNavigation) {
+    throw new Error("The mobile Application start layout must be measurable.");
+  }
+  expect(mobileDecision.y).toBeGreaterThanOrEqual(mobileSnapshot.y + mobileSnapshot.height);
+  expect(mobileSubmit.y).toBeGreaterThanOrEqual(mobileDecision.y + mobileDecision.height);
+  expect(mobileSubmit.y + mobileSubmit.height).toBeLessThanOrEqual(mobileNavigation.y);
+
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.getByRole("radio", { name: "Preparing" }).check();
+  await expect(page.getByRole("textbox", { name: /Next action/i })).toHaveCount(0);
+  await expect(page.getByRole("textbox", { name: /reason/i })).toHaveCount(0);
+  await page.getByRole("button", { name: "Start Application", exact: true }).click();
+
+  await expect(page).toHaveURL(/\/applications\/\d+$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Head of Engineering" })).toBeVisible();
+  await expect(page.locator(".ats-badge").filter({ hasText: /^Preparing$/ })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Next actions" })).toBeVisible();
+  await expect(page.getByText("Tailor the application", { exact: true })).toBeVisible();
+  const firstNextAction = page.getByRole("article").filter({ hasText: "Tailor the application" });
+  const [desktopActionHeading, desktopActionButton] = await Promise.all([
+    firstNextAction.getByRole("heading", { name: "Tailor the application" }).boundingBox(),
+    firstNextAction.getByRole("button", { name: "Complete" }).boundingBox(),
+  ]);
+  if (!desktopActionHeading || !desktopActionButton) {
+    throw new Error("The desktop workflow card must be measurable.");
+  }
+  expect(desktopActionHeading.x + desktopActionHeading.width).toBeLessThan(desktopActionButton.x);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const completeNextActionButton = firstNextAction.getByRole("button", { name: "Complete" });
+  await completeNextActionButton.scrollIntoViewIfNeeded();
+  const [mobileActionHeading, mobileActionButton, applicationNavigation] = await Promise.all([
+    firstNextAction.getByRole("heading", { name: "Tailor the application" }).boundingBox(),
+    completeNextActionButton.boundingBox(),
+    page.getByRole("navigation", { name: "Primary navigation" }).boundingBox(),
+  ]);
+  if (!mobileActionHeading || !mobileActionButton || !applicationNavigation) {
+    throw new Error("The mobile workflow card must be measurable.");
+  }
+  expect(mobileActionButton.y).toBeGreaterThanOrEqual(
+    mobileActionHeading.y + mobileActionHeading.height,
+  );
+  expect(mobileActionButton.y + mobileActionButton.height).toBeLessThanOrEqual(
+    applicationNavigation.y,
+  );
+
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await expect(page.getByRole("heading", { level: 2, name: "Application timeline" })).toBeVisible();
+  await expect(page.getByText("Application started", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Relationship plan" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "No Relationship plan yet" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Request Relationship plan", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("link", { name: "Enable Advisor in Settings", exact: true }),
+  ).toHaveAttribute("href", "/settings/opportunities");
+  await page.getByRole("button", { name: "Move to Applied", exact: true }).click();
+  await expect(
+    page.getByText("Application stage changed to Applied.", { exact: true }),
+  ).toHaveCount(1);
+  await page
+    .getByRole("textbox", { name: "New Next action (required)", exact: true })
+    .fill("Prepare interview examples");
+  await page
+    .getByRole("textbox", { name: "New Next action reason (required)", exact: true })
+    .fill("The Application has moved forward.");
+  await page.getByRole("button", { name: "Add Next action", exact: true }).click();
+  await expect(page.getByText("Prepare interview examples", { exact: true })).toBeVisible();
+  await expect(page.getByText("Next action created.", { exact: true })).toHaveCount(1);
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Tailor the application" })
+    .getByRole("button", { name: "Complete", exact: true })
+    .click();
+  await expect(page.getByText("Next action completed.", { exact: true })).toHaveCount(1);
+  const completedAction = page.getByRole("article").filter({ hasText: "Tailor the application" });
+  await completedAction.getByRole("button", { name: "Reopen", exact: true }).click();
+  await expect(completedAction.getByText("Open Next action", { exact: true })).toBeVisible();
+  await completedAction.getByLabel("Defer until (required)").fill("2026-09-20T09:00");
+  await completedAction.getByRole("button", { name: "Defer", exact: true }).click();
+  await expect(completedAction.getByText("Deferred Next action", { exact: true })).toBeVisible();
+  await completedAction.getByRole("button", { name: "Reopen", exact: true }).click();
+  await completedAction.getByRole("button", { name: "Dismiss", exact: true }).click();
+  await expect(completedAction.getByText("Dismissed Next action", { exact: true })).toBeVisible();
+  await page.getByRole("combobox", { name: "Correct Application stage" }).selectOption("preparing");
+  await page.getByRole("button", { name: "Correct stage", exact: true }).click();
+  await expect(page.getByText("Stage corrected", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Move to Applied", exact: true }).click();
+  await expect(page.getByRole("combobox", { name: "Correct Application stage" })).toHaveValue(
+    "applied",
+  );
+
+  const applicationPath = new URL(page.url()).pathname;
+  await page.goto("/settings/opportunities");
+  await page.getByRole("checkbox", { name: "Enable local Advisor" }).check();
+  await page.getByRole("button", { name: "Save Advisor settings", exact: true }).click();
+  await expect(page.getByText("Advisor settings saved.", { exact: true })).toBeVisible();
+  await page.goto(applicationPath);
+  const relationship = page.getByRole("region", { name: "Relationship plan", exact: true });
+  await requestAdvisorWithFeedback(page, relationship, {
+    intent: "plan-relationship",
+    button: "Request Relationship plan",
+    pendingButton: "Planning Relationship",
+    message: "Planning a relationship path with the local Advisor.",
+  });
+  await expect(
+    relationship.getByText("Review the listing before choosing a relationship path.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  const acceptedRecommendation = relationship
+    .getByRole("article")
+    .filter({ hasText: "Review the employer listing" });
+  const dismissedRecommendation = relationship
+    .getByRole("article")
+    .filter({ hasText: "Prepare a role question" });
+  for (const [card, intent, buttonName, message, otherCard] of [
+    [
+      acceptedRecommendation,
+      "accept-recommendation",
+      "Accept as Next action",
+      "Recommendation accepted as a Next action.",
+      dismissedRecommendation,
+    ],
+    [
+      dismissedRecommendation,
+      "dismiss-recommendation",
+      "Dismiss",
+      "Recommendation dismissed.",
+      acceptedRecommendation,
+    ],
+  ] as const) {
+    let release = () => {};
+    const paused = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route(`**${applicationPath}*`, async (route) => {
+      if (route.request().method() === "POST" && route.request().postData()?.includes(intent))
+        await paused;
+      await route.continue();
+    });
+    try {
+      await card.getByRole("button", { name: buttonName, exact: true }).click();
+      await expect
+        .soft(card.getByRole("status"))
+        .toHaveText("Saving your Recommendation decision.");
+      await expect.soft(otherCard.locator('[aria-busy="true"]')).toHaveCount(0);
+    } finally {
+      release();
+    }
+    await expect(
+      card.getByText(
+        intent === "accept-recommendation"
+          ? "Accepted as a Next action."
+          : "Dismissed. No Application facts changed.",
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect.soft(card.getByRole("status")).toHaveText(message);
+    await captureRegion(page, card, intent);
+    await page.unroute(`**${applicationPath}*`);
+  }
+  await expect(
+    page
+      .getByRole("region", { name: "Next actions", exact: true })
+      .getByRole("heading", { name: "Review the employer listing", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("region", { name: "Next actions", exact: true })
+      .getByRole("heading", { name: "Prepare a role question", exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole("combobox", { name: "Correct Application stage" }).selectOption("closed");
+  await page.getByRole("button", { name: "Correct stage", exact: true }).click();
+  await expect(page.locator(".ats-badge").filter({ hasText: /^Closed$/ })).toBeVisible();
+  await expect
+    .soft(page.getByText("Application stage changed to Closed.", { exact: true }))
+    .toBeVisible();
+  await page.getByRole("combobox", { name: "Correct Application stage" }).selectOption("applied");
+  await page.getByRole("button", { name: "Correct stage", exact: true }).click();
+  await expect(page.locator(".ats-badge").filter({ hasText: /^Applied$/ })).toBeVisible();
+  await page.goto("/settings/opportunities");
+  await page.getByRole("checkbox", { name: "Enable local Advisor" }).uncheck();
+  await page.getByRole("button", { name: "Save Advisor settings", exact: true }).click();
+  await expect(page.getByText("Advisor settings saved.", { exact: true })).toBeVisible();
+  await page.goto(applicationPath);
+  await captureCommandCenter(page, "application-detail");
+
+  await page
+    .getByRole("navigation", { name: "Primary navigation" })
+    .getByRole("link", { name: "Today", exact: true })
+    .click();
+  await expect(page.getByRole("heading", { level: 1, name: "Today" })).toBeVisible();
+  await expect(page.getByText("Tailor the application", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Prepare interview examples", { exact: true })).toBeVisible();
+  await expect(page.getByText("The Application has moved forward.", { exact: true })).toBeVisible();
+  await expect(
+    page
+      .getByRole("region", { name: "Priority Opportunities" })
+      .locator(`a[href="${opportunityReviewPath}"]`),
+  ).toHaveCount(0);
+  await expect(page.getByText("No due date", { exact: true })).toHaveCount(2);
+  await expect(
+    page
+      .getByRole("region", { name: "Applications", exact: true })
+      .getByRole("link", { name: "Head of Engineering", exact: true }),
+  ).toBeVisible();
+  await captureCommandCenter(page, "today-actions");
+
+  await page
+    .getByRole("navigation", { name: "Primary navigation" })
+    .getByRole("link", { name: "Applications", exact: true })
+    .click();
+  await expect(page.getByRole("heading", { level: 1, name: "Applications" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Head of Engineering" })).toBeVisible();
+  await expect(page.getByText("Application stage: Applied", { exact: true })).toBeVisible();
+  await captureCommandCenter(page, "applications");
+  await page.getByRole("combobox", { name: "Application stage" }).selectOption("preparing");
+  await page.getByRole("button", { name: "Filter Applications", exact: true }).click();
+  await expect(page).toHaveURL("/applications?stage=preparing");
+  await expect(page.getByRole("link", { name: "Head of Engineering" })).toHaveCount(0);
+  await expect(page.getByText("No Applications at this stage.", { exact: true })).toBeVisible();
+  await page.getByRole("combobox", { name: "Application stage" }).selectOption("applied");
+  await page.getByRole("button", { name: "Filter Applications", exact: true }).click();
+  await expect(page).toHaveURL("/applications?stage=applied");
+  await expect(page.getByRole("link", { name: "Head of Engineering" })).toBeVisible();
+
+  await page.goto(`/opportunities?profile=${profileId}&provider=serper`);
   await verifyJobActionsVisualLayout(page);
   await page.getByRole("button", { name: "Save job" }).click();
   await expect(page.getByRole("button", { name: "Remove saved status" })).toBeVisible();
 
   await page.getByRole("link", { name: "Activity" }).click();
-  await page.getByRole("link", { name: new RegExp(`#${started.runId}`) }).click();
+  await page.getByRole("link", { name: new RegExp(`^Run #${started.runId} `) }).click();
   await expect(
     page.getByRole("heading", { level: 1, name: `Run #${started.runId}` }),
   ).toBeVisible();
@@ -380,7 +868,7 @@ test("completes discovery and triage while profile editing remains responsive", 
     companyName: "Failure Evidence",
     url: `https://boards.greenhouse.io/failure-${crypto.randomUUID().slice(0, 8)}/jobs/99999`,
   });
-  await page.goto(`/?profile=${profileId}&provider=serpapi`);
+  await page.goto(`/opportunities?profile=${profileId}&provider=serpapi`);
   const allFailedResponse = page.waitForResponse(
     (candidate) =>
       candidate.request().method() === "POST" &&
@@ -425,7 +913,7 @@ test("shows a Web3 source and search-lead state after opted-in discovery", async
   await expect(page.getByText("Runtime settings saved to SQLite.")).toBeVisible();
   const { id: profileId } = await createProfile(page, { includeUnverified: true });
 
-  await page.goto(`/?profile=${profileId}`);
+  await page.goto(`/opportunities?profile=${profileId}`);
   await page.getByLabel("Web search provider").selectOption("serper");
   const startedResponse = page.waitForResponse(
     (response) =>
@@ -469,7 +957,7 @@ test("shows persisted board progress while matching waits for collection", async
     });
     const { id: profileId, name: profileName } = await createProfile(page);
 
-    await page.goto(`/?profile=${profileId}&provider=serpapi`);
+    await page.goto(`/opportunities?profile=${profileId}&provider=serpapi`);
     const discoveryLayer = page.getByRole("region", { name: "Discovery status" });
     const startedResponse = page.waitForResponse(
       (response) =>
@@ -665,7 +1153,7 @@ test("cancels a running discovery without resurrecting a delayed poll", async ({
     resolveDelayedStatus?.();
   });
 
-  await page.goto(`/?profile=${profileId}`);
+  await page.goto(`/opportunities?profile=${profileId}`);
   await page.getByLabel("Web search provider").selectOption("serper");
   const delayedPollRequest = page.waitForRequest((request) => {
     const url = new URL(request.url());
@@ -747,7 +1235,7 @@ test("explains that a returned role was excluded by location", async ({ page }) 
   await configureDiscoveryFixtures(page, `${fixtureUrl}/serper/location-mismatch`);
   const { id: profileId } = await createProfile(page);
 
-  await page.goto(`/?profile=${profileId}`);
+  await page.goto(`/opportunities?profile=${profileId}`);
   await page.getByLabel("Web search provider").selectOption("serper");
   const startedResponse = page.waitForResponse(
     (response) =>
@@ -1111,7 +1599,7 @@ async function addKnownBoard(
 }
 
 async function runDiscovery(page: Page, profileId: number): Promise<number> {
-  await page.goto(`/?profile=${profileId}&provider=serper`);
+  await page.goto(`/opportunities?profile=${profileId}&provider=serper`);
   const startedResponse = page.waitForResponse(
     (response) =>
       response.request().method() === "POST" &&
@@ -1159,7 +1647,7 @@ async function verifyJobActionsVisualLayout(page: Page): Promise<void> {
       element.scrollIntoView({ block: "center", inline: "nearest" });
     });
 
-    for (const name of ["Save job", "Mark as applied", "Hide job"]) {
+    for (const name of ["Save job", "Hide job"]) {
       const button = actions.getByRole("button", { name });
       await button.hover();
       const [actionsBox, buttonBox, scrollMetrics] = await Promise.all([

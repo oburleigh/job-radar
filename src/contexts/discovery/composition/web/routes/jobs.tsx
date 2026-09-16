@@ -11,6 +11,7 @@ import { JobFilters } from "@/contexts/discovery/presentation/web/components/job
 import { RunControls } from "@/contexts/discovery/presentation/web/components/run-controls";
 import { parseJobListingStateRequest } from "@/contexts/discovery/presentation/web/requests/job-listing-state-request";
 import { resolveJobSelection } from "@/contexts/discovery/presentation/web/resolve-job-selection";
+import { opportunityTrackingContract } from "@/contexts/opportunity-tracking/public-contract.server";
 import { assertLocalHost } from "@/platform/http/require-local-request";
 
 export function loader({ request }: { readonly request: Request }) {
@@ -28,12 +29,29 @@ export function loader({ request }: { readonly request: Request }) {
     ...(query ? { query } : {}),
   });
   const searchProviders = discoveryWeb.getSearchProviderOptions();
-  requestUrl.pathname = "/";
+  requestUrl.pathname = "/opportunities";
   const selection = resolveJobSelection(requestUrl, dashboard.profile?.id, searchProviders);
   if (selection.redirectTo) {
     throw redirect(selection.redirectTo);
   }
-  return { atsLabels, dashboard, searchProviders, selectedProvider: selection.provider ?? "" };
+  const applications = opportunityTrackingContract.listApplications();
+  return {
+    atsLabels,
+    dashboard: {
+      ...dashboard,
+      jobs: dashboard.jobs.map((job) => {
+        const application = applications.find(
+          (item) => item.searchProfileId === dashboard.profile?.id && item.jobListingId === job.id,
+        );
+        return {
+          ...job,
+          application: application ? { id: application.id, stage: application.stage } : null,
+        };
+      }),
+    },
+    searchProviders,
+    selectedProvider: selection.provider ?? "",
+  };
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -96,6 +114,7 @@ export default function JobsPage() {
                 <JobCard
                   key={job.id}
                   profileId={profile.id}
+                  application={job.application}
                   atsLabel={atsLabels[job.atsType] ?? job.atsType}
                   job={job}
                 />
@@ -145,5 +164,5 @@ function validAtsType(value: string, labels: Record<string, string>): string | u
 }
 
 function validState(value: string): JobListingState | "all" | undefined {
-  return value === "all" || isJobListingState(value) ? value : undefined;
+  return value === "all" || (value !== "applied" && isJobListingState(value)) ? value : undefined;
 }

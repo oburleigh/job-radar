@@ -212,7 +212,7 @@ for (const width of [1920, 1440, 1240, 980, 760, 390]) {
  * margins on top of the gap, and Settings was block again. Measured gaps between sections ran
  * 0, 8, 24, 32, 56 and 72px on one screen or another.
  */
-for (const route of ["/", "/recruiter-search", "/settings", "/activity"]) {
+for (const route of ["/", "/opportunities", "/recruiter-search", "/settings", "/activity"]) {
   test(`spaces every section on ${route} by one rhythm`, async ({ page }) => {
     await page.goto(route);
 
@@ -253,7 +253,7 @@ test("starts the first field on the same edge on every page that has one", async
     });
   };
 
-  const opportunities = await firstFieldLeft("/");
+  const opportunities = await firstFieldLeft("/opportunities");
   const recruiterSearch = await firstFieldLeft("/recruiter-search");
 
   expect(opportunities, "Opportunities must render a field").not.toBeNull();
@@ -262,7 +262,7 @@ test("starts the first field on the same edge on every page that has one", async
 });
 
 test("sizes the fields in a control row equally", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/opportunities");
 
   const rows = await page.evaluate(() =>
     ["section.run-controls", "section.filter-bar"].map((selector) => {

@@ -23,7 +23,6 @@ import { rankRecruiterDirectory } from "@/contexts/recruiter-engagement/domain/r
 import { listRecruiterDirectory } from "@/contexts/recruiter-engagement/domain/recruiter-directory-listing";
 import type { ResearchRun } from "@/contexts/recruiter-engagement/domain/research-run";
 import { createAfterResponseResearchRunScheduler } from "@/contexts/recruiter-engagement/infrastructure/background/after-response-research-run-scheduler";
-import { createCodexCliClient } from "@/contexts/recruiter-engagement/infrastructure/codex/codex-cli-client";
 import {
   createCodexAdapterPolicy,
   createCodexSourcePlan,
@@ -52,6 +51,7 @@ import {
 import { createSqliteRecruiterDirectoryStore } from "@/contexts/recruiter-engagement/infrastructure/sqlite/sqlite-recruiter-directory-store";
 import { createSqliteResearchRunStore } from "@/contexts/recruiter-engagement/infrastructure/sqlite/sqlite-research-run-store";
 import { createSqliteShortlistStore } from "@/contexts/recruiter-engagement/infrastructure/sqlite/sqlite-shortlist-store";
+import { createCodexCliClient } from "@/platform/codex-cli-client";
 import { parseResearchSourceKind, researchSourceScope } from "./research-source-scope";
 
 const runs = createSqliteResearchRunStore(recruiterResearchDatabase);

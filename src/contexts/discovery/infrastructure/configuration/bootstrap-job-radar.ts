@@ -60,6 +60,7 @@ export const defaultUiSettings = {
   discoveryNotificationDurationMs: 3_000,
   discoveryPollIntervalMs: 3_000,
   discoveryStaleAfterMs: 300_000,
+  todayNextActionLimit: 5,
 } as const satisfies RuntimeSettings["ui"];
 
 export const defaultMarketVocabulary = {

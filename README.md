@@ -60,17 +60,20 @@ definitions, but no profiles, company boards, jobs, or run history.
 
 Setup initializes the current schema directly. Running it again preserves an
 existing database with the same schema and keeps edited settings. It rejects
-older or incompatible schemas before changing them; development migration
-history is not distributed. Back up an older database and arrange an explicit
-upgrade before using it with this version.
+unknown or incompatible schemas before changing them. Known older schemas
+upgrade transactionally after a backup is created; retained data and settings
+are preserved.
 
 1. Open **Search profiles** in the masthead and create a profile. Add target
    titles and choose target locations from the catalogue.
 2. Return to **Opportunities**, select the profile and a configured provider,
    and choose **Run discovery**.
 3. Open **Activity** to follow the run, inspect its evidence, or cancel it.
-4. Review the matched listings in **Opportunities**. Save, mark applied, or
-   hide individual jobs.
+4. Review the matched listings in **Opportunities**. Save or hide listings, request an
+   Advisor assessment, or start an **Application** in Preparing or Applied.
+5. Use **Today** for priority Opportunities, Next actions and the Application pipeline.
+   From an Application, request a Relationship plan and choose which Recommendations
+   to accept as Next actions. Enable the local Advisor in Settings before requesting it.
 
 Keep the server process running while background work is active. The
 development server reloads source edits. To use a different development port,
@@ -113,9 +116,14 @@ database.
 - Match jobs using deterministic rules. Matching does not call an LLM.
   Missing salary remains eligible; a known annual range in the preferred
   currency must overlap the profile range. There is no currency conversion.
-- Filter matched listings by source, review state, and text. Save jobs, mark
-  them applied, or hide them. The active view collapses duplicate company/title
-  listings and prefers direct ATS evidence over a LinkedIn copy.
+- Filter matched listings by source, review state, and text. Save or hide listings,
+  or start an Application. Application stages, Next actions and their timeline are
+  retained separately from listing state. The active view collapses duplicate
+  company/title listings and prefers direct ATS evidence over a LinkedIn copy.
+- Request cited Opportunity assessments and application-specific Relationship plans
+  through the local Codex CLI. Advisor output proposes work; only your explicit
+  acceptance creates a Next action. Settings controls the model and execution limits,
+  and Activity retains attempts, outcomes and retries.
 - Run discovery in the background with immediate notifications, continuing
   progress, cancellation, and completion or failure details. Activity retains
   run history; run details include request evidence and a known-role diagnostic
@@ -276,7 +284,9 @@ create disposable SQLite databases; they do not use your normal dataset.
 also runs the real public-web Recruiter Search journeys with Brave. Those
 checks load `.env` and explicitly skip when `BRAVE_SEARCH_API_KEY` is absent.
 They do not verify the normal Codex research path. `pnpm test:smoke:codex`
-provides a separate Codex smoke check.
+checks Recruiter Search through the real CLI. `pnpm test:smoke:advisor` checks
+Opportunity assessment and Relationship planning with synthetic inputs through
+the real CLI. Both require an authenticated Codex installation.
 
 If Chromium cannot be downloaded but Google Chrome is installed, use
 `PLAYWRIGHT_USE_SYSTEM_CHROME=1 pnpm verify`. Additional checks include
@@ -296,6 +306,9 @@ and its WAL files, `.env`, and generated reports out of Git.
 Local storage does not mean offline execution. Discovery sends search terms to
 the selected provider and requests public ATS pages. Normal Recruiter Search
 sends its brief and research instructions through the configured Codex CLI.
+Advisor sends the listing description, Search profile preferences, and relevant
+relationship context through that CLI. Search profile preferences describe the
+roles you want; they are not a CV or evidence of your qualifications.
 
 The app has no authentication. Local-host checks restrict mutations by
 default; they do not make a public deployment safe. Use `ALLOW_REMOTE_UI=1`
@@ -305,19 +318,20 @@ only behind access controls you operate. Report vulnerabilities through
 ## Architecture
 
 Job Radar is one deployable React Router/Vite application in a pnpm workspace.
-Discovery and Recruiter Engagement own their business code under
+Discovery, Recruiter Engagement, and Opportunity Tracking own their business code under
 `src/contexts/`. Domain and application code sit inside the adapter boundary;
 composition selects concrete infrastructure. React Router route modules live
 in `src/contexts/discovery/composition/web`.
 
 `@job-radar/design-tokens` owns semantic colours, spacing, radii, type, and
-motion. `@job-radar/design-ui` owns shared controls and surfaces used by both
+motion. `@job-radar/design-ui` owns shared controls and surfaces used by the
 contexts. Product styles arrange those components. Storybook lives in
 `apps/web-docs`.
 
 See [`CONTEXT-MAP.md`](CONTEXT-MAP.md), [`DESIGN.md`](DESIGN.md), and the
-[Discovery](src/contexts/discovery/CONTEXT.md) and
-[Recruiter Engagement](src/contexts/recruiter-engagement/CONTEXT.md) glossaries.
+[Discovery](src/contexts/discovery/CONTEXT.md),
+[Recruiter Engagement](src/contexts/recruiter-engagement/CONTEXT.md), and
+[Opportunity Tracking](src/contexts/opportunity-tracking/CONTEXT.md) glossaries.
 
 ## Reference data
 

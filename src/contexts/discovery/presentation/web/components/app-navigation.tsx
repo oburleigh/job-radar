@@ -1,7 +1,9 @@
 import { Button, buttonAttributes, NotificationBadge, Tooltip } from "@job-radar/design-ui";
 import {
   BriefcaseBusiness,
+  CalendarCheck2,
   CircleUserRound,
+  ClipboardList,
   Cog,
   History,
   Laptop,
@@ -45,6 +47,11 @@ function subscribeToTheme(onStoreChange: () => void) {
 const primaryNavigation = [
   {
     href: "/",
+    label: "Today",
+    icon: CalendarCheck2,
+  },
+  {
+    href: "/opportunities",
     label: "Opportunities",
     icon: BriefcaseBusiness,
   },
@@ -52,6 +59,11 @@ const primaryNavigation = [
     href: "/recruiter-search",
     label: "Recruiter Search",
     icon: UsersRound,
+  },
+  {
+    href: "/applications",
+    label: "Applications",
+    icon: ClipboardList,
   },
 ] as const;
 
@@ -128,13 +140,13 @@ export function AppNavigation({ activeRunCount }: { readonly activeRunCount: num
   return (
     <header className="masthead">
       <div className="masthead-inner">
-        <Link className="brand" to="/" aria-label="Job Radar opportunities">
+        <Link className="brand" to="/" aria-label="Job Radar today">
           <span className="brand-mark" aria-hidden="true">
             <Radar size={21} strokeWidth={2.4} />
           </span>
           <span className="brand-copy">
             <span className="brand-name">Job Radar</span>
-            <span className="brand-kicker">Private opportunity index</span>
+            <span className="brand-kicker">Private career workspace</span>
           </span>
         </Link>
 

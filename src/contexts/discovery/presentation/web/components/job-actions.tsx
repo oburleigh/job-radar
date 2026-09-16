@@ -1,5 +1,5 @@
 import { IconButton } from "@job-radar/design-ui";
-import { Bookmark, Check, Eye, EyeOff } from "lucide-react";
+import { Bookmark, Eye, EyeOff } from "lucide-react";
 import { useOptimistic, useTransition } from "react";
 import { useFetcher } from "react-router";
 
@@ -26,7 +26,7 @@ export function JobActions({ profileId, jobId, initialState }: JobActionsProps) 
           jobId: String(jobId),
           status: nextState,
         },
-        { method: "post", action: "/?index" },
+        { method: "post", action: "/opportunities" },
       );
     });
   }
@@ -42,16 +42,6 @@ export function JobActions({ profileId, jobId, initialState }: JobActionsProps) 
         title={state === "saved" ? "Saved" : "Save"}
       >
         <Bookmark size={17} fill={state === "saved" ? "currentColor" : "none"} />
-      </IconButton>
-      <IconButton
-        className={state === "applied" ? "applied" : undefined}
-        pressed={state === "applied"}
-        onClick={() => update(state === "applied" ? "new" : "applied")}
-        disabled={isPending}
-        label={state === "applied" ? "Remove applied status" : "Mark as applied"}
-        title={state === "applied" ? "Applied" : "Mark applied"}
-      >
-        <Check size={18} />
       </IconButton>
       <IconButton
         pressed={state === "hidden"}

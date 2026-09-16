@@ -396,7 +396,7 @@ function DiscoveryNoticeContent({
         {runId ? (
           <div className="discovery-notice-links">
             {!running && !failed && !cancelled ? (
-              <Link to={`/?profile=${profileId}`}>View results</Link>
+              <Link to={`/opportunities?profile=${profileId}`}>View results</Link>
             ) : null}
             <Link to={`/runs/${runId}`} aria-label={`View run #${runId}`}>
               View run

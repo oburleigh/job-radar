@@ -1,5 +1,6 @@
-import { Card } from "@job-radar/design-ui";
+import { buttonAttributes, Card } from "@job-radar/design-ui";
 import { ArrowUpRight, Banknote, Building2, CalendarDays, MapPin } from "lucide-react";
+import { Link } from "react-router";
 
 import type { AnnualSalaryRange } from "@/contexts/discovery/domain/annual-salary";
 import type { JobListingState } from "@/contexts/discovery/domain/job-listing-state";
@@ -10,6 +11,7 @@ import { JobActions } from "./job-actions.js";
 
 interface JobCardProps {
   profileId: number;
+  application?: { readonly id: number; readonly stage: string } | null;
   atsLabel: string;
   job: {
     id: number;
@@ -32,7 +34,7 @@ interface JobCardProps {
   };
 }
 
-export function JobCard({ profileId, atsLabel, job }: JobCardProps) {
+export function JobCard({ profileId, atsLabel, job, application }: JobCardProps) {
   const jobUrl = job.applyUrl || job.canonicalUrl;
 
   return (
@@ -97,7 +99,26 @@ export function JobCard({ profileId, atsLabel, job }: JobCardProps) {
         </div>
       </div>
 
-      <JobActions profileId={profileId} jobId={job.id} initialState={job.state} />
+      {application ? (
+        <p>
+          Application stage: {application.stage.slice(0, 1).toUpperCase()}
+          {application.stage.slice(1)}
+        </p>
+      ) : null}
+      <div className="job-workflow-actions">
+        <Link to={`/opportunities/${profileId}/${job.id}`}>Review Opportunity</Link>
+        <Link
+          {...buttonAttributes("primary")}
+          to={
+            application
+              ? `/applications/${application.id}`
+              : `/applications/new?searchProfileId=${profileId}&jobListingId=${job.id}`
+          }
+        >
+          {application ? "Open Application" : "Start Application"}
+        </Link>
+        <JobActions profileId={profileId} jobId={job.id} initialState={job.state} />
+      </div>
     </Card>
   );
 }
